@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- Python 3.10 or newer on macOS or Linux (on Windows use WSL: Ceres uses Unix file locking).
+- Python 3.11 or newer on macOS or Linux (on Windows use WSL: Ceres uses Unix file locking).
 - About 2 GB of free memory for large accounts (a board read runs in a separate worker capped at 2048 MB
   by default; see CONFIGURATION).
 - A browser. To sign transactions: the Hive Keychain browser extension, the Hive Keychain mobile app's

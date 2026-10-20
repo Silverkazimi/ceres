@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "A live board for your Splinterlands Land, with wallet-signed changes."
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = ["fastapi>=0.141,<1", "starlette>=1.6,<2", "uvicorn>=0.52,<1", "pydantic>=2.13,<3"]
 
 [project.scripts]

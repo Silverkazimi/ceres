@@ -17,7 +17,7 @@ You can optionally sign in with your Hive Posting key. This signs a short login 
 
 ## Install and run
 
-Requires Python 3.10 or newer and a browser. On Windows, use WSL. In a terminal:
+Requires Python 3.11 or newer and a browser. On Windows, use WSL. In a terminal:
 
 ```sh
 git clone https://github.com/Silverkazimi/ceres.git
