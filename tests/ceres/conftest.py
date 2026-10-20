@@ -697,9 +697,20 @@ def _offline_browser(base_url: str):
                     if not any(key == "player" for key, _ in query):
                         query.append(("player", LIVE_PLAYER))
                         url = urlunsplit((parts.scheme, parts.netloc, "/", urlencode(query), parts.fragment))
-                return original_goto(url, *goto_args, **goto_kwargs)
+                response = original_goto(url, *goto_args, **goto_kwargs)
+                if urlsplit(url).netloc == urlsplit(base_url).netloc and urlsplit(url).path in ("", "/"):
+                    _reprime_after_capture(page, base_url)
+                return response
 
             page.goto = fixture_board_goto
+            original_reload = page.reload
+
+            def fixture_board_reload(*args, **kwargs):
+                response = original_reload(*args, **kwargs)
+                _reprime_after_capture(page, base_url)
+                return response
+
+            page.reload = fixture_board_reload
             return page
 
         browser.new_context = offline_context
@@ -708,6 +719,17 @@ def _offline_browser(base_url: str):
             yield browser
         finally:
             browser.close()
+
+
+def _reprime_after_capture(page, base_url: str) -> None:
+    """A board load re-captures the account, which drops earlier per-plot reads; once this page's capture has
+    finished, read the primed plots again so the API keeps answering them with their slots. A page that holds
+    its capture on purpose (loading-state tests) is left alone after a bounded wait."""
+    try:
+        page.wait_for_function("() => window.__ceresReady && window.__ceresReady.capture !== 'running'", timeout=15_000)
+    except Exception:
+        return
+    _prime_fixture_plots(base_url)
 
 
 def _warm_board(browser, base_url: str, output=None) -> None:
