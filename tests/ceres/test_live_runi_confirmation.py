@@ -16,7 +16,7 @@ from ceres.config import CeresConfig
 from ceres.routes_op_preview import op_verify
 from praetoria.transport import ResponseData
 
-from .conftest import spawn_live_ceres, wait_for_board
+from .conftest import settle, spawn_live_ceres, wait_for_board
 
 
 @pytest.fixture(scope="module")
@@ -256,7 +256,7 @@ def test_below_floor_pending_keeps_one_broadcast_after_two_portfolio_confirms(
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
     page.wait_for_function("window.__floorBroadcastCount === 1 && document.querySelector('.checkout-move-status')", timeout=30_000)
-    page.wait_for_timeout(150)
+    settle(page)
     page.evaluate("confirmOperationBroadcast({scope: 'portfolio'})")
     assert page.evaluate("window.__floorBroadcastCount") == 1
     entry = page.evaluate("({txId: CERES_STAGE[0]?.txId, broadcastAt: CERES_STAGE[0]?.broadcast_at})")

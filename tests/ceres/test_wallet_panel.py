@@ -20,7 +20,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .vm_context import read_entry_source, run_in_module_context
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -491,7 +491,7 @@ def test_real_harvest_wallet_drawer_survives_hiveauth_rerender_live():
         toggle = panel.locator('[data-wallet-toggle]')
         toggle.click()
         panel.locator('.wallet-drawer.is-open').wait_for(timeout=5000)
-        page.wait_for_timeout(500)
+        settle(page)
         before = page.evaluate(
             """() => {
  const button = document.querySelector('#harvest-modal-overlay [data-wallet-select="keychain"]');
@@ -505,7 +505,7 @@ def test_real_harvest_wallet_drawer_survives_hiveauth_rerender_live():
         assert before["drawerOpen"] is True and before["closest"] is True, before
         panel.locator('[data-wallet-select="hiveauth"]').click()
         panel.locator('.wallet-qr').wait_for(state="attached", timeout=5000)
-        page.wait_for_timeout(500)
+        settle(page)
         after = page.evaluate(
             """() => {
  const button = document.querySelector('#harvest-modal-overlay [data-wallet-select="keychain"]');
@@ -571,7 +571,7 @@ def test_desktop_wallet_drawer_stays_open_after_stake_click():
  }"""
         )
         page.locator('#regional-dec-drawer button[data-dec="stake"]:not([disabled])').first.click()
-        page.wait_for_timeout(1500)
+        settle(page)
         after = page.evaluate(
             """() => {
  const drawer = document.querySelector('#regional-dec-drawer');

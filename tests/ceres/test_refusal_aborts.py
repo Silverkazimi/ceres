@@ -7,7 +7,7 @@ import json
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres, wait_for_board
+from .conftest import settle, spawn_live_ceres, wait_for_board
 
 
 @pytest.fixture(scope="module")
@@ -224,7 +224,7 @@ def test_polled_game_refusal_is_handled_without_an_unhandled_rejection(
     panel.locator("button[data-op-action='confirm']").click()
     page.wait_for_function("window.__hkRefusalBroadcastCount === 1", timeout=30_000)
     page.wait_for_function("document.querySelector('#ceres-confirmation-banner')?.textContent.includes('A later game check refused this operation.')", timeout=30_000)
-    page.wait_for_timeout(50)
+    settle(page)
     assert attempts["count"] == 2
     assert page.evaluate("window.__hkRefusalBroadcastCount") == 1
     assert page_errors == []

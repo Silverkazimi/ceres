@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 
 import pytest
 from playwright.sync_api import sync_playwright
+from .conftest import settle
 
 pytestmark = pytest.mark.browser
 
@@ -139,7 +140,7 @@ def _run(width: int, height: int, mode: str) -> dict:
                 page.wait_for_function("document.body.dataset.marketState === 'loaded' && !!document.querySelector('#cm-grid > .cb-tile:not(.cm-skeleton)')", timeout=30000)
             else:
                 page.wait_for_selector('body[data-view-ready="true"] #cb-grid > .cb-tile', timeout=30000)
-            page.wait_for_timeout(1200)  # the fade-ins and any late frame
+            settle(page)  # the fade-ins and any late frame
             got = page.evaluate("({ shifts: window.__shifts, frames: window.__frames })")
             got["errors"] = errors
             got["requests"] = requests

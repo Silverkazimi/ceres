@@ -8,7 +8,7 @@ import pytest
 from PIL import Image
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 
 
 PLOT_WITH_RUNI = "041-09-056"
@@ -354,7 +354,7 @@ def _measure_arrow(page, trigger, scroll=True):
     if scroll:
         trigger.scroll_into_view_if_needed()
     trigger.hover()
-    page.wait_for_timeout(250)
+    settle(page)
     assert page.locator("#ceres-tooltip").evaluate(
         "tip => !tip.hidden && tip.classList.contains('is-visible')"
     )

@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Browser, Locator, Page
 
-from .conftest import spawn_live_ceres, wait_for_board
+from .conftest import settle, spawn_live_ceres, wait_for_board
 
 
 SCREEN_DIR = Path(__file__).parents[2] / "work" / "ceres-fr1698-items"
@@ -429,7 +429,7 @@ def test_real_board_slot_editor_contract(live_browser: tuple[Browser, str]) -> N
 
     for width in (1920, 1440, 900, 480):
         page.set_viewport_size({"width": width, "height": 900})
-        page.wait_for_timeout(100)
+        settle(page)
         assert page.evaluate(
             """width => {
  if (document.documentElement.scrollWidth <= width) return true;

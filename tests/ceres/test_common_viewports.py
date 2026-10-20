@@ -28,7 +28,7 @@ import json
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres, wait_ready
 from .test_width_guard import _APPROVED_FORMULA_JS
 from .test_scaling_guard import _COLUMNS_JS, _PICKER_JS, _check_columns, _check_picker, _open_picker
 
@@ -61,7 +61,8 @@ def _load(live_browser, width: int, height: int, dpr: float) -> tuple[Page, obje
         " || document.querySelectorAll('#plot-card-list .plot-card').length > 0",
         timeout=60_000,
     )
-    page.wait_for_timeout(900)
+    wait_ready(page)
+    settle(page)
     return page, context
 
 
@@ -110,13 +111,13 @@ def test_resize_round_trip_returns_every_column(live_browser) -> None:
     try:
         before = page.evaluate(_COLUMNS_JS)
         page.set_viewport_size({"width": 1700, "height": 900})
-        page.wait_for_timeout(600)
+        settle(page)
         wide = page.evaluate(_COLUMNS_JS)
         failures = _check_columns(wide)
         assert not failures, "; ".join(failures) + "\n" + json.dumps(wide, sort_keys=True)
         assert wide["container"] > before["container"] + 200, json.dumps([before["container"], wide["container"]])
         page.set_viewport_size({"width": 1440, "height": 900})
-        page.wait_for_timeout(600)
+        settle(page)
         after = page.evaluate(_COLUMNS_JS)
         assert all(abs(a - b) <= 0.5 for a, b in zip(before["widths"], after["widths"])), json.dumps(
             {"before": before["widths"], "after": after["widths"]})

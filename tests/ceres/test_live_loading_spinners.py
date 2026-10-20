@@ -37,7 +37,7 @@ from typing import Callable
 import pytest
 from playwright.sync_api import Browser, Page, Route
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .vm_context import read_entry_source
 
 APP_JS = Path(__file__).parents[2] / "ceres" / "static" / "app.js"
@@ -95,7 +95,7 @@ def _capture_pending_request(page: Page, url_pattern: str, trigger: Callable[[],
     trigger()
     deadline = time.monotonic() + 5
     while "route" not in captured and time.monotonic() < deadline:
-        page.wait_for_timeout(20)
+        settle(page)
     assert "route" in captured, f"no request matching {url_pattern!r} was observed within 5s"
     return captured["route"]
 
@@ -274,7 +274,7 @@ def test_table_hidden_during_load_reveals_at_final_width(live_browser: tuple[Bro
     assert page.eval_on_selector("#table-head-sticky", "el => getComputedStyle(el).visibility") == "visible"
 
     width_immediate = page.eval_on_selector("#table-head-sticky", "el => el.getBoundingClientRect().width")
-    page.wait_for_timeout(500)  # let any further reflow/virtualization settle
+    settle(page)  # any further reflow/virtualization
     width_settled = page.eval_on_selector("#table-head-sticky", "el => el.getBoundingClientRect().width")
     page.screenshot(path=str(SCREEN_DIR / "board_load_revealed.png"))
     assert width_immediate > 0

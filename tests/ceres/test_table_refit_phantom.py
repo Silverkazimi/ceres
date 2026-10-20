@@ -14,7 +14,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres, wait_ready
 
 
 FULL_PLOT_COUNT = 129
@@ -31,7 +31,8 @@ def _wait_full_list(page: Page) -> None:
         f"document.querySelectorAll('#plot-tbody > tr.plot-row').length === {FULL_PLOT_COUNT}",
         timeout=30_000,
     )
-    page.wait_for_timeout(600)
+    wait_ready(page)
+    settle(page)
 
 
 def _metrics(page: Page) -> dict:
@@ -122,7 +123,7 @@ def test_scrollbar_appearing_after_load_leaves_no_phantom(live_browser: tuple[Br
     assert before["verticalScrollbar"] == 0, before
     _assert_fits(before)
     page.set_viewport_size({"width": 1920, "height": 1080})
-    page.wait_for_timeout(600)
+    settle(page)
     after = _metrics(page)
     assert after["verticalScrollbar"] > 0, after
     _assert_fits(after)
@@ -137,12 +138,12 @@ def test_window_shrink_and_restore_always_fit(live_browser: tuple[Browser, str])
     _assert_fits(full)
     for width in (1800, 1536, 1366):
         page.set_viewport_size({"width": width, "height": 1080})
-        page.wait_for_timeout(600)
+        settle(page)
         narrowed = _metrics(page)
         _assert_fits(narrowed)
         assert narrowed["scrollerClientWidth"] < full["scrollerClientWidth"], narrowed
     page.set_viewport_size({"width": 1920, "height": 1080})
-    page.wait_for_timeout(600)
+    settle(page)
     restored = _metrics(page)
     _assert_fits(restored)
     assert restored["columns"] == pytest.approx(full["columns"], abs=0.5), (full, restored)
@@ -160,7 +161,7 @@ def test_filter_round_trip_restores_every_column(live_browser: tuple[Browser, st
     _apply_filter(page, value)
     _assert_fits(_metrics(page))
     _clear_filter(page)
-    page.wait_for_timeout(300)
+    settle(page)
     after = _metrics(page)
     _assert_fits(after)
     assert after["columns"] == pytest.approx(first["columns"], abs=0.5), (first, after)

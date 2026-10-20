@@ -35,7 +35,7 @@ from pathlib import Path
 
 from playwright.sync_api import Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .vm_context import read_entry_source
 
 ROOT = Path(__file__).parents[2]
@@ -130,7 +130,7 @@ def test_combine_door_depends_on_the_cache_not_the_deleted_section() -> None:
                 page.route("**/api/idle-cards*", lambda route: route.abort())
             page.goto(base_url)
             page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
-            page.wait_for_timeout(1200)  # let prefetchIdleCardsCache() settle either way
+            settle(page)  # prefetchIdleCardsCache() has answered either way
 
             sections = page.evaluate(
                 "() => ({idle: !!document.getElementById('idle-cards-section'), unassigned: !!document.getElementById('unassigned-bonus-section')})"
@@ -142,7 +142,7 @@ def test_combine_door_depends_on_the_cache_not_the_deleted_section() -> None:
             page_row.click()
             expanded = page.locator(f"tr.expand-row[data-deed-uid='{row['deed_uid']}']")
             expanded.locator(".slot-editor").wait_for(timeout=15_000)
-            page.wait_for_timeout(500)
+            settle(page)
             count = expanded.locator(".tile-combine-chip").count()
             page.close()
             return count

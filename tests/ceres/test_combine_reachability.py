@@ -78,7 +78,7 @@ from ceres import capture_freshness
 from ceres.config import CeresConfig
 from ceres.routes_op_preview import op_preview, plot_op_preview
 
-from .conftest import LIVE_PLAYER, spawn_live_ceres, wait_for_board
+from .conftest import LIVE_PLAYER, settle, spawn_live_ceres, wait_for_board, wait_ready
 from .vm_context import ENTRY, read_entry_source, run_in_module_context
 
 ROOT = Path(__file__).parents[2]
@@ -327,7 +327,8 @@ def _mock_op_verify(page: Page, responses: list[dict]) -> None:
 def _expand_row(page: Page, base_url: str, row: dict):
     page.goto(f"{base_url}/?player={LIVE_PLAYER}")
     wait_for_board(page)
-    page.wait_for_timeout(1200)
+    wait_ready(page)
+    settle(page)
     page_row = page.locator(f"tr.plot-row[data-deed-uid='{row['deed_uid']}']")
     page_row.wait_for(timeout=15_000)
     page_row.click()

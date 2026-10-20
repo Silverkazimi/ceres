@@ -18,7 +18,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres, wait_ready
 
 
 WIDTHS = (1280, 1290, 1440)
@@ -48,7 +48,8 @@ def _open(live_browser, width: int, dpr: float, stale: bool = False, *, browser:
         " || document.querySelectorAll('#plot-card-list .plot-card').length > 0",
         timeout=60_000,
     )
-    page.wait_for_timeout(800)
+    wait_ready(page)
+    settle(page)
     return page, context
 
 
@@ -167,7 +168,7 @@ def test_tier_classes_are_stable_across_content_height(live_browser, width: int,
         if "ceres-lw-le-1279" in loaded:
             # Card tier: the search box lives in the mobile search sheet.
             page.locator("#mobile-search-btn").click()
-            page.wait_for_timeout(300)
+            filter_input.wait_for(state="visible")
         assert filter_input.count() == 1 and filter_input.is_visible(), "board text filter is not visible"
         value = page.evaluate(
             """async () => {
@@ -177,14 +178,17 @@ def test_tier_classes_are_stable_across_content_height(live_browser, width: int,
  }"""
         )
         before = page.evaluate("document.documentElement.scrollHeight")
+        shown = page.evaluate(_SHOWN_PLOTS_JS)
         filter_input.fill(value)
-        page.wait_for_timeout(600)
+        page.wait_for_function(f"({_SHOWN_PLOTS_JS})() < {shown}", timeout=10_000)
+        settle(page)
         after = page.evaluate("document.documentElement.scrollHeight")
         assert after < before, f"the filter did not shrink the page ({before} -> {after})"
         page.evaluate("window.ceresScale.apply()")
         assert tiers() == loaded, f"tier changed with content height: {loaded} -> {tiers()}"
         filter_input.fill("")
-        page.wait_for_timeout(600)
+        page.wait_for_function(f"({_SHOWN_PLOTS_JS})() === {shown}", timeout=10_000)
+        settle(page)
         page.evaluate("window.ceresScale.apply()")
         assert tiers() == loaded, f"tier did not return: {loaded} -> {tiers()}"
     finally:
@@ -263,7 +267,8 @@ def test_opened_plot_pager_reads_the_authoritative_width(live_browser) -> None:
     try:
         page.locator("#plot-tbody tr.plot-row td").first.click()
         page.wait_for_selector(".editor-band", timeout=30_000)
-        page.wait_for_timeout(400)
+        wait_ready(page)
+        settle(page)
         got = page.evaluate(
             """() => {
               """ + _MAIN_CONTENT_JS + """
@@ -296,7 +301,8 @@ def test_card_view_pager_keeps_every_tile_on_one_page(live_browser) -> None:
         for index in range(min(12, cards.count())):
             cards.nth(index).click()
             page.wait_for_selector("#mobile-plot-sheet .editor-band .slot-tile-cell", timeout=30_000)
-            page.wait_for_timeout(600)
+            wait_ready(page)
+            settle(page)
             got = page.evaluate(
                 """() => {
  const sheet = document.getElementById('mobile-plot-sheet');
@@ -308,7 +314,7 @@ def test_card_view_pager_keeps_every_tile_on_one_page(live_browser) -> None:
             )
             seen.append(got)
             page.locator("#mobile-plot-sheet-close").click()
-            page.wait_for_timeout(300)
+            page.locator("#mobile-plot-sheet .editor-band").wait_for(state="hidden")
             if got["tiles"] >= 2 or got["pager"]:
                 break
         # A multi-tile plot whose tiles all fit shows them on ONE page, no pager.
@@ -375,7 +381,8 @@ def test_badges_wrap_only_when_the_board_is_too_narrow(live_browser) -> None:
         assert real["wrapped"] == 0 and real["clipped"] == 0, detail
         assert real["maxHeight"] <= real["minHeight"] + 1, detail
         page.add_style_tag(content="#plot-table-scroll { max-inline-size: 1100px; }")
-        page.wait_for_timeout(800)
+        page.wait_for_function("document.querySelector('#plot-table-scroll').clientWidth <= 1100")
+        settle(page)
         got = page.evaluate(_BADGE_LINES_JS)
         detail = json.dumps(got, sort_keys=True)
         assert got["scrollerCW"] <= 1100, detail
@@ -387,6 +394,9 @@ def test_badges_wrap_only_when_the_board_is_too_narrow(live_browser) -> None:
         page.close()
         context.close()
 
+
+_SHOWN_PLOTS_JS = ("() => document.querySelectorAll('#plot-tbody > tr.plot-row').length"
+                   " + document.querySelectorAll('#plot-card-list .plot-card').length")
 
 _STAGEABLE_SLOT = (
     '.editor-band [data-slot-action="add"]:not([disabled]), '
@@ -404,11 +414,11 @@ def _open_grid_picker(page: Page) -> None:
             page.wait_for_selector(_STAGEABLE_SLOT, timeout=8_000)
         except PlaywrightTimeoutError:
             cell.click()
-            page.wait_for_timeout(300)
+            page.locator(".editor-band").wait_for(state="hidden")
             continue
         page.locator(_STAGEABLE_SLOT).first.click()
         page.wait_for_selector(".candidate-list.is-card-grid > .candidate-grid-card:not(.is-ghost)", timeout=60_000)
-        page.wait_for_timeout(1_200)
+        settle(page)
         return
     pytest.fail("no plot with a stageable slot to open the grid picker")
 
@@ -432,7 +442,8 @@ def test_picker_grid_shows_seven_per_row_at_full_hd(live_browser, hidden_scrollb
     try:
         page.goto(f"{base_url}/?player=sample01")
         page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=60_000)
-        page.wait_for_timeout(800)
+        wait_ready(page)
+        settle(page)
         _open_grid_picker(page)
         tiers = page.evaluate(_APPROVED_FORMULA_JS)
         assert tiers["actual"] == tiers["expected"], json.dumps(tiers, sort_keys=True)

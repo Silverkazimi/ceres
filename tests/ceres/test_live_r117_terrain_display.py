@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .test_candidate_redesign_frontend import _real_detail_row
 
 ROOT = Path(__file__).parents[2]
@@ -521,7 +521,7 @@ def _assert_scroll_contract(page):
     reached = {"Fire"}
     for _ in range(8):
         viewport.press("ArrowRight")
-        page.wait_for_timeout(60)
+        settle(page)
         current = _scroll_state(page)
         reached.update(b["name"] for b in current["badges"]
                        if b["box"]["left"] >= current["box"]["left"] - 1 and b["box"]["right"] <= current["box"]["right"] + 1)

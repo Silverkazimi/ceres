@@ -12,7 +12,7 @@ import json
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres, wait_for_board
+from .conftest import settle, spawn_live_ceres, wait_for_board
 
 
 @pytest.fixture(scope="module")
@@ -223,7 +223,7 @@ def test_escalation_schedule_is_stake_only_for_the_settle_floor(
         page.locator("tr.expand-row").nth(index).locator(".slot-power[data-power-state='core-only']").wait_for(timeout=30_000)
     else:
         page.locator("#ceres-confirmation-banner.phase-pending-escalated").wait_for(timeout=30_000)
-        page.wait_for_timeout(200)
+        settle(page)
         assert attempts == [1, 2, 3, 4, 5]
         assert page.evaluate("window.__floorBroadcastCount") == 1
         assert page.locator("#ceres-confirmation-banner [data-confirmation-action='retry-verification']").count() == 1

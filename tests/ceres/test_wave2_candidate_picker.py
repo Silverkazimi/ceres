@@ -45,7 +45,7 @@ import urllib.request
 import pytest
 from playwright.sync_api import Browser
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 
 
 @pytest.fixture(scope="module")
@@ -143,7 +143,7 @@ def test_worker_query_uses_construction_sort_and_independent_filters(live_browse
     name_chip.wait_for(timeout=30_000)
     with page.expect_request(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*"):
         name_chip.click()
-    page.wait_for_timeout(200)
+    settle(page)
     assert seen, "clicking the Name sort chip did not request candidates"
     params = urllib.parse.parse_qs(urllib.parse.urlparse(seen[-1]).query)
     assert params.get("sort") == ["name"]
@@ -175,7 +175,7 @@ def test_partial_picker_refresh_syncs_exactly_one_active_sort_chip(live_browser:
     for sort_id in sort_ids:
         chip = page.locator(f"[data-picker-action='sort'][data-sort='{sort_id}']").first
         chip.click()
-        page.wait_for_timeout(200)
+        settle(page)
         active = page.locator("[data-picker-action='sort'].is-active")
         assert active.count() == 1, f"expected exactly one active sort chip after selecting {sort_id!r}, saw {active.count()}"
         assert active.first.get_attribute("data-sort") == sort_id

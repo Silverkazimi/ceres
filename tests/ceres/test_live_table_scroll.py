@@ -16,7 +16,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Browser
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres, wait_ready
 
 
 @pytest.fixture(scope="module")
@@ -62,7 +62,8 @@ def test_no_horizontal_scrollbar_at_any_width(browser: tuple[Browser, str], widt
         " || document.querySelectorAll('#plot-card-list .plot-card').length > 0",
         timeout=60_000,
     )
-    page.wait_for_timeout(500)
+    wait_ready(page)
+    settle(page)
     got = page.evaluate(_HSCROLL_JS)
     page.close()
     assert got is not None
@@ -85,7 +86,8 @@ def test_desktop_table_header_reaches_both_document_edges(browser: tuple[Browser
             "document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0",
             timeout=60_000,
         )
-        page.wait_for_timeout(500)
+        wait_ready(page)
+        settle(page)
         got = page.evaluate(
             """() => {
  const viewport = document.documentElement.getBoundingClientRect();

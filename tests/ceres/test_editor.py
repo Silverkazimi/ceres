@@ -15,7 +15,7 @@ from ceres.capacity import (
     structure_capacity_index,
 )
 from ceres.candidates import _projected_worksite_row, _worker_slot_capacity
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 
 # an earlier queue's source-text guard here (kept, NOT
 # converted, pending an maintainer ruling on the dead `powerWarning` computation
@@ -297,7 +297,7 @@ def test_stage_reservation_reaches_every_picker_on_the_same_plot_and_releases_on
     empty_tiles = worker_group.locator(".slot-tile-cell .slot-tile.is-empty")
     with page.expect_request(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*"):
         empty_tiles.first.click()
-    page.wait_for_timeout(300)
+    settle(page)
     assert candidate_requests, "opening the second empty slot's picker made no candidates request"
     reserved_params = urllib.parse.parse_qs(urllib.parse.urlparse(candidate_requests[-1]).query)
     assert reserved_params.get("reserved_asset_ref") == ["reservation-test-card"], reserved_params
@@ -312,7 +312,7 @@ def test_stage_reservation_reaches_every_picker_on_the_same_plot_and_releases_on
     empty_tiles = worker_group.locator(".slot-tile-cell .slot-tile.is-empty")
     with page.expect_request(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*"):
         empty_tiles.first.click()
-    page.wait_for_timeout(300)
+    settle(page)
     assert candidate_requests
     released_params = urllib.parse.parse_qs(urllib.parse.urlparse(candidate_requests[-1]).query)
     assert "reservation-test-card" not in released_params.get("reserved_asset_ref", [])

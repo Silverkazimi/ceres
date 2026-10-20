@@ -28,6 +28,10 @@ PLACEHOLDER_PNG = bytes.fromhex(  # RGBA 0,0,0,0 (the first version was an opaqu
 )
 FIXTURE_HOSTS = frozenset({"api.splinterlands.com", "api.hive.blog", "vapi.splinterlands.com"})
 IMAGE_HOSTS = frozenset({"d36mxiodymuqjm.cloudfront.net", "runi.splinterlands.com"})
+STATIC_ASSETS = ROOT / "ceres" / "static" / "assets"
+# Game artwork Ceres downloads into the (git-ignored) local asset folders on first use. Offline, a missing file
+# would 404 and the page's art loader would retry it for about 30 s; it gets the placeholder instead.
+_ART_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".svg", ".gif")
 
 
 def _free_port() -> int:
@@ -93,6 +97,10 @@ def install_routes(page, set_dir: Path, *, overlays: list[str] | None = None, im
         parts = urlsplit(request.url)
         host = parts.hostname or ""
         if host in ("127.0.0.1", "localhost"):
+            if parts.path.startswith("/static/assets/") and parts.path.lower().endswith(_ART_SUFFIXES) and images != "cdn":
+                local = (STATIC_ASSETS / parts.path.removeprefix("/static/assets/")).resolve()
+                if local.is_relative_to(STATIC_ASSETS) and not local.is_file():
+                    return route.fulfill(status=200, content_type="image/png", body=PLACEHOLDER_PNG)
             return route.continue_()
         if host in IMAGE_HOSTS and images == "cdn":
             return route.continue_()

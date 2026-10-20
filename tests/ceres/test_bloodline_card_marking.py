@@ -22,7 +22,7 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres, wait_for_board
+from .conftest import settle, spawn_live_ceres, wait_for_board
 
 
 CSS = Path(__file__).parents[2] / "ceres" / "static" / "ceres.css"
@@ -228,6 +228,6 @@ def test_removing_solo_holder_never_triggers_a_bloodline_warning(live_browser: t
     page.wait_for_function(
         "() => !document.querySelector('tr.expand-row .slot-tile')?.textContent?.includes('loading')",
     )
-    page.wait_for_timeout(1200)
+    settle(page)
     assert expand.locator('.plot-warning-row[data-plot-warning-kind="bloodline"]').count() == 0
     page.close()

@@ -34,7 +34,7 @@ from typing import Any
 
 from playwright.sync_api import Page
 
-from .conftest import LIVE_PLAYER, spawn_live_ceres, wait_for_board
+from .conftest import LIVE_PLAYER, settle, spawn_live_ceres, wait_for_board
 
 CARD_CDN_BASE = "https://d36mxiodymuqjm.cloudfront.net"
 # Mirrors ceres/static/app.js's own CARD_CDN_SET table (editions 0-21) -- kept in
@@ -168,7 +168,7 @@ def _mock_op_verify(page: Page, responses: list[dict]) -> list:
 def _open_dialog(page: Page, base_url: str, row: dict, worker: dict) -> None:
     page.goto(f"{base_url}/?player={LIVE_PLAYER}")
     wait_for_board(page)
-    page.wait_for_timeout(1200)  # let prefetchIdleCardsCache() populate IDLE_CARDS_CACHE
+    settle(page)  # prefetchIdleCardsCache() has answered
     page_row = page.locator(f"tr.plot-row[data-deed-uid='{row['deed_uid']}']")
     page_row.wait_for(timeout=15_000)
     page_row.click()

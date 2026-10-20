@@ -33,7 +33,7 @@ import urllib.request
 
 from playwright.sync_api import Page
 
-from .conftest import LIVE_PLAYER, spawn_live_ceres, wait_for_board
+from .conftest import LIVE_PLAYER, settle, spawn_live_ceres, wait_for_board, wait_ready
 
 
 def _get(base_url: str, path: str) -> dict:
@@ -135,7 +135,8 @@ def _mock_op_verify(page: Page, responses: list[dict], *, delay_ms: int = 0) -> 
 def _open_dialog(page: Page, base_url: str, row: dict, worker: dict) -> None:
     page.goto(f"{base_url}/?player={LIVE_PLAYER}")
     wait_for_board(page)
-    page.wait_for_timeout(1200)
+    wait_ready(page)
+    settle(page)
     page_row = page.locator(f"tr.plot-row[data-deed-uid='{row['deed_uid']}']")
     page_row.wait_for(timeout=15_000)
     page_row.click()
@@ -296,7 +297,7 @@ def test_pending_surface_offers_retry_labelled_check_again() -> None:
 
             before = len(requests)
             retry.click()
-            page.wait_for_timeout(500)
+            settle(page)
             assert len(requests) > before, "clicking retry must fire another /api/op-verify request"
         finally:
             page.close()

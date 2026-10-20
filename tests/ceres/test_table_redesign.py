@@ -18,7 +18,7 @@ import pytest
 from PIL import Image
 from playwright.sync_api import Browser
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .vm_context import run_in_module_context
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -393,7 +393,7 @@ def test_separate_totem_title_cells_keep_exact_row_height_and_tooltips(live_brow
                 f'tr.plot-row[data-deed-uid="{generic_derived["deed_uid"]}"] .title-cell .rarity-gem'
             )
         title_icon.hover()
-        page.wait_for_timeout(400)
+        settle(page)
         page.wait_for_selector("#ceres-tooltip:not([hidden])")
         title_tip = page.evaluate(
                 """() => {
@@ -408,7 +408,7 @@ def test_separate_totem_title_cells_keep_exact_row_height_and_tooltips(live_brow
  }"""
             )
         rarity_icon.hover()
-        page.wait_for_timeout(400)
+        settle(page)
         page.wait_for_selector("#ceres-tooltip:not([hidden])")
         rarity_tip = page.evaluate(
                 """() => {

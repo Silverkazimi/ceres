@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 
 
 @pytest.fixture(scope="module")
@@ -51,7 +51,7 @@ def _stage_a_removal(page: Page) -> bool:
  }"""
     )
     if staged:
-        page.wait_for_timeout(1500)
+        settle(page)
     return bool(staged)
 
 

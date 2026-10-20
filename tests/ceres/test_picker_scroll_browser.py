@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 
 import pytest
+from .conftest import settle
 
 SET = Path(__file__).resolve().parents[1] / "fixtures" / "upstream" / "board-basic"
 PLAYER = "sample01"
@@ -76,7 +77,7 @@ def _cycle(page, uid: str, park: str, close: str) -> dict:
         page.evaluate("(sel) => document.querySelector(sel).click()", TILE.format(uid=uid))
     page.wait_for_function("!document.querySelector('.inline-picker[data-picker=\"1\"]')", timeout=10_000)
     _settle(page)
-    page.wait_for_timeout(100)
+    settle(page)
     closed = page.evaluate(MEASURE, uid)
     return {"before": before, "opened": opened, "closed": closed}
 
@@ -119,7 +120,7 @@ def _run(width: int, height: int, motion: str) -> dict:
                 if page.evaluate("[...document.querySelectorAll('#plot-tbody > tr.plot-row')].at(-1).dataset.deedUid") == last:
                     break
                 page.evaluate("document.querySelector('th[data-key=\"harvest_pp\"]').click()")
-                page.wait_for_timeout(300)
+                settle(page)
             assert page.evaluate("[...document.querySelectorAll('#plot-tbody > tr.plot-row')].at(-1).dataset.deedUid") == last
             _open_plot(page, last)
             end = _cycle(page, last, "document.documentElement.scrollHeight", "tile")

@@ -8,7 +8,6 @@ Land fixtures Praetoria's own tests use (`tests/fixtures/land/`), built the same
 responses, with private storage and no external network. The historical name and
 shared `(Browser, base_url)` API are retained. Callers select the fixture account
 explicitly with `?player=sample01` and choose a viewport for the surface they test.
-The recorded set is synthetic and generated: tests/ceres/board_basic_recording.py.
 The server and browser are always torn down, including on bootstrap failure.
 """
 
@@ -395,14 +394,20 @@ def _free_port() -> int:
 
 # 28 of 111 test files each spawned their OWN Ceres server and Chromium via a
 # module-scoped fixture. Measured cost: 978 seconds across 79 files, with single files
-# reaching 97s. A suite nobody can run to completion stops being run -- roughly 20 files
-# were failing on master unnoticed for exactly that reason.
-# The spawn is now memoised for the process: the first caller starts a server and a
-# browser, every later caller receives the same pair, and teardown happens once at exit.
-# The contextmanager API is unchanged so no call site needed editing.
-# Set CERES_TEST_ISOLATED_SERVER=1 to opt a run out and get the old per-caller behaviour
-# for a test that genuinely needs a server with no other test's state on it.
+# reaching 97s. A suite nobody can run to completion stops being run.
+# The SERVER is therefore memoised for the process: the first caller starts it and every
+# later caller reuses it; it stops once at exit. The BROWSER is per caller: each
+# `spawn_live_ceres()` block (normally one module-scoped fixture) gets its own Playwright
+# and Chromium, closed when the block ends, so no page, cookie, route or storage outlives
+# its module and no sync Playwright loop is left running for a later asyncio module.
+# A nested `spawn_live_ceres()` inside an open block reuses that block's browser.
+# Set CERES_TEST_ISOLATED_SERVER=1 to opt a run out and get a private server per caller.
 _SHARED_LIVE: dict = {}
+_ACTIVE_BROWSERS: list = []
+
+# Fixed viewports: the desktop and phone sizes every browser test uses unless it needs another width.
+DESKTOP = {"width": 1536, "height": 864}
+PHONE = {"width": 390, "height": 844}
 
 
 def _shared_live_teardown() -> None:
@@ -422,25 +427,36 @@ atexit.register(_shared_live_teardown)
 def _prime_fixture_plots(base_url: str, plots=None) -> None:
     """Give each caller slot-aware recorded workers, even after a prior page reload.
 
-    The server is shared, but a page's quick capture invalidates earlier detail
-    patches. Inspecting only the initial warmup would make later tests depend on
-    which plot the previous test happened to expand.
+    The server is shared, and a page load's quick capture drops earlier per-plot reads, so
+    this runs before every test that has a live server open (see `_primed_fixture_plots`).
+    Only plots that are not loaded are read again, concurrently.
     """
+    from concurrent.futures import ThreadPoolExecutor
+
     from tests.ceres import board_basic_recording as recording
 
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=15) as response:
         loaded = {p["deed_uid"] for p in json.load(response)["plots"] if p.get("assets_loaded")}
-    for plot in recording.PRIMED if plots is None else plots:
-        deed_uid = plot.uid
-        if deed_uid in loaded:
-            continue
-        request = urllib.request.Request(
-            f"{base_url}/api/plots/{deed_uid}/expand", data=b"", method="POST",
-        )
-        with urllib.request.urlopen(request, timeout=15) as response:
+    wanted = [plot for plot in (recording.PRIMED if plots is None else plots) if plot.uid not in loaded]
+
+    def expand(plot):
+        request = urllib.request.Request(f"{base_url}/api/plots/{plot.uid}/expand", data=b"", method="POST")
+        with urllib.request.urlopen(request, timeout=30) as response:
             row = json.load(response)
-            if plot.workers and not any(isinstance(w.get("slot"), int) and w["slot"] >= 1 for w in row.get("workers", [])):
-                raise RuntimeError(f"Fixture plot has no slot-aware workers: {deed_uid}")
+        if plot.workers and not any(isinstance(w.get("slot"), int) and w["slot"] >= 1 for w in row.get("workers", [])):
+            raise RuntimeError(f"Fixture plot has no slot-aware workers: {plot.uid}")
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        list(pool.map(expand, wanted))
+
+
+@pytest.fixture(autouse=True)
+def _primed_fixture_plots():
+    """Before each test that runs with a live fixture server open, make the primed plots `assets_loaded`
+    again (an earlier test's page load may have dropped them)."""
+    if _ACTIVE_BROWSERS:
+        _prime_fixture_plots(_ACTIVE_BROWSERS[-1][1])
+    yield
 
 
 def prime_all_fixture_plots(base_url: str) -> None:
@@ -452,37 +468,90 @@ def prime_all_fixture_plots(base_url: str) -> None:
     _prime_fixture_plots(base_url, recording.PLOTS)
 
 
+def wait_ready(page, *, timeout: float = 30_000) -> dict:
+    """Wait for the page's own ready signal (`window.__ceresReady.ready`, see static/ceres-ready.js) and
+    return the snapshot. Never a fixed sleep: the page states when it is done."""
+    page.wait_for_function("() => window.__ceresReady && window.__ceresReady.ready === true", timeout=timeout)
+    return page.evaluate("() => window.__ceresReady")
+
+
+_SETTLED = """() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(
+  document.getAnimations().every(a => a.playState !== 'running'
+    || a.effect?.getComputedTiming?.().iterations === Infinity)))))"""
+
+
+def settle(page, *, timeout: float = 15_000) -> None:
+    """Wait until the page has caught up with the last action: none of its own `/api/` requests is still in
+    flight (pages from the fixture harness track them), no finite CSS/JS animation is running (spinners loop
+    forever and are ignored), and two frames have been painted since. A condition, never a fixed delay."""
+    deadline = time.monotonic() + timeout / 1000
+    inflight = getattr(page, "_ceres_inflight", None)
+    while True:
+        if inflight:
+            # let Playwright deliver the pending request events, then look again
+            page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => resolve()))")
+        else:
+            page.wait_for_function(_SETTLED, timeout=max(1, (deadline - time.monotonic()) * 1000))
+            if not inflight:  # nothing new started while the frames were painted
+                return
+        if time.monotonic() > deadline:
+            raise AssertionError(f"page did not settle: requests still in flight {sorted(inflight)}")
+
+
+def open_board(browser, base_url: str, *, viewport: dict | None = None, player: str | None = None, query: str = ""):
+    """A new page on the fixture board at a fixed viewport, returned once the board is ready."""
+    page = browser.new_page(viewport=dict(viewport or DESKTOP))
+    page.goto(f"{base_url}/?player={player or LIVE_PLAYER}{('&' + query) if query else ''}")
+    wait_for_board(page)
+    return page
+
+
 @contextlib.contextmanager
 def spawn_live_ceres(*, host: str = LIVE_HOST):
-    """Yield a shared `(Browser, base_url)` for the whole test session.
+    """Yield `(Browser, base_url)`: the session's shared fixture server and a browser for this block.
 
-    See the  note above for why this is memoised rather than per-caller."""
+    See the note above for what is shared and what is not."""
     if os.environ.get("CERES_TEST_ISOLATED_SERVER") == "1":
         with _spawn_live_ceres_isolated(host=host) as value:
             yield value
         return
+    if _ACTIVE_BROWSERS:
+        browser, base_url = _ACTIVE_BROWSERS[-1]
+        _prime_fixture_plots(base_url)
+        yield browser, base_url
+        return
     cached = _SHARED_LIVE.get("value")
     if cached is None:
         stack = contextlib.ExitStack()
-        value = stack.enter_context(_spawn_live_ceres_isolated(host=host))
-        _SHARED_LIVE["value"] = {"value": value, "closers": [stack.close]}
+        try:
+            base_url = stack.enter_context(_fixture_server(host=host))
+        except BaseException:
+            stack.close()
+            raise
+        _SHARED_LIVE["value"] = {"base_url": base_url, "closers": [stack.close], "warm": False}
         cached = _SHARED_LIVE["value"]
-    else:
-        _prime_fixture_plots(cached["value"][1])
-    yield cached["value"]
+    base_url = cached["base_url"]
+    with _offline_browser(base_url) as browser:
+        if not cached["warm"]:
+            _warm_board(browser, base_url, cached.get("output"))
+            cached["warm"] = True
+        _prime_fixture_plots(base_url)
+        _ACTIVE_BROWSERS.append((browser, base_url))
+        try:
+            yield browser, base_url
+        finally:
+            _ACTIVE_BROWSERS.pop()
 
 
 @contextlib.contextmanager
 def standalone_browser():
     """Yield a Chromium `Browser` for tests that only render `set_content` markup.
 
-    : while the session-shared live browser above is running, its sync Playwright owns this thread's
-    event loop, and a second `sync_playwright()` raises "using Playwright Sync API inside the asyncio loop" --
-    so a set_content test failed whenever any live-board module happened to run before it. Reuse that browser
-    when it exists; otherwise start (and stop) a private one."""
-    cached = _SHARED_LIVE.get("value")
-    if cached is not None:
-        yield cached["value"][0]
+    While a live-board block is open its sync Playwright owns this thread's event loop, and a second
+    `sync_playwright()` raises "using Playwright Sync API inside the asyncio loop"; reuse that browser
+    when there is one, otherwise start (and stop) a private one."""
+    if _ACTIVE_BROWSERS:
+        yield _ACTIVE_BROWSERS[-1][0]
         return
     from playwright.sync_api import sync_playwright
 
@@ -495,12 +564,10 @@ def standalone_browser():
 
 
 @contextlib.contextmanager
-def _spawn_live_ceres_isolated(*, host: str = LIVE_HOST, log_directory: Path | None = None):
-    """Run the Ceres CLI through the offline socket guard on a free port and yield
-    `(Browser, base_url)`. The child process is terminated in a `finally` that wraps
-    everything from the `Popen` call onward -- including the startup-wait loop and the
-    Playwright session -- so it is reaped whether the caller's block succeeds, raises,
-    or never runs at all (e.g. a startup timeout)."""
+def _fixture_server(*, host: str = LIVE_HOST, log_directory: Path | None = None):
+    """Run the Ceres CLI through the offline socket guard on a free port and yield its base URL.
+    The child process is terminated in a `finally` that wraps everything from the `Popen` call
+    onward, so it is reaped whether the caller's block succeeds, raises, or never runs."""
     port = _free_port()
     with contextlib.ExitStack() as stack:
         home = Path(stack.enter_context(tempfile.TemporaryDirectory(prefix="ceres-test-home-")))
@@ -518,6 +585,9 @@ def _spawn_live_ceres_isolated(*, host: str = LIVE_HOST, log_directory: Path | N
             "PRAETORIA_CACHE_DIR": str(home / "ceres-fixture-cache-private"),
             "CERES_NO_STORED_DATA_CLEANUP": "1",
             "CERES_CAPTURE_IN_PROCESS": "1",
+            # The per-client limits protect the game's API; here every request is the test client and the
+            # upstream is the recording, so a busy test module would only meet 429s of its own making.
+            "CERES_CLIENT_LIMITS": "off",
             "PYTHONDONTWRITEBYTECODE": "1",
         })
         child_env.pop("CERES_DEV_WATCH", None)
@@ -540,7 +610,7 @@ def _spawn_live_ceres_isolated(*, host: str = LIVE_HOST, log_directory: Path | N
                         if response.status == 200:
                             break
                 except OSError:
-                    time.sleep(0.25)
+                    time.sleep(0.25)  # process start-up poll, not a page wait
             else:
                 try:
                     process.wait(timeout=5)
@@ -550,79 +620,125 @@ def _spawn_live_ceres_isolated(*, host: str = LIVE_HOST, log_directory: Path | N
                 output_file.seek(0)
                 output = output_file.read()
                 raise RuntimeError(f"Ceres did not start:\n{output}")
-
-            with sync_playwright() as playwright:
-                browser = playwright.chromium.launch(ignore_default_args=['--hide-scrollbars'])
-                from tests.ceres.fixture_live import install_routes
-
-                # Install on every new context/page before navigation. Page-level mocks
-                # in individual tests still take precedence over these offline routes.
-                new_context, new_page = browser.new_context, browser.new_page
-
-                def guard_context(context):
-                    install_routes(context, LIVE_FIXTURES, overlays=["browser-combine"])
-                    # No connect_to_server(): every WebSocket is local and inert.
-                    # Closing from this synchronous callback deadlocks Playwright.
-                    context.route_web_socket("**/*", lambda ws: None)
-
-                def offline_context(*args, **kwargs):
-                    kwargs["service_workers"] = "block"
-                    context = new_context(*args, **kwargs)
-                    guard_context(context)
-                    return context
-
-                def offline_page(*args, **kwargs):
-                    kwargs["service_workers"] = "block"
-                    page = new_page(*args, **kwargs)
-                    guard_context(page.context)
-                    diagnostics = []
-                    page._ceres_diagnostics = diagnostics
-                    page.on("console", lambda message: diagnostics.append(f"console {message.type}: {message.text}") if message.type == "error" else None)
-                    page.on("pageerror", lambda error: diagnostics.append(f"pageerror: {error}"))
-                    page.on("requestfailed", lambda request: diagnostics.append(f"requestfailed: {request.url}: {request.failure}"))
-                    page.on("response", lambda response: diagnostics.append(f"HTTP {response.status}: {response.url}") if response.status >= 400 else None)
-
-                    # The fixture server's --player is an API default; the app reads the
-                    # account from the URL. Bare-origin board tests need that query too.
-                    original_goto = page.goto
-
-                    def fixture_board_goto(url, *goto_args, **goto_kwargs):
-                        parts = urlsplit(url)
-                        if parts.netloc == urlsplit(base_url).netloc and not parts.path:
-                            query = parse_qsl(parts.query, keep_blank_values=True)
-                            if not any(key == "player" for key, _ in query):
-                                query.append(("player", LIVE_PLAYER))
-                                url = urlunsplit((parts.scheme, parts.netloc, "/", urlencode(query), parts.fragment))
-                        return original_goto(url, *goto_args, **goto_kwargs)
-
-                    page.goto = fixture_board_goto
-                    return page
-
-                browser.new_context = offline_context
-                browser.new_page = offline_page
-                try:
-                    # API-based tests need a captured board before creating their own
-                    # page. Exercise the real load pipeline against recorded upstream.
-                    page = browser.new_page(viewport={"width": 1600, "height": 1000})
-                    errors = []
-                    page.on("pageerror", lambda error: errors.append(str(error)))
-                    page.on("console", lambda message: errors.append(message.text) if message.type == "error" else None)
-                    try:
-                        page.goto(f"{base_url}/?player={LIVE_PLAYER}", wait_until="domcontentloaded")
-                        page.wait_for_selector("#plot-tbody > tr.plot-row", timeout=30_000)
-                    except Exception as exc:
-                        output_file.seek(0)
-                        raise RuntimeError(f"Fixture board did not load: {errors}\n{page.locator('body').inner_text()[:3000]}\n{output_file.read()}") from exc
-                    finally:
-                        page.close()
-                    _prime_fixture_plots(base_url)
-                    yield browser, base_url
-                finally:
-                    browser.close()
+            _SERVER_OUTPUT[base_url] = output_file
+            yield base_url
         finally:
+            _SERVER_OUTPUT.pop(f"http://{host}:{port}", None)
             process.terminate()
             try:
                 process.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait()
+
+
+_SERVER_OUTPUT: dict = {}
+
+
+@contextlib.contextmanager
+def _offline_browser(base_url: str):
+    """A Chromium whose every context is offline: upstream hosts answer from the fixture set, images
+    from a placeholder, anything else is aborted; service workers are blocked, WebSockets are inert,
+    motion is reduced (the app's own reduced-motion rules freeze its animations), and a page without
+    an explicit viewport gets the desktop one."""
+    from tests.ceres.fixture_live import install_routes
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(ignore_default_args=['--hide-scrollbars'])
+        # Install on every new context/page before navigation. Page-level mocks
+        # in individual tests still take precedence over these offline routes.
+        new_context, new_page = browser.new_context, browser.new_page
+
+        def guard_context(context):
+            install_routes(context, LIVE_FIXTURES, overlays=["browser-combine"])
+            # No connect_to_server(): every WebSocket is local and inert.
+            # Closing from this synchronous callback deadlocks Playwright.
+            context.route_web_socket("**/*", lambda ws: None)
+
+        def _defaults(kwargs):
+            kwargs["service_workers"] = "block"
+            kwargs.setdefault("reduced_motion", "reduce")
+            kwargs.setdefault("viewport", dict(DESKTOP))
+
+        def offline_context(*args, **kwargs):
+            _defaults(kwargs)
+            context = new_context(*args, **kwargs)
+            guard_context(context)
+            return context
+
+        def offline_page(*args, **kwargs):
+            _defaults(kwargs)
+            page = new_page(*args, **kwargs)
+            guard_context(page.context)
+            diagnostics = []
+            page._ceres_diagnostics = diagnostics
+            inflight: set = set()
+            page._ceres_inflight = inflight  # the page's own API calls, read by settle()
+
+            def api(request):
+                return urlsplit(request.url).path.startswith("/api/") and urlsplit(request.url).netloc == urlsplit(base_url).netloc
+
+            page.on("request", lambda request: inflight.add(request.url) if api(request) and "/api/dev/watch" not in request.url else None)
+            page.on("requestfinished", lambda request: inflight.discard(request.url))
+            page.on("requestfailed", lambda request: inflight.discard(request.url))
+            page.on("console", lambda message: diagnostics.append(f"console {message.type}: {message.text}") if message.type == "error" else None)
+            page.on("pageerror", lambda error: diagnostics.append(f"pageerror: {error}"))
+            page.on("requestfailed", lambda request: diagnostics.append(f"requestfailed: {request.url}: {request.failure}"))
+            page.on("response", lambda response: diagnostics.append(f"HTTP {response.status}: {response.url}") if response.status >= 400 else None)
+
+            # The fixture server's --player is an API default; the app reads the
+            # account from the URL. Bare-origin board tests need that query too.
+            original_goto = page.goto
+
+            def fixture_board_goto(url, *goto_args, **goto_kwargs):
+                parts = urlsplit(url)
+                if parts.netloc == urlsplit(base_url).netloc and not parts.path:
+                    query = parse_qsl(parts.query, keep_blank_values=True)
+                    if not any(key == "player" for key, _ in query):
+                        query.append(("player", LIVE_PLAYER))
+                        url = urlunsplit((parts.scheme, parts.netloc, "/", urlencode(query), parts.fragment))
+                return original_goto(url, *goto_args, **goto_kwargs)
+
+            page.goto = fixture_board_goto
+            return page
+
+        browser.new_context = offline_context
+        browser.new_page = offline_page
+        try:
+            yield browser
+        finally:
+            browser.close()
+
+
+def _warm_board(browser, base_url: str, output=None) -> None:
+    """API-based tests need a captured board before creating their own page: exercise the real load
+    pipeline against the recorded upstream once per server."""
+    page = browser.new_page(viewport=dict(DESKTOP))
+    errors = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.on("console", lambda message: errors.append(message.text) if message.type == "error" else None)
+    try:
+        page.goto(f"{base_url}/?player={LIVE_PLAYER}", wait_until="domcontentloaded")
+        wait_for_board(page)
+    except Exception as exc:
+        log = _SERVER_OUTPUT.get(base_url)
+        server = ""
+        if log is not None:
+            log.seek(0)
+            server = log.read()
+        raise RuntimeError(f"Fixture board did not load: {errors}\n{page.locator('body').inner_text()[:3000]}\n{server}") from exc
+    finally:
+        page.close()
+
+
+@contextlib.contextmanager
+def _spawn_live_ceres_isolated(*, host: str = LIVE_HOST, log_directory: Path | None = None):
+    """A private fixture server and browser, yielded as `(Browser, base_url)`."""
+    with _fixture_server(host=host, log_directory=log_directory) as base_url, _offline_browser(base_url) as browser:
+        _warm_board(browser, base_url)
+        _prime_fixture_plots(base_url)
+        _ACTIVE_BROWSERS.append((browser, base_url))
+        try:
+            yield browser, base_url
+        finally:
+            _ACTIVE_BROWSERS.pop()

@@ -10,7 +10,7 @@ import copy
 
 import pytest
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .test_candidate_redesign_frontend import _real_detail_row
 from .test_live_r117_terrain_display import _candidates, _mount
 
@@ -36,7 +36,7 @@ def picker_page(live_browser):
         if not target.count():
             target = page.locator(".slot-group[data-group-id='worker'] .slot-tile[data-slot-action='add']")
         if not target.count():
-            page.wait_for_timeout(2_500)
+            settle(page)
             continue
         try:
             target.first.click(timeout=5_000)
@@ -45,7 +45,7 @@ def picker_page(live_browser):
             opened = True
             break
         except Exception:
-            page.wait_for_timeout(2_000)
+            settle(page)
     assert opened, "picker never opened on a worker tile after 8 attempts (fixture, not product)"
     yield page
     page.close()
@@ -111,7 +111,7 @@ def _assert_ring_contract(page):
 
 def _assert_head_travel(page):
     before = _ring_state(page)
-    page.wait_for_timeout(100)
+    settle(page)
     after = _ring_state(page)
     delta = float(after["animationTime"]) - float(before["animationTime"])
     path_length = float(after["pathLengthPixels"])

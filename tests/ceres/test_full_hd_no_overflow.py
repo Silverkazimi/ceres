@@ -14,7 +14,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres, wait_ready
 
 
 GUTTER = 15
@@ -89,7 +89,8 @@ def _board(live_browser: tuple[Browser, str], width: int, root_font: int) -> Pag
         "document.querySelector('#plot-tbody > tr.plot-row') !== null"
         " || document.querySelector('#plot-card-list .plot-card') !== null", timeout=30_000
     )
-    page.wait_for_timeout(500)
+    wait_ready(page)
+    settle(page)
     assert page.evaluate("() => getComputedStyle(document.documentElement).fontSize") == f"{root_font}px"
     return page
 
@@ -119,7 +120,7 @@ def test_widest_states_never_exceed_full_hd(
  }"""
     )
     if opened:
-        page.wait_for_timeout(2000)
+        settle(page)
         _assert_fits(page, "picker open")
     page.close()
 
@@ -167,9 +168,9 @@ def test_checkout_open_fits_full_hd(
     )
     if not staged:
         pytest.skip("no stageable occupied tile on the opened plot")
-    page.wait_for_timeout(1500)
+    settle(page)
     page.evaluate("() => document.querySelector('[data-checkout-action=\"toggle\"]')?.click()")
-    page.wait_for_timeout(1500)
+    settle(page)
     _assert_fits(page, "checkout open with a staged change")
     page.close()
 

@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .vm_context import read_entry_source
 
 APP_JS = Path(__file__).parents[2] / "ceres" / "static" / "app.js"
@@ -212,7 +212,7 @@ def test_staged_cooling_card_marks_tile_warns_checkout_and_disables_prepare(live
     page.on("request", lambda request: op_preview_requests.append(request.url) if "/api/op-preview" in request.url else None)
     with pytest.raises(Exception):
         prepare.click(timeout=2_000)
-    page.wait_for_timeout(200)
+    settle(page)
     assert not op_preview_requests
     page.close()
 

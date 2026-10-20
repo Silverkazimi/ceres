@@ -15,7 +15,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .test_candidate_redesign_frontend import _real_detail_row
 
 
@@ -119,7 +119,7 @@ def _mount_settled(page: Page, base_url: str, row: dict, candidates: list) -> No
             # row re-issues the detail fetch and recovers (measured: stalled open ->
             # reopen reaches `degraded` with 8 tiles).
             plot_row.click(timeout=30_000)
-            page.wait_for_timeout(500)
+            settle(page)
     else:
         raise AssertionError("editor band never reached data-plot-state ready|degraded")
     page.evaluate("() => document.fonts.ready")
@@ -311,7 +311,7 @@ def test_ability_hover_keeps_icon_size_and_has_no_long_task_over_100ms(live_brow
         for index in range(icons.count()):
             icon = icons.nth(index)
             icon.hover()
-            page.wait_for_timeout(100)
+            settle(page)
             hovered = icon.bounding_box()
             assert hovered is not None
             assert abs(hovered["width"] - initial_sizes[index]["width"]) <= 1
@@ -319,7 +319,7 @@ def test_ability_hover_keeps_icon_size_and_has_no_long_task_over_100ms(live_brow
         overflow = page.locator('.slot-ability-row .slot-ability-overflow')
         for index in range(overflow.count()):
             overflow.nth(index).hover()
-            page.wait_for_timeout(100)
+            settle(page)
         durations = page.evaluate("""() => {
  window.__ceresLongTaskObserver?.disconnect();
  return window.__ceresLongTasks || [];

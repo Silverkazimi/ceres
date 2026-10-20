@@ -34,7 +34,7 @@ import urllib.request
 import pytest
 from playwright.sync_api import Browser
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres, wait_ready
 
 
 @pytest.fixture(scope="module")
@@ -116,7 +116,8 @@ def test_runi_removal_marks_pending_removal_and_restore_repopulates_the_tile(liv
     runi_tile.wait_for(timeout=30_000)
     page.locator(".slot-power").first.hover()
     runi_tile.hover()
-    page.wait_for_timeout(200)
+    wait_ready(page)
+    settle(page)
     runi_tile.locator(".slot-remove").click(force=True, timeout=10_000)
 
     pending_tile = page.locator(".slot-power .slot-tile[data-group-id='runi'][data-slot-action='restore']")

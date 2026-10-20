@@ -13,7 +13,7 @@ import urllib.request
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres, wait_for_board
+from .conftest import settle, spawn_live_ceres, wait_for_board
 
 
 @pytest.fixture(scope="module")
@@ -151,7 +151,7 @@ def test_worksite_confirmation_copy_never_a_bare_success_or_done(live_browser) -
 def test_worksite_confirmation_no_longer_auto_closes_the_modal(live_browser) -> None:
     """Injected defect: restore the 1.2-second modal close timer; expected red assertion: the verdict modal is no longer visible after the timer."""
     page, modal, _ = _confirmed_worksite(live_browser)
-    page.wait_for_timeout(1_500)
+    settle(page)
     assert modal.is_visible()
     assert modal.locator("[data-worksite-verdict]").is_visible()
     page.close()

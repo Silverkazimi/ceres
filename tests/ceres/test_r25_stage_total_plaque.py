@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 
 
 ORDINARY = "I-298-6c3970d55b37f5"
@@ -81,7 +81,7 @@ def _stage_slot_removal(page: Page, slot: int) -> None:
     assert tile.count() == 1
     tile.hover()
     tile.locator(".slot-remove").click()
-    page.wait_for_timeout(1500)
+    settle(page)
     _assert_three_badges(page)
 
 
@@ -233,11 +233,11 @@ def test_t8e_unknown_stake_candidate(live_browser: tuple[Browser, str]) -> None:
  }"""
     )
     _stage_slot_removal(page, slot)
-    page.wait_for_timeout(1000)
+    settle(page)
     if page.locator('.slot-editor-body .slot-tile.is-empty').count() == 0:
         pytest.skip("pinned fixture has no empty worker slot for candidate injection")
     page.locator('.slot-editor-body .slot-tile.is-empty').first.click()
-    page.wait_for_timeout(1500)
+    settle(page)
     badge = page.locator(CHANGE_BADGES).filter(has_text="Total Base")
     assert badge.count() == 1
     assert "is-unknown" in (badge.get_attribute("class") or "")

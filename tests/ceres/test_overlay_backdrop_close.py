@@ -33,7 +33,7 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .test_combine_joint_flow import _find_real_combine_candidate, _expand_plot
 from .vm_context import read_entry_source
 
@@ -92,7 +92,7 @@ def test_panel_click_never_closes_the_combine_dialog(live_browser: tuple[Browser
     # Click INSIDE the panel (its header title, well away from the close/cancel
     # buttons so this is testing the backdrop listener, not a button handler).
     page.locator("#combine-dialog-title").click()
-    page.wait_for_timeout(300)
+    settle(page)
     assert overlay.is_visible(), "a click inside the panel must never close the overlay"
     page.close()
 

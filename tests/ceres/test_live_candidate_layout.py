@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Browser
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 
 
 TARGET_DEED = "I-294-99ed4b7a4d170e"
@@ -107,7 +107,7 @@ def test_candidate_panel_stays_in_visible_slice_and_reflows(live_browser: tuple[
     maximum = scroll.evaluate("node => node.scrollWidth - node.clientWidth")
     for left in (0, maximum / 2, maximum):
         scroll.evaluate("(node, value) => { node.scrollLeft = value; }", left)
-        page.wait_for_timeout(50)
+        settle(page)
         geometry = _geometry(page)
         assert geometry["panelLeft"] >= geometry["scrollLeftEdge"] - 1
         assert geometry["panelRight"] <= geometry["scrollRightEdge"] + 1
@@ -118,7 +118,7 @@ def test_candidate_panel_stays_in_visible_slice_and_reflows(live_browser: tuple[
     for width, root_size in ((1280, 16), (800, 20), (800, 24), (375, 32)):
         page.set_viewport_size({"width": width, "height": 900})
         page.evaluate("size => { document.documentElement.style.fontSize = `${size}px`; }", root_size)
-        page.wait_for_timeout(100)
+        settle(page)
         geometry = _geometry(page)
         assert geometry["panelLeft"] >= geometry["scrollLeftEdge"] - 1
         assert geometry["panelRight"] <= geometry["scrollRightEdge"] + 1

@@ -10,6 +10,7 @@ import pytest
 from playwright.sync_api import sync_playwright
 
 from tests.ceres.test_cards_no_jump_browser import CARDS, ORIGIN, PIXEL, STATIC, _page_html
+from .conftest import settle, wait_ready
 
 pytestmark = pytest.mark.browser
 
@@ -53,7 +54,8 @@ def test_cards_refresh_once_and_preserves_filter_and_scroll():
             page.goto(f"{ORIGIN}/cards?player=sample01")
             page.wait_for_selector('body[data-view-ready="true"] #cb-grid > .cb-tile')
             page.locator("#cb-q").fill("Goblin")
-            page.wait_for_timeout(100)
+            wait_ready(page)
+            settle(page)
             page.evaluate("window.scrollTo(0, 350)")
             before = page.evaluate("window.scrollY")
             page.wait_for_function("document.querySelector('#cb-grid .cb-onland') !== null")

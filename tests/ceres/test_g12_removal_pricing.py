@@ -35,7 +35,7 @@ import re
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 
 
 @pytest.fixture(scope="module")
@@ -78,7 +78,7 @@ def _stage_a_removal(page: Page) -> bool:
  }"""
     )
     if staged:
-        page.wait_for_timeout(1500)
+        settle(page)
     return bool(staged)
 
 
@@ -200,12 +200,12 @@ def test_g12_staged_replace_with_smaller_card_shrinks_total(
  if (sortBtn) sortBtn.click();
  }"""
     )
-    page.wait_for_timeout(800)
+    settle(page)
     choose = page.locator('[data-picker-action="choose"]').first
     if choose.count() == 0:
         pytest.skip("no picker candidate available to replace with")
     choose.click()
-    page.wait_for_timeout(1200)
+    settle(page)
 
     cap_line_after = page.locator(".change-badge-cap")
     if cap_line_after.count():

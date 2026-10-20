@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 
 STATIC = Path(__file__).parents[2] / "ceres" / "static"
 CARDS = STATIC / "cards.html"
@@ -167,7 +167,7 @@ def test_desktop_edge_slideout_opens_the_wallet_above_a_dialog(live_browser):
         page.wait_for_function("document.getElementById('regional-dec-drawer')?.open && document.getElementById('wallet-picker').dataset.open === 'true'", timeout=30_000)
         page.wait_for_function("!!document.querySelector('#regional-dec-drawer .dec-drawer-footer')", timeout=30_000)
         assert page.locator("#regional-dec-drawer .dec-drawer-footer span").inner_text() == "sample01"
-        page.wait_for_timeout(700)  # the slide
+        settle(page)  # the slide has finished
         geometry = page.evaluate("""() => {
  const panel = document.querySelector('#regional-dec-drawer .dec-drawer-panel').getBoundingClientRect();
  const picker = document.getElementById('wallet-picker').getBoundingClientRect();
@@ -279,7 +279,7 @@ def test_forced_harvest_receipt_is_laid_out_in_the_wallet(live_browser, viewport
     try:
         page.locator("#regional-dec-button" if viewport["width"] < 1280 else "#wallet-edge-tab").click()
         page.wait_for_selector("#regional-dec-drawer .dec-harvest-receipt .harvest-receipt-ledger .hm-batch-total", timeout=30_000)
-        page.wait_for_timeout(300)
+        settle(page)
         layout = page.evaluate("""() => {
  const receipt = document.querySelector('#regional-dec-drawer .dec-harvest-receipt');
  const content = receipt.closest('.dec-drawer-content');
@@ -310,7 +310,7 @@ def test_show_costs_in_the_wallet_receipt_reveals_the_breakdown(live_browser, vi
     try:
         page.locator("#regional-dec-button" if viewport["width"] < 1280 else "#wallet-edge-tab").click()
         page.wait_for_selector("#regional-dec-drawer .dec-harvest-receipt .hm-batch-costs", timeout=30_000)
-        page.wait_for_timeout(300)
+        settle(page)
         probe = """() => ({ top: Math.round(document.querySelector('#regional-dec-drawer .dec-receipt').getBoundingClientRect().top),
  lines: document.querySelectorAll('#regional-dec-drawer .dec-harvest-receipt .hm-batch-total .hm-batch-ledger-line').length,
  label: document.querySelector('#regional-dec-drawer .dec-harvest-receipt .hm-batch-costs').textContent.trim(),
@@ -318,13 +318,13 @@ def test_show_costs_in_the_wallet_receipt_reveals_the_breakdown(live_browser, vi
         before = page.evaluate(probe)
         assert before["label"] == "Show costs" and before["lines"] == 1
         page.locator("#regional-dec-drawer .dec-harvest-receipt .hm-batch-costs").click()
-        page.wait_for_timeout(300)
+        settle(page)
         opened = page.evaluate(probe)
         assert opened["label"] == "Hide costs" and opened["lines"] == 3, opened
         assert opened["top"] == before["top"], "expanding keeps the receipt where it was ()"
         assert not re.search(r"\b[A-Z]{2,}-[A-Z]{3}-\d+|\bC\d-", opened["text"]), "no UIDs on screen"
         page.locator("#regional-dec-drawer .dec-harvest-receipt .hm-batch-costs").click()
-        page.wait_for_timeout(300)
+        settle(page)
         closed = page.evaluate(probe)
         assert closed["label"] == "Show costs" and closed["lines"] == 1 and closed["top"] == before["top"], closed
     finally:

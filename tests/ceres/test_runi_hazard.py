@@ -24,7 +24,7 @@ import urllib.request
 import pytest
 from playwright.sync_api import Browser
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres, wait_ready
 
 
 @pytest.fixture(scope="module")
@@ -77,14 +77,15 @@ def _drive_remove_click(page, base_url: str, row: dict, group_id: str, *, expect
     tile.wait_for(timeout=30_000)
     page.locator(".slot-power").first.hover()
     tile.hover()
-    page.wait_for_timeout(200)
+    wait_ready(page)
+    settle(page)
     tile.locator(".slot-remove").click(force=True, timeout=10_000)
     overlay = page.locator("#slot-hazard-overlay")
     if expect_hazard:
         overlay.wait_for(timeout=30_000, state="visible")
         assert "sole power source" in overlay.inner_text().lower()
     else:
-        page.wait_for_timeout(1000)
+        settle(page)
         assert overlay.count() == 0 or not overlay.is_visible(), "hazard modal opened even though another source covers the plot"
 
 

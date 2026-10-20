@@ -27,7 +27,7 @@ from pathlib import Path
 
 from playwright.sync_api import Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres, wait_ready
 
 SCREEN_DIR = Path(__file__).parents[2] / "work" / "combine-reachability"
 
@@ -91,7 +91,7 @@ def test_tile_combine_chip_is_compact_above_the_tile_not_an_inflow_block() -> No
             _install_idle_cards_mock(page, worker)
             page.goto(base_url)
             _wait_for_board(page)
-            page.wait_for_timeout(1200)  # let prefetchIdleCardsCache() populate IDLE_CARDS_CACHE -- 500ms flaked once, widened
+            settle(page)  # prefetchIdleCardsCache() has answered
 
             page_row = page.locator(f"tr.plot-row[data-deed-uid='{row['deed_uid']}']")
             page_row.wait_for(timeout=15_000)
@@ -138,7 +138,8 @@ def test_tile_combine_chip_click_opens_the_combine_dialog() -> None:
             _install_idle_cards_mock(page, worker)
             page.goto(base_url)
             _wait_for_board(page)
-            page.wait_for_timeout(1200)
+            wait_ready(page)
+            settle(page)
 
             page_row = page.locator(f"tr.plot-row[data-deed-uid='{row['deed_uid']}']")
             page_row.wait_for(timeout=15_000)
@@ -155,7 +156,7 @@ def test_tile_combine_chip_click_opens_the_combine_dialog() -> None:
             assert page.evaluate(overlay_hidden) is True
 
             chip.first.click()
-            page.wait_for_timeout(800)
+            settle(page)
             assert page.evaluate(overlay_hidden) is False, "click did not open the combine dialog"
             page.evaluate("document.getElementById('combine-dialog-overlay').hidden = true; window.closeCombineDialog?.();")
 
@@ -165,7 +166,7 @@ def test_tile_combine_chip_click_opens_the_combine_dialog() -> None:
             chip.first.evaluate("el => el.style.setProperty('pointer-events', 'none', 'important')")
             box = chip.first.evaluate("el => { const r = el.getBoundingClientRect(); return {x: r.x + r.width / 2, y: r.y + r.height / 2}; }")
             page.mouse.click(box["x"], box["y"])
-            page.wait_for_timeout(500)
+            settle(page)
             assert page.evaluate(overlay_hidden) is True, "guard is void -- dialog opened even with pointer-events:none forced onto the chip"
 
             page.screenshot(path=str(SCREEN_DIR / "tile-chip-click-opens-dialog.png"))

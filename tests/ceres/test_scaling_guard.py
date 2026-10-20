@@ -58,7 +58,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres, wait_ready
 
 
 CASES = [
@@ -134,7 +134,8 @@ def _launch(live_server, width: int, height: int, dpr: float):
         " || document.querySelectorAll('#plot-card-list .plot-card').length > 0",
         timeout=90_000,
     )
-    page.wait_for_timeout(1_500)
+    wait_ready(page)
+    settle(page)
     return browser, page
 
 
@@ -277,11 +278,11 @@ def _open_picker(page: Page, table: bool) -> None:
                 opener.nth(index).click()
             else:
                 page.locator("#mobile-plot-sheet-close").click()
-            page.wait_for_timeout(300)
+            settle(page)
             continue
         page.locator(f"{scope} :is({_STAGEABLE})").first.click()
         page.wait_for_selector(".candidate-list.is-card-grid > .candidate-grid-card:not(.is-ghost)", timeout=60_000)
-        page.wait_for_timeout(1_200)
+        settle(page)
         return
     pytest.fail("no plot with a stageable slot to open the picker")
 

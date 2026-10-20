@@ -39,7 +39,7 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Browser
 
-from tests.ceres.conftest import LIVE_PLAYER, spawn_live_ceres, wait_for_board
+from .conftest import LIVE_PLAYER, settle, spawn_live_ceres, wait_for_board
 
 ROOT = Path(__file__).parents[2]
 CSS = ROOT / "ceres/static/ceres.css"
@@ -133,7 +133,7 @@ def _open_combine_dialog(
     chip.click()
     overlay = page.locator("#combine-dialog-overlay")
     overlay.wait_for(state="visible", timeout=30_000)
-    page.wait_for_timeout(200)  # renderCombineDialog() after requestCombinePreview() resolves
+    settle(page)  # renderCombineDialog() after requestCombinePreview() resolves
     return deed_uid, occupant, [duplicate_one, duplicate_two], seen_preview_requests
 
 

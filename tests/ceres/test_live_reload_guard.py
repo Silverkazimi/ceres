@@ -10,6 +10,7 @@ from playwright.sync_api import Browser, Page
 from ceres.notices import NOTICE_REGISTRY
 from tests.ceres.conftest import spawn_live_ceres, wait_for_board
 from tests.ceres.test_live_checkout import _expand, _stage_worker
+from .conftest import settle, wait_ready
 
 
 @pytest.fixture(scope="module")
@@ -116,7 +117,8 @@ def test_g1_reload_does_not_allow_second_signature(live_browser: tuple[Browser, 
     page.locator("#checkout-btn").dispatch_event("click")
     assert page.locator(".checkout-prepare").is_disabled()
     page.evaluate("async () => { await requestOperationPreview({scope: 'portfolio'}); await confirmOperationBroadcast({scope: 'portfolio'}); }")
-    page.wait_for_timeout(200)
+    wait_ready(page)
+    settle(page)
     assert _count(page) == 1
     page.close()
 
@@ -238,7 +240,8 @@ def test_g6_restored_poll_resumes_and_clears_confirmed_marker(live_browser: tupl
     assert payload["tx_id"] == "FAKE-IR1882-TX-1"
     state["value"] = "domain-confirmed"
     with page.expect_request("**/api/op-verify*", timeout=10_000):
-        page.wait_for_timeout(3_500)
+        wait_ready(page)
+        settle(page)
     page.wait_for_function("CERES_STAGE.length === 0", timeout=10_000)
     assert page.evaluate("Object.keys(JSON.parse(localStorage.getItem(inFlightStoreKey())).records).length") == 0
     assert "Confirmed in game" in page.locator("#ceres-confirmation-banner").inner_text()
@@ -255,7 +258,10 @@ def test_g6b_restored_poll_is_bounded(live_browser: tuple[Browser, str]) -> None
     page.on("request", lambda request: requests.append(request) if "/api/op-verify" in request.url else None)
     page.reload()
     wait_for_board(page)
-    page.wait_for_timeout(1_500)
+    # the restored poller runs its (shrunk) schedule to the end and stops
+    page.wait_for_function("""() => { const poller = [...OPERATION_POLLERS.values()][0];
+ return !!poller && poller.timer === null && poller.index === OPERATION_POLL_SCHEDULE_MS.length; }""", timeout=30_000)
+    settle(page)
     assert len(requests) == 4
     poller = page.evaluate("""() => {
  const values = [...OPERATION_POLLERS.values()];
@@ -283,7 +289,8 @@ def test_g7_confirmed_and_mismatched_verdicts_clear_store(live_browser: tuple[Br
     page.reload()
     wait_for_board(page)
     state["value"] = "domain-confirmed"
-    page.wait_for_timeout(3_500)
+    wait_ready(page)
+    settle(page)
     page.wait_for_function("CERES_STAGE.length === 0", timeout=10_000)
     assert page.evaluate("Object.keys(JSON.parse(localStorage.getItem(inFlightStoreKey())).records).length") == 0
     state["value"] = "domain-pending"
@@ -293,7 +300,8 @@ def test_g7_confirmed_and_mismatched_verdicts_clear_store(live_browser: tuple[Br
     page.reload()
     wait_for_board(page)
     state["value"] = "domain-mismatch"
-    page.wait_for_timeout(3_500)
+    wait_ready(page)
+    settle(page)
     page.wait_for_function("CERES_STAGE.length === 1 && !CERES_STAGE[0].txId", timeout=10_000)
     assert page.evaluate("Object.keys(JSON.parse(localStorage.getItem(inFlightStoreKey())).records).length") == 0
     assert page.locator("#ceres-confirmation-banner.tone-danger").is_visible()
@@ -340,6 +348,7 @@ Storage.prototype.setItem = function(key, value) {
     page.locator("#ceres-stage-toast").wait_for()
     assert "could not save the signed-change marker" in page.locator("#ceres-stage-toast").inner_text()
     page.evaluate("async () => { await requestOperationPreview({scope: 'portfolio'}); await confirmOperationBroadcast({scope: 'portfolio'}); }")
-    page.wait_for_timeout(200)
+    wait_ready(page)
+    settle(page)
     assert _count(page) == 1
     page.close()

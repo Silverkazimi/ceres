@@ -6,7 +6,7 @@ import urllib.request
 import pytest
 from playwright.sync_api import Browser
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .vm_context import run_in_module_context
 
 CSS = Path("ceres/static/ceres.css").read_text()
@@ -272,7 +272,7 @@ def test_theme_toggle_avatar_image_keeps_the_edge_handles_aligned(live_browser: 
  document.querySelector('.theme-picker .theme-toggle').appendChild(img);
  }"""
     )
-    page.wait_for_timeout(300)
+    settle(page)
     geometry = page.evaluate(
         """() => {
  const rect = sel => document.querySelector(sel).getBoundingClientRect();
@@ -336,7 +336,7 @@ def test_iris_close_never_publishes_transition_widths_to_other_edge_handles(
     toggle = page.locator(".theme-picker .theme-toggle")
     toggle.click()
     page.wait_for_function("document.querySelector('.theme-picker')?.classList.contains('is-open')")
-    page.wait_for_timeout(600)
+    settle(page)
     toggle.click()
     page.wait_for_function(
         """() => {
@@ -409,9 +409,9 @@ def test_wallet_handle_and_panel_share_every_open_close_frame(
 
     page.locator("#wallet-edge-tab").click()
     page.wait_for_function("document.querySelector('#regional-dec-drawer')?.open === true", timeout=5_000)
-    page.wait_for_timeout(650)
+    settle(page)
     page.set_viewport_size({"width": 1536, "height": 864})
-    page.wait_for_timeout(200)
+    settle(page)
     page.mouse.click(10, 10)
     page.wait_for_function("document.querySelector('#regional-dec-drawer')?.open === false", timeout=5_000)
     page.wait_for_function("document.querySelector('#wallet-picker')?.dataset.open === 'false'", timeout=5_000)
@@ -477,7 +477,7 @@ def test_theme_toggle_stays_topmost_at_its_centre(live_browser: tuple[Browser, s
     initial = _theme_toggle_hit()
     assert initial["matches"], f"theme toggle centre hit {initial['hit']} at scroll 0; expected {initial['toggle']}"
     page.evaluate("window.scrollTo(0, 600)")
-    page.wait_for_timeout(150)
+    settle(page)
     scrolled = _theme_toggle_hit()
     assert scrolled["matches"], (
         f"theme toggle centre hit {scrolled['hit']} at scrollY={scrolled['scrollY']}; " f"expected {scrolled['toggle']}"
@@ -604,7 +604,7 @@ def test_badge_flag_hit_target_survives_scroll(live_browser: tuple[Browser, str]
 
     assert _hit_is_flag(), "badge-bar-head hit target must resolve to #badge-flag at scroll 0"
     page.evaluate("window.scrollTo(0, 600)")
-    page.wait_for_timeout(150)
+    settle(page)
     assert _hit_is_flag(), "badge-bar-head hit target must still resolve to #badge-flag after scrolling 600px"
     page.close()
 

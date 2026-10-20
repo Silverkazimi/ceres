@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres, wait_for_board
+from .conftest import settle, spawn_live_ceres, wait_for_board
 
 
 
@@ -422,7 +422,9 @@ def test_pending_verification_rechecks_without_human_action(live_browser: tuple[
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
     panel.locator(".op-state .ceres-notice[data-notice-code='verification_pending']").wait_for(timeout=30_000)
-    page.wait_for_timeout(4_500)
+    while len(verify_requests) < 2:  # the pending verdict schedules a second check
+        page.wait_for_event("request", lambda request: "/api/op-verify" in request.url, timeout=30_000)
+    settle(page)
     assert len(verify_requests) >= 2
     assert page.evaluate("window.__ceresBroadcastCount") == 1
     page.close()
@@ -471,11 +473,11 @@ def test_in_flight_marker_blocks_a_second_signature(live_browser: tuple[Browser,
     preview_requests = []
     page.on("request", lambda request: preview_requests.append(request) if "/api/op-preview" in request.url else None)
     panel.locator(".checkout-prepare").evaluate("button => { button.disabled = false; button.click(); }")
-    page.wait_for_timeout(200)
+    settle(page)
     assert not preview_requests
     confirm = panel.locator("button[data-op-action='confirm']")
     confirm.evaluate("button => { button.hidden = false; button.disabled = false; button.click(); }")
-    page.wait_for_timeout(100)
+    settle(page)
     assert page.evaluate("window.__ceresBroadcastCount") == 1
     page.close()
 

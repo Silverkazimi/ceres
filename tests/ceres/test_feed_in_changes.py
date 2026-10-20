@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from playwright.sync_api import Browser, TimeoutError as PlaywrightTimeoutError
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 
 
 def _iso(delta: timedelta) -> str:
@@ -138,7 +138,7 @@ def test_constructions_wait_and_feed_signs_from_changes(live_browser: tuple[Brow
     sign = panel.page.locator('#changes-overlay [data-checkout-action="sign-worksites"]:not([disabled])')
     sign.click(timeout=8_000)
     page.wait_for_function("window.__s16649Calls.length === 1", timeout=8_000)
-    page.wait_for_timeout(300)
+    settle(page)
     calls = page.evaluate("window.__s16649Calls")
     assert len(calls) == 1, "only the ready feed is signed; waiting rows never reach the wallet"
     assert calls[0]["account"] == "player0005" and calls[0]["key"] == "Posting"

@@ -179,7 +179,7 @@ OVERCAP = Plot("overcap", 37, 4, 18, "Forest", "legendary", resource="wood", tot
     W("oc-lyanna", 27, 1, 40000.0, 1, level=6, bcx=40), W("oc-paladin", 40, 1, 32941.176, 2, level=6, bcx=30),
     W("oc-spirit", 33, 1, 25000.0, 3, level=4, bcx=8), W("oc-rennyn", 112, 1, 7500.0, 4, level=2, bcx=3),
     W("oc-druid", 867, 19, 2200.0, 5, level=3, bcx=40)])
-RUNI = Plot("runi", 37, 2, 7, "Mountain", "legendary", resource="iron", totem=320, title=347, runi=_runi("runi-runi"), workers=[
+RUNI = Plot("runi", 37, 2, 7, "Mountain", "legendary", resource="iron", totem=320, title=347, power_core=True, runi=_runi("runi-runi"), workers=[
     W("ru-soldier", 6, 1, 21176.471, 1, level=4, bcx=10), W("ru-zintar", 49, 1, 15000.0, 2, level=3, bcx=5),
     W("ru-miner", 869, 19, 3000.0, 3, level=2, bcx=8), W("ru-malric", 5, 1, 12000.0, 4, level=3, bcx=6)])
 ORDINARY = Plot("ordinary", 12, 3, 41, "Canyon", "rare", resource="stone", totem=319, title=332, power_core=True, workers=[
@@ -240,7 +240,9 @@ def _filler() -> list[Plot]:
 
 FILLER = _filler()
 PLOTS: list[Plot] = NAMED + FILLER
-PRIMED = (COMBINE, ABILITIES, OVERCAP)  # the conftest primes their assets on every shared-server use
+# The conftest reads these plots' assets on every shared-server use, so they are `assets_loaded` on the board the
+# tests inspect: combinable gold card, abilities, the over-cap cascade, a Runi plot, and a plot with every item.
+PRIMED = (COMBINE, ABILITIES, OVERCAP, RUNI, ORDINARY)
 
 # Idle cards in the collection: the worker picker's candidate pool (all stakeable, none cooling).
 _IDLE_SPEC = [(2, 1, 900.0), (5, 1, 7000.0), (6, 1, 6000.0), (27, 1, 9000.0), (33, 1, 5000.0), (40, 1, 8000.0),
