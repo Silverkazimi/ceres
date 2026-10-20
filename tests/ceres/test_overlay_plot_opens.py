@@ -9,11 +9,12 @@ import pytest
 
 from ceres import fixture_upstream
 from ceres.config import CeresConfig
+from tests.ceres import board_basic_recording as recording
 
-SET = Path(__file__).resolve().parents[1] / "fixtures" / "upstream" / "board-basic"
-PLAYER = "sample01"
-PLOTS = {"locked-plot": "I-298-2dd53d9ac60331", "staged-lock": "I-298-88644c3286c361",
-         "finished-construction": "I-300-663387f4067c0c"}
+SET = recording.SET_DIR
+PLAYER = recording.PLAYER
+PLOTS = {"locked-plot": recording.LOCKED.uid, "staged-lock": recording.STAGED_LOCK.uid,
+         "finished-construction": recording.NEVER_BUILT.uid}
 
 
 @pytest.fixture(autouse=True)

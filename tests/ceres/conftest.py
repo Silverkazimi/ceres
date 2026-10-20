@@ -8,6 +8,7 @@ Land fixtures Praetoria's own tests use (`tests/fixtures/land/`), built the same
 responses, with private storage and no external network. The historical name and
 shared `(Browser, base_url)` API are retained. Callers select the fixture account
 explicitly with `?player=sample01` and choose a viewport for the surface they test.
+The recorded set is synthetic and generated: tests/ceres/board_basic_recording.py.
 The server and browser are always torn down, including on bootstrap failure.
 """
 
@@ -418,16 +419,19 @@ def _shared_live_teardown() -> None:
 atexit.register(_shared_live_teardown)
 
 
-def _prime_fixture_plots(base_url: str) -> None:
+def _prime_fixture_plots(base_url: str, plots=None) -> None:
     """Give each caller slot-aware recorded workers, even after a prior page reload.
 
     The server is shared, but a page's quick capture invalidates earlier detail
     patches. Inspecting only the initial warmup would make later tests depend on
     which plot the previous test happened to expand.
     """
+    from tests.ceres import board_basic_recording as recording
+
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=15) as response:
         loaded = {p["deed_uid"] for p in json.load(response)["plots"] if p.get("assets_loaded")}
-    for deed_uid in ("I-290-10b2d21ed7bb77", "I-292-e2bccfb74acf97", "I-294-99ed4b7a4d170e"):
+    for plot in recording.PRIMED if plots is None else plots:
+        deed_uid = plot.uid
         if deed_uid in loaded:
             continue
         request = urllib.request.Request(
@@ -435,8 +439,17 @@ def _prime_fixture_plots(base_url: str) -> None:
         )
         with urllib.request.urlopen(request, timeout=15) as response:
             row = json.load(response)
-            if not any(isinstance(w.get("slot"), int) and w["slot"] >= 1 for w in row.get("workers", [])):
+            if plot.workers and not any(isinstance(w.get("slot"), int) and w["slot"] >= 1 for w in row.get("workers", [])):
                 raise RuntimeError(f"Fixture plot has no slot-aware workers: {deed_uid}")
+
+
+def prime_all_fixture_plots(base_url: str) -> None:
+    """Read every recorded plot's assets, so the board's asset coverage is complete and the idle-card
+    pool loads (the app lists idle cards only when every plot was read). About one second per plot:
+    call it only from a test that needs the idle pool, after its last page load."""
+    from tests.ceres import board_basic_recording as recording
+
+    _prime_fixture_plots(base_url, recording.PLOTS)
 
 
 @contextlib.contextmanager
@@ -521,7 +534,7 @@ def _spawn_live_ceres_isolated(*, host: str = LIVE_HOST, log_directory: Path | N
         try:
             base_url = f"http://{host}:{port}"
             deadline = time.monotonic() + 30
-            while time.monotonic() < deadline:
+            while time.monotonic() < deadline and process.poll() is None:  # an exited server never answers
                 try:
                     with urllib.request.urlopen(f"{base_url}/api/health", timeout=2) as response:
                         if response.status == 200:

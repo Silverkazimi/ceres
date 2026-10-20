@@ -1,0 +1,26 @@
+{
+ "edits": [
+  {
+   "match": {
+    "host": "vapi.splinterlands.com",
+    "method": "GET",
+    "path": "/land/deeds"
+   },
+   "select": "$.data.deeds[?(@.deed_uid=='I-290-3ed9248872fd32')]",
+   "set": {
+    "lock_days": 3
+   }
+  },
+  {
+   "match": {
+    "host": "vapi.splinterlands.com",
+    "method": "GET",
+    "path": "/land/deeds/963714"
+   },
+   "select": "$.data",
+   "set": {
+    "lock_days": 3
+   }
+  }
+ ]
+}

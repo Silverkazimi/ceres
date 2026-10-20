@@ -9,9 +9,10 @@ import pytest
 
 from ceres import fixture_upstream
 from ceres.config import CeresConfig
+from tests.ceres import board_basic_recording as recording
 
-SET = Path(__file__).resolve().parents[1] / "fixtures" / "upstream" / "board-basic"
-PLAYER = "sample01"
+SET = recording.SET_DIR
+PLAYER = recording.PLAYER
 
 pytestmark = pytest.mark.skipif(not (SET / "fixture-manifest.json").is_file(), reason="board-basic set not recorded")
 
@@ -89,12 +90,20 @@ def test_each_recorded_overlay_applies_and_replays(tmp_path, monkeypatch, overla
     report, _ref = capture.latest_snapshot(config, PLAYER)
     plots = {p["deed_uid"]: p for p in report["plots"]}
     if overlay == "locked-plot":
-        assert plots["I-298-2dd53d9ac60331"]["facts"]["lock_days"] == 3
+        assert plots[recording.LOCKED.uid]["facts"]["lock_days"] == 3
     if overlay == "staged-lock":
-        assert plots["I-298-88644c3286c361"]["facts"]["lock_days"] is None
+        assert plots[recording.STAGED_LOCK.uid]["facts"]["lock_days"] is None
     if overlay == "finished-construction":
-        assert plots["I-300-663387f4067c0c"]["facts"]["is_construction"]
+        assert plots[recording.NEVER_BUILT.uid]["facts"]["is_construction"]
     if overlay in ("rented-card", "soulkeep-card"):
         pool = capture.load_card_pool(dict(report))
         uids = {c.get("uid") for c in pool.get("cards") or []}
-        assert {"rented-card": "B14-765-R2WLILVBZ4", "soulkeep-card": "C11-10012-SAMPLE01"}[overlay] in uids
+        assert {"rented-card": recording.RENTED_CARD, "soulkeep-card": recording.SOULKEEP_CARD}[overlay] in uids
+
+
+def test_the_recording_on_disk_is_what_the_generator_writes():
+    """The set is generated (tests/ceres/board_basic_recording.py); a hand edit or a stale regeneration fails here."""
+    expected = recording.render()
+    on_disk = {str(p.relative_to(SET)): p.read_text(encoding="utf-8") for p in SET.rglob("*.json")}
+    assert sorted(on_disk) == sorted(expected)
+    assert [name for name in expected if on_disk[name] != expected[name]] == []
