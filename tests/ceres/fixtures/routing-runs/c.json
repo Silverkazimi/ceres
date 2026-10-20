@@ -1,0 +1,110 @@
+{
+  "run": "C",
+  "evidence": "historical routing run (private dossier reference removed)",
+  "provenance": "Ceres app payload and operation counts reported in the cited plan. The maintainer did not identify this as .",
+  "historical": {
+    "harvest_transactions": 1,
+    "harvest_operations": 2,
+    "routing_transactions": 7,
+    "routing_operations": 9,
+    "transaction_operations": [
+      3,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "harvested_regions": [
+      "PR-TST-1",
+      "PR-TST-2"
+    ],
+    "routed_regions": [
+      "PR-TST-1"
+    ]
+  },
+  "model": {
+    "note": "Quantities are normalized modeling inputs because the cited read was not retained in the repo. Three same-region sales and SPS first legs share each pool at 2.5% slippage.",
+    "regions": [
+      "PR-TST-1",
+      "PR-TST-2"
+    ],
+    "routes": [
+      {
+        "id": "sale_wood",
+        "kind": "sale_dec",
+        "region": "PR-TST-1",
+        "symbol": "WOOD",
+        "amount": "1000",
+        "slippage": "2.5"
+      },
+      {
+        "id": "sale_stone",
+        "kind": "sale_dec",
+        "region": "PR-TST-1",
+        "symbol": "STONE",
+        "amount": "1000",
+        "slippage": "2.5"
+      },
+      {
+        "id": "sale_iron",
+        "kind": "sale_dec",
+        "region": "PR-TST-1",
+        "symbol": "IRON",
+        "amount": "1000",
+        "slippage": "2.5"
+      },
+      {
+        "id": "sps_wood",
+        "kind": "sps_out",
+        "region": "PR-TST-1",
+        "symbol": "WOOD",
+        "amount": "1000",
+        "slippage": "2.5"
+      },
+      {
+        "id": "sps_stone",
+        "kind": "sps_out",
+        "region": "PR-TST-1",
+        "symbol": "STONE",
+        "amount": "1000",
+        "slippage": "2.5"
+      },
+      {
+        "id": "sps_iron",
+        "kind": "sps_out",
+        "region": "PR-TST-1",
+        "symbol": "IRON",
+        "amount": "1000",
+        "slippage": "2.5"
+      }
+    ],
+    "expected": {
+      "routing_approvals": 2,
+      "total_approvals": 3,
+      "wave_bundle_operations": [
+        [
+          3
+        ],
+        [
+          1
+        ]
+      ],
+      "merged_sale_members": [
+        [
+          "sale_wood",
+          "sps_wood"
+        ],
+        [
+          "sale_stone",
+          "sps_stone"
+        ],
+        [
+          "sale_iron",
+          "sps_iron"
+        ]
+      ]
+    }
+  }
+}

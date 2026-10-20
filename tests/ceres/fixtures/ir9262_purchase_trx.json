@@ -1,0 +1,17 @@
+{
+ "trx_info": {
+  "id": "32d4380e00bb871e1ac05b9a27d938046a92c023",
+  "block_id": "0df7242274256ab0c5dabe37fc761c98c30419d8",
+  "prev_block_id": "20d70ea98c7a6ffa6aede9f514e83ab7b3089af6",
+  "type": "market_purchase",
+  "player": "player0005",
+  "data": "{\"currency\":\"DEC\",\"items\":[\"d6acd95ba1affa74eececb6f6cfb045943e70b29-0\",\"f5bd832aa78152f8b3337580481c7777200db22b-24\",\"f5bd832aa78152f8b3337580481c7777200db22b-23\",\"f5bd832aa78152f8b3337580481c7777200db22b-25\",\"f5bd832aa78152f8b3337580481c7777200db22b-26\",\"f5bd832aa78152f8b3337580481c7777200db22b-27\",\"f5bd832aa78152f8b3337580481c7777200db22b-28\",\"f5bd832aa78152f8b3337580481c7777200db22b-29\",\"f5bd832aa78152f8b3337580481c7777200db22b-30\",\"c88e9844e491ef3c867e9579fa294ab2e2d5a148-0\",\"3f9048fe81d44846ec755ce86438962396f0341f-0\",\"c4e5defd1cdf79240730db01865baf3bb2808088-38\",\"a9eb62c46ae1b5b9f55228b7bd22d84a59189513-11\",\"a9eb62c46ae1b5b9f55228b7bd22d84a59189513-12\",\"a9eb62c46ae1b5b9f55228b7bd22d84a59189513-13\",\"a9eb62c46ae1b5b9f55228b7bd22d84a59189513-14\",\"a9eb62c46ae1b5b9f55228b7bd22d84a59189513-15\"],\"price\":10095.2,\"app\":\"ceres/0.31.0\",\"n\":\"a20bf571bdab9cbc\"}",
+  "success": true,
+  "error": null,
+  "block_num": 110794774,
+  "created_date": "2026-10-15T12:08:21.000Z",
+  "result": "{\"success\":true,\"purchaser\":\"player0005\",\"num_cards\":17,\"total_usd\":4.984,\"total_dec\":10095.2,\"total_fees_dec\":605.7139999999999,\"total_market_fees_dec\":403.81,\"total_burn_fees_dec\":201.904,\"total_referral_cut\":0,\"by_seller\":[{\"seller\":\"player_0001\",\"items\":[\"a9eb62c46ae1b5b9f55228b7bd22d84a59189513-11\",\"a9eb62c46ae1b5b9f55228b7bd22d84a59189513-12\",\"a9eb62c46ae1b5b9f55228b7bd22d84a59189513-13\",\"a9eb62c46ae1b5b9f55228b7bd22d84a59189513-14\",\"a9eb62c46ae1b5b9f55228b7bd22d84a59189513-15\"],\"total_usd\":0.22499999999999998,\"total_dec\":455.74,\"total_fees\":27.345,\"market_fees\":18.23,\"burn_fees\":9.115,\"referral_cut\":0},{\"seller\":\"player_0002\",\"items\":[\"d6acd95ba1affa74eececb6f6cfb045943e70b29-0\"],\"total_usd\":0.043,\"total_dec\":87.097,\"total_fees\":5.226,\"market_fees\":3.484,\"burn_fees\":1.742,\"referral_cut\":0},{\"seller\":\"player_0003\",\"items\":[\"f5bd832aa78152f8b3337580481c7777200db22b-23\",\"f5bd832aa78152f8b3337580481c7777200db22b-24\",\"f5bd832aa78152f8b3337580481c7777200db22b-25\",\"f5bd832aa78152f8b3337580481c7777200db22b-26\",\"f5bd832aa78152f8b3337580481c7777200db22b-27\",\"f5bd832aa78152f8b3337580481c7777200db22b-28\",\"f5bd832aa78152f8b3337580481c7777200db22b-29\",\"f5bd832aa78152f8b3337580481c7777200db22b-30\"],\"total_usd\":0.3439999999999999,\"total_dec\":696.776,\"total_fees\":41.808,\"market_fees\":27.872000000000007,\"burn_fees\":13.936000000000003,\"referral_cut\":0},{\"seller\":\"player_0004\",\"items\":[\"c88e9844e491ef3c867e9579fa294ab2e2d5a148-0\"],\"total_usd\":1.714,\"total_dec\":3471.744,\"total_fees\":208.305,\"market_fees\":138.87,\"burn_fees\":69.435,\"referral_cut\":0},{\"seller\":\"player_0005\",\"items\":[\"3f9048fe81d44846ec755ce86438962396f0341f-0\"],\"total_usd\":0.044,\"total_dec\":89.123,\"total_fees\":5.3469999999999995,\"market_fees\":3.565,\"burn_fees\":1.782,\"referral_cut\":0},{\"seller\":\"player_0006\",\"items\":[\"c4e5defd1cdf79240730db01865baf3bb2808088-38\"],\"total_usd\":2.614,\"total_dec\":5294.713,\"total_fees\":317.683,\"market_fees\":211.789,\"burn_fees\":105.894,\"referral_cut\":0}]}",
+  "steem_price": null,
+  "sbd_price": null
+ }
+}

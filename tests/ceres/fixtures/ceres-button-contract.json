@@ -1,0 +1,5590 @@
+{
+  "schema_version": 1,
+  "fr": "",
+  "baseline": "phases-0-1",
+  "contract": {
+    "anchor_classes": [
+      "ceres-btn",
+      "ceres-btn-group"
+    ],
+    "treatments": [
+      "P",
+      "S",
+      "C"
+    ],
+    "densities": [
+      "header",
+      "compact",
+      "dense",
+      "comfortable",
+      "touch",
+      "navigation"
+    ],
+    "cases": [
+      "signal",
+      "destructive",
+      "commit"
+    ],
+    "allowed_case_combinations": [
+      "commit+destructive"
+    ],
+    "structural_exemptions": [
+      "E1",
+      "E2",
+      "E3"
+    ],
+    "variants": [
+      "glass"
+    ]
+  },
+  "source_exclusions": [
+    {
+      "path": "assets-preview.html",
+      "reason": "development-only asset viewer"
+    },
+    {
+      "path": "pill-preview.html",
+      "reason": "development-only component preview"
+    }
+  ],
+  "controls": [
+    {
+      "id": "header-switch",
+      "selector": "#player-go-btn",
+      "action": "switch-player",
+      "renderer": "index.html",
+      "surface": "header",
+      "group": "header-actions",
+      "treatment": "P",
+      "density": "header",
+      "status": "legacy",
+      "approval": "A1; / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "variant": "glass"
+    },
+    {
+      "id": "header-reload",
+      "selector": "#reload-btn",
+      "action": "reload",
+      "renderer": "index.html",
+      "surface": "header",
+      "group": "header-actions",
+      "treatment": "P",
+      "density": "header",
+      "status": "legacy",
+      "approval": "A1; / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "variant": "glass"
+    },
+    {
+      "id": "header-harvest",
+      "selector": "#harvest-btn",
+      "action": "open-harvest",
+      "renderer": "index.html",
+      "surface": "header",
+      "group": "header-actions",
+      "treatment": "P",
+      "density": "header",
+      "status": "legacy",
+      "approval": "A1; / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "variant": "glass"
+    },
+    {
+      "id": "header-changes",
+      "selector": "#checkout-btn",
+      "action": "data-checkout-action=toggle",
+      "renderer": "index.html",
+      "surface": "header",
+      "group": "header-actions",
+      "treatment": "P",
+      "density": "header",
+      "status": "legacy",
+      "approval": "A1; / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "variant": "glass"
+    },
+    {
+      "id": "start-submit",
+      "selector": ".start-go",
+      "action": "submit",
+      "renderer": "board.js",
+      "surface": "start-page",
+      "group": "start-form",
+      "treatment": "P",
+      "density": "comfortable",
+      "status": "legacy",
+      "approval": "A1"
+    },
+    {
+      "id": "iris-toggle",
+      "selector": ".theme-toggle",
+      "action": "toggle-theme-tray",
+      "renderer": "theme.js",
+      "surface": "theme-picker",
+      "group": "iris",
+      "treatment": "S",
+      "density": "touch",
+      "status": "protected",
+      "exemptions": [
+        "E1"
+      ],
+      "approval": "E1"
+    },
+    {
+      "id": "iris-options",
+      "selector": ".theme-opt",
+      "action": "select-theme",
+      "renderer": "theme.js",
+      "surface": "theme-picker",
+      "group": "iris",
+      "treatment": "C",
+      "density": "touch",
+      "status": "protected",
+      "exemptions": [
+        "E1"
+      ],
+      "approval": "E1"
+    },
+    {
+      "id": "custom-select-trigger",
+      "selector": ".csel-trigger",
+      "action": "open-select",
+      "renderer": "customSelect.js",
+      "surface": "board-and-picker-filters",
+      "group": "dropdown",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A3"
+    },
+    {
+      "id": "custom-select-option",
+      "selector": ".csel-option",
+      "action": "select-option",
+      "renderer": "customSelect.js",
+      "surface": "dropdown-list",
+      "group": "dropdown-options",
+      "treatment": "C",
+      "density": "compact",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "E2"
+    },
+    {
+      "id": "board-filter-toggles",
+      "selector": ".board-filter-pill",
+      "action": "checkbox",
+      "renderer": "index.html",
+      "surface": "board-filter-row",
+      "group": "board-filters",
+      "treatment": "C",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A3"
+    },
+    {
+      "id": "board-clear-filters",
+      "selector": "#clear-board-filters",
+      "action": "clear-board-filters",
+      "renderer": "index.html",
+      "surface": "board-filter-row",
+      "group": "board-filters",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A3"
+    },
+    {
+      "id": "plot-open-close-all",
+      "selector": "#open-all-plots, #close-all-plots",
+      "action": "open-all|close-all",
+      "renderer": "index.html",
+      "surface": "board-filter-row",
+      "group": "plot-disclosures",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A2"
+    },
+    {
+      "id": "mobile-filter-close",
+      "selector": "#mobile-filters-close",
+      "action": "close-mobile-filters",
+      "renderer": "index.html",
+      "surface": "mobile-filter-sheet",
+      "group": "mobile-sheet-head",
+      "treatment": "S",
+      "density": "touch",
+      "status": "legacy",
+      "approval": "A10"
+    },
+    {
+      "id": "mobile-filter-backdrop",
+      "selector": "#mobile-filter-backdrop",
+      "action": "dismiss-mobile-filters",
+      "renderer": "index.html",
+      "surface": "mobile-filter-backdrop",
+      "group": "mobile-sheet",
+      "treatment": "S",
+      "density": "touch",
+      "status": "protected",
+      "exemptions": [
+        "E3"
+      ],
+      "approval": "E3"
+    },
+    {
+      "id": "mobile-actions",
+      "selector": ".mobile-action-bar button",
+      "action": "search|filters|changes|harvest",
+      "renderer": "index.html",
+      "surface": "mobile-bottom-bar",
+      "group": "mobile-navigation",
+      "treatment": "S",
+      "density": "navigation",
+      "status": "legacy",
+      "approval": "A10"
+    },
+    {
+      "id": "mobile-plot-close",
+      "selector": "#mobile-plot-sheet-close",
+      "action": "close-mobile-plot",
+      "renderer": "index.html",
+      "surface": "mobile-plot-sheet",
+      "group": "mobile-sheet-head",
+      "treatment": "S",
+      "density": "touch",
+      "status": "legacy",
+      "approval": "A10"
+    },
+    {
+      "id": "harvest-bar-actions",
+      "selector": ".harvest-bar-btn",
+      "action": "data-harvest-action=open-plot|feed-workers;data-slot-action=open-worksite-modal|add-power-core|cancel-construction",
+      "renderer": "harvest-state.js",
+      "surface": "plot-harvest-box",
+      "group": "harvest-box-actions",
+      "treatment": "P",
+      "density": "header",
+      "status": "legacy",
+      "approval": "A1"
+    },
+    {
+      "id": "worksite-change",
+      "selector": ".worksite-change-btn",
+      "action": "data-slot-action=open-worksite-modal",
+      "renderer": "worksite.js",
+      "surface": "plot-footer",
+      "group": "plot-actions",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A2"
+    },
+    {
+      "id": "fill-plot",
+      "selector": ".slot-bulk.fill-action",
+      "action": "data-slot-action=fill_plot",
+      "renderer": "editor.js",
+      "surface": "worker-controls",
+      "group": "plot-bulk-actions",
+      "treatment": "S",
+      "case": "signal",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A4"
+    },
+    {
+      "id": "plot-bulk",
+      "selector": ".slot-bulk[data-slot-action]",
+      "action": "add|clear|add-runi|clear-runi|add-power-core|clear-power-core|add-totem|clear-totem|add-title|clear-title",
+      "renderer": "editor.js",
+      "surface": "plot-footer",
+      "group": "plot-bulk-actions",
+      "treatment": "S",
+      "case_by_action": {
+        "clear": "destructive",
+        "clear-runi": "destructive",
+        "clear-power-core": "destructive",
+        "clear-totem": "destructive",
+        "clear-title": "destructive"
+      },
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A2/A8"
+    },
+    {
+      "id": "eos-pager",
+      "selector": ".eos-pages button",
+      "action": "data-eos-page",
+      "renderer": "editor.js",
+      "surface": "plot-footer",
+      "group": "slot-pager",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "phase-3"
+    },
+    {
+      "id": "plot-close",
+      "selector": ".eos-close",
+      "action": "close-plot",
+      "renderer": "editor.js|picker-actions.js",
+      "surface": "plot-footer",
+      "group": "plot-actions",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A2"
+    },
+    {
+      "id": "plot-retry",
+      "selector": ".slot-retry, .expand-retry-link",
+      "action": "data-slot-action=retry-detail",
+      "renderer": "eos.js|editor.js",
+      "surface": "plot-error",
+      "group": "plot-actions",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "phase-3"
+    },
+    {
+      "id": "notice-actions",
+      "selector": ".notice-action, .nav-include-notice button",
+      "action": "open-bloodline-pairs|retry-verification|restore-view",
+      "renderer": "board.js|stage-navigation.js",
+      "surface": "board-notice",
+      "group": "notice-actions",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A8"
+    },
+    {
+      "id": "plot-warning-find",
+      "selector": ".plot-warning-find",
+      "action": "open-bloodline-pairs",
+      "renderer": "plot-warnings.js",
+      "surface": "plot-warnings",
+      "group": "notice-actions",
+      "treatment": "P",
+      "density": "compact",
+      "status": "legacy",
+      "approval": ""
+    },
+    {
+      "id": "picker-close",
+      "selector": ".picker-close",
+      "action": "data-picker-action=close",
+      "renderer": "candidates.js",
+      "surface": "picker-title",
+      "group": "picker-title-actions",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A2/A5"
+    },
+    {
+      "id": "picker-sort",
+      "selector": ".picker-sort-chips .picker-chip",
+      "action": "data-picker-action=sort",
+      "renderer": "candidates.js",
+      "surface": "picker-title",
+      "group": "picker-sort",
+      "treatment": "C",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A5"
+    },
+    {
+      "id": "picker-view",
+      "selector": ".picker-view-switch",
+      "action": "data-picker-action=toggle-view",
+      "renderer": "candidates.js",
+      "surface": "picker-filters",
+      "group": "picker-filters",
+      "treatment": "C",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A5"
+    },
+    {
+      "id": "picker-filter-toggles",
+      "selector": ".picker-toggle",
+      "action": "checkbox",
+      "renderer": "candidates.js",
+      "surface": "picker-filters",
+      "group": "picker-filters",
+      "treatment": "C",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A3/A5"
+    },
+    {
+      "id": "picker-upgrade-toggle",
+      "selector": "[data-picker-action=\"toggle-upgrade\"]",
+      "action": "toggle-upgrade",
+      "renderer": "candidates.js",
+      "surface": "picker-filters",
+      "group": "picker-filters",
+      "treatment": "C",
+      "density": "compact",
+      "status": "migrated",
+      "approval": ""
+    },
+    {
+      "id": "picker-clear",
+      "selector": ".picker-clear-filters",
+      "action": "data-picker-action=clear-picker-filters",
+      "renderer": "candidates.js",
+      "surface": "picker-filters",
+      "group": "picker-filters",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A3/A5"
+    },
+    {
+      "id": "fill-next-slot",
+      "selector": ".picker-keep-open.fill-action",
+      "action": "checkbox:data-picker-filter=keep_open",
+      "renderer": "candidates.js",
+      "surface": "picker-title",
+      "group": "picker-title-actions",
+      "treatment": "C",
+      "case": "signal",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A4"
+    },
+    {
+      "id": "terrain-affinity",
+      "selector": ".terrain-affinity-badge",
+      "action": "data-picker-action=splinter",
+      "renderer": "terrainAffinity.js",
+      "surface": "picker-filters",
+      "group": "splinter-affinity",
+      "treatment": "C",
+      "density": "compact",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "A9"
+    },
+    {
+      "id": "candidate-primary",
+      "selector": ".candidate-primary",
+      "action": "data-picker-action=choose",
+      "renderer": "candidates.js",
+      "surface": "picker-list",
+      "group": "candidate-actions",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A5"
+    },
+    {
+      "id": "candidate-choice-rows",
+      "selector": ".candidate-card[role=button], .candidate-row-item",
+      "action": "data-picker-action=choose",
+      "renderer": "candidates.js",
+      "surface": "picker-list",
+      "group": "candidate-list",
+      "treatment": "C",
+      "density": "compact",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "A9"
+    },
+    {
+      "id": "candidate-grid-faces",
+      "selector": ".candidate-grid-card[data-picker-action=choose], .candidate-grid-select",
+      "action": "data-picker-action=choose",
+      "renderer": "candidates.js",
+      "surface": "picker-grid",
+      "group": "candidate-grid",
+      "treatment": "C",
+      "density": "compact",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "A9"
+    },
+    {
+      "id": "candidate-grid-tools",
+      "selector": ".candidate-detail-toggle, .candidate-detail-pin, .candidate-grid-rarity",
+      "action": "details|pin|rarity",
+      "renderer": "candidates.js",
+      "surface": "picker-grid",
+      "group": "candidate-grid-tools",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A5"
+    },
+    {
+      "id": "candidate-combine",
+      "selector": ".picker-combine, .tile-combine-chip",
+      "action": "combine|upgrade",
+      "renderer": "candidates.js|combine.js",
+      "surface": "picker-and-tile-rail",
+      "group": "candidate-actions",
+      "treatment": "S",
+      "density": "dense",
+      "status": "legacy",
+      "approval": "A8"
+    },
+    {
+      "id": "picker-hidden-more",
+      "selector": ".picker-hidden-chip, .picker-more",
+      "action": "show-hidden-penalised|show-hidden-not-ready|show-hidden-on-land|more",
+      "renderer": "candidates.js",
+      "surface": "picker-footer",
+      "group": "picker-pagination",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A5"
+    },
+    {
+      "id": "operation-sign",
+      "selector": ".op-sign-btn",
+      "action": "data-op-action=confirm|data-checkout-action=prepare",
+      "renderer": "operations.js",
+      "surface": "operation-review",
+      "group": "modal-footer",
+      "treatment": "P",
+      "case": "commit",
+      "density": "comfortable",
+      "status": "legacy",
+      "approval": "A6"
+    },
+    {
+      "id": "modal-buttons",
+      "selector": ".hm-btn",
+      "action": "close|undo|prepare|confirm|refresh|funded-only|check-now|stop",
+      "renderer": "checkout.js|fill-plot.js|harvest-modal.js|planner.js|worksite.js",
+      "surface": "modal",
+      "group": "modal-actions",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "legacy",
+      "approval": "A6"
+    },
+    {
+      "id": "modal-commit-buttons",
+      "selector": ".hm-btn.is-primary",
+      "action": "confirm|sign-worksites|stage-and-sign",
+      "renderer": "checkout.js|harvest-modal.js|worksite.js",
+      "surface": "modal-footer",
+      "group": "modal-actions",
+      "treatment": "P",
+      "case": "commit",
+      "density": "comfortable",
+      "status": "legacy",
+      "approval": "A6"
+    },
+    {
+      "id": "modal-close-icons",
+      "selector": ".harvest-x, .hazard-close",
+      "action": "close|dismiss",
+      "renderer": "checkout.js|fill-plot.js|harvest-modal.js|hazard.js|combine-dialog.js",
+      "surface": "modal-or-panel-head",
+      "group": "close-actions",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "legacy",
+      "approval": "A6/A8"
+    },
+    {
+      "id": "changes-jumps",
+      "selector": ".ch-plot-badge, .ch-link",
+      "action": "go-to-plot",
+      "renderer": "checkout.js|planner.js",
+      "surface": "changes-modal",
+      "group": "change-row",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A7"
+    },
+    {
+      "id": "plan-asset-choices",
+      "selector": ".fp-slot[role=button]",
+      "action": "include|exclude|restore|undo",
+      "renderer": "checkout.js|fill-plot.js",
+      "surface": "changes-and-fill",
+      "group": "asset-choices",
+      "treatment": "C",
+      "density": "compact",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "A9"
+    },
+    {
+      "id": "fill-setting-checkboxes",
+      "selector": "[type=\"checkbox\"][data-fp-setting]",
+      "action": "toggle-fill-setting",
+      "renderer": "fill-plot.js",
+      "surface": "fill-modal",
+      "group": "fill-settings",
+      "treatment": "C",
+      "density": "touch",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "E2"
+    },
+    {
+      "id": "worksite-choices",
+      "selector": ".worksite-tile-option",
+      "action": "data-worksite-action=select-tile",
+      "renderer": "worksite.js",
+      "surface": "worksite-modal",
+      "group": "worksite-choices",
+      "treatment": "C",
+      "density": "comfortable",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "A9"
+    },
+    {
+      "id": "worksite-time-crystals",
+      "selector": "[type=\"checkbox\"][aria-label=\"Build instantly with Time Crystals\"]",
+      "action": "toggle-time-crystals",
+      "renderer": "worksite.js",
+      "surface": "worksite-modal",
+      "group": "worksite-options",
+      "treatment": "C",
+      "density": "touch",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "E2"
+    },
+    {
+      "id": "harvest-results-routing",
+      "selector": "[data-result-action=\"routing\"]",
+      "action": "open-harvest-routing-view",
+      "renderer": "harvest-modal.js",
+      "surface": "harvest-results-footer",
+      "group": "harvest-results-actions",
+      "treatment": "P",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": ""
+    },
+    {
+      "id": "harvest-results-close",
+      "selector": "[data-result-action=\"close\"]",
+      "action": "close-and-end-harvest-routing",
+      "renderer": "harvest-modal.js",
+      "surface": "harvest-results-footer",
+      "group": "harvest-results-actions",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": ""
+    },
+    {
+      "id": "harvest-scope",
+      "selector": ".hm-seg, .hm-segs",
+      "action": "data-hm=scope",
+      "renderer": "harvest-modal.js",
+      "surface": "harvest-modal",
+      "group": "harvest-scope",
+      "treatment": "C",
+      "density": "comfortable",
+      "status": "legacy",
+      "approval": "A6"
+    },
+    {
+      "id": "harvest-region-rows",
+      "selector": ".hm-rhead[role=button], .hm-rhead.is-pick",
+      "action": "toggle-region|checkbox",
+      "renderer": "harvest-modal.js",
+      "surface": "harvest-modal",
+      "group": "harvest-regions",
+      "treatment": "C",
+      "density": "touch",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "E2"
+    },
+    {
+      "id": "combine-chooser",
+      "selector": ".combine-dialog-panel .picker-chip",
+      "action": "open-group|verify|close-dialog",
+      "renderer": "combine-dialog.js",
+      "surface": "combine-modal",
+      "group": "combine-actions",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "legacy",
+      "approval": "A8"
+    },
+    {
+      "id": "combine-presets",
+      "selector": ".combine-preset",
+      "action": "data-combine-action=preset",
+      "renderer": "combine-dialog.js",
+      "surface": "combine-modal",
+      "group": "combine-quantity",
+      "treatment": "C",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A8"
+    },
+    {
+      "id": "combine-stepper",
+      "selector": ".combine-stepper button",
+      "action": "data-combine-action=qty",
+      "renderer": "combine-dialog.js",
+      "surface": "combine-modal",
+      "group": "combine-quantity",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A8"
+    },
+    {
+      "id": "combine-sign",
+      "selector": ".combine-sign",
+      "action": "data-combine-action=sign",
+      "renderer": "combine-dialog.js",
+      "surface": "combine-modal",
+      "group": "combine-footer",
+      "treatment": "P",
+      "case": "commit+destructive",
+      "density": "comfortable",
+      "status": "legacy",
+      "approval": "A6/A8"
+    },
+    {
+      "id": "slot-tiles",
+      "selector": ".slot-tile",
+      "action": "add|remove|restore|replace|undo-move",
+      "renderer": "editor.js",
+      "surface": "plot-art",
+      "group": "slot-grid",
+      "treatment": "C",
+      "density": "compact",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "A9"
+    },
+    {
+      "id": "power-satellites",
+      "selector": "button.power-satellite",
+      "action": "add|remove-power-core",
+      "renderer": "editor.js",
+      "surface": "plot-art",
+      "group": "slot-grid",
+      "treatment": "C",
+      "density": "compact",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "A9"
+    },
+    {
+      "id": "tile-utility-rail",
+      "selector": ".slot-remove, .slot-ability-overflow, .slot-bloodline-badge",
+      "action": "remove|disclose-abilities|open-bloodline-pairs",
+      "renderer": "editor.js|badges.js",
+      "surface": "plot-art",
+      "group": "tile-utility-rail",
+      "treatment": "S",
+      "case_by_action": {
+        "remove": "destructive"
+      },
+      "density": "dense",
+      "status": "legacy",
+      "approval": "A8/A9"
+    },
+    {
+      "id": "confirmation-actions",
+      "selector": ".ceres-pill-action, .ceres-pill-dismiss",
+      "action": "retry|check|dismiss",
+      "renderer": "operations.js",
+      "surface": "confirmation-toast",
+      "group": "confirmation-actions",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "A8"
+    },
+    {
+      "id": "table-sort",
+      "selector": "#plot-table th[data-sort]",
+      "action": "sort",
+      "renderer": "index.html|app.js",
+      "surface": "plot-table",
+      "group": "table-header",
+      "treatment": "S",
+      "density": "compact",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "E2"
+    },
+    {
+      "id": "plot-row-disclosure",
+      "selector": ".plot-main-row, .plot-card[role=button]",
+      "action": "open-plot",
+      "renderer": "rows.js",
+      "surface": "plot-table-and-mobile",
+      "group": "plot-rows",
+      "treatment": "S",
+      "density": "touch",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "E2"
+    },
+    {
+      "id": "modal-backdrops",
+      "selector": "[id=\"harvest-modal-overlay\"], [id=\"fill-plot-overlay\"], [id=\"worksite-modal-overlay\"], [id=\"slot-hazard-overlay\"], [id=\"combine-dialog-overlay\"], [id=\"combine-stake-prompt-overlay\"]",
+      "action": "outside-click-dismiss",
+      "renderer": "harvest-modal.js|fill-plot.js|worksite.js|hazard.js|combine-dialog.js",
+      "surface": "modal-backdrop",
+      "group": "modal-shell",
+      "treatment": "S",
+      "density": "touch",
+      "status": "protected",
+      "exemptions": [
+        "E3"
+      ],
+      "approval": "E3"
+    },
+    {
+      "id": "operation-disclosures",
+      "selector": ".op-c-details summary, .op-c-raw summary, .hm-ops summary",
+      "action": "disclose-operation-data",
+      "renderer": "operations.js|harvest-modal.js",
+      "surface": "modal",
+      "group": "operation-details",
+      "treatment": "S",
+      "density": "compact",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "E2"
+    },
+    {
+      "id": "wallet-provider-select",
+      "selector": "[data-wallet-select]",
+      "action": "select-wallet-provider",
+      "renderer": "wallet.js",
+      "surface": "wallet-controls",
+      "group": "wallet-providers",
+      "treatment": "C",
+      "density": "touch",
+      "status": "legacy",
+      "approval": "v0.9.511"
+    },
+    {
+      "id": "wallet-disconnect",
+      "selector": "[data-wallet-disconnect]",
+      "action": "disconnect-wallet",
+      "renderer": "wallet.js",
+      "surface": "wallet-controls",
+      "group": "wallet-providers",
+      "treatment": "S",
+      "density": "touch",
+      "status": "legacy",
+      "approval": "v0.9.511"
+    },
+    {
+      "id": "wallet-request-close",
+      "selector": "[data-wallet-close]",
+      "action": "close-wallet-request",
+      "renderer": "wallet.js",
+      "surface": "wallet-controls",
+      "group": "wallet-providers",
+      "treatment": "S",
+      "density": "touch",
+      "status": "legacy",
+      "approval": "v0.9.511"
+    },
+    {
+      "id": "wallet-drawer-toggle",
+      "selector": ".wallet-toggle",
+      "action": "toggle-wallet-drawer",
+      "renderer": "wallet.js",
+      "surface": "wallet-controls",
+      "group": "wallet-providers",
+      "treatment": "S",
+      "density": "touch",
+      "status": "legacy",
+      "approval": "v0.9.511"
+    },
+    {
+      "id": "operation-retry",
+      "selector": "[data-checkout-action=\"prepare\"]",
+      "action": "retry-operation-sign",
+      "renderer": "operations.js",
+      "surface": "operation-review",
+      "group": "modal-footer",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "legacy",
+      "approval": "v0.9.511"
+    },
+    {
+      "id": "harvest-routing-actions-primary",
+      "selector": "[data-hr]",
+      "action": "harvest-routing-step-action-primary",
+      "renderer": "harvest-routing.js",
+      "surface": "harvest-modal",
+      "group": "harvest-routing-actions",
+      "treatment": "P",
+      "density": "comfortable",
+      "status": "legacy",
+      "approval": "v0.9.554"
+    },
+    {
+      "id": "harvest-routing-actions-secondary",
+      "selector": "[data-hr]",
+      "action": "harvest-routing-step-action-secondary",
+      "renderer": "harvest-routing.js",
+      "surface": "harvest-modal",
+      "group": "harvest-routing-actions",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "legacy",
+      "approval": "v0.9.554"
+    },
+    {
+      "id": "harvest-routing-remove",
+      "selector": ".hr-remove",
+      "action": "remove-harvest-routing-rule",
+      "renderer": "harvest-routing.js",
+      "surface": "harvest-modal",
+      "group": "harvest-routing-actions",
+      "treatment": "S",
+      "case": "destructive",
+      "density": "compact",
+      "status": "legacy",
+      "approval": "v0.9.554"
+    },
+    {
+      "id": "harvest-routing-disclosures",
+      "selector": ".hr-step summary, .hr-reserves summary",
+      "action": "disclose-harvest-routing-detail",
+      "renderer": "harvest-routing.js",
+      "surface": "harvest-modal",
+      "group": "operation-details",
+      "treatment": "S",
+      "density": "compact",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "E2"
+    },
+    {
+      "id": "harvest-routing-sale-selection",
+      "selector": "[type=\"checkbox\"][data-hr-member]",
+      "action": "include-routing-sale",
+      "renderer": "harvest-routing.js",
+      "surface": "harvest-modal",
+      "group": "harvest-routing-review",
+      "treatment": "C",
+      "density": "touch",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": ""
+    },
+    {
+      "id": "wallet-claim-action-primary",
+      "selector": "[data-dec]",
+      "action": "wallet-claim-action-primary",
+      "renderer": "wallet-claim.js",
+      "surface": "wallet-controls",
+      "group": "wallet-claim",
+      "treatment": "P",
+      "density": "touch",
+      "status": "legacy",
+      "approval": "v0.9.658"
+    },
+    {
+      "id": "wallet-claim-action-secondary",
+      "selector": "[data-dec]",
+      "action": "wallet-claim-action-secondary",
+      "renderer": "wallet-claim.js",
+      "surface": "wallet-controls",
+      "group": "wallet-claim",
+      "treatment": "S",
+      "density": "touch",
+      "status": "legacy",
+      "approval": "v0.9.658"
+    },
+    {
+      "id": "wallet-claim-disclosure",
+      "selector": ".dec-review summary",
+      "action": "disclose-wallet-claim-operation",
+      "renderer": "wallet-claim.js",
+      "surface": "wallet-controls",
+      "group": "operation-details",
+      "treatment": "S",
+      "density": "compact",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "E2"
+    },
+    {
+      "id": "wallet-swap-actions",
+      "selector": "[data-dec]",
+      "action": "data-dec=lp:pct|swap|verify|stop|done|flip|details|fund|funding-not-sent",
+      "renderer": "wallet-lp.js",
+      "surface": "wallet-controls",
+      "group": "wallet-swap",
+      "treatment": "S",
+      "density": "compact",
+      "status": "protected",
+      "approval": ""
+    },
+    {
+      "id": "wallet-resources-tab",
+      "selector": ".wallet-tab--icon",
+      "action": "switch-wallet-tab",
+      "renderer": "wallet-resources.js",
+      "surface": "wallet-controls",
+      "group": "wallet-tabs",
+      "treatment": "C",
+      "density": "touch",
+      "status": "legacy",
+      "approval": "v0.9.649"
+    },
+    {
+      "id": "badge-filter-opt",
+      "selector": ".badge-filter-opt",
+      "action": "filter-badges-by-status",
+      "renderer": "badge-overlay.js",
+      "surface": "badge-rail",
+      "group": "badge-filter-tray",
+      "treatment": "C",
+      "density": "compact",
+      "status": "protected",
+      "approval": ""
+    },
+    {
+      "id": "wallet-zero-regions-fold",
+      "selector": ".wallet-zero-regions > summary",
+      "action": "toggle-zero-regions",
+      "renderer": "wallet-resources.js",
+      "surface": "wallet-controls",
+      "group": "wallet-regions",
+      "treatment": "C",
+      "density": "compact",
+      "status": "protected",
+      "approval": ""
+    },
+    {
+      "id": "regional-dec-action-primary",
+      "selector": "[data-dec]",
+      "action": "regional-dec-action-primary",
+      "renderer": "regional-dec.js",
+      "surface": "dec-drawer",
+      "group": "dec-actions",
+      "treatment": "P",
+      "density": "touch",
+      "status": "legacy",
+      "approval": "v0.9.552"
+    },
+    {
+      "id": "regional-dec-action-secondary",
+      "selector": "[data-dec]",
+      "action": "regional-dec-action-secondary",
+      "renderer": "regional-dec.js",
+      "surface": "dec-drawer",
+      "group": "dec-actions",
+      "treatment": "S",
+      "density": "touch",
+      "status": "legacy",
+      "approval": "v0.9.552"
+    },
+    {
+      "id": "regional-dec-disclosures",
+      "selector": ".dec-region-summary, .dec-receipt-actions summary, .dec-review summary",
+      "action": "disclose-regional-dec-operation",
+      "renderer": "regional-dec.js",
+      "surface": "dec-drawer",
+      "group": "operation-details",
+      "treatment": "S",
+      "density": "compact",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "E2"
+    },
+    {
+      "id": "wallet-edge-tray-chevron",
+      "selector": ".edge-tray-chevron",
+      "action": "close-wallet-tray",
+      "renderer": "regional-dec.js",
+      "surface": "dec-drawer",
+      "group": "edge-tray",
+      "treatment": "S",
+      "density": "compact",
+      "status": "legacy",
+      "approval": ""
+    },
+    {
+      "id": "wallet-edge-tray-option",
+      "selector": ".edge-opt[role=\"tab\"]",
+      "action": "select-wallet-tray-resource",
+      "renderer": "regional-dec.js",
+      "surface": "dec-drawer",
+      "group": "edge-tray",
+      "treatment": "C",
+      "density": "compact",
+      "status": "legacy",
+      "approval": ""
+    },
+    {
+      "id": "region-plaque",
+      "selector": ".ceres-region-plaque",
+      "action": "jump-to-region-plaque",
+      "renderer": "checkout.js|planner.js",
+      "surface": "changes-modal",
+      "group": "region-plaque",
+      "treatment": "S",
+      "density": "compact",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": ""
+    },
+    {
+      "id": "custom-select-decoration",
+      "selector": ".csel-value, .csel-list",
+      "action": "custom-select-display",
+      "renderer": "customSelect.js",
+      "surface": "board-and-picker-filters",
+      "group": "dropdown",
+      "treatment": "S",
+      "density": "compact",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "E2"
+    },
+    {
+      "id": "mobile-action-symbol",
+      "selector": ".mobile-action-symbol",
+      "action": "mobile-nav-icon-wrap",
+      "renderer": "index.html",
+      "surface": "mobile-bottom-bar",
+      "group": "mobile-navigation",
+      "treatment": "S",
+      "density": "navigation",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "E2"
+    },
+    {
+      "id": "disclosure-chevron",
+      "selector": ".ceres-chevron, details > summary",
+      "action": "toggle-disclosure-indicator",
+      "renderer": "customSelect.js|icons.js|harvest-modal.js|regional-dec.js|wallet.js",
+      "surface": "modal-or-panel-head",
+      "group": "operation-details",
+      "treatment": "S",
+      "density": "compact",
+      "status": "protected",
+      "exemptions": [
+        "E2"
+      ],
+      "approval": "E2"
+    },
+    {
+      "id": "operation-sign-pending-wallet-block",
+      "selector": ".op-sign-btn, .worksite-modal-confirm",
+      "action": "data-op-action=confirm|data-worksite-action=broadcast",
+      "renderer": "operations.js",
+      "surface": "operation-review",
+      "group": "modal-footer",
+      "treatment": "P",
+      "case": "commit",
+      "density": "comfortable",
+      "status": "legacy",
+      "approval": "A6"
+    },
+    {
+      "id": "operation-sign-retry",
+      "selector": ".op-sign-btn, .worksite-modal-confirm",
+      "action": "data-checkout-action=prepare|data-worksite-action=confirm",
+      "renderer": "operations.js",
+      "surface": "operation-review",
+      "group": "modal-footer",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "legacy",
+      "approval": "A6"
+    },
+    {
+      "id": "plot-lock-toggle",
+      "selector": "[data-plot-lock-action]",
+      "action": "data-plot-lock-action=toggle",
+      "renderer": "plot-lock.js",
+      "surface": "plot-view",
+      "group": "plot-actions",
+      "treatment": "S",
+      "density": "compact",
+      "status": "approved",
+      "approval": "v0.9.899"
+    },
+    {
+      "id": "receipt-ledger-costs",
+      "selector": "[data-hm]",
+      "action": "data-hm=show-costs",
+      "renderer": "harvest-results.js",
+      "surface": "harvest-modal",
+      "group": "harvest-ledger",
+      "treatment": "S",
+      "density": "compact",
+      "status": "approved",
+      "approval": "v0.9.911"
+    },
+    {
+      "id": "routing-run-controls",
+      "selector": "[data-r3]",
+      "action": "data-r3=toggle-member|approve|stop|check|back",
+      "renderer": "routing-window.js",
+      "surface": "harvest-routing",
+      "group": "harvest-routing-actions",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": "v0.9.910"
+    },
+    {
+      "id": "routing-setup-controls",
+      "selector": "[data-r3]",
+      "action": "data-r3=select|add|remove|back|review",
+      "renderer": "routing-setup.js",
+      "surface": "harvest-routing",
+      "group": "harvest-routing-actions",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": "v0.9.910"
+    },
+    {
+      "id": "routing-route-list-more",
+      "selector": "[data-r3-more]",
+      "action": "data-r3-more=up|down",
+      "renderer": "routing-route-list.js",
+      "surface": "harvest-routing",
+      "group": "harvest-routing-actions",
+      "treatment": "S",
+      "density": "compact",
+      "status": "approved",
+      "approval": "v0.11.8 // (maintainer: build the pill; shared by setup and window)"
+    },
+    {
+      "id": "routing-setup-continue-to-harvest",
+      "selector": ".r3-pre-harvest [data-hm=\"routing-back\"]",
+      "action": "data-hm=routing-back",
+      "renderer": "routing-setup.js",
+      "surface": "harvest-routing",
+      "group": "harvest-routing-actions",
+      "treatment": "P",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": "v0.11.14 (maintainer: answered yes to a clear Continue to harvest button on the pre-harvest routing screen)"
+    },
+    {
+      "id": "header-account-menu",
+      "selector": "#account-menu-btn",
+      "action": "account-menu",
+      "renderer": "index.html",
+      "surface": "header",
+      "group": "header-actions",
+      "treatment": "P",
+      "density": "header",
+      "status": "approved",
+      "approval": "v0.13.4 (maintainer: the login menu in the glass wallet design, our button styling, the selected wallet logo, both buttons side by side); / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "variant": "glass"
+    },
+    {
+      "id": "account-menu-player0013",
+      "selector": "#account-menu [data-account=\"player0013\"]",
+      "action": "data-account=player0013",
+      "renderer": "account-menu.js",
+      "surface": "account-menu",
+      "group": "account-menu-actions",
+      "treatment": "P",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": "v0.13.4 (maintainer: the login menu in the glass wallet design, our button styling, the selected wallet logo, both buttons side by side)"
+    },
+    {
+      "id": "account-menu-signout",
+      "selector": "#account-menu [data-account=\"signout\"]",
+      "action": "data-account=signout",
+      "renderer": "account-menu.js",
+      "surface": "account-menu",
+      "group": "account-menu-actions",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": "v0.13.4 (maintainer: the login menu in the glass wallet design, our button styling, the selected wallet logo, both buttons side by side)"
+    },
+    {
+      "id": "account-menu-delete-space",
+      "selector": "#account-menu [data-account=\"delete-space\"]",
+      "action": "data-account=delete-space",
+      "renderer": "account-menu.js",
+      "surface": "account-menu",
+      "group": "account-menu-actions",
+      "treatment": "S",
+      "case": "destructive",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": "v0.16.0 (maintainer: delete-my-data with a wallet check; exact placement awaits the maintainer's review)"
+    },
+    {
+      "id": "account-menu-delete-cache",
+      "selector": "#account-menu [data-account=\"delete-cache\"]",
+      "action": "data-account=delete-cache",
+      "renderer": "account-menu.js",
+      "surface": "account-menu",
+      "group": "account-menu-actions",
+      "treatment": "S",
+      "case": "destructive",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": "v0.16.0 (maintainer: delete-my-data with a wallet check; exact placement awaits the maintainer's review)"
+    },
+    {
+      "id": "account-menu-delete-confirm",
+      "selector": "#account-menu [data-account=\"delete-confirm\"]",
+      "action": "data-account=delete-confirm",
+      "renderer": "account-menu.js",
+      "surface": "account-menu",
+      "group": "account-menu-actions",
+      "treatment": "S",
+      "case": "destructive",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": "v0.16.0 (maintainer: delete-my-data with a wallet check; exact placement awaits the maintainer's review)"
+    },
+    {
+      "id": "account-menu-delete-cancel",
+      "selector": "#account-menu [data-account=\"delete-cancel\"]",
+      "action": "data-account=delete-cancel",
+      "renderer": "account-menu.js",
+      "surface": "account-menu",
+      "group": "account-menu-actions",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": "v0.16.0 (maintainer: delete-my-data with a wallet check; exact placement awaits the maintainer's review)"
+    },
+    {
+      "id": "upgrade-open",
+      "selector": "[data-upgrade-action=\"open\"]",
+      "action": "upgrade-open",
+      "renderer": "combine-chain-ui.js",
+      "surface": "upgrade-plan",
+      "group": "upgrade-plan",
+      "treatment": "S",
+      "density": "compact",
+      "status": "approved",
+      "approval": "maintainer-approved mock-ups s1/s2/s8/s9"
+    },
+    {
+      "id": "upgrade-level",
+      "selector": "[data-upgrade-action=\"level\"], [data-upgrade-action=\"manual\"]",
+      "action": "upgrade-level",
+      "renderer": "combine-chain-ui.js",
+      "surface": "upgrade-plan",
+      "group": "upgrade-plan",
+      "treatment": "C",
+      "density": "compact",
+      "status": "approved",
+      "approval": "maintainer-approved mock-ups s1/s2/s8/s9"
+    },
+    {
+      "id": "upgrade-check",
+      "selector": "[data-upgrade-copy]",
+      "action": "upgrade-check",
+      "renderer": "combine-chain-ui.js",
+      "surface": "upgrade-plan",
+      "group": "upgrade-plan",
+      "treatment": "C",
+      "density": "compact",
+      "status": "approved",
+      "approval": "maintainer-approved mock-ups s1/s2/s8/s9"
+    },
+    {
+      "id": "upgrade-stage-back",
+      "selector": "[type=\"checkbox\"][data-upgrade-stage-back]",
+      "action": "toggle-upgrade-stage-back",
+      "renderer": "combine-chain-ui.js",
+      "surface": "upgrade-plan",
+      "group": "upgrade-plan",
+      "treatment": "C",
+      "density": "compact",
+      "status": "approved",
+      "approval": "Owner choice 2026-10-13: pre-checked 'stage back to the original slot' checkbox in the combine menu"
+    },
+    {
+      "id": "upgrade-stage",
+      "selector": "[data-upgrade-action=\"stage\"]",
+      "action": "upgrade-stage",
+      "renderer": "combine-chain-ui.js",
+      "surface": "upgrade-plan",
+      "group": "upgrade-plan",
+      "treatment": "P",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": "maintainer-approved mock-ups s1/s2/s8/s9"
+    },
+    {
+      "id": "upgrade-close",
+      "selector": "[data-upgrade-action=\"close\"]",
+      "action": "upgrade-close",
+      "renderer": "combine-chain-ui.js",
+      "surface": "upgrade-plan",
+      "group": "upgrade-plan",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": "maintainer-approved mock-ups s1/s2/s8/s9"
+    },
+    {
+      "id": "upgrade-plan-actions",
+      "selector": "[data-upgrade-action=\"leave\"], [data-upgrade-action=\"cancel\"], [data-upgrade-action=\"retry\"], [data-upgrade-action=\"keep-off\"], [data-upgrade-action=\"review\"], [data-upgrade-action=\"check-combine\"], [data-upgrade-action=\"use-result\"], [data-upgrade-action=\"cancel-placement\"], [data-upgrade-action=\"finish\"]",
+      "action": "upgrade-plan-actions",
+      "renderer": "combine-chain-ui.js",
+      "surface": "upgrade-plan",
+      "group": "upgrade-plan",
+      "treatment": "S",
+      "density": "compact",
+      "status": "approved",
+      "approval": "maintainer-approved mock-ups s1/s2/s8/s9; approved s6/s10 and mismatch/Finish rules"
+    },
+    {
+      "id": "upgrade-cancel-choice",
+      "selector": "[data-chain-choice]",
+      "action": "upgrade-cancel-choice",
+      "renderer": "combine-chain-ui.js",
+      "surface": "upgrade-plan",
+      "group": "upgrade-plan",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": "maintainer-approved mock-ups s1/s2/s8/s9"
+    },
+    {
+      "id": "account-wallet-choice",
+      "selector": "[data-account-wallet]",
+      "action": "choose-player0013-wallet",
+      "renderer": "account-menu.js",
+      "surface": "account-menu",
+      "group": "account-menu-actions",
+      "treatment": "C",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": "existing master control; baseline reconciliation during"
+    },
+    {
+      "id": "upgrade-sign-warning",
+      "selector": "[data-chain-sign]",
+      "action": "upgrade-sign-warning",
+      "renderer": "hazard.js",
+      "surface": "upgrade-plan",
+      "group": "upgrade-plan",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": "maintainer-approved s10 warning"
+    },
+    {
+      "id": "header-page-switch",
+      "selector": "#page-switch-plots, #page-switch-cards",
+      "action": "navigate-plots-or-cards",
+      "renderer": "index.html|cards.html|styleguide.html",
+      "surface": "header",
+      "group": "header-actions",
+      "treatment": "C",
+      "density": "header",
+      "variant": "glass",
+      "status": "migrated",
+      "approval": "(maintainer: switcher, last on both views, glass, SVG icons); D-2 glass = tint + light edge, D-3 accent not gold"
+    },
+    {
+      "id": "cards-player-go",
+      "selector": "#cb-player-go",
+      "action": "switch-player",
+      "renderer": "cards.html",
+      "surface": "header",
+      "group": "header-actions",
+      "treatment": "P",
+      "density": "header",
+      "status": "migrated",
+      "approval": "card browser MVP (new; awaiting the maintainer's review); / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "variant": "glass"
+    },
+    {
+      "id": "cards-filter-toggles",
+      "selector": "#cb-ability",
+      "action": "checkbox",
+      "renderer": "cards.html",
+      "surface": "board-filter-row",
+      "group": "board-filters",
+      "treatment": "C",
+      "density": "compact",
+      "status": "migrated",
+      "approval": "card browser MVP (new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "cards-clear-filters",
+      "selector": "#cb-clear",
+      "action": "clear-card-filters",
+      "renderer": "cards.html",
+      "surface": "board-filter-row",
+      "group": "board-filters",
+      "treatment": "S",
+      "density": "compact",
+      "status": "migrated",
+      "approval": "card browser MVP (new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "cards-mode-switch",
+      "selector": "#cb-mode-cards, #cb-mode-market",
+      "action": "switch-cards-market-mode",
+      "renderer": "cards.html",
+      "surface": "header",
+      "group": "header-actions",
+      "treatment": "C",
+      "density": "header",
+      "status": "migrated",
+      "approval": "card market (new; awaiting the maintainer's review); Find combinables moved to the filter row; / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "variant": "glass"
+    },
+    {
+      "id": "cards-cart-open",
+      "selector": "#cm-cart-btn",
+      "action": "open-cart",
+      "renderer": "cards.html",
+      "surface": "header",
+      "group": "header-actions",
+      "treatment": "P",
+      "density": "header",
+      "status": "migrated",
+      "approval": "card menu and cart (new; awaiting the maintainer's review); / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "variant": "glass"
+    },
+    {
+      "id": "cards-combinables-primary",
+      "selector": "[data-cx-action=\"combine\"], [data-cx-action=\"cart\"]",
+      "action": "data-cx-action=combine|cart",
+      "renderer": "card-combinables.js",
+      "surface": "combinables-entry",
+      "group": "combinables-actions",
+      "treatment": "P",
+      "density": "compact",
+      "status": "migrated",
+      "approval": "Find combinables (new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "cards-combinables-secondary",
+      "selector": "[data-cx-action=\"price\"], [data-cx-action=\"check\"], [data-cx-action=\"uncart\"], #cx-more",
+      "action": "data-cx-action=price|check|uncart; show more",
+      "renderer": "card-combinables.js|cards.html",
+      "surface": "combinables-entry|combinables-summary",
+      "group": "combinables-actions",
+      "treatment": "S",
+      "density": "compact",
+      "status": "migrated",
+      "approval": "Find combinables (new; awaiting the maintainer's review); Remove from cart in the destructive treatment",
+      "case_by_action": {
+        "uncart": "destructive"
+      }
+    },
+    {
+      "id": "cards-combinables-sort",
+      "selector": "[data-cx-action=\"sort\"]",
+      "action": "data-cx-action=sort",
+      "renderer": "card-combinables.js",
+      "surface": "combinables-summary",
+      "group": "combinables-actions",
+      "treatment": "C",
+      "density": "compact",
+      "status": "migrated",
+      "approval": "Find combinables (new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "cards-wallet-open",
+      "selector": ".cb-wallet-btn",
+      "action": "open-wallet",
+      "renderer": "cards.html",
+      "surface": "header",
+      "group": "header-actions",
+      "treatment": "P",
+      "density": "header",
+      "status": "migrated",
+      "approval": "phone-only icon header button; the desktop opens the board's edge slide-out (new; awaiting the maintainer's review); / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "variant": "glass"
+    },
+    {
+      "id": "market-add-maxed",
+      "selector": ".cm-add-max",
+      "action": "data-cm-action=add-max|remove-max",
+      "renderer": "card-market.js|card-cart.js",
+      "surface": "market-tile|card-menu",
+      "group": "market-cart-actions",
+      "treatment": "S",
+      "density": "compact",
+      "status": "migrated",
+      "approval": "one-click maxed card (new; awaiting the maintainer's review); primary comfortable in the card menu; : \"Remove from cart\" in the destructive treatment once added",
+      "case_by_action": {
+        "remove-max": "destructive"
+      }
+    },
+    {
+      "id": "market-row-add-remove",
+      "selector": ".cm-row-btn",
+      "action": "data-cm-action=add|remove|add-bundle|remove-bundle|remove-item",
+      "renderer": "card-cart.js",
+      "surface": "card-menu|cart-panel",
+      "group": "market-cart-actions",
+      "treatment": "S",
+      "density": "compact",
+      "case_by_action": {
+        "remove": "destructive",
+        "remove-bundle": "destructive",
+        "remove-item": "destructive"
+      },
+      "status": "migrated",
+      "approval": "card menu and cart (new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "market-dialog-close",
+      "selector": ".cm-dialog-panel .hazard-close",
+      "action": "data-cm-action=close",
+      "renderer": "card-cart.js",
+      "surface": "card-menu|cart-panel",
+      "group": "dialog-header",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "migrated",
+      "approval": "card menu and cart (new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "market-cart-footer",
+      "selector": "[data-cm-action=\"open-cart\"], [data-cm-action=\"clear-cart\"], [data-cm-action=\"dismiss-sold\"]",
+      "action": "data-cm-action=open-cart|clear-cart|dismiss-sold",
+      "renderer": "card-cart.js",
+      "surface": "card-menu|cart-panel",
+      "group": "dialog-footer",
+      "treatment": "S",
+      "density": "comfortable",
+      "case_by_action": {
+        "clear-cart": "destructive"
+      },
+      "status": "migrated",
+      "approval": "card menu and cart (new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "market-checkout",
+      "selector": "#cm-checkout",
+      "action": "data-cm-action=checkout (opens the checkout dialog, )",
+      "renderer": "card-cart.js",
+      "surface": "cart-panel",
+      "group": "dialog-footer",
+      "treatment": "P",
+      "density": "comfortable",
+      "status": "migrated",
+      "approval": "maintainer decision \"Buy from Ceres\": enabled while the cart has listings (new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "checkout-currency",
+      "selector": ".co-cur-btn",
+      "action": "data-co-action=currency",
+      "renderer": "card-checkout.js",
+      "surface": "checkout-dialog",
+      "group": "checkout-currency",
+      "treatment": "C",
+      "density": "comfortable",
+      "status": "migrated",
+      "approval": "maintainer: currency asked at checkout, none preselected (new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "checkout-footer",
+      "selector": ".co-foot [data-co-action], .co-sign",
+      "action": "data-co-action=close|continue|back|sign|retry|check|done|wallet",
+      "renderer": "card-checkout.js",
+      "surface": "checkout-dialog",
+      "group": "dialog-footer",
+      "treatment": "P",
+      "density": "comfortable",
+      "status": "migrated",
+      "approval": "checkout: primary Continue / Buy now / Done / Try again bottom-right, secondary Close / Back / Check again (new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "checkout-dialog-close",
+      "selector": ".co-panel .hazard-close",
+      "action": "data-co-action=close",
+      "renderer": "card-checkout.js",
+      "surface": "checkout-dialog",
+      "group": "dialog-header",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "migrated",
+      "approval": "checkout dialog, the cart dialog's close (new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "checkout-test-buy",
+      "selector": ".co-test [data-co-action=\"test-buy\"]",
+      "action": "data-co-action=test-buy",
+      "renderer": "card-checkout.js",
+      "surface": "checkout-dialog",
+      "group": "checkout-dev",
+      "treatment": "S",
+      "density": "compact",
+      "status": "migrated",
+      "approval": "maintainer test buy: maintainer account on the local build only (new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "cart-buy-max",
+      "selector": ".cm-buymax",
+      "action": "data-cm-action=buy-max",
+      "renderer": "card-cart.js",
+      "surface": "cart-panel",
+      "group": "market-cart-actions",
+      "treatment": "P",
+      "density": "compact",
+      "status": "migrated",
+      "approval": "(new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "checkout-combine",
+      "selector": ".co-combine-btn",
+      "action": "data-co-action=combine-sign|combine-skip|combine-retry|combine-check|open-combinables",
+      "renderer": "card-checkout.js",
+      "surface": "checkout-dialog",
+      "group": "checkout-combine",
+      "treatment": "P",
+      "density": "comfortable",
+      "status": "migrated",
+      "approval": "Buy & max: primary \"Sign the combine\", secondary Not now / Try again / Check again / Find combinables (new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "market-load-more",
+      "selector": "#cm-more",
+      "action": "load-more-market-prints",
+      "renderer": "cards.html",
+      "surface": "market-grid",
+      "group": "market-results",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "migrated",
+      "approval": "(new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "market-bundle-buttons",
+      "selector": ".cm-bundle-btn",
+      "action": "data-cm-action=add-bundle|remove-group",
+      "renderer": "card-cart.js",
+      "surface": "card-menu",
+      "group": "market-cart-actions",
+      "treatment": "C",
+      "density": "comfortable",
+      "case_by_action": {
+        "remove-group": "destructive"
+      },
+      "status": "migrated",
+      "approval": "(new; awaiting the maintainer's review); -- shared choice treatment, in cart = pressed in the ok colour"
+    },
+    {
+      "id": "cards-maxed-filter",
+      "selector": "#cb-maxed",
+      "action": "checkbox",
+      "renderer": "cards.html",
+      "surface": "board-filter-row",
+      "group": "board-filters",
+      "treatment": "C",
+      "density": "compact",
+      "status": "migrated",
+      "approval": "Maxed filter (new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "cards-combinables-mode",
+      "selector": "#cb-mode-combine",
+      "action": "checkbox",
+      "renderer": "cards.html",
+      "surface": "board-filter-row",
+      "group": "board-filters",
+      "treatment": "C",
+      "density": "compact",
+      "status": "migrated",
+      "approval": "the Maxed pill's treatment, a view of My cards (new; awaiting the maintainer's review)"
+    },
+    {
+      "id": "cards-purchases-mode",
+      "selector": "#cb-mode-purchases",
+      "action": "checkbox",
+      "renderer": "cards.html",
+      "surface": "board-filter-row",
+      "group": "board-filters",
+      "treatment": "C",
+      "density": "compact",
+      "status": "migrated",
+      "approval": "My purchases, same entry treatment as Find combinables"
+    },
+    {
+      "id": "cards-purchases-load",
+      "selector": "[data-cp-action=load]",
+      "action": "load-purchases",
+      "renderer": "cards.html|card-purchases.js",
+      "surface": "purchases-bar",
+      "group": "purchases-actions",
+      "treatment": "P",
+      "density": "compact",
+      "status": "migrated",
+      "approval": "maintainer pressed history read"
+    },
+    {
+      "id": "cards-purchases-window",
+      "selector": "[data-cp-days]",
+      "action": "choose-window",
+      "renderer": "cards.html|card-purchases.js",
+      "surface": "purchases-bar",
+      "group": "purchases-actions",
+      "treatment": "C",
+      "density": "compact",
+      "status": "migrated",
+      "approval": "purchase window choices"
+    },
+    {
+      "id": "cards-purchases-sort",
+      "selector": "[data-cp-sort]",
+      "action": "sort-purchases",
+      "renderer": "card-purchases.js",
+      "surface": "purchases-list",
+      "group": "purchases-actions",
+      "treatment": "C",
+      "density": "dense",
+      "status": "migrated",
+      "approval": "purchase sorting choices"
+    },
+    {
+      "id": "changes-plan-disclosures",
+      "selector": ".chain-step-details, .chain-editor-how",
+      "action": "disclose-step-detail",
+      "renderer": "combine-chain-ui.js",
+      "surface": "upgrade-plan",
+      "group": "upgrade-plan",
+      "treatment": "C",
+      "density": "dense",
+      "status": "approved",
+      "approval": "DQ-11 maintainer verdict: Improve as proposed"
+    }
+  ],
+  "legacy_allowlist": [
+    {
+      "selector": ".theme-picker-dock",
+      "properties": [
+        "height",
+        "transform",
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1"
+    },
+    {
+      "selector": ".edge-opt",
+      "properties": [
+        "background",
+        "border",
+        "color",
+        "cursor",
+        "height",
+        "min-height",
+        "opacity",
+        "padding",
+        "transition"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".edge-opt:hover",
+      "properties": [
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".edge-tray-chevron .ceres-chevron",
+      "properties": [
+        "transform"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".edge-opt--active",
+      "properties": [
+        "background",
+        "border-radius",
+        "box-shadow",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "html:not(.ceres-lw-le-1279) #wallet-picker .edge-opt",
+      "properties": [
+        "height",
+        "min-height"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 wallet/flag chip sizes — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": "html:not(.ceres-lw-le-1279) #wallet-picker :is(.edge-toggle, .edge-opt) img",
+      "properties": [
+        "block-size",
+        "inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 wallet/flag chip sizes — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".start-form .start-input, .start-form .start-go",
+      "properties": [
+        "inline-size"
+      ],
+      "context": [
+        "@media (max-width: 600px)"
+      ],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 shared input on the start page — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": "is(.checkout-panel, [role=\"dialog\"]) button:not(.ceres-btn):not(:disabled):not(.ch-link, .ch-plot-badge)",
+      "properties": [
+        "transition"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "is(.checkout-panel, [role=\"dialog\"]) button:not(.ceres-btn):not(.candidate-grid-select):not(:disabled):not(.ch-link, .ch-plot-badge):hover",
+      "properties": [
+        "box-shadow",
+        "filter",
+        "transform"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "is(.checkout-panel, [role=\"dialog\"]) button:not(.ceres-btn):not(:disabled):not(.ch-link, .ch-plot-badge):active",
+      "properties": [
+        "box-shadow",
+        "filter",
+        "transform"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".ch-plot-badge",
+      "properties": [
+        "border",
+        "border-radius",
+        "cursor",
+        "font",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".ch-plot-badge",
+      "properties": [
+        "transition"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".ch-plot-badge.territory-pristine-northwest",
+      "properties": [
+        "background",
+        "border",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".ch-plot-badge.territory-broken-lands",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".ch-plot-badge.territory-land-of-prosperity",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".ch-plot-badge.territory-central-fire",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".ch-plot-badge.territory-wild-northeast",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".ch-plot-badge.territory-great-lowlands",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".ch-plot-badge.territory-shimmering-coasts",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".ch-link",
+      "properties": [
+        "text-align"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".ch-link",
+      "properties": [
+        "text-decoration-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".ch-link:hover, .ch-link:focus-visible",
+      "properties": [
+        "text-decoration-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": "is(.fill-panel, .changes-panel) .fp-tiles .slot-tile.is-empty:hover",
+      "properties": [
+        "border-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": "is(.fill-panel, .changes-panel) .fp-slot > .slot-tile, :is(.fill-panel, .changes-panel) .fp-slot > .slot-power-satellite .power-satellite",
+      "properties": [
+        "cursor"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": "is(.fill-panel, .changes-panel) .fp-slot.is-fp-excluded > .slot-tile",
+      "properties": [
+        "border-style",
+        "filter",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": "is(.fill-panel, .changes-panel) .fp-slot.is-fp-excluded > .slot-power-satellite .power-satellite",
+      "properties": [
+        "filter",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".changes-panel .ch-tiles .slot-tile.is-ch-unchanged, .changes-panel .ch-tiles .power-satellite.is-ch-unchanged",
+      "properties": [
+        "filter",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".changes-panel .ch-tiles .slot-tile.is-ch-unchanged.is-empty",
+      "properties": [
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".changes-panel .fp-slot > .slot-tile:hover, .changes-panel .fp-slot > .slot-power-satellite .power-satellite:hover",
+      "properties": [
+        "box-shadow"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".changes-panel .fp-slot.is-in-flight > .slot-tile",
+      "properties": [
+        "cursor"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".changes-panel .ch-tiles .slot-tile::after",
+      "properties": [
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".nav-include-notice",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "box-shadow",
+        "color",
+        "font-size",
+        "max-width",
+        "padding",
+        "transform"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": "is(.checkout-panel, [role=\"dialog\"]) button:not(.ceres-btn):not(:disabled)",
+      "properties": [
+        "transition"
+      ],
+      "context": [
+        "@media (prefers-reduced-motion: reduce)"
+      ],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "is(.checkout-panel, [role=\"dialog\"]) button:not(.ceres-btn):not(:disabled):is(:hover, :active)",
+      "properties": [
+        "transform"
+      ],
+      "context": [
+        "@media (prefers-reduced-motion: reduce)"
+      ],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "html:not(.ceres-lw-le-1279) .controls-row .csel-trigger",
+      "properties": [
+        "min-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "html:not(.ceres-lw-le-1279) #plot-table-scroll",
+      "properties": [
+        "inline-size",
+        "max-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true,
+      "reference": "(4b8b5c03)"
+    },
+    {
+      "selector": ".badge-filter-opt",
+      "properties": [
+        "background",
+        "block-size",
+        "border",
+        "border-radius",
+        "color",
+        "cursor",
+        "inline-size",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 badge status filter tray — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".badge-filter-opt:hover, .badge-filter-opt:focus-visible, .badge-filter-opt.is-active",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 badge status filter tray — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": "is(.badge-bar-head, .badge-filter-opt) .hdr-ic .f",
+      "properties": [
+        "fill"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 badge status filter tray — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": "is(.badge-bar-head, .badge-filter-opt) .hdr-ic .d",
+      "properties": [
+        "fill",
+        "stroke"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 badge status filter tray — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": "is(.badge-bar-head, .badge-filter-opt) .hdr-ic .a.h",
+      "properties": [
+        "fill",
+        "stroke"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 badge status filter tray — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": "root:not([data-theme]) :is(.badge-bar-head, .badge-filter-opt) .hdr-ic .a.h, [data-theme=\"alchemical\"] :is(.badge-bar-head, .badge-filter-opt) .hdr-ic .a.h",
+      "properties": [
+        "stroke"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 badge status filter tray — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".expand-retry-link",
+      "properties": [
+        "color",
+        "font-style",
+        "text-decoration"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": ".slot-hazard-panel.combine-dialog-panel",
+      "properties": [
+        "max-height",
+        "max-width",
+        "min-width",
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "approval": "maintainer chose one column on phones for the combine dialog ()",
+      "selector": ".slot-hazard-panel.combine-dialog-panel",
+      "properties": [
+        "max-height",
+        "max-width",
+        "min-width",
+        "width"
+      ],
+      "context": [
+        "@media (max-width: 600px)"
+      ],
+      "source": "ceres.css"
+    },
+    {
+      "selector": ".combine-stepper-val",
+      "properties": [
+        "font-weight",
+        "min-width",
+        "text-align"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".csel-trigger",
+      "properties": [
+        "min-width",
+        "text-align",
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": ".csel-list",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "box-shadow",
+        "font-size",
+        "max-height",
+        "max-width",
+        "min-width",
+        "padding",
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".csel-option",
+      "properties": [
+        "color",
+        "cursor",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option:hover, .csel-option.is-focused",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option.is-selected",
+      "properties": [
+        "color",
+        "font-weight"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-territory",
+      "properties": [
+        "font-weight"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-territory.territory-pristine-northwest",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-trigger.region-filled.territory-pristine-northwest",
+      "properties": [
+        "border-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": ".csel-option-territory.territory-broken-lands",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-territory.territory-land-of-prosperity",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-territory.territory-central-fire",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-territory.territory-wild-northeast",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-territory.territory-great-lowlands",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-territory.territory-shimmering-coasts",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-list .csel-option-territory:hover, .csel-list .csel-option-territory.is-focused",
+      "properties": [
+        "box-shadow"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain",
+      "properties": [
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain.terrain-river",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain.terrain-lake",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain.terrain-hills",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain.terrain-forest",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain.terrain-mountain",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain.terrain-jungle",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain.terrain-caldera",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain.terrain-plains",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain.terrain-swamp",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain.terrain-canyon",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain.terrain-desert",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain.terrain-tundra",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain.terrain-badlands",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain.terrain-bog",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain:hover, .csel-option-terrain.is-focused",
+      "properties": [
+        "box-shadow"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".csel-option-terrain.is-selected",
+      "properties": [
+        "box-shadow",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".editor-band .slot-grid :is(.slot-tile-cell, .asset-slot, .eos-permanent-frame[data-reveal-group=\"power\"])",
+      "properties": [
+        "border-radius",
+        "box-shadow",
+        "transition"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".editor-band .slot-grid :is(.slot-tile-cell, .asset-slot, .eos-permanent-frame[data-reveal-group=\"power\"]):has(.slot-tile.is-picker-focus)",
+      "properties": [
+        "box-shadow",
+        "transform"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".editor-band .slot-grid :is(.slot-tile-cell, .asset-slot, .eos-permanent-frame[data-reveal-group=\"power\"]):has(.slot-tile.is-empty)",
+      "properties": [
+        "box-shadow"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".terrain-affinity-badge[data-affinity-state=\"favoured\"]",
+      "properties": [
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".terrain-affinity-badge[data-affinity-state=\"penalised\"]",
+      "properties": [
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".terrain-affinity-badge",
+      "properties": [
+        "background",
+        "block-size",
+        "border-radius",
+        "box-shadow",
+        "color",
+        "inline-size",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".terrain-affinity-badge, .slot-tile",
+      "properties": [
+        "box-shadow"
+      ],
+      "context": [
+        "@media (forced-colors: active)"
+      ],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".terrain-affinity-badge::before, .terrain-affinity-badge::after",
+      "properties": [
+        "border-radius"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".terrain-affinity-badge::after",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".terrain-affinity-badge[data-affinity-state=\"favoured\"]::before",
+      "properties": [
+        "border"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".terrain-affinity-badge[data-affinity-state=\"penalised\"]::before",
+      "properties": [
+        "background",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".terrain-affinity-badge[data-affinity-state=\"unchanged\"]::before",
+      "properties": [
+        "border"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".terrain-affinity-badge[data-affinity-state=\"unknown\"]::before",
+      "properties": [
+        "border"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".power-satellite",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "color",
+        "height",
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": "button.power-satellite",
+      "properties": [
+        "cursor",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".power-satellite:hover, .power-satellite:focus-visible",
+      "properties": [
+        "border-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".power-satellite.is-empty",
+      "properties": [
+        "border-style"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".power-satellite-plus",
+      "properties": [
+        "font-size",
+        "line-height"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".power-satellite-label",
+      "properties": [
+        "height",
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile.is-empty.is-no-power",
+      "properties": [
+        "background-image",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile.is-empty.is-no-power:hover",
+      "properties": [
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "box-shadow",
+        "color",
+        "cursor",
+        "height",
+        "max-height",
+        "min-height",
+        "padding",
+        "text-align",
+        "transition",
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile:hover",
+      "properties": [
+        "border-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile.is-empty",
+      "properties": [
+        "background",
+        "border-style",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile.is-empty.is-unavailable",
+      "properties": [
+        "cursor",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile.is-view-only",
+      "properties": [
+        "cursor"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile.is-stage-ready::after, .slot-tile.is-stage-blocked::after, .slot-tile.is-stage-elsewhere::after, .power-satellite.is-power-required::after",
+      "properties": [
+        "border-radius",
+        "box-shadow",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".slot-tile.is-stage-ready::after, .slot-tile.is-stage-blocked::after, .slot-tile.is-stage-elsewhere::after, .power-satellite.is-power-required::after",
+      "properties": [
+        "opacity"
+      ],
+      "context": [
+        "@media (prefers-reduced-motion: reduce)"
+      ],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".slot-tile.is-pending-add",
+      "properties": [
+        "border-style"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile.is-pending-removal:not(.has-slot-art)",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile.is-art-pending",
+      "properties": [
+        "background",
+        "border-style"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".eos-portrait-fill.pick-fade.is-pick-done",
+      "properties": [
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": ".slot-tile.no-slot-art",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile-item.has-slot-art",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".power-satellite.is-empty",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-remove",
+      "properties": [
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": ".slot-ability-overflow",
+      "properties": [
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": ".slot-bloodline-badge",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "color",
+        "cursor",
+        "font-size",
+        "font-weight",
+        "line-height",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": ".slot-bloodline-badge.is-solo",
+      "properties": [
+        "border-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": "button.slot-bloodline-badge",
+      "properties": [
+        "appearance",
+        "cursor",
+        "font-family"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": "button.slot-bloodline-badge:hover, button.slot-bloodline-badge:focus-visible",
+      "properties": [
+        "border-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": ".slot-bloodline-badge.is-companion",
+      "properties": [
+        "border-color",
+        "border-style"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": ".op-preview-review > .op-review-ops summary",
+      "properties": [
+        "color",
+        "cursor",
+        "font-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".op-c-details summary",
+      "properties": [
+        "color",
+        "cursor",
+        "font-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".op-c-raw summary",
+      "properties": [
+        "color",
+        "cursor",
+        "font-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".picker-combine",
+      "properties": [
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".picker-combine-dash",
+      "properties": [
+        "color",
+        "font-size",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".candidate-card.is-collapsing",
+      "properties": [
+        "min-height",
+        "opacity",
+        "padding-block",
+        "transition"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-card.is-collapsing",
+      "properties": [
+        "transition"
+      ],
+      "context": [
+        "@media (prefers-reduced-motion: reduce)"
+      ],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".picker-sort-chips",
+      "properties": [
+        "min-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".picker-filters .csel-trigger",
+      "properties": [
+        "min-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".picker-filters .picker-clear-filters",
+      "properties": [
+        "text-decoration-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".picker-filters .picker-clear-filters:hover, .picker-filters .picker-clear-filters:focus-visible",
+      "properties": [
+        "text-decoration-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".picker-bar .picker-sort-chips",
+      "properties": [
+        "padding-left"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".picker-bar .picker-sort-chips.is-line-start",
+      "properties": [
+        "padding-left"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".picker-bar .terrain-affinity-badge",
+      "properties": [
+        "appearance",
+        "border",
+        "cursor",
+        "font",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".picker-bar .terrain-affinity-badge:hover",
+      "properties": [
+        "box-shadow"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".picker-bar .terrain-affinity-badge",
+      "properties": [
+        "transition"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".picker-bar .terrain-affinity:has(.is-selected) .terrain-affinity-badge:not(.is-selected)",
+      "properties": [
+        "filter",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".picker-bar .terrain-affinity:has(.is-selected) .terrain-affinity-badge:not(.is-selected):hover",
+      "properties": [
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-list.is-card-grid > .candidate-grid-card",
+      "properties": [
+        "min-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-grid-card",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "color",
+        "min-inline-size",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-grid-card[data-picker-action=\"choose\"]",
+      "properties": [
+        "cursor"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-grid-card[aria-disabled=\"true\"]",
+      "properties": [
+        "cursor",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-grid-card:not(:disabled):not([aria-disabled=\"true\"]):hover, .candidate-grid-card:not(:disabled):not([aria-disabled=\"true\"]):focus-within",
+      "properties": [
+        "background",
+        "border-color",
+        "box-shadow"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-grid-card.is-selected",
+      "properties": [
+        "border-color",
+        "box-shadow"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-grid-select",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "color",
+        "cursor",
+        "font",
+        "min-inline-size",
+        "padding",
+        "text-align"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-grid-select:focus-visible",
+      "properties": [
+        "border-radius"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-grid-select[disabled]",
+      "properties": [
+        "cursor",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-grid-rarity",
+      "properties": [
+        "font",
+        "padding-block",
+        "text-align"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".candidate-grid-rarity.is-unavailable:is(:disabled, [aria-disabled=\"true\"])",
+      "properties": [
+        "cursor",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".candidate-grid-rarity-icon",
+      "properties": [
+        "min-block-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".candidate-grid-rarity-count",
+      "properties": [
+        "color",
+        "font-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".candidate-grid-card:hover:not(:has(.candidate-detail-toggle:focus, .candidate-detail-pin:focus)) .candidate-grid-detail, .candidate-grid-card:has(.candidate-grid-select:focus-visible) .candidate-grid-detail, .candidate-grid-card.is-detail-open .candidate-grid-detail",
+      "properties": [
+        "opacity",
+        "transform"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".picker-view-switch",
+      "properties": [
+        "min-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".candidate-row",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "color",
+        "cursor",
+        "font",
+        "min-width",
+        "padding",
+        "text-align",
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-row-item",
+      "properties": [
+        "border-color",
+        "min-height",
+        "transition"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-row-item:hover",
+      "properties": [
+        "background",
+        "border-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-card",
+      "properties": [
+        "min-width",
+        "padding",
+        "transition"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-card:not(.candidate-grid-card)",
+      "properties": [
+        "min-height"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-card:not([aria-disabled]):hover",
+      "properties": [
+        "background",
+        "border-color",
+        "box-shadow"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-card[aria-disabled=\"true\"]",
+      "properties": [
+        "cursor"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-card:not([aria-disabled]):hover .candidate-art img",
+      "properties": [
+        "transform"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-card-details",
+      "properties": [
+        "min-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-primary",
+      "properties": [
+        "min-width",
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".candidate-list.is-card-grid > .candidate-grid-card",
+      "properties": [
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".candidate-card:not(.candidate-grid-card)",
+      "properties": [
+        "min-height"
+      ],
+      "context": [
+        "@container (max-width: 54rem)"
+      ],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".picker-filters label:not(.picker-toggle)",
+      "properties": [
+        "max-width",
+        "min-width"
+      ],
+      "context": [
+        "@container (max-width: 28rem)"
+      ],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".picker-filters .csel-wrap, .picker-filters .csel-trigger",
+      "properties": [
+        "max-width",
+        "width"
+      ],
+      "context": [
+        "@container (max-width: 28rem)"
+      ],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".ceres-pill-dismiss",
+      "properties": [
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".worksite-panel .hm-headr h2 .ch-plot-badge",
+      "properties": [
+        "font-size",
+        "font-weight"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".worksite-tile-option",
+      "properties": [
+        "color",
+        "cursor",
+        "font",
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".worksite-tile-option:hover, .worksite-tile-option:focus-visible",
+      "properties": [
+        "border-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".worksite-tile-option.is-selected",
+      "properties": [
+        "background",
+        "border-color",
+        "box-shadow"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".editor-band .slot-grid.is-textonly .slot-tile-cell",
+      "properties": [
+        "inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".eos-status button",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "color",
+        "cursor",
+        "font",
+        "font-size",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".slot-tile.is-picker-dimmed",
+      "properties": [
+        "border-color",
+        "box-shadow",
+        "filter",
+        "transition"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile.is-picker-focus",
+      "properties": [
+        "box-shadow",
+        "filter",
+        "opacity",
+        "transition"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile.is-picker-dimmed.is-staged, .slot-tile.is-picker-dimmed.is-cooling, .slot-tile.is-picker-dimmed.is-pending-removal",
+      "properties": [
+        "filter"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile.is-picker-dimmed, .slot-tile.is-picker-focus",
+      "properties": [
+        "transition"
+      ],
+      "context": [
+        "@media (prefers-reduced-motion: reduce)"
+      ],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile.is-picker-dimmed",
+      "properties": [
+        "filter",
+        "opacity"
+      ],
+      "context": [
+        "@media (forced-colors: active)"
+      ],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".slot-tile.is-picker-focus",
+      "properties": [
+        "box-shadow"
+      ],
+      "context": [
+        "@media (forced-colors: active)"
+      ],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".harvest-x",
+      "properties": [
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".hm-btn.is-primary",
+      "properties": [
+        "min-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".hm-btn.is-primary.is-off",
+      "properties": [
+        "max-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": "#worksite-modal-overlay .hm-foot > .hm-btns",
+      "properties": [
+        "inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "#worksite-modal-overlay .worksite-modal-sign > button",
+      "properties": [
+        "min-inline-size",
+        "min-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "#worksite-modal-overlay .worksite-modal-sign > .wallet-sign-pair > .hm-btn",
+      "properties": [
+        "min-inline-size",
+        "min-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2",
+      "reference": "v0.9.732"
+    },
+    {
+      "selector": ".worksite-modal-panel .hm-btn.worksite-modal-stage",
+      "properties": [
+        "min-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".hm-rhead",
+      "properties": [
+        "cursor",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".hm-rhead.is-static",
+      "properties": [
+        "cursor"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".hm-ops",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 5
+    },
+    {
+      "selector": ".hm-ops summary",
+      "properties": [
+        "color",
+        "cursor",
+        "font-size",
+        "font-weight"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".hm-rhead",
+      "properties": [
+        "block-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".hm-rhead.is-pick",
+      "properties": [
+        "cursor"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".hm-tax-id .ch-plot-badge",
+      "properties": [
+        "cursor"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 harvest tax row picture — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".hm-region.is-tax .hm-rhead",
+      "properties": [
+        "block-size",
+        "min-block-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".hm-rhead.is-pick:has(.hm-rcheck:disabled)",
+      "properties": [
+        "cursor",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": "button.slot-bulk.fill-action, .picker-bar-end .picker-keep-open.fill-action",
+      "properties": [
+        "background",
+        "border-color",
+        "color",
+        "font-weight"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 4
+    },
+    {
+      "selector": ".fill-action .hdr-ic .f",
+      "properties": [
+        "fill"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": ".fill-action .hdr-ic .d",
+      "properties": [
+        "fill",
+        "stroke"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": ".fill-action .hdr-ic .a.h",
+      "properties": [
+        "fill",
+        "stroke"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": "root:not([data-theme]) .fill-action .hdr-ic .a.h, [data-theme=\"alchemical\"] .fill-action .hdr-ic .a.h",
+      "properties": [
+        "stroke"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 3
+    },
+    {
+      "selector": ".editor-band .slot-grid .slot-tile",
+      "properties": [
+        "transition"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".editor-band .slot-grid .slot-tile",
+      "properties": [
+        "transition"
+      ],
+      "context": [
+        "@media (prefers-reduced-motion: reduce)"
+      ],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".editor-band .slot-grid .slot-tile",
+      "properties": [
+        "box-shadow"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".editor-band .slot-grid .slot-tile.has-slot-art",
+      "properties": [
+        "border-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".editor-band .slot-grid .slot-tile.has-slot-art:hover",
+      "properties": [
+        "border-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".editor-band .slot-grid .slot-tile.is-picker-focus",
+      "properties": [
+        "box-shadow"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".editor-band .slot-grid :is(.slot-tile-cell, .asset-slot, .eos-permanent-frame[data-reveal-group=\"power\"]):has(.slot-tile.is-picker-focus)",
+      "properties": [
+        "transform"
+      ],
+      "context": [
+        "@media (prefers-reduced-motion: reduce)"
+      ],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".editor-band .power-satellite",
+      "properties": [
+        "height",
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".editor-band .power-satellite-plus",
+      "properties": [
+        "font-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".editor-band .slot-tile-cell > .slot-tile",
+      "properties": [
+        "height",
+        "max-height",
+        "min-height",
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".editor-band .slot-ability-overflow",
+      "properties": [
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "html:not(.ceres-lw-le-1279) .editor-band .slot-tile",
+      "properties": [
+        "border-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "is(.editor-band, .mobile-plot-affinity) .terrain-affinity-badge",
+      "properties": [
+        "block-size",
+        "inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "is(.editor-band, .mobile-plot-affinity) .terrain-affinity-badge[data-affinity-state=\"favoured\"]::before",
+      "properties": [
+        "border-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "is(.editor-band, .mobile-plot-affinity) .terrain-affinity-badge[data-affinity-state=\"penalised\"]::before",
+      "properties": [
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "is(.editor-band, .mobile-plot-affinity) .terrain-affinity-badge:is([data-affinity-state=\"unchanged\"], [data-affinity-state=\"unknown\"])::before",
+      "properties": [
+        "border-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".editor-band .editor-splinter-affinity .terrain-affinity-badge",
+      "properties": [
+        "appearance",
+        "background",
+        "block-size",
+        "border",
+        "font",
+        "inline-size",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true,
+      "reference": "(f27e217c)"
+    },
+    {
+      "selector": ".editor-band .editor-splinter-affinity .terrain-affinity-badge",
+      "properties": [
+        "cursor"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true,
+      "reference": "(f27e217c)"
+    },
+    {
+      "selector": ".editor-band .editor-splinter-affinity .terrain-affinity-badge[data-affinity-state=\"favoured\"]::before",
+      "properties": [
+        "border-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".editor-band .editor-splinter-affinity .terrain-affinity-badge[data-affinity-state=\"penalised\"]::before",
+      "properties": [
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".editor-band .editor-splinter-affinity .terrain-affinity-badge:is([data-affinity-state=\"unchanged\"], [data-affinity-state=\"unknown\"])::before",
+      "properties": [
+        "border-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "box-shadow",
+        "min-inline-size",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card.row-alt",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-label",
+      "properties": [
+        "color",
+        "font-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-region",
+      "properties": [
+        "color",
+        "font-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-marks",
+      "properties": [
+        "min-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-terrain",
+      "properties": [
+        "color",
+        "font-size",
+        "min-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-empty",
+      "properties": [
+        "color",
+        "text-align"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": "html.ceres-lw-le-1279 .controls-row .board-filter-field .csel-trigger",
+      "properties": [
+        "inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6
+    },
+    {
+      "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-action-bar",
+      "properties": [
+        "background",
+        "box-shadow",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6
+    },
+    {
+      "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card",
+      "properties": [
+        "cursor"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet-head strong:not(.ch-plot-badge)",
+      "properties": [
+        "color",
+        "font-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "approval": "Existing master rule; clean-master guard failure reproduced during"
+    },
+    {
+      "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-tile",
+      "properties": [
+        "cursor"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-tile, html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet button.power-satellite",
+      "properties": [
+        "cursor"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6
+    },
+    {
+      "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-filter-field, html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-filter-field input, html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-filter-field .csel-wrap, html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-filter-field .csel-trigger",
+      "properties": [
+        "max-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6
+    },
+    {
+      "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279 #changes-overlay .hm-foot .wallet-sign-pair > .hm-btn",
+      "properties": [
+        "min-inline-size",
+        "padding-inline"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "approval": "Existing master rule; clean-master guard failure reproduced during"
+    },
+    {
+      "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279.ceres-lw-le-767 #changes-overlay .hm-foot .wallet-sign-pair > .hm-btn",
+      "properties": [
+        "font-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "approval": "Existing master rule; clean-master guard failure reproduced during"
+    },
+    {
+      "selector": ".wallet-tab--icon",
+      "properties": [
+        "background",
+        "border",
+        "cursor",
+        "height",
+        "min-height",
+        "opacity",
+        "padding",
+        "transition"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".wallet-tab--icon:hover",
+      "properties": [
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".wallet-tab--icon[aria-selected=\"true\"]",
+      "properties": [
+        "background",
+        "border-radius",
+        "box-shadow",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".wallet-tab--icon[disabled]",
+      "properties": [
+        "cursor",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".dec-region, .dec-review",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".dec-drawer-content :is(.wallet-card, .dec-region, .dec-review)",
+      "properties": [
+        "box-shadow"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "approval": "Existing master rule; clean-master guard failure reproduced during"
+    },
+    {
+      "selector": ".dec-drawer-content :is(.wallet-card, .dec-region, .dec-review):not(.is-confirmed):not(.is-failed)",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "approval": "Existing master rule; clean-master guard failure reproduced during"
+    },
+    {
+      "selector": ".wallet-zero-regions > summary",
+      "properties": [
+        "color",
+        "cursor"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 wallet zero-region disclosure — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".hr-field .csel-trigger",
+      "properties": [
+        "inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hr-rule, .hr-step, .hr-review",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "min-inline-size",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hr-actions > button, .hr-rule-bottom > button",
+      "properties": [
+        "inline-size"
+      ],
+      "context": [
+        "@media (max-width: 600px)"
+      ],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hr-reserves",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "min-inline-size",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hr-reserves > summary",
+      "properties": [
+        "color",
+        "cursor",
+        "font-weight"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".dec-region h3 .ch-plot-badge",
+      "properties": [
+        "cursor"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "a:any-link:not(.ceres-btn):not(.ch-plot-badge)",
+      "properties": [
+        "color",
+        "text-decoration-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "a:any-link:not(.ceres-btn):not(.ch-plot-badge):hover",
+      "properties": [
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hr-step.is-confirmed",
+      "properties": [
+        "background",
+        "border-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hr-step.is-confirmed .hr-step-status",
+      "properties": [
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hr-step.is-pending",
+      "properties": [
+        "border-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hr-step.is-pending .hr-step-status",
+      "properties": [
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hr-step.is-failed",
+      "properties": [
+        "border-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hr-step.is-failed .hr-step-status",
+      "properties": [
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hr-step.is-ready",
+      "properties": [
+        "border-color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hr-step-status",
+      "properties": [
+        "font-weight"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hr-fields .hr-field > input[type=\"number\"], .hr-fields .ceres-btn.csel-trigger, .hr-fields > .ceres-btn[data-control-density]",
+      "properties": [
+        "min-block-size"
+      ],
+      "context": [
+        "@media (max-width: 600px)"
+      ],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hr-bundle-action > button, .hr-bundle-action > .wallet-sign-pair",
+      "properties": [
+        "inline-size"
+      ],
+      "context": [
+        "@media (max-width: 600px)"
+      ],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true,
+      "reference": "v0.9.732"
+    },
+    {
+      "selector": ".harvest-routing .hr-remove",
+      "properties": [
+        "background",
+        "color"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".harvest-routing .hr-remove",
+      "properties": [
+        "min-inline-size"
+      ],
+      "context": [
+        "@media (max-width: 600px)"
+      ],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".csel-option.is-disabled",
+      "properties": [
+        "cursor",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 disabled duplicate route options — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": "#harvest-modal-overlay .hm-ops",
+      "properties": [
+        "min-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "#harvest-modal-overlay .hm-rhead",
+      "properties": [
+        "block-size",
+        "min-block-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hm-balance-details > summary",
+      "properties": [
+        "color",
+        "cursor",
+        "font-weight"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".dec-region-summary",
+      "properties": [
+        "cursor",
+        "min-block-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".dec-region-summary:focus-visible",
+      "properties": [
+        "border-radius"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".dec-region .ch-plot-badge",
+      "properties": [
+        "font-family",
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "#harvest-modal-overlay .hm-regions .hm-rname .ch-plot-badge",
+      "properties": [
+        "font-family",
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".hm-rhead.is-static",
+      "properties": [
+        "cursor"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2"
+    },
+    {
+      "selector": ".hr-rule .hr-fields .csel-trigger",
+      "properties": [
+        "inline-size",
+        "max-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": "#harvest-modal-overlay:has(.harvest-receipt-summary) .harvest-x svg",
+      "properties": [
+        "block-size",
+        "fill",
+        "inline-size",
+        "stroke"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 harvest receipt close control — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": "button.r3-route-chip",
+      "properties": [
+        "cursor",
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 // routing route list — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-route-chip .ch-plot-badge",
+      "properties": [
+        "font-size",
+        "min-height",
+        "min-width",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 // routing route list — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-flow-source .ch-plot-badge",
+      "properties": [
+        "min-height",
+        "min-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 routing run flow plaques — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-member .ch-plot-badge",
+      "properties": [
+        "min-height",
+        "min-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 routing run member plaques — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-window .r3-flow-source .ch-plot-badge",
+      "properties": [
+        "min-block-size",
+        "min-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 routing run flow plaques — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-edit .csel-trigger, .r3-edit input, .r3-edit strong, .r3-edit > button",
+      "properties": [
+        "block-size",
+        "min-block-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-edit .csel-trigger",
+      "properties": [
+        "min-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-edit .csel-value .ch-plot-badge",
+      "properties": [
+        "font-size",
+        "min-block-size",
+        "min-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-edit .csel-value",
+      "properties": [
+        "min-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-edit--lp .csel-wrap, .r3-edit--lp .csel-trigger",
+      "properties": [
+        "inline-size",
+        "max-inline-size",
+        "min-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-flow-source .ch-plot-badge, .r3-window .r3-flow-source .ch-plot-badge",
+      "properties": [
+        "min-block-size",
+        "min-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 routing run flow plaques — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-edit .csel-trigger, .r3-edit .ceres-wide-input, .r3-edit > button, .r3-protected-setting .ceres-wide-input",
+      "properties": [
+        "block-size",
+        "font-size",
+        "min-block-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-edit .board-filter-field .ceres-btn.csel-trigger",
+      "properties": [
+        "padding-inline",
+        "text-align"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-edit .board-filter-field .csel-value",
+      "properties": [
+        "min-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-edit .board-filter-field .csel-trigger",
+      "properties": [
+        "block-size",
+        "min-block-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-edit .board-filter-field .csel-value-text",
+      "properties": [
+        "text-align"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".ceres-pill-action-row",
+      "properties": [
+        "min-height",
+        "min-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 plot warning pill actions — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".ceres-pill-action-slot",
+      "properties": [
+        "min-width",
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 plot warning pill actions — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".ceres-pill-action-slot .ceres-pill-action",
+      "properties": [
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 plot warning pill actions — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".ceres-pill-action-row .ceres-pill-action",
+      "properties": [
+        "max-width"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 plot warning pill actions — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": "is(td.plot-cell, .csel-option-territory, .csel-trigger.region-filled).territory-land-of-prosperity",
+      "properties": [
+        "font-weight"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "temporary",
+      "expiry_phase": 6,
+      "placeholder": true
+    },
+    {
+      "selector": ".r3-edit .csel-wrap, .r3-edit .board-filter-field .csel-trigger",
+      "properties": [
+        "inline-size",
+        "max-inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".plot-warning-find-icon",
+      "properties": [
+        "block-size",
+        "inline-size"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "reviewed": "2026-09-28 plot warning find icon — maintainer-requested, shipped and checked on the rig"
+    },
+    {
+      "selector": ".r3-pre-harvest",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "color",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "approval": "Existing master rule; clean-master guard failure reproduced during"
+    },
+    {
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "approval": "approved per-card tick and plan step icons",
+      "selector": ".chain-step-details > summary",
+      "properties": [
+        "color",
+        "cursor",
+        "font-size",
+        "font-weight"
+      ],
+      "context": [],
+      "source": "ceres.css"
+    },
+    {
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "approval": "approved per-card tick and plan step icons",
+      "selector": ".is-plan-mode .combine-dialog-panel",
+      "properties": [
+        "max-height",
+        "min-width",
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css"
+    },
+    {
+      "kind": "exception",
+      "expiry_phase": "E1",
+      "approval": "approved plan-mode layout and Upgrade beside Combine in the picker",
+      "selector": ".candidate-grid-tools:has([data-upgrade-action]) .picker-combine",
+      "properties": [
+        "width"
+      ],
+      "context": [],
+      "source": "ceres.css"
+    },
+    {
+      "selector": ".slot-tile.is-stage-planned::after",
+      "properties": [
+        "border-radius",
+        "box-shadow",
+        "opacity"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E3",
+      "reason": "Owner-approved planned-card gold glow reuses staged tile geometry."
+    },
+    {
+      "selector": ".slot-tile.is-stage-planned::after",
+      "properties": [
+        "opacity"
+      ],
+      "context": [
+        "@media (prefers-reduced-motion: reduce)"
+      ],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E3",
+      "reason": "existing reduced-motion static staged glow."
+    },
+    {
+      "selector": ".theme-picker",
+      "properties": [
+        "background",
+        "border",
+        "border-radius",
+        "box-shadow",
+        "cursor",
+        "height",
+        "padding",
+        "transition"
+      ],
+      "context": [],
+      "source": "canonical.css",
+      "kind": "exception",
+      "expiry_phase": "E1"
+    },
+    {
+      "selector": ".theme-picker.is-open",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "canonical.css",
+      "kind": "exception",
+      "expiry_phase": "E1"
+    },
+    {
+      "selector": ".theme-picker:hover",
+      "properties": [
+        "box-shadow"
+      ],
+      "context": [],
+      "source": "canonical.css",
+      "kind": "exception",
+      "expiry_phase": "E1"
+    },
+    {
+      "selector": ".theme-tray",
+      "properties": [
+        "max-width",
+        "transition"
+      ],
+      "context": [],
+      "source": "canonical.css",
+      "kind": "exception",
+      "expiry_phase": "E1"
+    },
+    {
+      "selector": ".theme-picker.is-open .theme-tray",
+      "properties": [
+        "max-width"
+      ],
+      "context": [],
+      "source": "canonical.css",
+      "kind": "exception",
+      "expiry_phase": "E1"
+    },
+    {
+      "selector": ".theme-opt",
+      "properties": [
+        "background",
+        "border",
+        "color",
+        "cursor",
+        "font-size",
+        "height",
+        "line-height",
+        "min-height",
+        "opacity",
+        "padding",
+        "transition"
+      ],
+      "context": [],
+      "source": "canonical.css",
+      "kind": "exception",
+      "expiry_phase": "E1"
+    },
+    {
+      "selector": ".theme-opt:hover",
+      "properties": [
+        "opacity"
+      ],
+      "context": [],
+      "source": "canonical.css",
+      "kind": "exception",
+      "expiry_phase": "E1"
+    },
+    {
+      "selector": ".theme-opt--active",
+      "properties": [
+        "opacity"
+      ],
+      "context": [],
+      "source": "canonical.css",
+      "kind": "exception",
+      "expiry_phase": "E1"
+    },
+    {
+      "selector": ".theme-toggle",
+      "properties": [
+        "background",
+        "border-radius",
+        "box-shadow",
+        "height",
+        "opacity"
+      ],
+      "context": [],
+      "source": "canonical.css",
+      "kind": "exception",
+      "expiry_phase": "E1"
+    }
+  ],
+  "placeholder_note": "71 legacy_allowlist entries (2026-09-20 regen, //) carry \"placeholder\": true and kind=\"temporary\"/expiry_phase=6 because no prior manifest entry shared their selector; the and additions cite reviewed landing references, with the editor reset and worksite wallet-pair rule recorded as reviewed exceptions."
+}

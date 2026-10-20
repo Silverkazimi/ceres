@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ceres — Style guide</title>
+<link rel="icon" type="image/png" sizes="100x100" href="/static/favicon.png">
+<!-- the living style guide. Read only, no data reads, no account: every component is drawn from the REAL
+ stylesheets below with static sample data (styleguide.js). Same pre-paint blocks as the Cards page (cards.html):
+ the theme (here ?theme= first, then the saved Iris theme), and the width classes. -->
+<script>(function(){var r=document.documentElement,t=null;try{t=new URLSearchParams(location.search).get('theme');}catch(_){}if(['dark','light','wood','alchemical'].indexOf(t)<0){try{t=localStorage.getItem('ceres:theme');}catch(_){t=null;}}r.setAttribute('data-theme',['dark','light','wood','alchemical'].indexOf(t)<0?'dark':t);}());</script>
+<script>(function(){
+  var root=document.documentElement;
+  function apply(){
+    root.style.scrollbarGutter='stable';
+    var probe=document.createElement('div');
+    probe.style.cssText='display:block;height:0;margin:0;padding:0;border:0;visibility:hidden';
+    root.appendChild(probe);
+    var s=window.innerWidth-probe.getBoundingClientRect().width;
+    root.removeChild(probe);
+    var w=window.innerWidth-s;
+    var rem=parseFloat(getComputedStyle(root).fontSize)||16, e=w*16/rem;
+    root.style.setProperty('--ceres-vw',(w/100)+'px');
+    root.style.setProperty('--ceres-vh',(window.innerHeight/100)+'px');
+    root.classList.toggle('ceres-lw-le-1919',e<=1919);
+    root.classList.toggle('ceres-lw-le-1759',e<=1759);
+    root.classList.toggle('ceres-lw-le-1659',e<=1659);
+    root.classList.toggle('ceres-lw-le-1439',e<=1439);
+    root.classList.toggle('ceres-lw-le-1279',e<=1279);
+    root.classList.toggle('ceres-lw-le-767',e<=767);
+    root.classList.toggle('ceres-lw-ge-1400',e>=1400);
+    root.classList.toggle('ceres-lw-le-1099',e<=1099);
+    root.classList.toggle('ceres-lw-le-544',e<=544);
+    root.classList.toggle('ceres-lw-le-960',e<=960);
+    window.ceresScale={design:w,apply:apply};
+  }
+  apply();
+  window.addEventListener('resize',apply);
+}());</script>
+<!-- The real Ceres stylesheets, exactly as the board (index.html) and the Cards page (cards.html) link them. -->
+<link rel="stylesheet" href="/static/ceres.css?v={{CERES_VERSION}}">
+<link rel="stylesheet" href="/static/buttons.css?v={{CERES_VERSION}}">
+<link rel="stylesheet" href="/static/badge-colours.css?v={{CERES_VERSION}}">
+<link rel="stylesheet" href="/static/mobile-plot.css?v={{CERES_VERSION}}">
+<link rel="stylesheet" href="/static/card-browser.css?v={{CERES_VERSION}}">
+<link rel="stylesheet" href="/static/card-checkout.css?v={{CERES_VERSION}}"><!-- imports wallet.css -->
+<!-- The page's own layout only (section frames, theme panes); never a component rule. -->
+<link rel="stylesheet" href="/static/styleguide.css?v={{CERES_VERSION}}">
+</head>
+<body class="card-browser sg-page">
+<header class="board-header">
+  <span class="board-logo">
+    <a class="board-logo-link" href="/" aria-label="Ceres — back to the plots"><img class="board-logo-img" src="/static/assets/logos/ceres-logo-alchemical-header.png" width="225" height="150" alt="Ceres"></a>
+    <span class="board-version" id="board-version">v{{CERES_RELEASED_VERSION}}</span>{{CERES_LOCAL_MARKER}}
+  </span>
+  <div class="board-header-rows">
+  <div class="board-header-row">
+  <span class="sg-title">Style guide</span>
+  <!-- the Plots | Cards switcher, last as on both pages; neither half is this page. -->
+  <nav class="ceres-btn-group ceres-page-switch" data-control-density="header" aria-label="Plots or cards">
+    <a id="page-switch-plots" class="ceres-btn ceres-btn--choice" data-control-density="header" data-control-mode="icon" data-header-icon="plots" href="/" aria-label="Plots" data-tip="Plots"></a>
+    <a id="page-switch-cards" class="ceres-btn ceres-btn--choice" data-control-density="header" data-control-mode="icon" data-header-icon="cards" href="/cards" aria-label="Cards" data-tip="Cards"></a>
+  </nav>
+  </div>
+  </div>
+</header>
+<script src="/static/header-icons.js?v={{CERES_VERSION}}"></script>
+<div class="controls-row sg-controls" id="sg-controls">
+  <span class="sg-controls-label">Theme</span>
+  <span class="sg-theme-group" role="group" aria-label="Iris theme">
+  <button type="button" class="ceres-btn ceres-btn--choice" data-control-density="compact" data-sg-theme="dark" aria-pressed="false">Dark</button>
+  <button type="button" class="ceres-btn ceres-btn--choice" data-control-density="compact" data-sg-theme="light" aria-pressed="false">Light</button>
+  <button type="button" class="ceres-btn ceres-btn--choice" data-control-density="compact" data-sg-theme="wood" aria-pressed="false">Wood</button>
+  <button type="button" class="ceres-btn ceres-btn--choice" data-control-density="compact" data-sg-theme="alchemical" aria-pressed="false">Alchemical</button>
+  <button type="button" class="ceres-btn ceres-btn--choice" data-control-density="compact" data-sg-theme="all" aria-pressed="false">All four side by side</button>
+  </span>
+  <span class="controls-sep" aria-hidden="true"></span>
+  <label class="board-filter-field"><span class="sr-only">Jump to section</span><select id="sg-jump"><option value="">Jump to section</option></select></label>
+</div>
+<main class="sg-main" id="sg-main">
+  <p class="sg-intro">Every Ceres component, drawn from the real stylesheets with sample data. A section names the rules of
+    <code>library/ceres-ui-standards.md</code> it shows and the CSS classes it uses, so the written standard and this page
+    cross-reference. Hover and focus are live: point at a control or tab through it. Nothing on this page reads data,
+    signs or buys.</p>
+  <div id="sg-sections"></div>
+</main>
+<script type="module" src="/static/styleguide.js?v={{CERES_VERSION}}"></script>
+</body>
+</html>

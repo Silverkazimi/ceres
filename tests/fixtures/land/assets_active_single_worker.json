@@ -1,0 +1,65 @@
+{
+  "status": "success",
+  "data": {
+    "cards": [
+      {
+        "uid": "4C87D3EC16C4A063",
+        "card_detail_id": 998,
+        "player": "player0005",
+        "bcx": 30,
+        "gold": false,
+        "foil": 0,
+        "edition": 21,
+        "card_set": "land",
+        "delegated_to": null,
+        "rental_type": null,
+        "collection_power": 150,
+        "land_base_pp": "150.000",
+        "land_dec_stake_needed": 750,
+        "name": "Phlegmwrought",
+        "stake_start_date": "2026-07-20T20:49:03.000Z",
+        "slot": 1,
+        "stake_type_uid": "STK-LND-WKR",
+        "stake_ref_uid": "I-294-8bb3ce6436e586",
+        "base_pp_after_cap": "150.000",
+        "base_pp_after_cap_percentage": "1.000",
+        "total_construction_pp": "165.000",
+        "terrain_boost": "0.100",
+        "terrain_boost_pp": "15.000",
+        "dec_stake_needed": 750,
+        "deed_rarity_boost": "0.000",
+        "deed_rarity_boost_pp": "0.000",
+        "deed_status_token_boost": "1.000",
+        "deed_status_token_boost_pp": "165.000",
+        "runi_boost": "0.000",
+        "runi_boost_pp": "0.000",
+        "title_boost": "0.000",
+        "title_boost_pp": "0.000",
+        "totem_boost": "0.000",
+        "totem_boost_pp": "0.000",
+        "boost": "1.000",
+        "boost_pp": "165.000",
+        "total_harvest_pp": "330.000",
+        "work_per_hour": "0.0129030000",
+        "is_powered": true,
+        "card_abilities_boost": "0.000",
+        "card_abilities_boost_pp": "0.000",
+        "card_bloodlines_boost": "0.000",
+        "card_bloodlines_boost_pp": "0.000"
+      }
+    ],
+    "items": [
+      {
+        "uid": "5F2E1B10B9262CE239",
+        "item_detail_id": 322,
+        "player": "player0005",
+        "stake_start_date": "2026-07-20T20:49:03.000Z",
+        "stake_type_uid": "STK-LND-PCR",
+        "stake_ref_uid": "I-294-8bb3ce6436e586",
+        "stake_ref_id": null,
+        "name": "Power Core",
+        "boost": "0.000"
+      }
+    ]
+  }
+}

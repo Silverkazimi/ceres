@@ -1,0 +1,1132 @@
+/* mobile plot composition only. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-worksite {
+  position: relative;
+  isolation: isolate;
+  min-block-size: 0;
+  container-type: inline-size;
+  margin-block-end: 0.8rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg2);
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-worksite > .mobile-plot-worksite-art {
+  position: relative;
+  inset: auto;
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  aspect-ratio: 2 / 1;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-worksite-art::before {
+  background-size: auto 100%;
+  background-position: center var(--scene-y, 87%);
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-worksite-art .editor-worksite-art {
+  --mobile-art-height: 50cqi;
+  --mobile-art-inset: max(2.75rem, 7cqi);
+  --mobile-art-cx: calc((var(--art-l) + var(--art-r)) / 2);
+  --mobile-art-cy: calc((var(--art-t) + var(--art-base)) / 2);
+  --art-fit: min(
+    calc((100cqi - 2 * var(--mobile-art-inset)) / ((var(--art-r) - var(--art-l)) * var(--art-ratio, 2.4375))),
+    calc((var(--mobile-art-height) - 1.5rem) / (var(--art-base) - var(--art-t))));
+  inset: 0;
+  background-size: auto var(--art-fit);
+  background-position: left calc(50cqi - var(--mobile-art-cx) * var(--art-fit) * var(--art-ratio, 2.4375)) top calc(var(--mobile-art-height) / 2 - var(--mobile-art-cy) * var(--art-fit));
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-rate {
+  position: absolute;
+  inset: 0.5rem 0.5rem auto auto;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--heading);
+  font-variant-numeric: tabular-nums;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-rate small {
+  color: var(--meta);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-rate strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--heading);
+  font-size: 1rem;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-rate .resource-icon {
+  inline-size: 1.1rem;
+  block-size: 1.1rem;
+  margin: 0;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-affinity {
+  position: absolute;
+  inset: 0.5rem auto auto 0.5rem;
+  z-index: 2;
+  display: flex !important;
+  flex-direction: column;
+  inline-size: auto;
+  min-inline-size: 0;
+  block-size: auto;
+  padding: 0.3rem;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius);
+  background: var(--bg);
+  pointer-events: auto;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-harvest-band {
+  position: relative;
+  inset: auto;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 3.85rem;
+  border-block-start: 1px solid var(--border-bright);
+  background: var(--bg2);
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-harvest-band .mobile-plot-actions {
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  block-size: auto;
+  min-block-size: 0;
+  margin: 0;
+  padding: 0.3rem;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-harvest-worksite-name {
+  overflow: hidden;
+  max-inline-size: none;
+  color: var(--heading);
+  font-size: calc(0.65rem + 0.5cqi);
+  font-weight: 800;
+  line-height: 1;
+  text-overflow: ellipsis;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .editor-band {
+  background: var(--bg2);
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet.mobile-plot-sheet .editor-band .slot-group[data-group-id="worker"] > .slot-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-auto-flow: row;
+  align-items: start;
+  gap: 0.35rem;
+  padding: 0.75rem 0 0.5rem;
+  overflow: visible;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-group[data-group-id="worker"] > .slot-grid > .slot-tile-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-group[data-group-id="worker"] > .slot-grid .slot-tile {
+  inline-size: 100%;
+  block-size: auto;
+  min-block-size: 0;
+  max-block-size: none;
+  aspect-ratio: 6.7 / 9.4;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-worker-slot-label {
+  display: grid;
+  gap: 0.12rem;
+  margin-block-start: 0.3rem;
+  color: var(--body);
+  font-size: calc(100cqi * 11 / 107.2);
+  line-height: 1.15;
+  text-align: center;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-worker-slot-label strong {
+  color: var(--heading);
+  font-size: calc(100cqi * 12 / 107.2);
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-boostable-pp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.08rem;
+  margin-block-start: 0.3rem;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-boostable-pp .editor-base-pp-cell {
+  flex: none;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-boostable-pp small {
+  color: var(--meta);
+  font-size: calc(100cqi * 10 / 107.2);
+  font-weight: 700;
+  line-height: 1;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-assets {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 0.8rem;
+  padding: calc(0.75rem + 4cqi) 0.4rem 0.9rem;
+  border-block-start: 1px solid var(--border);
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-assets > * {
+  justify-self: center;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-total-pp {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0.8rem 0 0;
+}
+
+/* Base PP left of Total PP, one box each. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-pp-stat {
+  display: grid;
+  place-items: center;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0.8rem 0.4rem;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius);
+  background: var(--bg3);
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-total-pp dt {
+  color: var(--meta);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-total-pp dd {
+  margin: 0.15rem 0 0;
+  color: var(--heading);
+  font-size: 1.65rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* (table redesign version C): the phone plot detail sheet's "Resource flow"
+ block -- Food/hr plus consumed Wood/Stone/Iron, and one signed line for the plot's
+ produced resource. Same label-left/value-right row shape as the desktop harvest
+ modal's cost tables (#harvest-modal-overlay .hm-plot-costs td above). */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-resource-flow {
+  margin: 0.6rem 0 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg2);
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-resource-flow-title {
+  margin: 0 0 0.35rem;
+  color: var(--meta);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-resource-flow-rows {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-resource-flow-rows > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-resource-flow-rows dt {
+  color: var(--body);
+  font-size: 0.85rem;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-resource-flow-rows dd {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  color: var(--heading);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-picker-focus-region {
+  position: relative;
+  z-index: 4;
+  inline-size: 100%;
+  margin-block-end: 0.8rem;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-editor,
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-total-pp {
+  max-block-size: none;
+  opacity: 1;
+  transition: max-block-size 180ms ease-in, opacity 180ms ease-in, margin 180ms ease-in, padding 180ms ease-in;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet.is-picker-focused .slot-editor,
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet.is-picker-focused .mobile-plot-total-pp {
+  max-block-size: 0;
+  margin-block: 0;
+  padding-block: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet.is-picker-focused .mobile-picker-focus-region .candidate-list.is-card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-editor,
+  html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-total-pp {
+    transition: none;
+  }
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-assets > *,
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-assets .slot-power,
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-assets .slot-tile {
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-assets .slot-power,
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-assets .slot-tile {
+  block-size: auto;
+  aspect-ratio: 6.7 / 9.4;
+}
+
+/* Each mobile row fills its available width. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-grid > :not(.slot-grid-divider) {
+  inline-size: 100%;
+  min-inline-size: 0;
+  justify-self: stretch;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-grid .slot-power,
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-grid .slot-tile {
+  inline-size: 100%;
+  min-inline-size: 0;
+  block-size: auto;
+  min-block-size: 0;
+  max-block-size: none;
+  aspect-ratio: 6.7 / 9.4;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-worker-slot-label > *,
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-boostable-pp > * {
+  min-inline-size: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-worker-slot-label strong { font-size: inherit; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-assets > * { container-type: inline-size; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-rate small { font-size: calc(0.65rem + 0.3cqi); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-rate strong { font-size: calc(0.8rem + 0.7cqi); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-affinity {
+  top: 25cqi;
+  bottom: auto;
+  transform: translateY(-50%);
+  gap: 0.6cqi;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-affinity .terrain-affinity-badge {
+  flex: none;
+  inline-size: 4cqi;
+  block-size: 4cqi;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-affinity .splinter-icon { inline-size: 66.666667%; block-size: 66.666667%; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-bar :is(button, .csel-trigger, input[type="text"], input[type="search"], .picker-toggle) { box-sizing: border-box; }
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-bar .terrain-affinity-badge { min-inline-size: 2.75rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-filters { min-inline-size: 0; inline-size: 100%; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-filter-field { flex: 1 1 auto; min-inline-size: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-filter-field .csel-wrap { inline-size: 100%; min-inline-size: 0; }
+
+/* Phase G: the existing transaction flows occupy the available mobile sheet. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-action-bar { grid-template-columns: repeat(4, minmax(0, 1fr)); } /* Filters / Changes / Harvest / Wallet */
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay :is(.hm-headr, .hm-body, .hm-foot) {
+  padding-inline: max(0.8rem, env(safe-area-inset-left)) max(0.8rem, env(safe-area-inset-right));
+  min-inline-size: 0;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot,
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-run { flex-wrap: wrap; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-btns { inline-size: 100%; margin-inline-start: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-btn { flex: 1 1 auto; min-inline-size: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-rhead {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  padding: 0.7rem;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-rrec { grid-column: 2 / -1; grid-row: 2; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-status { grid-column: 3; grid-row: 1; white-space: normal; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-rname { min-inline-size: 0; overflow-wrap: anywhere; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-rname :is(b, small) { white-space: normal; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-rbody { padding-inline: 0.7rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-rgrid { display: block; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-rgrid-row:not(.is-head) { display: grid; grid-template-columns: minmax(0, 1fr); margin-block-end: 1rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-rgrid-row > [data-label] { overflow-wrap: anywhere; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-rgrid-row > [data-label]::before { content: attr(data-label); flex: 0 0 100%; color: var(--meta); font-size: 0.8rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-rgrid-row.is-head { display: block; position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-hint { overflow-wrap: anywhere; }
+/* Skip off-screen chunks instead of relaying out one giant grid per revealed card. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-list { display: block; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto calc(var(--card-group-tablet-rows) * 12.7rem - 0.7rem);
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-group + .plot-card-group { margin-block-start: 0.7rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279.ceres-lw-le-767 .plot-card-group {
+  grid-template-columns: minmax(0, 1fr);
+  contain-intrinsic-block-size: auto calc(var(--card-group-rows) * 12.7rem - 0.7rem);
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-group[data-group-id="worker"] { container-type: inline-size; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet.mobile-plot-sheet .editor-band .slot-group[data-group-id="worker"] > .slot-grid { padding-block-start: 5cqi; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-harvest-band {
+  --hv-pad: 0.35rem;
+  --hv-edge: 4px;
+  --hv-btn: 2.75rem;
+  --hv-h: auto;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-worker-slot-label { font-size: calc(0.4rem + 3cqi); }
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(#harvest-modal-overlay, #worksite-modal-overlay, #changes-overlay) .hm-foot { block-size: auto; flex-shrink: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-grid2 { grid-template-columns: minmax(0, 1fr); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-split { flex-wrap: wrap; gap: 0.7rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-card { min-inline-size: 0; padding: 0.7rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-mobile-signing { flex-basis: 100%; margin: 0; color: var(--body); font-size: 0.9rem; }
+
+/* Column flex basis must not replace the portrait's aspect-ratio height. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-tile { flex: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-assets .slot-power-large > .slot-tile { block-size: auto; aspect-ratio: 6.7 / 9.4; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-caption { padding-inline: 0.12rem; block-size: 48.5cqi; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-name {
+  font-size: max(0.75rem, 12cqi);
+  line-height: 1.1;
+  block-size: 2.2em;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-caption--long .slot-name { font-size: max(0.75rem, 12cqi); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-worker-slot-label { font-size: 0.6875rem; line-height: 1.2; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-worker-slot-label strong { white-space: normal; text-overflow: clip; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-boostable-pp small { display: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-boostable-pp .editor-base-pp-cell b { font-size: max(0.6875rem, 16cqi); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-assets { padding-block-end: 0.5rem; }
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-assets .slot-tile { min-block-size: 0; max-block-size: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-affinity .terrain-affinity-badge { inline-size: max(1.25rem, 4cqi); block-size: max(1.25rem, 4cqi); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-name { font-weight: 600; overflow-wrap: anywhere; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-caption { block-size: max(48.5cqi, 2rem); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-bar-title { flex-wrap: wrap; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-context { flex: 1 0 100%; white-space: normal; font-size: 0.8125rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-bar-end { display: grid; grid-template-columns: minmax(0, 1fr) auto; inline-size: 100%; gap: 0.5rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-keep-open { grid-column: 1; grid-row: 1; justify-content: center; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-close { grid-column: 2; grid-row: 1; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-sort-chips { grid-column: 1 / -1; grid-row: 2; padding: 0; border: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-sort-chips > button { flex: 1 1 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters { order: 4; inline-size: 100%; min-inline-size: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters > summary { padding: 0.75rem; border: 1px solid var(--border-bright); border-radius: var(--radius); color: var(--heading); font-size: 0.9rem; cursor: pointer; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters .picker-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; padding-block: 0.5rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters .picker-filter-field { display: block; inline-size: auto; flex: 1 1 auto; min-inline-size: min-content; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters .picker-filter-field input { box-sizing: border-box; inline-size: 100%; min-inline-size: 0; min-block-size: 2.75rem; font-size: 1rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters .terrain-affinity-scroll { grid-column: 1 / -1; }
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-name { font-family: Arial, sans-serif; letter-spacing: normal; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .editor-band > .editor-main { padding-inline: 0.45rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-caption { padding-inline: 0.08rem; }
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-name { overflow-wrap: normal; word-break: normal; flex-shrink: 0; transform-origin: center; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .picker-context { max-inline-size: none; max-width: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-boostable-pp .editor-base-pp-cell { padding-block: var(--ceres-pp-block-pad); padding-inline: 0; max-inline-size: 100%; }
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters [hidden] { display: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters .picker-filter-field:has([data-picker-filter="q"]) { grid-column: 1 / -1; }
+@media (orientation: landscape) {
+  html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-worksite > .mobile-plot-worksite-art { block-size: 45svh; aspect-ratio: auto; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-worksite-art .editor-worksite-art { --mobile-art-height: 45svh; }
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters .candidate-worker-affinity { grid-column: 1 / -1; overflow-x: auto; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters .candidate-worker-affinity .terrain-affinity { display: flex !important; position: static; flex-direction: row; transform: none; gap: 0.5rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters .terrain-affinity-badge { inline-size: 2.75rem; block-size: 2.75rem; }
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters .candidate-worker-affinity .terrain-affinity { block-size: auto; inline-size: max-content; min-inline-size: 100%; padding-block: 0.2rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .candidate-list.is-card-grid > .candidate-grid-card { --candidate-card-inline-pad: 0.3rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .candidate-grid-metric { align-items: center; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .candidate-grid-metric small { font-size: 0.625rem; letter-spacing: normal; text-transform: none; white-space: nowrap; }
+@media (orientation: landscape) {
+  html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-worksite-art::before { background-size: cover; }
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .candidate-name { display: block; inline-size: 100%; block-size: 2.4em; white-space: normal; text-overflow: clip; overflow-wrap: normal; font-size: 0.9375rem; line-height: 1.2; text-align: center; justify-self: center; align-self: center; }
+@media (orientation: landscape) {
+  html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-affinity { --eos-affinity-size: 5svh; top: 22.5svh; gap: 0.5svh; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-affinity .terrain-affinity-badge { inline-size: 5svh; block-size: 5svh; }
+}
+
+/* Keep the complete text row independent of the action buttons. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-harvest-band { flex-direction: column; gap: 0.45rem; padding: 0.65rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-harvest-band .mobile-plot-actions { order: 0; padding: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-rate { position: static; order: 1; flex-direction: row; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.2rem; border: 0; background: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-harvest-worksite-name { grid-column: 2; grid-row: 1; align-self: center; font-size: calc(0.8rem + 0.4cqi); line-height: 1.4; text-align: center; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-action {
+  pointer-events: auto;
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: 2.75rem;
+  margin-block-start: 0.4rem;
+  padding: 0.35rem 0.1rem;
+  font-size: max(0.6875rem, 10cqi);
+  line-height: 1.25;
+  white-space: normal;
+  touch-action: manipulation;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-assets .mobile-slot-action { font-size: max(0.8125rem, 6cqi); }
+
+/* The eight slots share one scale and one three-column rhythm. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet.mobile-plot-sheet .editor-band .slot-group[data-group-id="worker"] > .slot-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: calc(9cqi + 0.5rem) 0.75rem;
+  padding: 9cqi 0 0.5rem;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-grid > :not(.slot-grid-divider) { grid-column: span 2; container-type: inline-size; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-grid > :nth-child(7) { grid-column: 2 / span 2; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-grid > :nth-child(8) { grid-column: 4 / span 2; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-grid .slot-power-large > .slot-tile { block-size: auto; min-block-size: 0; max-block-size: none; aspect-ratio: 6.7 / 9.4; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-affinity { --eos-affinity-size: max(1.25rem, 4cqi); background: none; border: 0; box-shadow: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-action[hidden] { display: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-remove { display: none; }
+/* phone keeps native tile units and an independent lower metadata queue. */
+html.ceres-lw-le-1919.ceres-lw-le-1279:not(.bf-off) .mobile-plot-sheet .slot-tile .slot-tags { left: 3px; right: 3px; bottom: 2px; height: var(--bf-h); gap: var(--bf-gap); }
+html.ceres-lw-le-1919.ceres-lw-le-1279:not(.bf-off) .mobile-plot-sheet .slot-tile .slot-tags :is(.slot-kin-badge, .slot-flag) { block-size: var(--bf-h); min-height: var(--bf-h); font-size: var(--bf-size); }
+html.ceres-lw-le-1919.ceres-lw-le-1279:not(.bf-off) .mobile-plot-sheet .slot-tile .slot-tags .slot-kin-badge { padding-inline: var(--bf-pad); }
+html.ceres-lw-le-1919.ceres-lw-le-1279:not(.bf-off) .mobile-plot-sheet .slot-tile .slot-tags .slot-kin-icon { inline-size: calc(11 * var(--bf-u)); block-size: calc(11 * var(--bf-u)); }
+html.ceres-lw-le-1919.ceres-lw-le-1279:not(.bf-off) .mobile-plot-sheet .slot-tile .slot-tags .slot-flag,
+html.ceres-lw-le-1919.ceres-lw-le-1279:not(.bf-off) .mobile-plot-sheet .slot-tile .slot-tags .slot-kin-badge.is-icon-only,
+html.ceres-lw-le-1919.ceres-lw-le-1279:not(.bf-off) .mobile-plot-sheet .slot-tile .slot-tags .slot-kin-more { inline-size: var(--bf-h); block-size: var(--bf-h); padding: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279:not(.bf-off) .mobile-plot-sheet .slot-tile .slot-wait-badge:not(.is-planned) { block-size: var(--bf-h); min-height: var(--bf-h); font-size: var(--bf-size); }
+html.ceres-lw-le-1919.ceres-lw-le-1279:not(.bf-off) .mobile-plot-sheet .slot-tile .slot-wait-badge.is-planned { block-size: 24px; min-height: 24px; line-height: 10px; }
+html.ceres-lw-le-1919.ceres-lw-le-1279:not(.bf-off) .mobile-plot-sheet.mobile-plot-sheet .editor-band .slot-group[data-group-id="worker"] > .slot-grid:has(.slot-ability-arc.is-vov) { padding-top: max(9cqi, 58px); row-gap: max(calc(9cqi + 0.5rem), 72px); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-details { padding: 0.85rem; border: 1px solid var(--border-bright); border-radius: var(--radius); background: var(--bg2); margin-block-end: 0.85rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-details-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 0.85rem; align-items: start; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-details-top > .slot-tile { container-type: inline-size; inline-size: 100%; block-size: auto; min-block-size: 0; max-block-size: none; aspect-ratio: 6.7 / 9.4; pointer-events: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-details-content { min-inline-size: 0; font-size: 0.875rem; line-height: 1.5; overflow-wrap: anywhere; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-details-content h3 { margin: 0; font-size: 1.1rem; color: var(--heading); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-details-content p { margin: 0.4rem 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-details .tip-items { display: grid; grid-template-columns: 1.1rem minmax(0, 1fr) minmax(0, 1fr); gap: 0.3rem; align-items: start; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-details :is(.tip-inline-icon, .tip-item-icon) { inline-size: 1.1rem; block-size: 1.1rem; object-fit: contain; vertical-align: middle; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-details .tip-group { grid-column: 1 / -1; font-weight: 700; margin-block-start: 0.5rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-details .tip-item-effect.is-line { grid-column: 2 / -1; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet [data-terrain="bonus"] .mobile-detail-boostable { color: var(--ok); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet [data-terrain="penalty"] .mobile-detail-boostable { color: var(--danger); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-details-actions { display: flex; gap: 0.65rem; margin-block-start: 0.8rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-details-actions > * { flex: 1; inline-size: auto; margin: 0; font-size: 0.875rem; min-block-size: 2.75rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet.is-picker-focused .mobile-plot-worksite { display: none; }
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-detail-metrics { margin-block-start: 0.85rem; font-size: 0.9rem; line-height: 1.5; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-slot-detail-metrics .tip-items { grid-template-columns: 1.1rem minmax(0, 1fr) minmax(0, 1.6fr); }
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-detail-level {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 1.5em;
+  padding: 0.12em 0.2em;
+  border: 1px solid var(--border-bright);
+  border-radius: 0.25rem;
+  background: var(--bg3);
+  color: var(--heading);
+  font-size: 0.85em;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* Mobile keeps the desktop harvest composition, beneath the centered worksite. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-harvest-band {
+  --hv-pad: .35rem; --hv-edge: 4px; --hv-btn: 2.75rem;
+  --hv-h: calc(var(--hv-btn) + 2 * var(--hv-pad) + var(--hv-edge) + 2px);
+  padding: .35rem;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-editor-footer > .harvest-bar {
+  position: relative; inset: auto; transform: none; inline-size: auto; max-inline-size: 100%;
+  block-size: auto; min-block-size: var(--hv-h); flex: 0 1 auto;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .harvest-bar-mid {
+  min-inline-size: 0; inline-size: auto; flex: 0 1 auto;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .harvest-bar-stack { min-inline-size: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .harvest-bar-amt { block-size: auto; font-size: 1.25rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .harvest-bar-state { white-space: normal; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-detail-level-foil { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-detail-level-foil .foil-badge { position: static; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .candidate-abilities:has(> :nth-child(5)) {
+  display: grid; grid-template-columns: repeat(var(--mobile-ability-columns), minmax(0, 1fr)); gap: var(--icon-gap);
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters .picker-sort-chips { grid-row: auto; grid-column: 1 / -1; }
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters .candidate-worker-affinity,
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters .picker-filter-field:has([data-picker-filter="q"]),
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters .picker-sort-chips { flex-basis: 100%; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-picker-filters .picker-filter-field:has(select) { flex: 1 0 max-content; }
+
+/* one inset around the tile grid; row clearance still accommodates the power control. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet {
+  --mobile-plot-tile-inset: 0.85rem;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .editor-band > .editor-main {
+  padding-block: 0;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet.mobile-plot-sheet .editor-band .slot-group[data-group-id="worker"] > .slot-grid {
+  padding-block: var(--mobile-plot-tile-inset);
+}
+
+/* reserve both touch controls before sizing the amount on narrow screens. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-editor-footer > .harvest-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .harvest-bar-mid {
+  max-inline-size: 100%;
+  gap: 0.35rem;
+  padding: 0;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .harvest-bar-res {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  flex: none;
+  margin-inline-start: 0 !important;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .harvest-bar-amt {
+  font-size: clamp(0.875rem, 5cqi, 1.25rem);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .harvest-bar.is-building .harvest-bar-mid {
+  grid-column: 1 / -1;
+  padding: 0;
+}
+
+/* single-plot receipt and labelled costs stay readable without horizontal scrolling. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-receipt { display: grid; grid-template-columns: 2.75rem minmax(0, 1fr); gap: .75rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-hero-ic { inline-size: 2.75rem; block-size: 2.75rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-hero { min-inline-size: 0; margin: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-hero-amt { font-size: clamp(1.35rem, 6vw, 2rem); overflow-wrap: anywhere; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-hero-amt small { display: block; margin: .2rem 0 0; font-size: .9rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-split { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); gap: .45rem; inline-size: 100%; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-split > div { display: flex; flex-direction: row; justify-content: space-between; gap: .6rem; align-items: baseline; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-split dd { font-size: 1rem; overflow-wrap: anywhere; min-inline-size: 0; text-align: end; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-plot-costs thead { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-plot-costs,
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-plot-costs tbody,
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-plot-costs tr { display: block; inline-size: 100%; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-plot-costs tr + tr { margin-block-start: .75rem; padding-block-start: .75rem; border-block-start: 1px solid var(--border); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-plot-costs td { display: flex; justify-content: space-between; gap: .75rem; padding: .3rem 0; border: 0; overflow-wrap: anywhere; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-plot-costs td[data-label]::before { content: attr(data-label); flex: 1; text-align: start; color: var(--body); font-size: .85rem; font-weight: 600; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel:not(.is-batch) .hm-plot-costs td:first-child { padding-block-end: .5rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-routing { inline-size: 100%; max-inline-size: none; align-self: stretch; }
+
+/* Batch harvest rows retain every figure instead of squeezing desktop tracks. */
+@media (max-width: 1279px) {
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel.is-batch .hm-statusline { block-size: auto; min-block-size: 3.4rem; padding: .75rem; overflow: visible; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel.is-batch .hm-rhead { grid-template-columns: 1.25rem minmax(0, 1fr); block-size: auto; min-block-size: 0; gap: .5rem; padding: .75rem; overflow: visible; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel.is-batch .hm-rhead > :first-child { grid-column: 1; grid-row: 1; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel.is-batch .hm-rname { grid-column: 2; grid-row: 1; min-inline-size: 0; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel.is-batch .hm-rname :is(b, small) { white-space: normal; overflow-wrap: anywhere; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel.is-batch .hm-rrec { grid-column: 2; grid-row: 2; max-block-size: none; overflow: visible; gap: .5rem .8rem; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel.is-batch .hm-status { grid-column: 2; grid-row: 3; justify-self: start; min-inline-size: 0; max-inline-size: 100%; white-space: normal; text-align: start; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel.is-batch .hm-rbody { padding: .25rem .75rem .75rem; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel.is-batch .hm-skel { max-inline-size: 100%; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel.is-batch .hm-tok { flex-wrap: wrap; min-inline-size: 0; max-inline-size: 100%; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel.is-batch .hm-tok b { overflow-wrap: anywhere; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel.is-batch .hm-tax-kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-region-costs, html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-region-costs tbody { display: block; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-region-costs thead { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-region-costs tr { display: grid; gap: .4rem; padding-block: .6rem; border-bottom: 1px solid var(--border); }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-region-costs td { display: flex; justify-content: space-between; gap: .75rem; padding: 0; border: 0; min-inline-size: 0; text-align: end; overflow-wrap: anywhere; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-region-costs td::before { content: attr(data-label); color: var(--body); font-weight: 500; text-align: start; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot { flex-wrap: wrap; gap: .6rem; padding-block-start: .75rem; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot .hm-note { flex: 1 0 100%; white-space: normal; overflow: visible; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot .hm-btns { display: flex; flex-wrap: wrap; inline-size: 100%; margin: 0; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot .hm-btns > button { flex: 1 1 auto; min-inline-size: 0; }
+  /* the wallet swapper stays glued to the Sign button as a pair, stacking with it
+ rather than being split apart by the row's own wrap. */
+  html.ceres-lw-le-1919.ceres-lw-le-1279 .hm-foot .hm-btns > .wallet-sign-pair, html.ceres-lw-le-1919.ceres-lw-le-1279 .hr-bundle-action > .wallet-sign-pair { flex: 1 1 100%; min-inline-size: 0; }
+  html.ceres-lw-le-1919.ceres-lw-le-1279 .hm-foot .hm-btns > .wallet-sign-pair > button, html.ceres-lw-le-1919.ceres-lw-le-1279 .hr-bundle-action > .wallet-sign-pair > button { flex: 1 1 auto; min-inline-size: 0; }
+}
+
+/* Quiet plots reserve both controls before allowing the worksite message to wrap. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-editor-footer > .harvest-bar.is-quiet {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-editor-footer > .harvest-bar.is-quiet:has(.harvest-bar-power) {
+  grid-template-columns: auto auto minmax(0, 1fr);
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .harvest-bar.is-quiet .harvest-bar-state {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Keep the terrain on the page header; text gets local contrast instead of hiding the scene. */
+/* (; "improve the badge with the plot number, region, territory and worksite name"): the board header's landing
+ band behind the sheet head; the plot number is the board card's territory plate, the rest are frosted chips. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-sheet-head {
+  align-items: flex-start;
+  background-image: linear-gradient(color-mix(in srgb, var(--shadow) 18%, transparent), color-mix(in srgb, var(--shadow) 18%, transparent)), url('assets/ui/ceres-header-phone.webp');
+  background-size: cover;
+  background-position: center 50%;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-sheet-head > div {
+  display: grid;
+  justify-items: start;
+  gap: 0.4rem;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-sheet-head .mobile-plot-sheet-plate {
+  display: inline-flex;
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: default;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--shadow) 55%, transparent);
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-sheet-head #mobile-plot-sheet-subtitle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0;
+  overflow: visible;
+  white-space: normal;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-sheet-head .mobile-plot-sheet-chip {
+  display: inline-block;
+  margin: 0;
+  padding: 0.12rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--hi) 22%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--shadow) 50%, transparent);
+  color: var(--hi);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 #changes-overlay .ch-table:has([data-planner-dismiss]),
+html.ceres-lw-le-1919.ceres-lw-le-1279 #changes-overlay .ch-table:has([data-planner-dismiss]) tbody {
+  display: block;
+  inline-size: 100%;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 #changes-overlay .ch-table:has([data-planner-dismiss]) colgroup {
+  display: none;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 #changes-overlay .ch-table:has([data-planner-dismiss]) tr {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.6rem;
+  padding-block: 0.75rem;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 #changes-overlay .ch-table:has([data-planner-dismiss]) td {
+  display: block;
+  min-inline-size: 0;
+  inline-size: auto;
+  padding: 0;
+  border: 0;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 #changes-overlay .ch-table:has([data-planner-dismiss]) .ch-status {
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* (2026-09-19, the owner: "...the logo larger on mobile"): this file
+ loads AFTER ceres.css and wins the cascade for this selector, so the +25%
+ bump is applied here, against the real live size (3.75rem/60px), not the
+ dead 2.8rem ceres.css once carried: 3.75rem * 1.25 = 4.6875rem (75px). */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .board-logo-img { block-size: 4.6875rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .board-header .player-avatar {
+  inline-size: 3.25rem;
+  block-size: 3.25rem;
+}
+/* the field stops stretching to fill the row; min-block-size/
+ box-sizing hold the 40px touch target.
+ (2026-09-20, the owner: "On mobile the player input is too short"):
+ the old 9ch cap only rendered ~5 visible characters after padding, cutting
+ a typical Hive name by a character or two -- widened to a target of 8.5rem
+ (still capped there, not filling the row) so a normal ~12-char Hive name
+ is fully readable. `.board-header-row` is pinned to `inline-size: 100%`
+ at this tier (below), so at 360px CSS px the field, avatar and go-button
+ no longer all fit at their preferred sizes -- `flex: 1 1 8.5rem` with
+ `min-inline-size: 0` (not `flex: 0 0 auto`, which refuses to shrink at
+ all and overflowed the header by ~11px) lets ONLY the field give up width
+ to stay on-screen; `.player-switch` below gets the matching shrink
+ permission so the deficit can reach the field instead of stopping at the
+ switch's own box. The avatar (`flex: none`) and the go button (its own
+ `--ceres-control-min-inline` floor) do not move. `max-inline-size: 8.5rem`
+ keeps it exactly at that width whenever 360px's ~11px deficit is absent
+ (390/412 and up). Avatar, logo and button geometry are otherwise
+ untouched. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .board-header .player-switch {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .board-header .player-input {
+  flex: 1 1 8.5rem;
+  min-inline-size: 0;
+  max-inline-size: 8.5rem;
+  min-block-size: 2.75rem; /* a 44 px touch target */
+  box-sizing: border-box;
+}
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 #changes-overlay .ch-table:has([data-planner-dismiss]) .ch-link {
+  max-inline-size: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* illustrated identities over quiet, readable financial metrics. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card { padding: 0; overflow: hidden; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-head { position: relative; isolation: isolate; display: grid; gap: .5rem; padding: .85rem; min-block-size: 0; background: var(--bg); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-scene { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: center 65%; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-head::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, color-mix(in srgb, var(--shadow) 72%, transparent), color-mix(in srgb, var(--shadow) 28%, transparent)), linear-gradient(0deg, var(--bg2), transparent 70%); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-identity { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-label { font-size: 1.12rem; text-shadow: 0 1px 3px var(--shadow); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-identity .ch-plot-badge { font-size: 1.12rem; font-weight: 800; white-space: nowrap; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-classification { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem .85rem; font-size: .76rem; text-transform: capitalize; color: var(--heading); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-classification > span { display: inline-flex; gap: .3rem; align-items: center; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-classification :is(.rarity-gem, .type-mark, .splinter-icon) { width: 1.1rem; height: 1.1rem; object-fit: contain; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-marks { justify-content: flex-start; flex-wrap: wrap; font-size: .76rem; gap: .4rem .85rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-worksite { gap: .3rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-stats { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); margin: 0; padding: .65rem .85rem; gap: .7rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-stats > div { background: transparent; padding: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-stats dd { font-size: 1.05rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-stats > div:first-child dd { font-size: 1.3rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-badges { margin: 0; padding: 0 .85rem .7rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-badges .badge-row { display: flex; flex-wrap: wrap; gap: .25rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-badges .badge-property { border-style: solid; background: transparent; opacity: .85; }
+
+/* Equal tracks keep both detail rows aligned regardless of label length. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card :is(.plot-card-classification, .plot-card-marks) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: .5rem .8rem;
+  align-items: start;
+  justify-content: normal;
+  font-size: .76rem;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card :is(.plot-card-classification, .plot-card-marks) > span {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  min-inline-size: 0;
+  white-space: normal;
+  line-height: 1.4;
+}
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card :is(.plot-card-classification, .plot-card-marks) > span > :first-child {
+  flex: 0 0 1.1rem;
+  inline-size: 1.1rem;
+  block-size: 1.1rem;
+  margin: 0;
+  object-fit: contain;
+}
+
+/* the tab row scrolls (was cutting labels off mid-word with no affordance) with a
+ right-edge fade and snap points instead of hard-clipping the last label. */
+/* review fix: an ::after fade positioned absolutely inside the scrolling nav itself
+ scrolls away with the content instead of staying pinned to the visible right edge -- a mask
+ on the nav's own box is defined in the border-box's coordinate system, so it stays put
+ regardless of scroll offset. Only the mask's alpha (opaque -> transparent) matters, so a theme
+ token at the opaque end is equivalent to any other opaque colour there -- the colour gate stays
+ satisfied without hardcoding black. */
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-slot-detail-metrics .tip-item-icon { vertical-align: top; margin-block-start: .1rem; }
+
+/* (;
+ "Terrain and worksite image is a must"; "wide pops more"): one art card per row -- the terrain with its worksite
+ building standing in it and a rarity-coloured frame. On the art: the plot plaque, the rarity gem on a hard shadow
+ (no chip), the worksite and terrain, and Harvest/hr and Total PP on a shadow. Badges are an opt-in overlay. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card-group, html.ceres-lw-le-1919.ceres-lw-le-1279.ceres-lw-le-767 .plot-card-group { grid-template-columns: minmax(0, 1fr); gap: .6rem; contain-intrinsic-block-size: auto calc(var(--card-group-rows) * 10.1rem - .6rem); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card.plot-tile { --rar: var(--meta); display: block; padding: 0; overflow: hidden; border: 1.5px solid color-mix(in srgb, var(--rar) 80%, transparent); border-radius: 12px; background: var(--bg2); box-shadow: 0 0 0 1px color-mix(in srgb, var(--rar) 22%, transparent), 0 6px 16px -8px color-mix(in srgb, var(--rar) 70%, transparent); }
+/* the phone plot view's artwork carries the board card's rarity corner. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-worksite { --rar: var(--meta); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.plot-tile, .mobile-plot-worksite).rarity-rare { --rar: var(--info); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.plot-tile, .mobile-plot-worksite).rarity-epic { --rar: var(--orchid); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.plot-tile, .mobile-plot-worksite).rarity-legendary { --rar: var(--gold); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.plot-tile, .mobile-plot-worksite).rarity-mythic { --rar: var(--danger); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-tile-art { position: relative; container-type: size; block-size: 9.5rem; background: var(--tile-terrain, none) center 72% / cover no-repeat, var(--bg3); }
+/* A low shade under the figures only; the art above stays bright. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-tile-art::after { content: ''; position: absolute; inset: auto 0 0; z-index: 2; block-size: 46%; background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--shadow) 62%, transparent)); pointer-events: none; }
+/* The building stands centred on the art, as tall as the card allows without leaving it on any side. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-tile-building { --fit: min(calc(80cqh / (var(--b-base, 1) - var(--b-top, 0))), calc(94cqw / ((var(--b-r, 1) - var(--b-l, 0)) * var(--b-ratio, 1))));
+  position: absolute; inset: 0; z-index: 1; background-image: var(--tile-building, none); background-repeat: no-repeat; background-size: auto var(--fit);
+  background-position: left calc(50cqw - var(--b-cx, .5) * var(--fit) * var(--b-ratio, 1)) top calc(88cqh - var(--b-base, 1) * var(--fit)); filter: drop-shadow(0 3px 5px color-mix(in srgb, var(--shadow) 55%, transparent)); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-tile-id { position: absolute; inset-block-start: .5rem; inset-inline-start: .5rem; z-index: 3; font-size: 1rem; font-weight: 800; padding: .12rem .45rem; box-shadow: 0 2px 6px color-mix(in srgb, var(--shadow) 55%, transparent); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.plot-card, .mobile-plot-worksite) .plot-tile-marks { position: absolute; inset-block-start: .5rem; inset-inline-end: .55rem; z-index: 3; display: flex; padding: 0; background: none; font-size: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.plot-card, .mobile-plot-worksite) .plot-tile-marks :is(img, svg, .rarity-gem) { inline-size: 1.6rem; block-size: 1.6rem; margin: 0; object-fit: contain; filter: drop-shadow(2px 2px 0 var(--shadow)); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card.plot-tile .plot-card-stats { position: absolute; inset: auto .6rem .45rem; z-index: 3; display: flex; justify-content: space-between; align-items: flex-end; gap: .75rem; margin: 0; padding: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card.plot-tile .plot-card-stats > div { display: flex; flex-direction: column; align-items: flex-start; gap: 0; min-inline-size: 0; padding: 0; background: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card.plot-tile .plot-card-stats > div:last-child { align-items: flex-end; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card.plot-tile .plot-card-stats :is(dt, dd) { text-shadow: 0 1px 2px var(--shadow), 0 0 8px var(--shadow); white-space: nowrap; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card.plot-tile .plot-card-stats dt { color: var(--heading); font-size: .7rem; font-weight: 700; text-transform: uppercase; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card.plot-tile .plot-card-stats dd { display: inline-flex; align-items: center; gap: .2rem; margin: 0; color: var(--heading); font-size: 1.05rem; font-weight: 800; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card.plot-tile .plot-card-stats dd img { inline-size: 1rem; block-size: 1rem; filter: drop-shadow(0 1px 1px var(--shadow)); }
+/* Badges: an opt-in overlay under the plaque (html.ceres-card-badges), never on the card by default. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-tile-badges { display: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279.ceres-card-badges .plot-tile-badges { position: absolute; inset: 2.35rem 2.6rem auto .5rem; z-index: 3; display: block; margin: 0; padding: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279.ceres-card-badges .plot-tile-badges .badge-row { display: flex; flex-wrap: wrap; gap: .2rem; }
+/* Badges over the art need their own backing to stay readable on bright terrain. */
+html.ceres-lw-le-1919.ceres-lw-le-1279.ceres-card-badges .plot-tile-badges .badge-row > * { opacity: 1; background: color-mix(in srgb, var(--bg) 84%, transparent); box-shadow: 0 1px 3px color-mix(in srgb, var(--shadow) 60%, transparent); }
+/* round 3 (; "Improve the shadow for the text"). The gem sits in a corner piece cut from the card's own
+ rarity frame: a bevelled triangle in the rarity colour with a lit edge, the gem glowing inside it. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.plot-card, .mobile-plot-worksite) .plot-tile-marks { inset-block-start: 0; inset-inline-end: 0; inline-size: 3.9rem; block-size: 3.9rem; display: block; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.plot-card, .mobile-plot-worksite) .plot-tile-marks::before { content: ''; position: absolute; inset: 0; clip-path: polygon(0 0, 100% 0, 100% 100%);
+  background: linear-gradient(225deg, color-mix(in srgb, var(--rar) 55%, var(--hi)) 0%, var(--rar) 34%, color-mix(in srgb, var(--rar) 55%, var(--shadow)) 72%); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.plot-card, .mobile-plot-worksite) .plot-tile-marks::after { content: ''; position: absolute; inset: 0; clip-path: polygon(0 0, 100% 100%, 100% calc(100% - 3px), 3px 0);
+  background: linear-gradient(225deg, color-mix(in srgb, var(--hi) 70%, transparent), color-mix(in srgb, var(--rar) 40%, var(--hi))); filter: drop-shadow(0 0 3px var(--rar)); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.plot-card, .mobile-plot-worksite) .plot-tile-marks :is(img, svg, .rarity-gem) { position: absolute; inset-block-start: .42rem; inset-inline-end: .42rem; z-index: 1; inline-size: 1.45rem; block-size: 1.45rem;
+  filter: drop-shadow(1.5px 1.5px 0 var(--shadow)) drop-shadow(0 0 5px color-mix(in srgb, var(--hi) 55%, transparent)); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card .plot-tile-id { inset-block-start: .55rem; }
+/* Text shadow: a crisp 1px edge plus a wide soft halo, over a deeper bottom shade. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-tile-art::after { block-size: 52%; background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--shadow) 30%, transparent) 40%, color-mix(in srgb, var(--shadow) 75%, transparent)); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-card.plot-tile .plot-card-stats :is(dt, dd) { text-shadow: 0 1px 0 var(--shadow), 0 0 2px var(--shadow), 0 2px 10px var(--shadow); }
+html.ceres-lw-le-1919.ceres-lw-le-1279.ceres-card-badges .plot-tile-badges { inset-inline-end: 4.2rem; }
+/* The gem is set in a dark socket with a lit rim, so a gold gem still reads on the gold corner. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.plot-card, .mobile-plot-worksite) .plot-tile-marks :is(img, svg, .rarity-gem) { box-sizing: border-box; padding: 3px; border-radius: 50%; inline-size: 1.7rem; block-size: 1.7rem; inset-block-start: .3rem; inset-inline-end: .3rem;
+  background: radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--shadow) 45%, var(--rar)), var(--shadow) 75%);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--rar) 55%, var(--hi)), inset 0 1px 2px color-mix(in srgb, var(--shadow) 80%, transparent), 1.5px 1.5px 0 var(--shadow);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--rar) 70%, transparent)); }
+
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-head-status { block-size: 2.4rem; white-space: normal; text-overflow: clip; overflow-wrap: anywhere; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-rcheck-hit { display: inline-grid; place-items: center; min-inline-size: 44px; min-block-size: 44px; margin: -13px; cursor: pointer; }
+/* round 4: the terrain and the building's full scene
+ share one frame, sized so the building fills ~74% of the card height, and moved so the building's measured centre is
+ the card's centre and its ground line sits near the bottom. Left of the frame the terrain continues as its own mirror
+ image, which joins seamlessly. Cards without a full scene (Keep, Castle) keep the placed-building fallback. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-tile-scene { display: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-tile-art:is([style*="--tile-plate"]) { background: var(--bg3); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-tile-art:is([style*="--tile-plate"]) .plot-tile-scene { --ih: calc(74cqh / (var(--p-base) - var(--p-top))); --iw: calc(var(--ih) * 2.6168);
+  position: absolute; display: block; z-index: 1; inline-size: var(--iw); block-size: var(--ih); inset-inline-start: calc(50cqw - var(--p-cx) * var(--iw)); inset-block-start: calc(93cqh - var(--p-base) * var(--ih));
+  background: var(--tile-plate) 0 0 / 100% 100% no-repeat, var(--tile-terrain) 0 0 / 100% 100% no-repeat; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-tile-art:is([style*="--tile-plate"]) .plot-tile-scene::before { content: ''; position: absolute; inset-block: 0; inset-inline-end: calc(100% - 1px); inline-size: 100%;
+  background: var(--tile-terrain) 0 0 / 100% 100% no-repeat; transform: scaleX(-1); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .plot-tile-art:is([style*="--tile-plate"]) .plot-tile-building { display: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.plot-card, .mobile-plot-worksite) .plot-tile-marks::before { opacity: .55; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.plot-card, .mobile-plot-worksite) .plot-tile-marks :is(img, svg, .rarity-gem) {
+  background: radial-gradient(circle at 38% 32%, color-mix(in srgb, var(--primary) 55%, var(--hi)), var(--primary) 55%, color-mix(in srgb, var(--primary) 55%, var(--shadow)) 100%);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--primary) 45%, var(--hi)), inset 0 1px 2px color-mix(in srgb, var(--shadow) 60%, transparent), 1.5px 1.5px 0 var(--shadow);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--primary) 70%, transparent)); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-action-dec { inline-size: 1.35rem; block-size: 1.35rem; object-fit: contain; }
+/* wider corner, and a drop shadow on the corner's own shape (set on the wrapper so the clip
+ does not cut it off). */
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.plot-card, .mobile-plot-worksite) .plot-tile-marks { inline-size: 4.6rem; block-size: 4.6rem; filter: drop-shadow(-2px 3px 4px color-mix(in srgb, var(--shadow) 70%, transparent)); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 header.board-header { position: relative; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .scroll-top-btn { position: fixed; inset-inline-end: max(.75rem, env(safe-area-inset-right)); inset-block-end: calc(5.1rem + env(safe-area-inset-bottom)); z-index: 21;
+  inline-size: 2.9rem; block-size: 2.9rem; min-block-size: 2.9rem; padding: 0; border-radius: 50%; border-color: var(--primary);
+  background: color-mix(in srgb, var(--bg2) 88%, transparent); box-shadow: 0 0 12px -2px var(--primary), 0 4px 10px color-mix(in srgb, var(--shadow) 60%, transparent); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .scroll-top-btn[hidden] { display: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .scroll-top-btn .ceres-chevron { transform: rotate(180deg); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .scroll-top-btn .ceres-chevron { inline-size: 1.25rem; block-size: 1.25rem; }
+/* a dark socket in
+ the page background colour, rimmed in the card's rarity colour. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.plot-card, .mobile-plot-worksite) .plot-tile-marks :is(img, svg, .rarity-gem) {
+  background: radial-gradient(circle at 38% 32%, color-mix(in srgb, var(--bg) 82%, var(--hi)), var(--bg) 70%);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--rar) 70%, var(--hi)), inset 0 1px 2px color-mix(in srgb, var(--shadow) 70%, transparent), 1.5px 1.5px 0 var(--shadow);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--rar) 60%, transparent)); }
+/* while the wallet is open the page behind it cannot scroll, and the wallet's own list never hands its scroll on. */
+html.ceres-lw-le-1919.ceres-lw-le-1279:has(#regional-dec-drawer[open]), html.ceres-lw-le-1919.ceres-lw-le-1279:has(#regional-dec-drawer[open]) body { overflow: hidden; overscroll-behavior: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #regional-dec-drawer, html.ceres-lw-le-1919.ceres-lw-le-1279 #regional-dec-drawer .dec-drawer-content { overscroll-behavior: contain; }
+/* the resource tabs are one
+ row of 44 px icon buttons in the Iris slider strip, sliding sideways when they do not all fit, instead of a wrapped
+ grid. (the bottom bar has Wallet). */
+html.ceres-lw-le-1919.ceres-lw-le-1279 #regional-dec-drawer .wallet-tabs--icons { display: flex; flex-wrap: nowrap; gap: 0; margin: .5rem 1rem .6rem; padding: 0 4px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; scroll-snap-type: x proximity; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #regional-dec-drawer .wallet-tabs--icons::-webkit-scrollbar { display: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #regional-dec-drawer .wallet-tab--icon { flex: 0 0 44px; inline-size: 44px; block-size: 44px; min-block-size: 44px; padding: 0; display: inline-grid; place-items: center; scroll-snap-align: center; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #regional-dec-button { display: none; }
+/* the LP swap on a phone. The desktop two-column box is too narrow at 390, so it stacks: the label, the four
+ percent buttons across the full width, the resource beside its amount field, then the balance/region line wrapping. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .wallet-swap-box:has(> .wallet-swap-asset > .wallet-swap-amount) { grid-template-columns: auto minmax(0, 1fr); row-gap: .45rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .wallet-swap-box .wallet-swap-pcts { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .3rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .wallet-swap-box .wallet-swap-pcts > .ceres-btn { min-inline-size: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .wallet-swap-sub, html.ceres-lw-le-1919.ceres-lw-le-1279 .wallet-swap-where { flex-wrap: wrap; row-gap: .35rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .wallet-swap-where .csel-wrap, html.ceres-lw-le-1919.ceres-lw-le-1279 .wallet-swap-where .csel-trigger { max-inline-size: 100%; }
+/* a 1170x279 band of the landing wallpaper (mountains, valley, farm), 46 KB, instead of a random terrain. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 header.board-header { --hdr-scene: url('assets/ui/ceres-header-phone.webp'); background-position: center, center, center 50%; }
+/* . On the phone Harvest is part of
+ the page: the page scrolls (the browser bar can hide), the board and bottom bar step aside while it is open, the header
+ scrolls away, and only the wallet + sign row stays pinned at the bottom. */
+html.ceres-lw-le-1919.ceres-lw-le-1279:has(#harvest-modal-overlay:not([hidden])) :is(#board-main, header.board-header, #mobile-action-bar, #scroll-top-btn) { display: none !important; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay:not([hidden]) { position: relative; inset: auto; display: block; min-block-size: 100dvh; overflow: visible; background: var(--bg); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel { position: static; display: block; inline-size: 100%; max-inline-size: none; max-block-size: none; block-size: auto; margin: 0; overflow: visible; border: 0; border-radius: 0; box-shadow: none; transform: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-body { overflow: visible; max-block-size: none; block-size: auto; padding: .6rem .75rem 1rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-headr { position: static; padding: .55rem .75rem .45rem; gap: .5rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-headr h2 { font-size: 1.25rem; line-height: 1.2; margin: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-headr :is(p, .hm-sub, small, h2 + *) { font-size: .75rem; margin: .1rem 0 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot { position: sticky; inset-block-end: 0; z-index: 5; padding: .5rem .75rem calc(.5rem + env(safe-area-inset-bottom)); background: var(--bg2); box-shadow: 0 -6px 14px -8px var(--shadow); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot .hm-note { font-size: .75rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot [data-hm="close"] { display: none; }
+/* Resources: each region is its plaque line, then its resources as desktop-style tiles, two per row; resources a region
+ does not have take no room, so the list grows to any number of resources. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay :is(.hm-batch-region-line, .hm-batch-ledger-line) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .4rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay :is(.hm-batch-region-line, .hm-batch-ledger-line) > .hm-batch-viewport { grid-column: 1 / -1; grid-row: 2; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-viewport { inline-size: auto; max-inline-size: none; overflow: visible; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .35rem; inline-size: auto; min-inline-size: 0; transform: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-badge.is-empty { display: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-badge { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .35rem; inline-size: auto; min-inline-size: 0; min-block-size: 2.4rem; padding: .25rem .5rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-badge .hm-batch-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .8rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-badge .hm-batch-number { font-size: .8rem; font-weight: 700; white-space: nowrap; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-badge .hm-batch-icon img { inline-size: 1.1rem; block-size: 1.1rem; }
+/* Tiles name the resource above its amount, so large amounts never squeeze the name ("Gr…"); the Total header keeps
+ "Show costs" on the title line with the status below. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-badge { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "icon name" "icon number"; row-gap: 0; column-gap: .45rem; min-block-size: 2.7rem; padding: .3rem .55rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-badge .hm-batch-icon { grid-area: icon; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-badge .hm-batch-name { grid-area: name; font-size: .75rem; color: var(--meta); line-height: 1.15; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-badge .hm-batch-number { grid-area: number; font-size: .9rem; line-height: 1.2; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-badge .hm-batch-icon img { inline-size: 1.4rem; block-size: 1.4rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-total-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .35rem .5rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-total-head > :not(strong, .hm-batch-costs, h3):not(:first-child) { grid-column: 1 / -1; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-total { padding: .6rem .65rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-headr p { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-headr > div { min-inline-size: 0; }
+/* Total header: title and "Show costs" on one line; the status line takes room only when it says something. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-total-head > h3 { grid-area: 1 / 1; margin: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-total-head > .hm-batch-costs { grid-area: 1 / 2; inline-size: auto; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-total-head > .hm-batch-head-status { grid-area: 2 / 1 / 3 / 3; block-size: auto; min-block-size: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-total-head > .hm-batch-head-status:empty { display: none; }
+/* The wallet + sign row sits at the screen's bottom even when the content is short, and nothing is left below it. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-panel { display: flex; flex-direction: column; min-block-size: 100dvh; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-body { flex: 1 0 auto; }
+html.ceres-lw-le-1919.ceres-lw-le-1279:has(#harvest-modal-overlay:not([hidden])) body { padding-block-end: 0; }
+/* Region plaques keep their own width beside the tick box (they stretched across the row in Harvest → Regions). */
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-leading { display: inline-flex; align-items: center; gap: .5rem; justify-self: start; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay :is(.hm-batch-region-line, .hm-batch-ledger-line) .hm-batch-plaque { inline-size: auto; min-inline-size: 0; justify-self: start; }
+/* the phone drops the explanatory tail. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-headr .hm-sub-more { display: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-headr p { text-overflow: clip; }
+/* tile text (, then "Yes, no name is great"): one line --
+ the resource icon names it, the amount sits right; the name stays for screen readers. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-badge { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "icon number"; min-block-size: 2.4rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-badge .hm-batch-name { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-badge { position: relative; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-batch-badge .hm-batch-number { justify-self: end; font-size: .95rem; }
+/* phone routing polish. One route per row on one line with normal plaques;
+ the review heading's note under the title; the form in two columns (Resource | %, Route kind | Slippage); the footer's
+ Back and main action on one row; a 44 px protected-DEC field. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-route-index { grid-template-columns: minmax(0, 1fr); max-block-size: none; gap: .35rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-route-chip { min-block-size: 2.75rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-route-index .r3-route-name { white-space: nowrap; min-inline-size: 0; overflow: hidden; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay :is(.r3-route-chip, .r3-flow-source, .r3-member) .ch-plot-badge { inline-size: auto; min-inline-size: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-stage-head { flex-direction: column; align-items: flex-start; gap: .1rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-stage-head > span { font-size: .75rem; color: var(--meta); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-edit, html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-edit--lp { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem .5rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-edit > label:first-child { grid-column: 1 / -1; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-edit > :is(button, .r3-allocation-note, .r3-moved-note) { grid-column: 1 / -1; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-edit--lp > label:nth-of-type(4) { grid-column: 1 / -1; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-protected-setting .ceres-wide-input { min-block-size: 44px; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot:has(> [data-hm="routing-back"]) { display: flex; flex-wrap: nowrap; align-items: center; gap: .5rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot > [data-hm="routing-back"] { flex: 0 0 auto; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot > .r3-modal-actions { flex: 1 1 auto; display: flex; gap: .5rem; min-inline-size: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot > .r3-modal-actions > * { flex: 1 1 auto; min-inline-size: 0; }
+/* the routing footer is two rows (Back + Add route, then wallet + Sign) instead of three stacked buttons squeezed beside Back. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot:has(> [data-hm="routing-back"]) { flex-wrap: wrap; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot:has(> [data-hm="routing-back"]) > .r3-modal-actions { display: contents; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot:has(> [data-hm="routing-back"]) > [data-hm="routing-back"], html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot:has(> [data-hm="routing-back"]) > .r3-modal-actions > button { flex: 1 1 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .hm-foot:has(> [data-hm="routing-back"]) > .r3-modal-actions > .wallet-sign-pair { flex: 1 1 100%; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.r3-window, .r3-setup) .r3-destination--two > strong { white-space: normal; overflow-wrap: anywhere; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-edit :is(.csel-wrap, .csel-trigger, .board-filter-field .ceres-btn.csel-trigger) { inline-size: 100%; min-inline-size: 0; max-inline-size: 100%; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-edit .csel-value { min-inline-size: 0; overflow: hidden; }
+/* Route kind takes its own row (its label never wraps, T-5); Slippage and Remove share the row below. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-edit > label:nth-of-type(4) { grid-column: 1 / -1; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-edit > button[data-r3="remove"] { grid-column: auto; align-self: end; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .r3-edit .csel-trigger { white-space: nowrap; }
+/* like Harvest, the plot sheet is part of the page on the phone -- the page
+ scrolls (the browser bar can hide), its header scrolls away, the board and bottom bar step aside while it is open. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 body.mobile-plot-sheet-open { overflow: visible; padding-block-end: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279:has(#mobile-plot-sheet:not([hidden])) :is(header.board-header, #mobile-action-bar, #scroll-top-btn, #board-main > :not(#mobile-plot-sheet)) { display: none !important; }
+html.ceres-lw-le-1919.ceres-lw-le-1279:has(#mobile-plot-sheet:not([hidden])) #board-main { padding: 0; margin: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet:not([hidden]) { position: relative; inset: auto; z-index: auto; display: block; min-block-size: 100dvh; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet-body { overflow: visible; min-block-size: 0; }
+/* Tighter: no empty band between the worker cards and the Totem/Title row; "You receive" at the readable minimum. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .harvest-bar-lbl { font-size: .7rem !important; }
+/* The worker grid's row gap leaves room for the ability icons above a worker row; the Totem/Title row needs none. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-grid > .asset-slot { margin-block-start: -1.55rem; }
+/* the harvest box straddles the art's bottom edge and the band shrinks. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-harvest-band { padding-block-start: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-harvest-band > .mobile-plot-actions { position: relative; z-index: 3; margin-block-start: calc(-1 * (var(--hb-h, 61px) / 2)); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .mobile-plot-harvest-band > .mobile-plot-actions .harvest-bar { box-shadow: 0 6px 16px -6px var(--shadow); }
+/* the plot view's picture uses the board card's aligned pair; the building's ground line sits above the harvest
+ box that overlaps the picture's bottom. Mirror fill on the left as on the cards. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-worksite-art.has-plate { container-type: size; overflow: hidden; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-worksite-art.has-plate::before { background-image: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-worksite-art.has-plate .editor-worksite-art { display: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-worksite-art.has-plate > .sheet-plate { --ih: calc(66cqh / (var(--p-base) - var(--p-top))); --iw: calc(var(--ih) * 2.6168);
+  position: absolute; z-index: 0; inline-size: var(--iw); block-size: var(--ih); inset-inline-start: calc(50cqw - var(--p-cx) * var(--iw)); inset-block-start: calc(82cqh - var(--p-base) * var(--ih));
+  background: var(--tile-plate) 0 0 / 100% 100% no-repeat, var(--tile-terrain) 0 0 / 100% 100% no-repeat; pointer-events: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-worksite-art.has-plate > .sheet-plate::before { content: ''; position: absolute; inset-block: 0; inset-inline-end: calc(100% - 1px); inline-size: 100%;
+  background: var(--tile-terrain) 0 0 / 100% 100% no-repeat; transform: scaleX(-1); }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-tile.is-empty .empty-label { font-size: .7rem; } /* "Add Title" at the readable minimum */
+
+/* receipt tiles on a phone: icon and amount on one centred row, no tile forced to a full row (the research tile was). */
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-receipt-ledger .hm-batch-badge { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto; align-items: center; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-receipt-ledger .hm-batch-badge .hm-batch-icon { grid-row: 1; grid-column: 1; align-self: center; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-receipt-ledger .hm-batch-badge .hm-batch-number { grid-row: 1; grid-column: 2; align-self: center; justify-self: end; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-receipt-summary .harvest-receipt-ledger .hm-batch-total .hm-batch-badge:last-child, html.ceres-lw-le-1919.ceres-lw-le-1279 #harvest-modal-overlay .harvest-receipt-summary .hm-batch-total .hm-batch-badge[data-resource="research"] { grid-column: auto; }
+/* the LP shares / minimum amount is a normal-size line that may wrap, not a headline. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 :is(.r3-window, .r3-setup) .r3-destination > strong { font-size: 1rem; line-height: 1.2; white-space: normal; overflow-wrap: anywhere; }
+/* 's desktop-only Cards button is the Plots | Cards switcher now, on phones too (ceres.css). */

@@ -1,0 +1,69 @@
+{
+  "_status": "LIVE -- this is the copy ceres/bcx_cap.py reads at runtime. Edit this file to change board behavior.",
+  "_provenance": {
+    "source": "https://api.splinterlands.com/settings",
+    "source_tier": "primary-api-direct",
+    "fetched": "2026-08-21",
+    "config_version_at_fetch": "see version/config_version fields in raw settings.json snapshot",
+    "cross_checked_against": "~/.praetoria/cache/collection_player0005.json (player0005's live owned cards, bcx/level per card)",
+    "cross_check_result": "exact match on every maxed specimen owned across Alpha reg/gold, Beta reg/gold, Foundations reg/gold, and modern reg/gold — see findings.md for the full table",
+    "derivation_confirmed_via": "splinterlands.com production JS bundle (assets/index-B08Ft7Mn.js, fetched 2026-08-21), functions getMaxXp/getMaxLevel/cardsToLevel/calculateCP",
+    "note": "regular (non-gold) alpha/beta/reward values include the base 1-BCX card itself (formula: ceil(max_xp / xp_per_card) + 1); gold values do not add +1 (formula: ceil(max_xp / xp_per_card), card already starts above level 1)"
+  },
+  "rarity_order": ["common", "rare", "epic", "legendary"],
+  "regimes": {
+    "alpha": {
+      "editions": [0],
+      "note": "Also applies to Promo (edition 2) cards with card_detail_id < 100, per game client logic.",
+      "max_level": {"common": 10, "rare": 8, "epic": 6, "legendary": 4},
+      "max_bcx": {
+        "regular": {"common": 379, "rare": 86, "epic": 32, "legendary": 8},
+        "gold":    {"common": 31,  "rare": 17, "epic": 8,  "legendary": 3}
+      }
+    },
+    "beta": {
+      "editions": [1, 3],
+      "note": "Edition 3 = Reward edition, shares Beta's xp-based combine mechanism. Also applies to Promo (edition 2) cards with card_detail_id >= 100.",
+      "max_level": {"common": 10, "rare": 8, "epic": 6, "legendary": 4},
+      "max_bcx": {
+        "regular": {"common": 505, "rare": 115, "epic": 46, "legendary": 11},
+        "gold":    {"common": 38,  "rare": 22,  "epic": 10, "legendary": 4}
+      }
+    },
+    "modern": {
+      "editions": "all editions >= 4 (Untamed, Dice, Gladius, Chaos, Rift, Nightmare, Soulbound, Soulkeep Promo, Rebellion, Soulbound Rebellion, Conclave, Extra, Soulbound Conclave, Land, Escalation, Verico) EXCLUDING Foundations (15) and Foundations Soulbound (16)",
+      "note": "Uniform table since Untamed (edition 4) onward; source field api.splinterlands.com/settings -> combine_rates / combine_rates_gold. Identical to Beta's rare/epic/legendary/gold numbers; only common differs (400 vs Beta's 505).",
+      "max_level": {"common": 10, "rare": 8, "epic": 6, "legendary": 4},
+      "max_bcx": {
+        "regular": {"common": 400, "rare": 115, "epic": 46, "legendary": 11},
+        "gold":    {"common": 38,  "rare": 22,  "epic": 10, "legendary": 4}
+      }
+    },
+    "foundations": {
+      "editions": [15, 16],
+      "note": "Foundations and Foundations Soulbound have their own reduced cap table and shorter max-level ladder.",
+      "max_level": {"common": 5, "rare": 4, "epic": 3, "legendary": 2},
+      "max_bcx": {
+        "regular": {"common": 60, "rare": 25, "epic": 10, "legendary": 3},
+        "gold":    {"common": 5,  "rare": 4,  "epic": 2,  "legendary": 1}
+      }
+    },
+    "soulkeep": {
+      "editions": [],
+      "note": "tier===9 cards select sk_combine_rates/_gold in the game client, but this is the separate 'Soulkeep' card game (game_type: soulkeep), not Splinterlands. Included for completeness / to avoid misapplying this table to Splinterlands cards; NOT expected to appear on the Ceres board.",
+      "max_level": {"common": 10, "rare": 10, "epic": 10, "legendary": 10},
+      "max_bcx": {
+        "regular": {"common": 200, "rare": 80, "epic": 28, "legendary": 10},
+        "gold":    {"common": 38,  "rare": 22, "epic": 10, "legendary": 4}
+      }
+    }
+  },
+  "edition_id_reference": {
+    "0": "Alpha", "1": "Beta", "2": "Promo", "3": "Reward", "4": "Untamed",
+    "5": "Dice", "6": "Gladius", "7": "Chaos", "8": "Rift", "9": "Nightmare",
+    "10": "Soulbound", "11": "Soulkeep Promo", "12": "Rebellion",
+    "13": "Soulbound Rebellion", "14": "Conclave", "15": "Foundations",
+    "16": "Foundations Soulbound", "17": "Extra", "18": "Soulbound Conclave",
+    "19": "Land", "20": "Escalation", "21": "Verico"
+  }
+}

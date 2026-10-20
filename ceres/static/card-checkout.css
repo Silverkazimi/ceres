@@ -1,0 +1,140 @@
+/* card-checkout.css -- / : the Market cart's checkout dialog (card-checkout.js), on the Cards page.
+ The dialog is the cart's own overlay and panel (.cm-dialog-overlay / .cm-dialog-panel in card-browser.css); this file adds
+ only the checkout's rows, currency choice and state colours. State colours follow the C-4 vocabulary: --ok bought /
+ cheaper, --danger sold / not bought / refused / cannot be undone, --warn price rose / pending / unknown. Tokens only.
+ The wallet chooser (wallet.js walletControlsHtml) is styled by wallet.css, imported here so cards.html needs one line. */
+@import url('wallet.css');
+
+/* the card menu's footer is display:flex (card-browser.css); an empty cart hides it with [hidden]. */
+.card-browser .cm-dialog-panel > .cm-dialog-foot[hidden] { display: none; }
+
+.card-browser .slot-hazard-panel.cm-dialog-panel.co-panel { inline-size: min(48rem, 100%); }
+.card-browser .co-rows { display: grid; gap: 0.375rem; }
+.card-browser .co-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(9rem, auto); align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; border: 1px solid var(--cb-glass-edge); border-radius: 8px; background: color-mix(in srgb, var(--bg) 40%, transparent); }
+.card-browser .co-row .co-name { display: grid; gap: 0.125rem; min-inline-size: 0; }
+.card-browser .co-row .co-name b { overflow: hidden; color: var(--heading); text-overflow: ellipsis; white-space: nowrap; }
+.card-browser .co-row .co-name small { color: var(--text-dim); font-size: 0.75rem; }
+.card-browser .co-row .co-tags { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0.375rem; }
+.card-browser .co-row .co-reason { color: var(--text-dim); font-size: 0.75rem; text-align: end; }
+.card-browser .co-row:not(:has(.co-price)) { grid-template-columns: minmax(0, 1fr) auto; }
+
+/* sold / withdrawn: struck through, red; own: struck, amber; price rose: amber; fell: green */
+.card-browser .co-row[data-state="sold"] { border-color: var(--danger); box-shadow: inset 3px 0 0 var(--danger); }
+.card-browser .co-row[data-state="sold"] .co-name b, .card-browser .co-row[data-state="sold"] .co-price,
+.card-browser .co-row[data-state="own"] .co-name b, .card-browser .co-row[data-state="own"] .co-price,
+.card-browser .co-row:is([data-state="sold"], [data-state="own"]) .co-price :is(.cm-usd, .cm-dec) { text-decoration: line-through; text-decoration-color: currentColor; opacity: 0.7; }
+.card-browser .co-row[data-state="own"], .card-browser .co-row[data-state="rise"] { border-color: var(--warn); box-shadow: inset 3px 0 0 var(--warn); }
+.card-browser .co-row[data-state="drop"] { border-color: color-mix(in srgb, var(--ok) 55%, transparent); }
+.card-browser .co-row[data-state="rise"] .co-price .cm-usd { color: var(--warn); }
+
+/* the outcome per listing */
+.card-browser .co-row[data-state="out-ok"] { border-color: var(--ok); box-shadow: inset 3px 0 0 var(--ok); }
+.card-browser .co-row[data-state="out-danger"] { border-color: var(--danger); box-shadow: inset 3px 0 0 var(--danger); }
+.card-browser .co-row[data-state="out-warn"] { border-color: var(--warn); box-shadow: inset 3px 0 0 var(--warn); }
+.card-browser .cm-chip.is-danger { border-color: var(--danger); color: var(--danger); }
+
+/* notes: the cart's .cm-note, plus an amber tone */
+.card-browser .cm-note[data-state="warn"] { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+.card-browser .co-note, .card-browser .co-undo { margin: 0; }
+.card-browser .co-undo { color: var(--heading); font-size: 0.9rem; }
+
+/* the currency choice: two equal choice buttons, nothing preselected () */
+.card-browser .co-cur-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.card-browser .co-cur { display: grid; align-content: start; gap: 0.25rem; min-inline-size: 0; }
+.card-browser .co-cur-btn { display: flex; justify-content: flex-start; gap: 0.5rem; inline-size: 100%; }
+.card-browser .co-cur-btn .co-cur-total { display: inline-flex; align-items: center; gap: 0.25rem; margin-inline-start: auto; }
+.card-browser .co-cur-bal { color: var(--text-dim); font-size: 0.75rem; }
+.card-browser .co-cur-why { color: var(--danger); font-size: 0.75rem; }
+.card-browser .co-split, .card-browser .co-key, .card-browser .co-sum { margin: 0; }
+.card-browser .co-sum { color: var(--heading); font-size: 1rem; }
+.card-browser .co-confirm { display: grid; gap: 0.75rem; }
+.card-browser .co-tx { display: grid; gap: 0.5rem; }
+.card-browser .co-test { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.5rem 0.75rem; border: 1px dashed var(--warn); border-radius: 8px; color: var(--warn); font-size: 0.75rem; }
+.card-browser .co-wallet { display: flex; justify-content: flex-start; }
+.card-browser .co-sign .wallet-sign-label { display: inline-flex; align-items: center; gap: 0.375rem; }
+
+/* narrow panel (phone): rows stack, currencies one per line */
+.card-browser .co-panel.is-narrow .co-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name price" "tags tags"; row-gap: 0.25rem; }
+.card-browser .co-panel.is-narrow .co-row .co-name { grid-area: name; }
+.card-browser .co-panel.is-narrow .co-row .co-price { grid-area: price; }
+.card-browser .co-panel.is-narrow .co-row .co-tags { grid-area: tags; justify-content: flex-start; }
+.card-browser .co-panel.is-narrow .co-row .co-tags:empty { display: none; }
+.card-browser .co-panel.is-narrow .co-cur-row { grid-template-columns: minmax(0, 1fr); }
+
+/* the card menu's
+ bundle buttons are the shared choice control (buttons.css .ceres-btn--choice, comfortable density, 8px radius, its hover lift
+ and focus ring) laid out as equal tiles: level label, the $ total large, the DEC amount with the DEC icon after it, the card
+ count small. In the cart = pressed, painted with the approved --ok state (C-4), never the accent. Disabled keeps the shared
+ disabled look; its reason is in the tooltip on the wrapping slot. These rules replace card-browser.css lines for
+ .cm-bundle-grid / .cm-bundle-btn / .cm-bb-* (same selectors, this file loads later; the higher-specificity child selectors
+ beat buttons.css ".ceres-btn--choice > span { font: inherit }"). */
+.card-browser .cm-bundle-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); grid-auto-rows: 1fr; gap: 0.5rem; }
+.card-browser .cm-bundle-grid .cm-bundle-slot { display: grid; min-inline-size: 0; }
+.card-browser .cm-bundle-grid .cm-bundle-btn { display: grid; grid-template-rows: auto auto auto auto; place-content: center; justify-items: center; row-gap: 0.25rem; box-sizing: border-box; inline-size: 100%; block-size: 100%; min-block-size: 6rem; padding: 0.625rem 0.75rem; white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.card-browser .cm-bundle-grid .cm-bundle-btn > .cm-bb-level { color: var(--meta); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.card-browser .cm-bundle-grid .cm-bundle-btn > .cm-bb-usd { color: var(--heading); font-size: 1.25rem; font-weight: 700; }
+.card-browser .cm-bundle-grid .cm-bundle-btn > .cm-bb-dec { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--text); font-size: 0.8rem; font-weight: 600; }
+.card-browser .cm-bundle-grid .cm-bundle-btn > .cm-bb-dec .cm-dec-icon { flex: none; inline-size: 1rem; block-size: 1rem; object-fit: contain; }
+.card-browser .cm-bundle-grid .cm-bundle-btn > .cm-bb-n { color: var(--text-dim); font-size: 0.7rem; font-weight: 600; white-space: normal; }
+/* in the cart: the approved ok state (green border, 14 % ok tint, inset ring), also on hover */
+.card-browser .cm-bundle-grid .cm-bundle-btn.is-in-cart[aria-pressed="true"],
+.card-browser .cm-bundle-grid .cm-bundle-btn.is-in-cart[aria-pressed="true"]:not(:disabled):hover { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, var(--bg3)); box-shadow: inset 0 0 0 1px var(--ok); }
+.card-browser .cm-bundle-grid .cm-bundle-btn.is-in-cart > .cm-bb-n { color: var(--ok); }
+/* unreachable: the shared disabled paint; the figures recede with it */
+.card-browser .cm-bundle-grid .cm-bundle-btn:disabled > :is(.cm-bb-level, .cm-bb-usd, .cm-bb-n) { color: var(--text-dim); }
+/* narrow panel (phone): the dialog body's one column may not grow past the panel (it did: the menu head and the bundle grid
+ ran off the right edge at 390 px), and the tiles sit two by two */
+.card-browser .cm-dialog-panel.is-narrow > .cm-dialog-body { grid-template-columns: minmax(0, 1fr); }
+.card-browser .cm-dialog-panel.is-narrow .cm-bundle-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* Buy & max: the cart group's button row and the combine step after the purchase */
+.card-browser .cm-cart-group .cm-buymax-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; margin-block-end: 0.5rem; }
+.card-browser .co-group { display: grid; gap: 0.5rem; padding: 0.75rem; border: 1px solid var(--cb-glass-edge); border-radius: 8px; }
+.card-browser .co-group[data-state="ok"] { border-color: var(--ok); }
+.card-browser .co-group[data-state="warn"] { border-color: var(--warn); }
+.card-browser .co-group[data-state="danger"] { border-color: var(--danger); }
+.card-browser .co-group h4 { margin: 0; }
+.card-browser .co-group .co-group-line { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
+.card-browser .co-group-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; }
+.card-browser .co-two { color: var(--warn); }
+
+/* the total and the pay buttons sit
+ in a bar at the top of the dialog's scroll area, sticky, on the panel's own background; the list follows below. */
+.card-browser .co-paybar { position: sticky; inset-block-start: -1rem; z-index: 2; display: grid; gap: 0.75rem; margin: -1rem -1rem 0; padding: 1rem; border-block-end: 1px solid var(--cb-glass-edge); background: var(--bg2); }
+.card-browser .co-paybar .co-pay-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.5rem 0.75rem; }
+.card-browser .co-paybar .co-pay-total { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; margin-inline-end: auto; color: var(--heading); font-size: 1rem; font-weight: 600; }
+html.ceres-lw-le-1279 .card-browser .co-paybar .co-pay-total { font-size: 0.95rem; }
+.card-browser .co-amount { display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
+.card-browser .co-amount .co-cur-icon { flex: none; inline-size: 1rem; block-size: 1rem; object-fit: contain; }
+
+/* the wallet reminder (wallet.js walletWaitHtml, the wallet swap's own) with the wallet request's clock, and the amber
+ "Checking with the game" line with its elapsed clock. Green / amber / red follow C-4. */
+.card-browser .wallet-wait.has-clock { margin: 0; }
+.card-browser .wallet-wait .wallet-wait-text { display: grid; gap: 0.125rem; min-inline-size: 0; }
+.card-browser .wallet-wait .wallet-wait-text small { color: var(--text); font-size: 0.75rem; font-weight: 400; }
+.card-browser .wallet-wait .wallet-wait-clock, .card-browser .co-checking .co-clock { margin-inline-start: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.card-browser .co-checking { display: flex; align-items: center; gap: 0.5rem; }
+.card-browser .co-summary, .card-browser .co-result { font-weight: 600; }
+/* phone: the reminder's text takes the row, the clock wraps under it on the right */
+.card-browser .co-panel.is-narrow .wallet-wait.has-clock { flex-wrap: wrap; }
+.card-browser .co-panel.is-narrow .wallet-wait.has-clock .wallet-wait-text { flex: 1 1 12rem; }
+
+/* the board's combine dialog opens in place on /cards (Find combinables). Its own z-index (90, under the board's
+ hazard overlay) would put it under this page's sticky header and filter row; the cart and checkout dialogs' layer here. */
+.card-browser .slot-hazard-overlay.combine-dialog-overlay { z-index: 1200; }
+
+/* the checkout pay area keeps all prerequisites above its top commit action. */
+.card-browser .co-confirm-pay { gap: .5rem; }
+.card-browser .co-confirm-pay .co-pay-head { justify-content: flex-start; }
+.card-browser .co-confirm-pay .co-key { color: var(--text); }
+.card-browser .co-confirm-pay .co-pay-balance { margin: 0; color: var(--text-dim); }
+.card-browser .co-outcome-row { grid-template-columns: minmax(0, 1fr) max-content minmax(0, auto); padding-block: .35rem; }
+.card-browser .co-outcome-row .co-copy-dec { font-variant-numeric: tabular-nums; }
+.card-browser .co-outcome-row .co-outcome-label { font-size: .75rem; }
+.card-browser .co-outcome-row .co-outcome-label.is-ok { color: var(--ok); }
+.card-browser .co-outcome-row .co-outcome-label.is-warn { color: var(--warn); }
+.card-browser .co-outcome-row .co-outcome-label.is-danger { color: var(--danger); }
+.card-browser .co-outcome-detail > summary { color: var(--text); cursor: pointer; }
+.card-browser .co-outcome-detail > .co-rows { margin-block-start: .5rem; }
+.card-browser .co-tx .co-outcome-row[data-state] { border-color: var(--cb-glass-edge); box-shadow: none; }
+.card-browser .co-panel.is-narrow .co-outcome-row { grid-template-columns: minmax(0, 1fr) auto; }

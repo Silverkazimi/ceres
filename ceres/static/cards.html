@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ceres — Cards</title>
+<link rel="icon" type="image/png" sizes="100x100" href="/static/favicon.png">
+<!-- the read-only card browser. Same pre-paint blocks as the board page (index.html):
+ the saved Iris theme, and the width classes. -->
+<!-- the mode (My cards / Market) is known before the first paint (html[data-cb-start], card-browser.css), so the
+ filter row is drawn once with the fields of that mode; card-market.js initialMode() reads the same two sources. -->
+<script>(function(){try{var t=localStorage.getItem('ceres:theme');document.documentElement.setAttribute('data-theme',t||'dark');}catch(_){document.documentElement.setAttribute('data-theme','dark');}}());
+(function(){var m=null;try{m=new URLSearchParams(location.search).get('mode');if(m!=='market'&&m!=='cards'&&m!=='purchases')m=localStorage.getItem('ceres:cards:mode')==='market'?'market':'cards';}catch(_){m='cards';}document.documentElement.setAttribute('data-cb-start',m);}());</script>
+<script>(function(){
+  var root=document.documentElement;
+  function apply(){
+    root.style.scrollbarGutter='stable';
+    var probe=document.createElement('div');
+    probe.style.cssText='display:block;height:0;margin:0;padding:0;border:0;visibility:hidden';
+    root.appendChild(probe);
+    var s=window.innerWidth-probe.getBoundingClientRect().width;
+    root.removeChild(probe);
+    var w=window.innerWidth-s;
+    var rem=parseFloat(getComputedStyle(root).fontSize)||16, e=w*16/rem;
+    root.style.setProperty('--ceres-vw',(w/100)+'px');
+    root.style.setProperty('--ceres-vh',(window.innerHeight/100)+'px');
+    root.classList.toggle('ceres-lw-le-1919',e<=1919);
+    root.classList.toggle('ceres-lw-le-1759',e<=1759);
+    root.classList.toggle('ceres-lw-le-1659',e<=1659);
+    root.classList.toggle('ceres-lw-le-1439',e<=1439);
+    root.classList.toggle('ceres-lw-le-1279',e<=1279);
+    root.classList.toggle('ceres-lw-le-767',e<=767);
+    root.classList.toggle('ceres-lw-ge-1400',e>=1400);
+    root.classList.toggle('ceres-lw-le-1099',e<=1099);
+    root.classList.toggle('ceres-lw-le-544',e<=544);
+    root.classList.toggle('ceres-lw-le-960',e<=960);
+    window.ceresScale={design:w,apply:apply};
+  }
+  apply();
+  window.addEventListener('resize',apply);
+}());</script>
+<link rel="stylesheet" href="/static/ceres.css?v={{CERES_VERSION}}">
+<link rel="stylesheet" href="/static/buttons.css?v={{CERES_VERSION}}">
+<link rel="stylesheet" href="/static/badge-colours.css?v={{CERES_VERSION}}">
+<link rel="stylesheet" href="/static/card-browser.css?v={{CERES_VERSION}}">
+<link rel="stylesheet" href="/static/card-purchases.css?v={{CERES_VERSION}}">
+<link rel="stylesheet" href="/static/card-checkout.css?v={{CERES_VERSION}}"><!-- checkout dialog (+ wallet.css) -->
+<!-- the compact filter names leave room for Clear all on the same desktop line.
+ Reserve its footprint at first paint so enabling a filter cannot change the row's height. -->
+<style>
+html:not(.ceres-lw-le-1279) .card-browser .cb-controls { column-gap: 0.4rem; }
+html:not(.ceres-lw-le-1279) .card-browser .cb-controls #cb-clear[hidden] { display: inline-flex; visibility: hidden; pointer-events: none; }
+</style>
+</head>
+<body class="card-browser">
+<!-- the board's new-version banner, so a deploy is announced on this page too. -->
+<div id="reload-banner" class="reload-banner" hidden>New version deployed — click to load it</div>
+<script src="/static/version-banner.js?v={{CERES_VERSION}}"></script>
+<header class="board-header">
+  <span class="board-logo">
+    <a class="board-logo-link" id="cb-logo-link" href="/" aria-label="Ceres — back to the plots"><img class="board-logo-img" src="/static/assets/logos/ceres-logo-alchemical-header.png" width="225" height="150" alt="Ceres"></a>
+    <span class="board-version" id="board-version">v{{CERES_RELEASED_VERSION}}</span>{{CERES_LOCAL_MARKER}}
+  </span>
+  <div class="board-header-rows">
+  <div class="board-header-row">
+  <span class="player-switch">
+    <input type="text" id="player-input" class="player-input ceres-wide-input" placeholder="player…" autocomplete="off" spellcheck="false" aria-label="Player name">
+    <button class="player-go-btn ceres-btn ceres-btn--primary" data-control-density="header" data-control-mode="icon" id="cb-player-go" type="button" aria-label="Show this player's cards"><svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><circle class="f" cx="8.6" cy="7.2" r="3.9"/><path class="f" d="M1.8 20.2c.5-4.3 3.3-7 6.8-7s6.3 2.7 6.8 7z"/><path class="d" d="M6.9 13.8 8.6 16l1.7-2.2"/><path class="a" d="M14.6 9.4h4.2V6.8l4.2 4.2-4.2 4.2v-2.6h-4.2z"/></svg></button>
+  </span>
+  <!-- My cards / Market, in the header so the filter row keeps its one line. : the market is read automatically on entering Market mode and on each filter change. -->
+  <span class="cb-mode" role="group" aria-label="Cards views">
+  <button type="button" id="cb-mode-cards" class="ceres-btn ceres-btn--choice" data-control-density="header" data-control-mode="icon" data-header-icon="myCards" aria-label="My cards" data-tip="My cards" aria-pressed="true"></button>
+  <button type="button" id="cb-mode-market" class="ceres-btn ceres-btn--choice" data-control-density="header" data-control-mode="icon" data-header-icon="market" aria-label="Market" data-tip="Market" aria-pressed="false"></button>
+  <button type="button" id="cb-mode-purchases" class="ceres-btn ceres-btn--choice" data-control-density="header" data-control-mode="icon" data-header-icon="purchases" aria-label="My purchases" data-tip="My purchases" aria-pressed="false"></button>
+  </span>
+  <!-- phone only (<= 1279), icon-only, at the end of the mode line (the logo line is full at 390 px) -- the desktop opens the same wallet from the right-edge slide-out below, as the board does (cards-wallet.js). -->
+  <button type="button" id="regional-dec-button" class="ceres-btn ceres-btn--primary cb-wallet-btn" data-control-density="header" data-control-mode="icon" aria-controls="regional-dec-drawer" aria-expanded="false" aria-haspopup="dialog" aria-label="Wallet" data-tip="Wallet"><img src="/static/assets/land/token-dec.png" alt=""><span>Wallet</span></button>
+  <!-- the cart, with its count; the panel lists the listings by card.
+ : icon and count only; the tooltip says "Cart · N items". -->
+  <button type="button" class="ceres-btn ceres-btn--primary cm-cart-btn" data-control-density="header" id="cm-cart-btn" aria-label="Cart · 0 items" data-tip="Cart · 0 items" data-tip-kind="explain" aria-haspopup="dialog"><svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><path class="f" d="M5.2 6.2h16l-2.1 8.3H7.3z"/><path class="d" d="M1.8 3.2h3l3 12.2h11"/><circle class="f" cx="9.2" cy="19.4" r="1.9"/><circle class="f" cx="17.6" cy="19.4" r="1.9"/></svg> <span class="cm-cart-count" id="cm-cart-count" data-state="empty">0</span></button>
+  <!-- the Plots | Cards switcher, last in the header on both pages (the same markup as index.html); it replaces
+ the Plots button (). The break starts the phone header's second line (ceres.css). -->
+  <span class="board-header-break" aria-hidden="true"></span>
+  <nav class="ceres-btn-group ceres-page-switch" data-control-density="header" aria-label="Plots or cards">
+    <a id="page-switch-plots" class="ceres-btn ceres-btn--choice" data-control-density="header" data-control-mode="icon" data-header-icon="plots" href="/" aria-label="Plots" data-tip="Plots" data-tip-body="Back to this player's plots."></a>
+    <a id="page-switch-cards" class="ceres-btn ceres-btn--choice" data-control-density="header" data-control-mode="icon" data-header-icon="cards" href="/cards" aria-current="page" aria-label="Cards" data-tip="Cards"></a>
+  </nav>
+  </div>
+  </div>
+</header>
+<script src="/static/header-icons.js?v={{CERES_VERSION}}"></script>
+<div id="header" class="theme-picker-dock"></div>
+<!-- until card-browser.js draws the dropdowns, each select is hidden as the dropdown hides it and a copy of the
+ drawn dropdown's closed button (.cb-pre-select, its first option) holds its exact place; the script swaps in the real one
+ in the same task, so the row's widths, line count and height never change when the script starts. -->
+<div class="controls-row cb-controls" id="cb-controls">
+  <label class="board-filter-field"><span class="sr-only">Name</span><input type="text" id="cb-q" class="ceres-wide-input" placeholder="card name…" aria-label="Search by card name"></label>
+  <span class="controls-sep" aria-hidden="true"></span>
+  <label class="board-filter-field"><span class="sr-only">Set</span><select id="cb-set" data-cb-filter="set"><option value="">All</option></select><div class="csel-wrap cb-pre-select" aria-hidden="true"><span class="csel-trigger ceres-btn ceres-btn--secondary" data-control-density="compact"><span class="csel-value"><span class="csel-value-text">Set</span></span><span class="csel-arrow ceres-chevron"></span></span></div></label>
+  <label class="board-filter-field"><span class="sr-only">Rarity</span><select id="cb-rarity" data-cb-filter="rarity"><option value="">All</option></select><div class="csel-wrap cb-pre-select" aria-hidden="true"><span class="csel-trigger ceres-btn ceres-btn--secondary" data-control-density="compact"><span class="csel-value"><span class="csel-value-text">Rarity</span></span><span class="csel-arrow ceres-chevron"></span></span></div></label>
+  <label class="board-filter-field"><span class="sr-only">Foil</span><select id="cb-foil" data-cb-filter="foil"><option value="">All</option></select><div class="csel-wrap cb-pre-select" aria-hidden="true"><span class="csel-trigger ceres-btn ceres-btn--secondary" data-control-density="compact"><span class="csel-value"><span class="csel-value-text">Foil</span></span><span class="csel-arrow ceres-chevron"></span></span></div></label>
+  <label class="board-filter-field"><span class="sr-only">Splinter</span><select id="cb-splinter" data-cb-filter="splinter"><option value="">All</option></select><div class="csel-wrap cb-pre-select" aria-hidden="true"><span class="csel-trigger ceres-btn ceres-btn--secondary" data-control-density="compact"><span class="csel-value"><span class="csel-value-text">Splinter</span></span><span class="csel-arrow ceres-chevron"></span></span></div></label>
+  <label class="board-filter-field cb-only"><span class="sr-only">Status</span><select id="cb-status" data-cb-filter="status"><option value="">All</option><option value="ready">Ready to stake</option><option value="staked">Staked</option><option value="cooling">Cooling down</option><option value="unavailable">Not available</option><option value="not_soulbound">Not soulbound</option></select><div class="csel-wrap cb-pre-select" aria-hidden="true"><span class="csel-trigger ceres-btn ceres-btn--secondary" data-control-density="compact"><span class="csel-value"><span class="csel-value-text">Status</span></span><span class="csel-arrow ceres-chevron"></span></span></div></label>
+  <label class="board-filter-field cb-only"><span class="sr-only">Level</span><select id="cb-level" data-cb-filter="level"><option value="">All</option><option value="maxed">Max level</option><option value="not_maxed">Not max level</option></select><div class="csel-wrap cb-pre-select" aria-hidden="true"><span class="csel-trigger ceres-btn ceres-btn--secondary" data-control-density="compact"><span class="csel-value"><span class="csel-value-text">Level</span></span><span class="csel-arrow ceres-chevron"></span></span></div></label>
+  <span class="controls-sep" aria-hidden="true"></span>
+  <div class="cb-pp-pair">
+    <label class="board-filter-field cb-pp-field"><span class="sr-only">Min PP</span><input type="text" id="cb-min-pp" class="ceres-wide-input" inputmode="decimal" placeholder="Min PP" aria-label="Minimum PP"></label>
+    <label class="board-filter-field cb-pp-field"><span class="sr-only">Max PP</span><input type="text" id="cb-max-pp" class="ceres-wide-input" inputmode="decimal" placeholder="Max PP" aria-label="Maximum PP"></label>
+  </div>
+  <label class="board-filter-field cb-only"><span class="sr-only">Ability</span><select id="cb-ability" data-cb-filter="ability"><option value="">All</option><option value="__any__">Has an ability</option></select><div class="csel-wrap cb-pre-select" aria-hidden="true"><span class="csel-trigger ceres-btn ceres-btn--secondary" data-control-density="compact"><span class="csel-value"><span class="csel-value-text">Ability</span></span><span class="csel-arrow ceres-chevron"></span></span></div></label>
+  <label class="picker-toggle board-filter-pill ceres-btn ceres-btn--choice cm-only" data-control-density="compact" data-tip="Maxed cards"><span class="ceres-btn__check" aria-hidden="true"></span><input type="checkbox" id="cb-maxed" aria-label="Maxed cards"><span>Max</span></label>
+  <!-- Find combinables (own combine sets, the upgrade price check); puts it in the filter row.
+ shortens its visible label to Combine; its full accessible name remains Find combinables. -->
+  <label class="picker-toggle board-filter-pill ceres-btn ceres-btn--choice cb-only" data-control-density="compact" data-tip="Find combinables"><span class="ceres-btn__check" aria-hidden="true"></span><input type="checkbox" id="cb-mode-combine" aria-label="Find combinables"><span>Combine</span></label>
+  <span class="controls-sep cb-sort-field" aria-hidden="true"></span><!-- goes with Sort (hidden in Find combinables, where no sort follows) -->
+  <label class="board-filter-field cb-only cb-sort-field"><span class="sr-only">Sort</span><select id="cb-sort" data-cb-filter="sort"><option value="pp">Sort: PP</option></select><div class="csel-wrap cb-pre-select" aria-hidden="true"><span class="csel-trigger ceres-btn ceres-btn--secondary" data-control-density="compact"><span class="csel-value"><span class="csel-value-text">Sort: PP</span></span><span class="csel-arrow ceres-chevron"></span></span></div></label>
+  <label class="board-filter-field cm-only"><span class="sr-only">Market sort</span><select id="cm-sort"><option value="cost_per_pp">Sort: Cost per PP</option></select><div class="csel-wrap cb-pre-select" aria-hidden="true"><span class="csel-trigger ceres-btn ceres-btn--secondary" data-control-density="compact"><span class="csel-value"><span class="csel-value-text">Sort: Cost per PP</span></span><span class="csel-arrow ceres-chevron"></span></span></div></label>
+  <div class="board-clear-filters-row">
+  <button type="button" id="cb-clear" class="board-clear-filters ceres-btn ceres-btn--secondary" data-control-density="compact" data-control-mode="icon" data-tip="Clear all filters" aria-label="Clear all filters" hidden><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+</div>
+<!-- the board's wallet slide-out (index.html #edge-tabs), at the right edge of the filter row; desktop only. -->
+<div id="edge-tabs" class="edge-tabs">
+  <div id="wallet-picker" class="edge-picker" data-open="false"><div id="wallet-picker-tray" class="edge-tray" role="tablist" aria-label="Wallet resource"></div><button type="button" id="wallet-edge-tab" class="edge-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="wallet-picker-tray" data-tip="Wallet" aria-label="Wallet"></button></div>
+</div>
+<main id="cb-main" class="cb-main">
+  <div class="cp-only"><div id="cp-root"><section class="card-purchases" aria-label="My purchases"><div class="cp-bar"><h1 class="cp-bar-title cb-view-heading">My purchases</h1><button type="button" class="ceres-btn ceres-btn--primary" data-control-density="compact" data-cp-action="load">Load my purchases</button><span class="cp-windows" role="group" aria-label="Window"><button type="button" class="ceres-btn ceres-btn--choice" data-control-density="compact" data-cp-days="7" aria-pressed="false">7 days</button><button type="button" class="ceres-btn ceres-btn--choice" data-control-density="compact" data-cp-days="14" aria-pressed="false">14 days</button><button type="button" class="ceres-btn ceres-btn--choice" data-control-density="compact" data-cp-days="30" aria-pressed="true">30 days</button></span><span class="cp-note">Nothing is read until you press the button. The game's history reaches back about 30 days.</span></div><div class="cp-main"></div></section></div></div>
+  <div class="cb-only">
+  <h1 class="cb-view-heading">My cards</h1>
+  <!-- both summary bars carry their dashed placeholder from the first paint (card-market.js CM_SUMMARY_PLACEHOLDER). -->
+  <div class="cb-summary" id="cb-summary" role="status" aria-live="polite"><span class="cb-summary-item"><strong>—</strong> copies</span><span class="cb-summary-item">Base PP <strong>—</strong></span><span class="cb-summary-item">At max level <strong>—</strong></span></div>
+  <div class="cb-loading" id="cb-loading" role="status" aria-live="polite"><span class="spinner" aria-hidden="true"></span><span>Reading your cards…</span></div>
+  <p class="cb-message" id="cb-message" hidden></p>
+  <section class="candidate-list is-card-grid cb-grid" id="cb-grid" aria-label="Cards"></section>
+  <div class="cb-sentinel" id="cb-sentinel" aria-hidden="true"></div>
+  </div>
+  <!-- Find combinables -- the list is drawn by card-combinables.js on entering the mode (stored snapshot only);
+ prices are read only on the maintainer's press (Check prices / Check price). -->
+  <div class="cx-only">
+  <h1 class="cb-view-heading">Combine</h1>
+  <div class="cb-summary cx-summary" id="cx-summary" role="status" aria-live="polite"></div>
+  <div class="cb-loading" id="cx-loading" role="status" aria-live="polite" hidden><span class="spinner" aria-hidden="true"></span><span>Finding the cards you can combine…</span></div>
+  <p class="cb-message" id="cx-message" hidden></p>
+  <section class="cx-list" id="cx-list" aria-label="Cards you can combine"></section>
+  <div class="cm-more-row"><button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" id="cx-more" hidden>Show more</button></div>
+  </div>
+  <div class="cm-only">
+  <h1 class="cb-view-heading">Market</h1>
+  <!-- the summary is always there (height reserved); the spinner and the message float over the stage, never in its flow. -->
+  <div class="cb-summary" id="cm-summary" role="status" aria-live="polite"><span class="cb-summary-item"><strong>—</strong> listings shown</span><span class="cb-summary-item">Best <strong>— PP/$</strong></span><span class="cb-summary-item cb-summary-note">Reading the market…</span></div>
+  <div class="cm-stage">
+  <div class="cb-loading cm-loading" id="cm-loading" role="status" aria-live="polite" hidden><span class="spinner" aria-hidden="true"></span><span>Reading the market…</span></div>
+  <p class="cb-message cm-message" id="cm-message" hidden></p>
+  <section class="candidate-list is-card-grid cb-grid cm-grid" id="cm-grid" aria-label="Market listings"></section>
+  <!-- the next 100 prints, same order and filters; shown while more are left. -->
+  <div class="cm-more-row"><button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" id="cm-more" hidden>Load more</button></div>
+  </div>
+  <div class="cb-sentinel" id="cm-sentinel" aria-hidden="true"></div>
+  </div>
+</main>
+<script type="module" src="/static/card-browser.js?v={{CERES_VERSION}}"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ceres-land"
+dynamic = ["version"]
+description = "A live board for your Splinterlands Land, with wallet-signed changes."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = ["fastapi>=0.141,<1", "starlette>=1.6,<2", "uvicorn>=0.52,<1", "pydantic>=2.13,<3"]
+
+[project.scripts]
+ceres = "ceres.__main__:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "ceres.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["ceres*", "praetoria*", "fides*", "mnemosyne*"]
+
+[tool.setuptools.package-data]
+ceres = ["static/**/*", "data/*.json", "released_version.txt"]

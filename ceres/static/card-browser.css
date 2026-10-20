@@ -1,0 +1,527 @@
+/* ==========================================================================
+ : card browser (/cards, card-browser.js). Loaded only by cards.html,
+ after ceres.css and buttons.css. Page-scoped: every rule is under
+ .card-browser (the page's <body> class). Reuses the board
+ header, the filter row and the worker picker's grid card; only the sizes
+ and the browser's own summary, count and status badges are set here.
+ ========================================================================== */
+.card-browser .cb-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.35rem 1.5rem; inline-size: fit-content; max-inline-size: 100%; box-sizing: border-box; min-block-size: 1.25rem; margin-block-end: 0.75rem; padding: 0.25rem 0.75rem; border: 1px solid var(--cb-glass-edge); border-radius: var(--radius); background: var(--cb-glass); box-shadow: inset 0 1px 0 var(--cb-glass-edge); color: var(--text); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.card-browser .cb-summary-item { white-space: nowrap; }
+.card-browser .cb-summary-item strong { color: var(--heading); font-weight: 700; }
+.card-browser .cb-summary-note { color: var(--text-dim); font-size: 0.75rem; }
+.card-browser .cb-controls #cb-q { inline-size: 8.25rem; }  /* as narrow as the board's plot search (ceres.css .picker-filters q box) */
+/* More filters than the board's row: wrap to a second line instead of scrolling sideways. */
+html:not(.ceres-lw-le-1279) .card-browser .controls-row { flex-wrap: wrap; row-gap: 0.5rem; overflow-x: visible; }
+.card-browser .cb-pp-field .ceres-wide-input { inline-size: 5.5rem; }
+.card-browser .cb-pp-pair { display: contents; }
+.card-browser .cb-main { padding: 0.75rem 1rem 1.5rem; }
+.card-browser .cb-view-heading { margin: 0 0 0.5rem; color: var(--heading); font-size: 0.95rem; font-weight: 700; line-height: 1.25; }
+.card-browser .cp-bar .cp-bar-title { margin: 0; font-size: 0.95rem; font-weight: 700; line-height: 1.25; }
+/* DQ-06: every visible filter shares the compact two-column phone grid. */
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls.controls-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 0.4rem; padding-inline: 0.75rem; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls .board-filter-field { min-inline-size: 0; inline-size: 100%; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls .csel-wrap { box-sizing: border-box; inline-size: 100%; min-inline-size: 0; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls .csel-trigger { box-sizing: border-box; inline-size: 100%; min-inline-size: 0; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls .ceres-wide-input { box-sizing: border-box; inline-size: 100%; min-inline-size: 0; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls .cb-pp-pair { display: contents; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls .controls-sep { display: none; }
+/* Phone-only placements keep the Cards rows full without changing desktop DOM order. */
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls > label:has(#cb-q) { grid-area: 1 / 1; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls > label:has(#cb-set) { grid-area: 1 / 2; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls > label:has(#cb-rarity) { grid-area: 2 / 1; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls > label:has(#cb-foil) { grid-area: 2 / 2; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls > label:has(#cb-splinter) { grid-area: 3 / 1; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls > label:has(#cb-status) { grid-area: 3 / 2; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls > label:has(#cb-level) { grid-area: 4 / 1; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls > label:has(#cb-ability) { grid-area: 4 / 2; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls > .cb-pp-pair > label:has(#cb-min-pp) { grid-area: 5 / 1; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls > .cb-pp-pair > label:has(#cb-max-pp) { grid-area: 5 / 2; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls > label:has(#cb-mode-combine) { grid-area: 6 / 1; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls > label:has(#cb-sort) { grid-area: 6 / 2; }
+/* Market has one fewer filter pair; its final Max / Sort row uses both cells. */
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls > label:has(#cb-maxed) { grid-area: 4 / 1; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser[data-cb-mode="market"] .cb-controls > label:has(#cb-splinter) { grid-area: 3 / 1; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser[data-cb-mode="market"] .cb-controls > .cb-pp-pair > label:has(#cb-min-pp) { grid-area: 3 / 2; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser[data-cb-mode="market"] .cb-controls > .cb-pp-pair > label:has(#cb-max-pp) { grid-area: 4 / 1; }
+html.ceres-lw-le-1279.ceres-lw-le-767[data-cb-start="market"] .card-browser:not([data-cb-mode]) .cb-controls > label:has(#cb-splinter) { grid-area: 3 / 1; }
+html.ceres-lw-le-1279.ceres-lw-le-767[data-cb-start="market"] .card-browser:not([data-cb-mode]) .cb-controls > .cb-pp-pair > label:has(#cb-min-pp) { grid-area: 3 / 2; }
+html.ceres-lw-le-1279.ceres-lw-le-767[data-cb-start="market"] .card-browser:not([data-cb-mode]) .cb-controls > .cb-pp-pair > label:has(#cb-max-pp) { grid-area: 4 / 1; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser .cb-controls > label:has(#cm-sort) { grid-area: 4 / 2; }
+html.ceres-lw-le-1279.ceres-lw-le-767 .card-browser[data-cb-mode="purchases"] .cb-controls.controls-row { display: none; }
+html.ceres-lw-le-1279.ceres-lw-le-767[data-cb-start="purchases"] .card-browser:not([data-cb-mode]) .cb-controls.controls-row { display: none; }
+.card-browser .cb-grid { --candidate-grid-card-min: 13.5rem; --candidate-grid-gap: 0.75rem; align-items: stretch; padding: 0; }
+.card-browser .cb-grid .cb-tile { grid-template-rows: 1fr; content-visibility: auto; contain-intrinsic-size: auto 26rem; }
+/* the art spans the PP boxes' full row, at the plot tile's proportions (6.7 / 9.4). */
+.card-browser .cb-grid .cb-tile .cb-art { position: relative; box-sizing: border-box; align-self: stretch; inline-size: 100%; block-size: auto; aspect-ratio: 6.7 / 9.4; }
+.card-browser .cb-grid .cb-tile .cb-art > img { object-fit: contain; }
+.card-browser .cb-art-missing-text { display: grid; place-items: center; block-size: 100%; padding: 0.5rem; color: var(--text-dim); font-size: 0.75rem; text-align: center; }
+.card-browser .cb-tile .candidate-grid-face { block-size: 100%; }
+.card-browser .cb-tile .candidate-grid-metric small { text-transform: none; letter-spacing: 0; font-size: 0.7rem; }
+.card-browser .cb-metric-pp strong { font-size: 1.25rem; }
+.card-browser .cb-loading { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 3rem 1rem; color: var(--text-dim); }
+.card-browser .cb-loading[hidden] { display: none; }
+.card-browser .cb-message { padding: 3rem 1rem; color: var(--text-dim); text-align: center; }
+.card-browser .cb-sentinel { block-size: 1px; }
+html.ceres-lw-le-1279 .card-browser .controls-row { display: flex; }
+
+/* the tiles and the summary bar are glass over the page artwork, as on the
+ board (ceres.css : a translucent --bg tint, no backdrop-filter) with the wallet's light inset edge (). The glass
+ density follows the board's per-theme row value (--glass-row: denser in dark and alchemical). */
+.card-browser { --cb-glass: linear-gradient(160deg, color-mix(in srgb, var(--text) 9%, transparent), color-mix(in srgb, var(--text) 2%, transparent)), color-mix(in srgb, var(--bg) var(--glass-row, 60%), transparent); --cb-glass-hover: linear-gradient(160deg, color-mix(in srgb, var(--text) 12%, transparent), color-mix(in srgb, var(--text) 4%, transparent)), color-mix(in srgb, color-mix(in srgb, var(--bg) 45%, var(--shadow)) 88%, transparent); --cb-glass-edge: color-mix(in srgb, var(--text) 20%, transparent); }
+.card-browser .cb-grid > .cb-tile { border-color: var(--cb-glass-edge); background: var(--cb-glass); box-shadow: inset 0 1px 0 var(--cb-glass-edge), 0 4px 14px color-mix(in srgb, var(--shadow) 22%, transparent); gap: 0.45rem; }
+/* the hovered tile gets a clearly visible
+ edge (60 % text colour plus a 1px matching inset ring, so it reads on light and dark art; no size change, no layout shift). */
+.card-browser .cb-grid > .cb-tile:hover, .card-browser .cb-grid > .cb-tile:focus-within, .card-browser .cb-grid[data-cb-hold] > .cb-tile.cb-held { border-color: color-mix(in srgb, var(--text) 60%, transparent); background: var(--cb-glass-hover); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 60%, transparent), inset 0 1px 0 var(--cb-glass-edge), 0 6px 18px color-mix(in srgb, var(--shadow) 35%, transparent); }
+/* no zoom of the art on hover (the board's .candidate-card hover scales the image 1.05). */
+.card-browser .cb-grid > .cb-tile:hover .cb-art > img { transform: none; }
+/* Echo's tower-scene.css rule, 1:1 (the board's own border / shadow / background transition is kept). Not while the card menu
+ or the cart is open (body[data-cm-dialog]); no transition under reduced motion (body.cb-reduce-motion, set by card-market.js from
+ prefers-reduced-motion -- this page keeps every rule a plain .card-browser rule, no at-rules, tests/ceres/test_ir9173). */
+.card-browser .cb-grid > .cb-tile { transition: border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, opacity 140ms ease-out; }
+/* the other tiles dim only after the pointer has rested 220 ms on a tile, and not at all while the page scrolls
+ (card-browser.js sets .cb-scrolling until 250 ms after the last scroll event). */
+/* scrolling no longer resets every tile to full opacity; it freezes what the grid showed when
+ the scroll began (card-browser.js: data-cb-hold "dim" with the hovered tile .cb-held, or "clear") and the grid takes no
+ pointer events until 250 ms after the last scroll event, so no tile fades in or out while the content moves. */
+/* the other tiles no longer dim; the hovered
+ tile keeps its border and glass (above). The / scroll hold stays only for the hover itself. */
+.card-browser.cb-scrolling .cb-grid { pointer-events: none; }
+.card-browser .cb-grid[data-cb-hold="dim"]:has(> .cb-tile) > .cb-tile.cb-held, .card-browser .cb-grid[data-cb-hold="clear"]:has(> .cb-tile) > .cb-tile { opacity: 1; transition-delay: 0s; }
+.card-browser.cb-reduce-motion .cb-grid > .cb-tile { transition: none; }
+.card-browser .cb-tile .candidate-grid-face { gap: 0.4rem; }
+/* let the art fill the tile, so a one-column phone grid drew it
+ ~1.8x the old size. The art and the PP boxes now share one width, capped at the desktop size (12.5rem) and centred. */
+.card-browser .cb-tile .candidate-grid-face { inline-size: 100%; max-inline-size: 12.5rem; margin-inline: auto; }
+.card-browser .cb-tile .cb-art { border-color: color-mix(in srgb, var(--text) 18%, transparent); background: color-mix(in srgb, var(--bg3) 50%, transparent); }
+.card-browser .cb-tile .candidate-grid-metric { border-color: var(--cb-glass-edge); background: color-mix(in srgb, var(--bg) 40%, transparent); }
+.card-browser .cb-tile .candidate-grid-metrics { margin-block-start: auto; inline-size: 100%; }
+
+/* every badge sits ON the card art. Top left: foil and Maxed (one tile per copy, no count; : no Overcombined tag). */
+/* one top bar across the art; the tags sit side by
+ side and wrap into the next row only when the width is used up, every tag the same height; the market price takes the right. */
+.card-browser .cb-art .cb-art-top { position: absolute; inset: 0.35rem 0.35rem auto; z-index: 3; display: flex; align-items: flex-start; justify-content: space-between; gap: 0.25rem; pointer-events: none; }
+.card-browser .cb-art-tags { display: flex; flex: 1 1 0; flex-flow: row wrap; align-items: center; gap: 0.2rem; min-inline-size: 0; pointer-events: none; }
+.card-browser .cb-art-tags > * { display: inline-flex; box-sizing: border-box; align-items: center; block-size: 1.05rem; margin: 0; padding: 0 0.4rem; font-size: 0.6rem; line-height: 1; vertical-align: top; text-box: trim-both cap alphabetic; }
+/* every tag the same type size (the foil's own
+ 0.65rem is gone) and each label centred on its capital letters, so mixed case (Gold) and capitals (MAXED) sit alike. */
+.card-browser .cb-art-tags .foil-badge { box-shadow: 0 1px 4px var(--shadow); }
+/* the tags carry the board's tooltips, so they take the pointer (the tag column itself stays click-through). */
+.card-browser .cb-art-tags .foil-badge, .card-browser .cb-art-tags .cb-maxed { pointer-events: auto; cursor: help; }
+.card-browser .cb-art-tags .cb-maxed { background: color-mix(in srgb, var(--info) 22%, var(--bg2)); box-shadow: 0 1px 4px var(--shadow); }
+/* The cooldown: the board's full-width centred waiting badge (.slot-wait-badge, ceres.css /), a size up for this tile. */
+.card-browser .cb-art .cb-wait { font-size: 0.75rem; padding-block: 0.25rem; }
+/* the cooling badge and the staked badge
+ share one glass (the page's glass fill, its light edge and lift); the cooling badge keeps its gold text as its state colour. */
+.card-browser .cb-art .slot-wait-badge.cb-wait, .card-browser .cb-art .slot-wait-badge.cb-onland { border-color: var(--cb-glass-edge); background: var(--cb-glass); box-shadow: inset 0 1px 0 var(--cb-glass-edge), 0 1px 4px var(--shadow); }
+/* Bottom of the art, as on the plot tiles (ceres.css .slot-foot / .slot-caption): the status badges, the land ability
+ icons right above the name, the name. A soft shade under them keeps the white name readable on any art. */
+/* the art has the plot tile's own proportions
+ (6.7 / 9.4), so the name uses the plot tile's geometry scaled to this width (ceres.css .editor-band .slot-caption / .slot-name,
+ reference width 107.2): the same strip, offset, size, line height, balanced wrap and no shade. The plaque sits under the name. */
+.card-browser .cb-grid .cb-tile .cb-art { container-type: inline-size; }
+.card-browser .cb-art .cb-caption { block-size: 48.5cqi; padding-block-start: 2.425cqi; z-index: 2; background: none; gap: 0.2rem; overflow: visible; }
+.card-browser .cb-art .cb-caption .slot-name { display: block; flex: none; block-size: calc(100cqi * 29.4 / 107.2); max-height: none; white-space: normal; overflow-wrap: normal; word-break: keep-all; text-wrap: balance; text-overflow: clip; -webkit-line-clamp: unset; font-size: calc(100cqi * 12.8 / 107.2); line-height: calc(100cqi * 14.7 / 107.2); }
+.card-browser .cb-art .cb-caption.slot-caption--long .slot-name { font-size: calc(100cqi * 11.5 / 107.2); line-height: calc(100cqi * 14.7 / 107.2); }
+.card-browser .cb-art .cb-foot { bottom: calc(48.5cqi + 3px); gap: 3px; }
+.card-browser .cb-abilities .slot-ability-item { inline-size: 24px; block-size: 24px; }
+.card-browser .cb-abilities .ability-icon { inline-size: 24px; block-size: 24px; filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--shadow) 80%, transparent)); }
+.card-browser .cb-badges { display: flex; flex-direction: column; align-items: center; align-self: stretch; gap: 3px; max-inline-size: none; margin-inline: -3px; pointer-events: auto; }
+/* the staked badge is the board's full-width waiting badge (.slot-wait-badge), set in the foot's flow over the name. */
+.card-browser .cb-foot .cb-onland { position: static; align-self: stretch; transform: none; column-gap: 0.3rem; }
+/* the badge is the page's glass (no gold tone) with a lower padding;
+ the plot link inside is a compact solid chip in its territory colour with a thin light edge and a small lift. */
+.card-browser .cb-foot .slot-wait-badge.cb-onland { padding-block: 0.08rem; color: var(--heading); line-height: 1.15; }
+.card-browser .cb-foot .cb-onland .ch-plot-badge { padding: 0.06em 0.45em; border-radius: 3px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hi) 22%, transparent), 0 1px 2px var(--shadow); font-weight: 700; line-height: 1.15; letter-spacing: 0.02em; }
+.card-browser .cb-badge { padding: 0.05rem 0.45rem; font-size: 0.68rem; border-radius: 4px; background: color-mix(in srgb, var(--badge-tone) 22%, var(--bg2)); box-shadow: 0 1px 4px var(--shadow); }
+/* the region badge link inside the staked badge, as in the picker. */
+.card-browser .cb-onland .ch-plot-badge { text-decoration: none; }
+/* three columns -- the words
+ right-aligned in the left one, the plot link in the exact centre, an equal empty column on the right. */
+.card-browser .cb-foot .slot-wait-badge.cb-onland:has(.ch-plot-badge) { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.card-browser .cb-foot .cb-onland:has(.ch-plot-badge) .slot-wait-label { justify-self: end; }
+/* Below the art: one level / CC line, then the PP boxes. */
+.card-browser .cb-level { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.15rem; max-inline-size: 100%; white-space: nowrap; color: var(--text); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+/* row 1 the icons alone, row 2 level and CC on
+ one line that never wraps (a step smaller than the old mixed line so "Lv 10/10 · CC 1,000 / 1,000" fits the narrowest tile). */
+.card-browser .cb-level .cb-level-cc { display: inline-flex; flex-wrap: nowrap; align-items: baseline; justify-content: center; gap: 0.3rem; max-inline-size: 100%; white-space: nowrap; font-size: 0.72rem; }
+.card-browser .cb-level .cb-sep { color: var(--text-dim); }
+.card-browser .cb-cc { color: var(--text-dim); }
+.card-browser .cb-level .candidate-icon-row { gap: 0.1rem; }
+.card-browser .cb-cc { white-space: nowrap; }
+.card-browser .cb-cc b { color: var(--heading); font-weight: 700; }
+/* a hidden Clear all keeps no line of its own (with the max-level toggle gone the row fits on one line). */
+.card-browser .cb-controls #cb-clear[hidden] { display: none; }
+
+/* My cards / Market. Only the controls and the grid of the active mode are shown; : the market is read
+ automatically on entering Market mode and after each filter change (card-market.js). */
+.card-browser[data-cb-mode]:not([data-cb-mode="market"]) .cm-only, .card-browser[data-cb-mode="market"] .cb-only { display: none; }
+/* before card-market.js sets the mode, the start mode the page's head script read (URL, then the remembered mode). */
+.card-browser:not([data-cb-mode]):not(:root[data-cb-start="market"] *) .cm-only, .card-browser:not([data-cb-mode]):not(:root:not([data-cb-start="market"]) *) .cb-only { display: none; }
+/* Find combinables keeps the filter row (its copy filters included) but not the My cards sort or grid. */
+.card-browser:not([data-cb-mode="combine"]) .cx-only, .card-browser[data-cb-mode="combine"] .cb-main > .cb-only, .card-browser[data-cb-mode="combine"] .cb-controls .cb-sort-field { display: none; }
+.card-browser .cp-only { display: none; }
+.card-browser[data-cb-mode="purchases"] .cp-only, html[data-cb-start="purchases"] .card-browser:not([data-cb-mode]) .cp-only { display: block; }
+.card-browser[data-cb-mode="purchases"] .cb-controls.controls-row,
+.card-browser[data-cb-mode="purchases"] .cb-main > .cb-only,
+.card-browser[data-cb-mode="purchases"] .cb-main > .cm-only,
+.card-browser[data-cb-mode="purchases"] .cb-main > .cx-only,
+html[data-cb-start="purchases"] .card-browser:not([data-cb-mode]) .cb-controls.controls-row,
+html[data-cb-start="purchases"] .card-browser:not([data-cb-mode]) .cb-main > .cb-only,
+html[data-cb-start="purchases"] .card-browser:not([data-cb-mode]) .cb-main > .cm-only,
+html[data-cb-start="purchases"] .card-browser:not([data-cb-mode]) .cb-main > .cx-only { display: none; }
+.card-browser .cb-mode { display: inline-flex; gap: 0.25rem; }
+.card-browser .cb-summary[hidden], .card-browser .cb-message[hidden] { display: none; }
+/* the price is the
+ board's full-width .slot-wait-badge in the art's foot, over the name like the staked badge, in the same glass. */
+/* anchored to the art's bottom edge (0.35rem above it),
+ below the name; same glass, sizes and content. : edge to edge across the art (left 0, right 0), like the board's .slot-wait-badge. : flush on the art's bottom edge; the art's own rounded, clipped corners
+ (overflow hidden) round its bottom corners. */
+.card-browser .cb-art > .cm-price-badges { position: absolute; inset: auto 0 0; z-index: 4; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; pointer-events: auto; cursor: help; }
+.card-browser .cm-price-badges > .slot-wait-badge.cm-price-badge { position: static; inset: auto; transform: none; display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; box-sizing: border-box; min-inline-size: 0; padding: 0.12rem 0.2rem; border-radius: 2px 2px 0 0; line-height: 1.2; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.card-browser .cm-price-badge .cm-price-usd { font-size: 0.95rem; font-weight: 700; }
+/* the DEC box uses the $ box's size and weight; the icon and the amount are centred as one unit. */
+.card-browser .cm-price-badge .cm-price-dec { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.95rem; font-weight: 700; }
+.card-browser .cm-price-badge .cm-dec-icon { inline-size: 1rem; block-size: 1rem; object-fit: contain; filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--shadow) 60%, transparent)); }
+/* The market's own tags take the right of the art's top bar (the foil / Maxed tags keep the left), same height as those. */
+.card-browser .cm-tile .cb-art .cm-tags { display: flex; flex: none; flex-flow: column; align-items: flex-end; gap: 0.2rem; pointer-events: none; }
+.card-browser .cm-tile .cb-art .cm-tag { display: inline-flex; box-sizing: border-box; align-items: center; block-size: 1.05rem; padding: 0 0.4rem; border: 1px solid var(--cb-glass-edge); border-radius: 4px; background: var(--cb-glass); box-shadow: 0 1px 4px var(--shadow); color: var(--heading); font-size: 0.6rem; line-height: 1; white-space: nowrap; pointer-events: auto; cursor: help; }
+.card-browser .cm-tile .cb-art .cm-tag[hidden] { display: none; }
+/* colour coding (C-4): your own listing amber (not addable), in the cart green. */
+.card-browser .cm-tile .cb-art .cm-own { border-color: var(--warn); color: var(--warn); cursor: default; }
+.card-browser .cm-tile .cb-art .cm-incart { border-color: var(--ok); color: var(--ok); cursor: default; }
+.card-browser .cm-tile .candidate-grid-metric strong { font-size: 1.05rem; }
+.card-browser .cm-menu-link { color: var(--primary); font-size: 0.8rem; font-weight: 600; text-decoration: none; }
+.card-browser .cm-menu-link:hover, .card-browser .cm-menu-link:focus-visible { text-decoration: underline; }
+/* with the Maxed filter on, the Lv · CC line is hidden. */
+.card-browser[data-cb-mode="market"][data-cb-maxed] .cb-level .cb-level-cc { display: none; }
+
+/* ==========================================================================
+ / : the card menu and the cart (card-cart.js). The board's overlay and panel (.slot-hazard-overlay /
+ .slot-hazard-panel, as the combine dialog) in the page's glass; approved buttons; state colours per C-4: green (--ok) in the
+ cart, amber (--warn) your own listing / much dearer per CC / price changed / not re-checked, red (--danger) sold, muted a
+ level the listings on sale cannot reach. The narrow layout follows the panel's own width (container query), not the phone.
+ ========================================================================== */
+.card-browser { --cb-panel-glass: linear-gradient(160deg, color-mix(in srgb, var(--text) 9%, transparent), color-mix(in srgb, var(--text) 2%, transparent)), color-mix(in srgb, var(--bg2) 92%, transparent); }
+.card-browser .cb-grid > .cm-tile { cursor: pointer; }
+.card-browser .cb-grid > .cm-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* the whole tile is green glass -- the
+ page glass tinted with --ok, a green edge and inset ring; the PP boxes take the same tint; text keeps its own colours. */
+.card-browser .cb-grid > .cm-tile.is-in-cart, .card-browser .cb-grid > .cm-tile.is-in-cart:hover { border-color: var(--ok); background: linear-gradient(160deg, color-mix(in srgb, var(--ok) 48%, transparent), color-mix(in srgb, var(--ok) 26%, transparent)), color-mix(in srgb, var(--bg) var(--glass-row, 60%), transparent); box-shadow: inset 0 0 0 1px var(--ok), inset 0 1px 0 color-mix(in srgb, var(--ok) 45%, transparent), 0 4px 14px color-mix(in srgb, var(--shadow) 22%, transparent); }
+.card-browser .cm-tile.is-in-cart .candidate-grid-metric { border-color: color-mix(in srgb, var(--ok) 60%, transparent); background: color-mix(in srgb, var(--ok) 22%, color-mix(in srgb, var(--bg) 40%, transparent)); }
+.card-browser .cm-tile .cm-tile-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.35rem 0.75rem; inline-size: 100%; }
+.card-browser .cm-cart-btn .cm-cart-count { display: inline-grid; place-items: center; box-sizing: border-box; min-inline-size: 1.25rem; block-size: 1.25rem; padding: 0 0.3rem; border-radius: 999px; background: color-mix(in srgb, var(--bg) 70%, transparent); color: var(--heading); font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.card-browser .cm-cart-btn .cm-cart-count[data-state="ok"] { background: var(--ok); color: var(--bg); }
+.card-browser .cm-cart-btn .cm-cart-count[data-state="changed"] { background: var(--warn); color: var(--bg); }
+.card-browser .cm-cart-btn .cm-cart-count[data-state="sold"] { background: var(--danger); color: var(--bg); }
+/* the header cart button is gone while the cart holds nothing (no
+ listing, no sold or changed notice); card-cart.js syncCount keeps data-state current, so it shows from the first item. */
+.card-browser .cm-cart-btn:has(> .cm-cart-count[data-state="empty"]) { display: none; }
+.card-browser .slot-hazard-overlay.cm-dialog-overlay { z-index: 1200; background: color-mix(in srgb, var(--shadow) 60%, transparent); }
+.card-browser .slot-hazard-panel.cm-dialog-panel { container-type: inline-size; display: flex; flex-direction: column; inline-size: min(60rem, 100%); min-inline-size: 0; max-block-size: calc(var(--ceres-vh, 1vh) * 90); border-color: var(--cb-glass-edge); background: var(--cb-panel-glass); box-shadow: inset 0 1px 0 var(--cb-glass-edge), 0 18px 60px color-mix(in srgb, var(--shadow) 70%, transparent); overflow: hidden; }
+.card-browser .cm-dialog-panel > header { flex: none; border-bottom-color: var(--cb-glass-edge); }
+.card-browser .cm-dialog-panel > header h3 { margin: 0; color: var(--heading); font-size: 1.25rem; }
+.card-browser .cm-dialog-panel > .cm-dialog-body { display: grid; flex: 1 1 auto; align-content: start; gap: 1rem; min-block-size: 0; padding: 1rem; overflow-y: auto; font-size: 0.8rem; }
+.card-browser .cm-dialog-panel > .cm-dialog-foot { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.5rem 0.75rem; padding: 0.75rem 1rem; border-top: 1px solid var(--cb-glass-edge); }
+.card-browser .cm-dialog-foot .cm-foot-total { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; margin-inline-end: auto; color: var(--text); font-size: 0.9rem; }
+.card-browser .cm-checkout-wrap { display: inline-flex; }
+.card-browser .cm-menu-head { display: grid; grid-template-columns: 6rem minmax(0, 1fr); align-items: start; gap: 1rem; }
+.card-browser .cm-menu-art { display: block; box-sizing: border-box; inline-size: 6rem; block-size: auto; aspect-ratio: 6.7 / 9.4; object-fit: contain; border-radius: calc(var(--radius) - 3px); }
+.card-browser .cm-menu-art-missing { border: 1px solid var(--cb-glass-edge); background: color-mix(in srgb, var(--bg3) 50%, transparent); }
+.card-browser .cm-menu-facts { display: grid; gap: 0.4rem; min-inline-size: 0; }
+.card-browser .cm-menu-print { color: var(--heading); font-size: 1rem; font-weight: 700; }
+.card-browser .cm-menu-stats { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; color: var(--text); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.card-browser .cm-menu-scope { color: var(--text-dim); font-size: 0.75rem; }
+.card-browser .cm-menu-max { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-block-start: 0.25rem; }
+.card-browser .cm-menu-reason { color: var(--warn); font-size: 0.75rem; }
+.card-browser .cm-section h4 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.5rem; margin: 0 0 0.4rem; color: var(--heading); font-size: 0.9rem; font-weight: 700; }
+.card-browser .cm-section h4 small { color: var(--text-dim); font-size: 0.75rem; font-weight: 400; }
+.card-browser .cm-section h4 .cm-group-total { margin-inline-start: auto; }
+.card-browser .cm-rows { display: grid; gap: 0.3rem; }
+.card-browser .cm-row { display: grid; grid-template-columns: 7.5rem 4.5rem 5.5rem minmax(9rem, 1fr) 6.5rem minmax(0, 1.3fr) auto; align-items: center; gap: 0.5rem; box-sizing: border-box; min-block-size: 2.5rem; padding: 0.3rem 0.5rem; border: 1px solid var(--cb-glass-edge); border-radius: calc(var(--radius) - 3px); background: color-mix(in srgb, var(--bg) 40%, transparent); color: var(--text); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.card-browser .cm-row.cm-cart-item { grid-template-columns: 4rem 4.5rem 5.5rem minmax(9rem, 1fr) minmax(0, 1.3fr) auto; }
+.card-browser .cm-row[data-state="unreachable"] { grid-template-columns: 7.5rem minmax(0, 1fr) auto; color: var(--text-dim); opacity: 0.7; }
+.card-browser .cm-row[data-state="in-cart"] { border-color: var(--ok); box-shadow: inset 3px 0 0 var(--ok); }
+.card-browser .cm-row[data-state="covered"] { border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.card-browser .cm-row[data-state="own"], .card-browser .cm-row[data-state="changed"], .card-browser .cm-row[data-state="unverified"] { border-color: var(--warn); box-shadow: inset 3px 0 0 var(--warn); }
+.card-browser .cm-cell { min-inline-size: 0; white-space: nowrap; }
+.card-browser .cm-c-lv { color: var(--heading); font-weight: 700; }
+.card-browser .cm-c-lv small, .card-browser .cm-c-rate small { color: var(--text-dim); font-size: 0.7rem; font-weight: 400; }
+.card-browser .cm-c-cc, .card-browser .cm-c-pp, .card-browser .cm-c-rate { justify-self: end; text-align: right; }
+.card-browser .cm-c-tags { display: flex; flex-wrap: wrap; gap: 0.25rem; white-space: normal; }
+.card-browser .cm-c-reason { white-space: normal; }
+.card-browser .cm-c-act { justify-self: end; }
+.card-browser .cm-pair { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 0.5rem; white-space: nowrap; }
+.card-browser .cm-pair .cm-usd { color: var(--heading); font-size: 0.9rem; font-weight: 700; }
+.card-browser .cm-pair .cm-dec { display: inline-flex; align-items: center; gap: 0.2rem; color: var(--text); font-weight: 600; }
+.card-browser .cm-pair .cm-dec-icon { inline-size: 1rem; block-size: 1rem; object-fit: contain; }
+.card-browser .cm-chip { display: inline-flex; box-sizing: border-box; align-items: center; block-size: 1.25rem; padding: 0 0.45rem; border: 1px solid var(--cb-glass-edge); border-radius: 999px; background: color-mix(in srgb, var(--bg) 50%, transparent); color: var(--text); font-size: 0.75rem; white-space: nowrap; }
+.card-browser .cm-chip.is-ok { border-color: var(--ok); color: var(--ok); }
+.card-browser .cm-chip.is-warn { border-color: var(--warn); color: var(--warn); }
+.card-browser .cm-note { margin: 0; padding: 0.5rem 0.75rem; border: 1px solid var(--warn); border-radius: calc(var(--radius) - 3px); background: color-mix(in srgb, var(--warn) 12%, transparent); color: var(--text); font-size: 0.8rem; }
+.card-browser .cm-note[data-state="ok"] { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+.card-browser .cm-note[data-state="sold"] { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.card-browser .cm-note p { margin: 0 0 0.35rem; }
+.card-browser .cm-note ul { margin: 0 0 0.5rem; padding-inline-start: 1.2rem; }
+.card-browser .cm-empty { margin: 0; color: var(--text-dim); font-size: 0.8rem; }
+.card-browser .cm-dialog-panel.is-narrow .cm-menu-head { grid-template-columns: 4.5rem minmax(0, 1fr); gap: 0.75rem; }
+.card-browser .cm-dialog-panel.is-narrow .cm-menu-art { inline-size: 4.5rem; }
+.card-browser .cm-dialog-panel.is-narrow .cm-row, .card-browser .cm-dialog-panel.is-narrow .cm-row.cm-cart-item { grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: "lv cc pp act" "price price rate act" "tags tags tags tags"; row-gap: 0.25rem; }
+.card-browser .cm-dialog-panel.is-narrow .cm-row[data-state="unreachable"] { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "lv act" "reason reason"; }
+.card-browser .cm-dialog-panel.is-narrow .cm-row .cm-c-lv { grid-area: lv; }
+.card-browser .cm-dialog-panel.is-narrow .cm-row .cm-c-cc { grid-area: cc; justify-self: start; }
+.card-browser .cm-dialog-panel.is-narrow .cm-row .cm-c-pp { grid-area: pp; justify-self: start; }
+.card-browser .cm-dialog-panel.is-narrow .cm-row .cm-c-price { grid-area: price; }
+.card-browser .cm-dialog-panel.is-narrow .cm-row .cm-c-rate { grid-area: rate; justify-self: start; }
+.card-browser .cm-dialog-panel.is-narrow .cm-row .cm-c-tags { grid-area: tags; }
+.card-browser .cm-dialog-panel.is-narrow .cm-row .cm-c-tags:empty { display: none; }
+.card-browser .cm-dialog-panel.is-narrow .cm-row .cm-c-act { grid-area: act; align-self: center; }
+.card-browser .cm-dialog-panel.is-narrow .cm-row .cm-c-reason { grid-area: reason; }
+
+/* ==========================================================================
+ : nothing moves while
+ the market is read. The summary bar is always drawn with its height reserved; the spinner and the message float over the tile
+ stage (absolute, no layout); a re-read keeps the tiles in place, softly dimmed; the first read shows placeholder tiles of the
+ exact tile size; new results fade in (opacity only, no movement or scale); the art keeps its box and fades in on load
+ (ceres.css .candidate-art > img.is-art-in). The fade-in and the shimmer run as Web Animations from card-market.js (no CSS
+ keyframes on this page); reduced motion (body.cb-reduce-motion): no shimmer, no fades, no transition.
+ ========================================================================== */
+.card-browser #cm-summary.cb-summary { inline-size: 100%; min-block-size: 1.875rem; }  /* full width, so a new read never changes its size */
+.card-browser .cm-stage { position: relative; min-block-size: 26rem; }
+.card-browser .cm-stage > .cm-loading { position: absolute; inset-block-start: 0.75rem; inset-inline: 0; z-index: 6; box-sizing: border-box; inline-size: fit-content; margin-inline: auto; padding: 0.4rem 0.9rem; border: 1px solid var(--cb-glass-edge); border-radius: 999px; background: var(--cb-panel-glass); box-shadow: inset 0 1px 0 var(--cb-glass-edge), 0 4px 14px color-mix(in srgb, var(--shadow) 35%, transparent); color: var(--heading); font-size: 0.8rem; pointer-events: none; }
+.card-browser .cm-stage > .cm-message { position: absolute; inset-block-start: 3.5rem; inset-inline: 0; z-index: 5; margin: 0; padding: 0 1rem; }
+.card-browser .cm-grid { transition: opacity 180ms ease; }
+.card-browser .cm-grid[data-cm-loading] { opacity: 0.55; }
+.card-browser .cb-grid > .cm-skeleton { pointer-events: none; cursor: default; }
+/* slots not needed by the results fade out, then are removed (card-market.js cmTrimSlots). */
+.card-browser .cb-grid > .cm-fade-out { opacity: 0; transition: opacity 200ms ease; pointer-events: none; }
+.card-browser .cm-skeleton .cb-art > *, .card-browser .cm-skeleton .cb-level > *, .card-browser .cm-skeleton .candidate-grid-metric > *, .card-browser .cm-skeleton .cm-tile-actions > * { visibility: hidden; }
+.card-browser .cm-skeleton .cb-art, .card-browser .cm-skeleton .candidate-grid-metric { opacity: 0.7; }
+.card-browser.cb-reduce-motion .cm-grid { transition: none; }
+.card-browser.cb-reduce-motion .cb-grid > .cm-fade-out { transition: none; }
+
+/* ==========================================================================
+ : badges that sit ON the card art
+ read the same in every theme -- a dark glass from the theme's own --shadow (dark in all four Iris themes) with a light --hi
+ edge and light text, as the art itself is dark in every theme; state colours stay (cooling gold, plot chips, own / in cart).
+ Under the art, the white set / rarity / splinter glyphs get a dark outline on the light and wood glass.
+ ========================================================================== */
+.card-browser { --cb-art-glass: linear-gradient(160deg, color-mix(in srgb, var(--hi) 12%, transparent), color-mix(in srgb, var(--hi) 3%, transparent)), color-mix(in srgb, var(--shadow) 72%, transparent); --cb-art-edge: color-mix(in srgb, var(--hi) 28%, transparent); }
+.card-browser .cm-price-badges > .slot-wait-badge.cm-price-badge, .card-browser .cb-art .slot-wait-badge.cb-wait, .card-browser .cb-foot .slot-wait-badge.cb-onland { border-color: var(--cb-art-edge); background: var(--cb-art-glass); box-shadow: inset 0 1px 0 var(--cb-art-edge), 0 1px 4px var(--shadow); }
+/* (; supersedes 's gold text): the cooling badge's text and hourglass
+ are amber var(--warn) like every other wait in Ceres; the badge keeps the shared glass. The hourglass glyph is tinted through
+ its text shadow (a colour glyph ignores `color`). */
+.card-browser .cb-art .slot-wait-badge.cb-wait { color: var(--warn); }
+.card-browser .cb-art .slot-wait-badge.cb-wait .cb-wait-icon { color: transparent; text-shadow: 0 0 0 var(--warn); }
+.card-browser .cm-price-badges > .slot-wait-badge.cm-price-badge, .card-browser .cb-foot .slot-wait-badge.cb-onland { color: var(--hi); }
+.card-browser .cm-price-badge .cm-price-dec { color: var(--hi); }
+.card-browser .cm-tile .cb-art .cm-tag, .card-browser .cb-art-tags .cb-maxed { border-color: var(--cb-art-edge); background: var(--cb-art-glass); color: var(--hi); }
+.card-browser .cm-tile .cb-art .cm-own { border-color: var(--warn); color: var(--warn); }
+.card-browser .cm-tile .cb-art .cm-incart { border-color: var(--ok); color: var(--ok); }
+html[data-theme="light"] .card-browser .cb-level .candidate-icon-box > img, html[data-theme="wood"] .card-browser .cb-level .candidate-icon-box > img, html[data-theme="light"] .card-browser .cb-level .candidate-icon-box > svg, html[data-theme="wood"] .card-browser .cb-level .candidate-icon-box > svg { filter: drop-shadow(0 0 1px var(--shadow)) drop-shadow(0 1px 1px color-mix(in srgb, var(--shadow) 70%, transparent)); }
+
+/* Load more, centred under the grid (an approved secondary button). */
+.card-browser .cm-more-row { display: flex; justify-content: center; padding-block: 1rem 0.5rem; }
+.card-browser .cm-more-row:has(> #cm-more[hidden]) { display: none; }
+.card-browser .cm-own-note { color: var(--warn); font-size: 0.75rem; white-space: normal; text-align: right; }
+
+/* the price badge is green glass -- the dark on-art glass () tinted with
+ --ok and a green edge, light text, the DEC icon kept. "In cart" stays the whole tile green plus its "In cart" tag. */
+.card-browser .cm-price-badges > .slot-wait-badge.cm-price-badge { border-color: color-mix(in srgb, var(--ok) 75%, transparent); background: linear-gradient(160deg, color-mix(in srgb, var(--ok) 40%, transparent), color-mix(in srgb, var(--ok) 20%, transparent)), color-mix(in srgb, var(--shadow) 72%, transparent); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--hi) 22%, transparent), 0 1px 4px var(--shadow); color: var(--hi); }
+
+/* one column template for the whole copy list (subgrid rows),
+ so every number column, the DEC icon slot and the DEC amount share their x-position in every row. */
+.card-browser .cm-copy-table { display: grid; grid-template-columns: [lv] max-content [cc] max-content [pp] max-content [usd] max-content [dec] max-content [decicon] 1rem [rate] max-content [seller] minmax(0, max-content) [tags] minmax(0, 1fr) [act] max-content; column-gap: 0.75rem; row-gap: 0.25rem; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.card-browser .cm-copy-table > .cm-copy { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; box-sizing: border-box; min-block-size: 2.5rem; padding: 0.25rem 0.5rem; border: 1px solid var(--cb-glass-edge); border-radius: calc(var(--radius) - 3px); background: color-mix(in srgb, var(--bg) 40%, transparent); color: var(--text); }
+.card-browser .cm-copy-table.cm-owned-table { grid-template-columns: [lv] max-content [cc] max-content [pp] max-content [tags] minmax(0, 1fr); }
+.card-browser .cm-owned-copy .cm-c-tags { white-space: normal; }
+.card-browser .cm-copy-table > .cm-copy-head { min-block-size: 0; padding-block: 0; border-color: transparent; background: none; color: var(--text-dim); font-size: 0.75rem; font-weight: 700; }
+.card-browser .cm-copy-table > .cm-copy[data-state="in-cart"] { border-color: var(--ok); box-shadow: inset 3px 0 0 var(--ok); }
+.card-browser .cm-copy-table > .cm-copy[data-state="own"] { border-color: var(--warn); box-shadow: inset 3px 0 0 var(--warn); }
+.card-browser .cm-copy .cm-cell { min-inline-size: 0; white-space: nowrap; }
+.card-browser .cm-copy .cm-c-cc, .card-browser .cm-copy .cm-c-pp, .card-browser .cm-copy .cm-c-usd, .card-browser .cm-copy .cm-c-dec, .card-browser .cm-copy .cm-c-rate { justify-self: end; text-align: right; }
+.card-browser .cm-copy .cm-c-usd { color: var(--heading); font-weight: 700; }
+/* the DEC icon follows the amount; a copy that is not flagged as dear shows its prices in green. */
+/* the whole cheap row is in
+ the green ok theme -- a light green glass tint, a green edge and every cell's text green; an in-cart cheap row keeps the
+ stronger tint and the inset bar of in-cart, so the two stay apart. */
+.card-browser .cm-copy-table > .cm-copy.is-cheap { border-color: color-mix(in srgb, var(--ok) 60%, transparent); background: linear-gradient(160deg, color-mix(in srgb, var(--ok) 14%, transparent), color-mix(in srgb, var(--ok) 8%, transparent)), color-mix(in srgb, var(--bg) 40%, transparent); }
+.card-browser .cm-copy.is-cheap .cm-cell, .card-browser .cm-copy.is-cheap .cm-c-usd, .card-browser .cm-copy.is-cheap .cm-c-dec { color: var(--ok); }
+.card-browser .cm-copy-table > .cm-copy.is-cheap[data-state="in-cart"] { border-color: var(--ok); background: linear-gradient(160deg, color-mix(in srgb, var(--ok) 30%, transparent), color-mix(in srgb, var(--ok) 18%, transparent)), color-mix(in srgb, var(--bg) 40%, transparent); box-shadow: inset 3px 0 0 var(--ok); }
+.card-browser .cm-copy .cm-c-decicon { justify-self: start; padding-inline-start: 0.2rem; }
+.card-browser .cm-copy-head .cm-c-usd { color: var(--text-dim); }
+.card-browser .cm-copy .cm-c-decicon { display: grid; place-items: center; inline-size: 1rem; }
+.card-browser .cm-copy .cm-c-decicon .cm-dec-icon { inline-size: 1rem; block-size: 1rem; object-fit: contain; }
+.card-browser .cm-copy .cm-c-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; white-space: normal; }
+.card-browser .cm-copy .cm-c-act { justify-self: end; }
+/* the seller column of the card menu (max 10rem, cut with an ellipsis; the full name is in its title) */
+.card-browser .cm-copy .cm-c-seller { max-inline-size: 10rem; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.card-browser .cm-copy .cm-own-note { white-space: normal; text-align: left; }
+.card-browser .cm-dialog-panel.is-narrow .cm-copy-table { grid-template-columns: [lv] max-content [cc] max-content [pp] max-content [usd] max-content [dec] max-content [decicon] minmax(1rem, 1fr); column-gap: 0.5rem; }
+.card-browser .cm-dialog-panel.is-narrow .cm-copy-table.cm-owned-table { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.card-browser .cm-dialog-panel.is-narrow .cm-owned-table > .cm-copy-head { display: none; }
+.card-browser .cm-dialog-panel.is-narrow .cm-owned-table > .cm-owned-copy .cm-c-tags { grid-column: 1 / -1; grid-row: 2; }
+.card-browser .cm-dialog-panel.is-narrow .cm-copy-head .cm-c-act, .card-browser .cm-dialog-panel.is-narrow .cm-copy-head .cm-c-tags { display: none; }
+.card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-c-rate { display: none; }
+.card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-c-act { grid-column: 4 / -1; grid-row: 2; justify-self: end; }
+.card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-c-tags { grid-column: 1 / 4; grid-row: 2; }
+/* on phones: the seller moves into the row's second line, before the tags */
+.card-browser .cm-dialog-panel.is-narrow .cm-copy-head .cm-c-seller { display: none; }
+.card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-c-seller { grid-column: 1 / 4; grid-row: 2; align-self: center; max-inline-size: none; }
+.card-browser .cm-dialog-panel.is-narrow .cm-copy:has(.cm-c-tags:not(:empty)) .cm-c-tags { grid-row: 3; }
+
+/* Find combinables: one glass entry per card -- the Cards tile (art, name, level) beside the combine and the upgrade
+ parts. Colours are the C-4 states only: --ok possible / saving / max, --warn temporary blocker / card lock / level only,
+ --danger never combinable / the step that stopped the suggestion, --meta neutral. */
+.card-browser .cx-summary { inline-size: 100%; align-items: center; }
+.card-browser .cx-summary .cb-summary-item { min-inline-size: 0; white-space: normal; overflow-wrap: anywhere; }
+.card-browser .cx-summary-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-inline-start: auto; }
+.card-browser .cx-sort { display: inline-flex; gap: 0.25rem; }
+.card-browser .cx-note.is-ok { color: var(--ok); }
+.card-browser .cx-note.is-warn { color: var(--warn); }
+.card-browser .cx-note.is-danger { color: var(--danger); }
+.card-browser .cx-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(34rem, 1fr)); gap: 0.75rem; }
+.card-browser .cx-list.is-narrow { grid-template-columns: minmax(0, 1fr); }
+.card-browser .cx-entry { display: grid; grid-template-columns: 10rem minmax(0, 1fr); align-items: start; gap: 0.75rem; box-sizing: border-box; padding: 0.6rem; border: 1px solid var(--cb-glass-edge); border-radius: var(--radius); background: var(--cb-glass); box-shadow: inset 0 1px 0 var(--cb-glass-edge), 0 4px 14px color-mix(in srgb, var(--shadow) 22%, transparent); color: var(--text); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.card-browser .cx-list.is-narrow .cx-entry { grid-template-columns: 7rem minmax(0, 1fr); gap: 0.6rem; padding: 0.5rem; }
+.card-browser .cx-art .cx-tile { inline-size: 100%; margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
+.card-browser .cx-art .cx-tile .candidate-grid-metrics:empty, .card-browser .cx-art .cx-tile .cb-level-cc, .card-browser .cx-art .cx-tile .cb-caption, .card-browser .cx-art .cx-tile .cb-foot { display: none; }  /* the name is the entry heading */
+.card-browser .cx-body { display: flex; flex-direction: column; gap: 0.5rem; min-inline-size: 0; }
+.card-browser .cx-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.6rem; }
+.card-browser .cx-head h3 { margin: 0; color: var(--heading); font-size: 1rem; }
+.card-browser .cx-meta { color: var(--meta); }
+.card-browser .cx-part { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.45rem 0.6rem; border: 1px solid var(--cb-glass-edge); border-radius: calc(var(--radius) - 3px); background: color-mix(in srgb, var(--bg) 40%, transparent); }
+.card-browser .cx-part h4 { margin: 0; color: var(--meta); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.card-browser .cx-ledger { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; color: var(--heading); font-size: 1rem; font-weight: 700; }
+.card-browser .cx-ledger .cx-arrow { color: var(--meta); }
+.card-browser .cx-ledger .cx-lv.is-ok { color: var(--ok); }
+.card-browser .cx-line { margin: 0; overflow-wrap: anywhere; }
+.card-browser .cx-line.is-ok, .card-browser .cx-verdict.is-ok { color: var(--ok); }
+.card-browser .cx-line.is-warn, .card-browser .cx-verdict.is-warn { color: var(--warn); }
+.card-browser .cx-line.is-danger, .card-browser .cx-verdict.is-danger { color: var(--danger); }
+.card-browser .cx-line.is-meta, .card-browser .cx-verdict.is-meta { color: var(--meta); }
+.card-browser .cx-verdict { margin: 0; font-size: 0.95rem; font-weight: 700; }
+.card-browser .cx-price { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; }
+.card-browser .cx-reading { display: flex; align-items: center; gap: 0.5rem; color: var(--meta); }
+.card-browser .cx-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-block-start: 0.15rem; }
+.card-browser .cx-chip.is-danger { border-color: var(--danger); color: var(--danger); }
+.card-browser .cx-blocked, .card-browser .cx-more-sets { margin: 0; }
+.card-browser .cx-toggle { cursor: pointer; }
+.card-browser .cx-blocked.is-warn .cx-toggle { color: var(--warn); }
+.card-browser .cx-blocked.is-danger .cx-toggle { color: var(--danger); }
+.card-browser .cx-more-sets .cx-toggle { color: var(--meta); }
+.card-browser .cx-blocked ul, .card-browser .cx-more-sets ul { margin: 0.25rem 0 0; padding-inline-start: 1.1rem; }
+.card-browser .cx-copy .cx-reason { margin-inline-start: 0.35rem; }
+.card-browser .cx-reason.is-warn { color: var(--warn); }
+.card-browser .cx-reason.is-danger { color: var(--danger); }
+.card-browser .cx-plot { color: var(--link); }
+
+/* cart queue report: the Cards header fits a 390 px phone. Phone tier only (P-0, the board's own scope): player field and
+ Cart beside the logo, the mode buttons, Wallet and the Plots | Cards switcher on line 2 (, ceres.css). : the
+ Cart button is its icon and count on every width. */
+html.ceres-lw-le-1919.ceres-lw-le-1279 .card-browser header.board-header { gap: 0.4rem 0.4rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .card-browser header.board-header .player-switch { flex: 1 1 0; min-inline-size: 0; max-inline-size: none; margin-inline-start: 0; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .card-browser header.board-header .player-switch .player-input { flex: 1 1 auto; min-inline-size: 3rem; inline-size: auto; max-inline-size: none; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .card-browser header.board-header .cb-mode { order: 9; display: flex; flex: 1 1 0; min-inline-size: 0; gap: 0.25rem; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .card-browser header.board-header .cb-mode > .ceres-btn { flex: 1 1 auto; min-inline-size: 0; white-space: nowrap; }
+html.ceres-lw-le-1919.ceres-lw-le-1279 .card-browser header.board-header .board-logo-img { block-size: 4.6875rem; inline-size: auto; } /* the board's phone logo (), so line 2 and the switcher sit where they sit on the board */
+/* under the Cost per PP sort the Market tile's PP/$ box takes
+ its band's colour on the border and the number, with a light tint of it in the box glass; the box keeps its size. */
+.card-browser .cm-tile .candidate-grid-metric.cm-metric-rate.is-top { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, color-mix(in srgb, var(--bg) 40%, transparent)); }
+.card-browser .cm-tile .candidate-grid-metric.cm-metric-rate.is-top strong { color: var(--gold); }
+.card-browser .cm-tile .candidate-grid-metric.cm-metric-rate.is-good { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, color-mix(in srgb, var(--bg) 40%, transparent)); }
+.card-browser .cm-tile .candidate-grid-metric.cm-metric-rate.is-good strong { color: var(--ok); }
+.card-browser .cm-tile .candidate-grid-metric.cm-metric-rate.is-fair { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, color-mix(in srgb, var(--bg) 40%, transparent)); }
+.card-browser .cm-tile .candidate-grid-metric.cm-metric-rate.is-fair strong { color: var(--warn); }
+.card-browser .cm-tile .candidate-grid-metric.cm-metric-rate.is-dear { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, color-mix(in srgb, var(--bg) 40%, transparent)); }
+.card-browser .cm-tile .candidate-grid-metric.cm-metric-rate.is-dear strong { color: var(--danger); }
+/* My cards tiles -- the ability row below the name, in the caption's lower strip (48.5cqi caption - 2.425cqi top pad -
+ 27.43cqi name block = 18.6cqi); one row of 24px icons, centred in that strip and anchored to the art's bottom, so a one-line and a two-line name put
+ it at the same height; the name block keeps its fixed 2-line height and never reaches it. */
+.card-browser .cb-art .cb-caption .cb-abilities-below { position: absolute; inset-inline: 0; bottom: calc((18.6cqi - min(24px, 16cqi)) / 2); block-size: min(24px, 16cqi); align-items: center; margin: 0; }
+.card-browser .cb-caption .cb-abilities-below .slot-ability-item, .card-browser .cb-caption .cb-abilities-below .ability-icon { inline-size: min(24px, 16cqi); block-size: min(24px, 16cqi); }
+/* (; chose "Accent glass,
+ larger number"): the PP box on every tile (My cards and Market) in the theme accent -- accent edge, a light accent tint in the
+ box glass, the number in accent one step larger (1.25rem, line-height 1 so the box keeps its height). No state colour: gold,
+ amber, green and red mean top pick / warn / ok / danger. An in-cart Market tile keeps its green boxes. */
+.card-browser .candidate-grid-metric.cb-metric-pp { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, color-mix(in srgb, var(--bg) 40%, transparent)); }
+.card-browser .candidate-grid-metric.cb-metric-pp strong { color: var(--accent); font-size: 1.25rem; line-height: 1; }
+/* (; "the container tiles must be properly
+ visually distinguishable from single cards"): the Market container tile (card-market.js cmFoldTileHtml, .cm-fold-tile) keeps
+ the tile's footprint but never looks like a card -- a darker accent glass with a dashed accent edge, no card art: a drawn
+ stack of three card outlines with a layers mark and the large "+N more copies" on its front, "from $X" in the green price
+ badge below; the PP / PP/$ boxes, the level tag and the one-click button are kept in place but not shown (no layout shift).
+ Hover is the tiles' own (edge, no zoom); every colour is a theme token, so it reads in all four Iris themes. */
+.card-browser .cb-grid > .cb-tile.cm-fold-tile { border-style: dashed; }
+.card-browser .cb-grid > .cb-tile.cm-fold-tile:not(.is-in-cart) { border-color: color-mix(in srgb, var(--accent) 70%, transparent); background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--accent) 3%, transparent)), color-mix(in srgb, color-mix(in srgb, var(--bg) 55%, var(--shadow)) 88%, transparent); }
+.card-browser .cb-grid > .cb-tile.cm-fold-tile:not(.is-in-cart):hover, .card-browser .cb-grid > .cb-tile.cm-fold-tile:not(.is-in-cart):focus-within { border-color: var(--accent); background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent) 6%, transparent)), color-mix(in srgb, color-mix(in srgb, var(--bg) 45%, var(--shadow)) 88%, transparent); }
+.card-browser .cb-grid > .cb-tile.cm-fold-tile .cb-art { border-style: dashed; border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--bg) 65%, transparent); }
+.card-browser .cb-grid > .cb-tile.cm-fold-tile .cb-art > img { visibility: hidden; }
+.card-browser .cb-grid > .cb-tile.cm-fold-tile .cb-art::before { content: ""; position: absolute; inset: 22% 26% 30% 18%; z-index: 1; box-sizing: border-box; border: 2px solid var(--accent); border-radius: calc(var(--radius) - 3px); background: color-mix(in srgb, var(--accent) 16%, var(--bg2)); box-shadow: 7px -7px 0 -2px var(--bg2), 7px -7px 0 0 color-mix(in srgb, var(--accent) 65%, transparent), 14px -14px 0 -2px var(--bg2), 14px -14px 0 0 color-mix(in srgb, var(--accent) 40%, transparent); pointer-events: none; }
+.card-browser .cb-grid > .cb-tile.cm-fold-tile .cb-art .cb-art-top { inset: 0.35rem; }
+.card-browser .cb-grid > .cb-tile.cm-fold-tile .cb-art .cb-art-tags .cb-maxed { visibility: hidden; }
+.card-browser .cb-grid > .cb-tile.cm-fold-tile .cb-art .cm-tag.cm-fold-count { position: absolute; inset: 22% 26% 30% 18%; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem; block-size: auto; padding: 0.25rem; border: 0; background: none; box-shadow: none; color: var(--heading); font-size: 1.25rem; font-weight: 800; line-height: 1.15; text-align: center; white-space: normal; }
+.card-browser .cb-grid > .cb-tile.cm-fold-tile .cb-art .cm-tag.cm-fold-count::before { content: ""; flex: none; box-sizing: border-box; inline-size: 0.9rem; block-size: 0.9rem; margin-block-start: 0.3rem; border: 2px solid var(--accent); border-radius: 3px; box-shadow: 3px -3px 0 -1px var(--bg2), 3px -3px 0 1px var(--accent), 6px -6px 0 -1px var(--bg2), 6px -6px 0 1px color-mix(in srgb, var(--accent) 60%, transparent); }
+.card-browser .cb-grid > .cb-tile.cm-fold-tile .cb-art .cb-caption .slot-name { color: var(--heading); text-shadow: none; }
+.card-browser .cb-grid > .cb-tile.cm-fold-tile .candidate-grid-metrics, .card-browser .cb-grid > .cb-tile.cm-fold-tile .cm-tile-actions { visibility: hidden; }
+/* (; "keep the wallet on top of the openen menus, in case a swap is
+ required to get the required DEC"). The board's wallet (cards-wallet.js mounts regional-dec.js). Desktop: the edge slide-out
+ and its panel sit above this page's dialogs (1200), so a swap for DEC can happen mid-checkout without closing it. Phone: the
+ drawer is a modal <dialog> in the top layer; its trigger is an icon-only header button beside the player switch, and the
+ checkout footer carries the same wallet button because its overlay covers the header. */
+.card-browser .edge-tabs { z-index: 1210; }
+html:not(.ceres-lw-le-1279) body.card-browser .dec-drawer { z-index: 1209; }
+html.ceres-lw-le-1279 body.card-browser #regional-dec-button { order: 10; flex: none; margin-inline-start: 0; }
+/* the mode buttons share line 2 with the wallet button and the switcher (; ceres.css starts line 2) */
+.card-browser #regional-dec-button > span { display: none; }
+.card-browser #regional-dec-button > img { inline-size: var(--ceres-control-icon-size); block-size: var(--ceres-control-icon-size); object-fit: contain; }
+html:not(.ceres-lw-le-1279) .card-browser .co-wallet-btn { display: none; }
+.card-browser .co-wallet-btn { margin-inline-end: auto; }
+.card-browser .co-wallet-btn > img { inline-size: var(--ceres-control-icon-size); block-size: var(--ceres-control-icon-size); object-fit: contain; }
+/* the phone wallet drawer as on the board (mobile-plot.css / , which this page does not load): the page
+ behind it does not scroll, the resource tabs are one sliding row of 44 px icons, and the swap box stacks. */
+html.ceres-lw-le-1279:has(body.card-browser #regional-dec-drawer[open]), html.ceres-lw-le-1279 body.card-browser:has(#regional-dec-drawer[open]) { overflow: hidden; overscroll-behavior: none; }
+html.ceres-lw-le-1279 body.card-browser #regional-dec-drawer, html.ceres-lw-le-1279 body.card-browser #regional-dec-drawer .dec-drawer-content { overscroll-behavior: contain; }
+html.ceres-lw-le-1279 body.card-browser #regional-dec-drawer .wallet-tabs--icons { display: flex; flex-wrap: nowrap; gap: 0; margin: .5rem 1rem .6rem; padding: 0 4px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; scroll-snap-type: x proximity; }
+html.ceres-lw-le-1279 body.card-browser #regional-dec-drawer .wallet-tabs--icons::-webkit-scrollbar { display: none; }
+html.ceres-lw-le-1279 body.card-browser #regional-dec-drawer .wallet-tab--icon { flex: 0 0 44px; inline-size: 44px; block-size: 44px; min-block-size: 44px; padding: 0; display: inline-grid; place-items: center; scroll-snap-align: center; }
+html.ceres-lw-le-1279 body.card-browser .wallet-swap-box:has(> .wallet-swap-asset > .wallet-swap-amount) { grid-template-columns: auto minmax(0, 1fr); row-gap: .45rem; }
+html.ceres-lw-le-1279 body.card-browser .wallet-swap-box .wallet-swap-pcts { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .3rem; }
+html.ceres-lw-le-1279 body.card-browser .wallet-swap-box .wallet-swap-pcts > .ceres-btn { min-inline-size: 0; }
+html.ceres-lw-le-1279 body.card-browser .wallet-swap-sub, html.ceres-lw-le-1279 body.card-browser .wallet-swap-where { flex-wrap: wrap; row-gap: .35rem; }
+html.ceres-lw-le-1279 body.card-browser .wallet-swap-where .csel-wrap, html.ceres-lw-le-1279 body.card-browser .wallet-swap-where .csel-trigger { max-inline-size: 100%; }
+
+/* ==========================================================================
+ : nothing moves between the first paint and the loaded page.
+ 1. The first screens of tiles are laid out at once. content-visibility: auto skips a tile until the frame after it is
+ inserted, so every new tile was first drawn as an empty 26rem box (contain-intrinsic-size) and shrank a frame later to its
+ real height (412.5 px at 1536, 399.5 px at 390): the second row moved up 23-36 px. The first 96 tiles (more than any
+ screen holds) are never skipped; later tiles keep the saving and are sized off screen.
+ 2. Until card-browser.js draws the dropdowns, each select is hidden as customSelect.js hides it and its stand-in
+ (cards.html .cb-pre-select: the drawn dropdown's closed button with its first option) holds the place, so the filter row
+ keeps its widths, its line count and its height when the script starts (before: plain 27 px selects as wide as their
+ longest option, 30 / 44 px dropdowns after; the row went from one line to two at 1536).
+ 3. Both summary bars carry their dashed placeholder from the first paint (cards.html), with the same items as the read.
+ Up to 1279 px the items stand one per line, so the bar has as many lines before the read as after it, whatever the
+ numbers (before: the Market bar grew from one or two lines to three at 360-1024 px and the tiles moved down 15-35 px;
+ the My cards bar from one line to two below 650 px).
+ ========================================================================== */
+.card-browser .cb-grid > .cb-tile:nth-child(-n+96) { content-visibility: visible; }
+.card-browser .cb-controls .board-filter-field > select { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; pointer-events: none; }
+/* (written .card-browser-first, as every cm- rule on this page: "body not under a root wider than 1279 px") */
+.card-browser:not(:root:not(.ceres-lw-le-1279) *) #cb-summary.cb-summary, .card-browser:not(:root:not(.ceres-lw-le-1279) *) #cm-summary.cb-summary { flex-direction: column; align-items: flex-start; }
+
+/* B1-06: phone copy values carry labels; the desktop column header does not wrap into a false two-line table. */
+.card-browser .cm-copy .cm-phone-label { display: none; }
+html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy-table { grid-template-columns: minmax(0, 1fr); }
+html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy-table > .cm-copy-head { display: none; }
+html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy-table > .cm-copy { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .25rem; }
+html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-phone-label { display: inline; color: var(--text-dim); font-size: .7rem; font-weight: 400; }
+html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-c-lv { grid-column: 1; grid-row: 1; }
+html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-c-cc { grid-column: 2; grid-row: 1; }
+html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-c-pp { grid-column: 3; grid-row: 1; }
+html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-c-usd { grid-column: 1; grid-row: 2; justify-self: start; }
+html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-c-dec { grid-column: 2; grid-row: 2; }
+html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-c-decicon { grid-column: 3; grid-row: 2; }
+html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-c-seller { grid-column: 1 / 3; grid-row: 3; max-inline-size: 100%; }
+html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-c-act { grid-column: 3; grid-row: 3; }
+html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy[data-state] .cm-c-tags { grid-column: 1 / -1; grid-row: 4; }

@@ -1,0 +1,17 @@
+{
+ "trx_info": {
+  "id": "6c0cb0bb552d1e4161e7bbebf50dcd8ead922a96",
+  "block_id": "39312a3062d46cd0966397893e75069a63b8a0b4",
+  "prev_block_id": "dfa5017b1e59e38eaf46a96d4bdf73cff4191df4",
+  "type": "combine_cards",
+  "player": "player0005",
+  "data": "{\"app\":\"ceres/0.31.0\",\"cards\":[\"C3-288-LQ1KI5CJG0\",\"C3-288-BIQMO1OGW0\",\"C3-288-940G36PZHS\",\"C3-288-I4HEQLKWR4\",\"C3-288-KQIAZW5668\",\"C3-288-QRXBNIU74G\",\"C3-288-VO2XVZS99S\",\"C3-288-WLBZDCM0SG\",\"C3-288-XHLCOCWQ2O\",\"C3-288-20ARXY37CW\",\"C3-288-BFA0N1QQI8\",\"C3-288-0W5IIU3Q8G\",\"C3-288-TOHMZQPCOG\",\"C3-288-VIF3KRBJQ8\",\"C3-288-VNGIPIT2F4\",\"C3-288-WEOCYAEPCG\",\"C3-288-YJTG1IJVU8\"],\"n\":\"qsKKj5GxLV\"}",
+  "success": true,
+  "error": null,
+  "block_num": 110794782,
+  "created_date": "2026-10-15T12:08:45.000Z",
+  "result": "{\"success\":true,\"updated_card\":{\"uid\":\"C3-288-0W5IIU3Q8G\",\"card_detail_id\":288,\"player\":\"player0005\",\"xp\":115,\"gold\":false,\"edition\":3,\"last_used_block\":95457882,\"last_transferred_block\":110794774,\"alpha_xp\":0,\"delegated_to\":null,\"delegation_tx\":\"e8f76c8a9aef4d6af83ba02062c87d0f9f7eb04c\",\"last_used_player\":\"player_0007\",\"last_used_date\":\"2025-04-29T18:17:15.464Z\",\"last_transferred_date\":\"2026-10-15T12:08:21.000Z\",\"lock_days\":null,\"unlock_date\":\"2024-01-23T12:44:00.000Z\",\"unlock_tx\":\"00d00cd26cdd42e11b5007dc161179a39f0804e8\",\"collection_power\":2400,\"created_date\":\"2021-02-28T15:23:30.000Z\",\"created_block\":51729199,\"created_tx\":\"d3b0848238ebd6ec6e1024bb01aa303d0df75ab9\",\"last_buy_price\":\"2.614\",\"buy_currency\":\"USD\",\"card_set\":\"untamed\",\"bcx\":115,\"land_base_pp\":\"1147.826\",\"land_dec_stake_needed\":5218,\"set_id\":null,\"bcx_unbound\":0,\"survival_mode_disabled\":null,\"survival_date\":null,\"foil\":0,\"mint\":null},\"removed_cards\":[\"C3-288-20ARXY37CW\",\"C3-288-940G36PZHS\",\"C3-288-BFA0N1QQI8\",\"C3-288-BIQMO1OGW0\",\"C3-288-I4HEQLKWR4\",\"C3-288-KQIAZW5668\",\"C3-288-LQ1KI5CJG0\",\"C3-288-QRXBNIU74G\",\"C3-288-TOHMZQPCOG\",\"C3-288-VIF3KRBJQ8\",\"C3-288-VNGIPIT2F4\",\"C3-288-VO2XVZS99S\",\"C3-288-WEOCYAEPCG\",\"C3-288-WLBZDCM0SG\",\"C3-288-XHLCOCWQ2O\",\"C3-288-YJTG1IJVU8\"]}",
+  "steem_price": null,
+  "sbd_price": null
+ }
+}

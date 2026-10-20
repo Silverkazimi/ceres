@@ -1,0 +1,180 @@
+/* iris:v1.4.4 */
+/* ─ Canonical CSS variables — cross-project color token hub ─────────────────
+ Single source of truth for SHARED COLORS across Orpheus, Asdroid, Thoth,
+ Mnemosyne, Calliope. Hub-and-spoke sync: any project that changes this file
+ auto-pushes to Iris; Iris auto-cascades to all other consumers via the
+ post-commit hook + tools/iris-sync.py in each consumer.
+
+ Canonical home: ~/Projects/Iris/canonical.css
+ Consumer protocol: ~/Projects/Iris/docs/consumer-protocol.md
+ Semver: PATCH = color tweak; MINOR = add theme/var; MAJOR = remove/rename.
+
+ Do not add component rules, resets, or selectors beyond theme blocks.
+ ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Iris picker — FULL chrome (single source of truth) ──────────────────────
+ The complete theme picker lives here and cascades to every consumer. Consumers
+ MUST NOT redefine .theme-picker/.theme-tray/.theme-opt/.theme-toggle in their
+ own stylesheets — a pre-commit guard blocks it. This is the only way the picker
+ stays byte-identical across the suite (see ~/Projects/Iris/docs/consumer-protocol.md Step 5). */
+.theme-picker {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  position: fixed;
+  top: 10px;
+  right: 0;
+  z-index: 10100;
+  height: 48px;
+  padding: 0 0 0 4px;
+  border: none;
+  border-radius: 5px 0 0 5px;
+  background: color-mix(in srgb, var(--shadow) 40%, transparent);
+  box-shadow: 0 0 18px -6px var(--primary);
+  backdrop-filter: saturate(120%) blur(2px);
+  -webkit-backdrop-filter: saturate(120%) blur(2px);
+  overflow: hidden;
+  cursor: pointer;
+  transition: background .3s ease, box-shadow .3s ease;
+  animation: fadeInRight 1s 1 cubic-bezier(.77, 0, .175, 1);
+}
+/* (Splinterlands maintainer, 2026-09-06): "make Iris background of the slide-out
+ less transparent. Keep the main background transaprency at default mode."
+ His two sentences map onto the widget's two states. The RESTING picker keeps its
+ 40% fill above -- that is the "default mode" he is protecting, the small closed
+ tab that floats over a consumer's own page. The OPEN tray is a different surface:
+ it carries the theme options as readable controls over whatever the page happens
+ to be showing, so it needs a ground of its own rather than the tab's whisper.
+ Only the open state changes; the closed state is untouched by this rule. */
+.theme-picker.is-open {
+  background: color-mix(in srgb, var(--shadow) 82%, transparent);
+  backdrop-filter: saturate(130%) blur(4px);
+  -webkit-backdrop-filter: saturate(130%) blur(4px);
+}
+.theme-picker:hover { box-shadow: 0 0 18px -3px var(--primary); }
+.theme-tray {
+  display: flex;
+  align-items: center;
+  max-width: 0;
+  overflow: hidden;
+  transition: max-width .5s cubic-bezier(.4, .8, .4, 1);
+}
+.theme-picker.is-open .theme-tray { max-width: 16rem; }
+.theme-tray .theme-opt--active { display: none; }
+.theme-opt {
+  height: 40px;        /* overrides any global button { min-height } in consumers */
+  min-height: 40px;
+  background: none;
+  border: none;
+  color: var(--body);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  padding: 0 8px;
+  opacity: .4;
+  transition: opacity .2s ease;
+}
+.theme-opt:hover { opacity: .8; }
+.theme-opt--active { opacity: 1; }
+.theme-toggle {
+  opacity: 1;
+  height: 40px;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
+  border-radius: 5px 0 0 5px;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--shadow) 35%, transparent),
+              inset 0 1px 0 color-mix(in srgb, var(--hi) 6%, transparent);
+}
+@keyframes fadeInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Base (all themes inherit) ────────────────────────────────────────────── */
+:root {
+  --font-display: 'Cormorant Garamond', serif;
+  --font-mono:    'IBM Plex Mono', monospace;
+  --font-body:    'Inter', 'Segoe UI', system-ui, sans-serif;
+  --radius:       6px;
+  --page-max:     1440px;
+  --gutter:       2rem;
+  /* Type scale — add --step--1/0/1 per project in tokens.css; --step-2 global (display heading) */
+  --step-2:       clamp(1.75rem, 1.4rem + 2.2vw, 2.9rem);
+  /* Text aliases — components that need a named semantic (resolves via themed --body/--meta) */
+  --text:         var(--body);
+  --text-dim:     var(--meta);
+}
+
+/* ── Alchemical — dark gold/silver (Orpheus default) ─────────────────────── */
+:root:not([data-theme]),
+[data-theme="alchemical"] {
+  /* Surfaces */
+  --bg:    #0a0906;
+  --bg2:   #110f0c;
+  --bg3:   #1a1714;
+
+  /* Text */
+  --body:    #a8b8c8;
+  --heading: #c9a84c;
+  --meta:    #7c8898;
+  --link:    #c9a84c;
+
+  /* Accents */
+  --primary:  #c9a84c;
+  --gold:     #c9a84c;
+  --gold-dim: #7a6330;
+  --warn:     #e8843a;
+  --ok:       #3a9c8c;
+  --danger:   #bd4a4a;
+  --orchid:   #7b6b9e;
+  --info:     #4a7fa5;
+  --accent:   #7b6b9e;
+
+  /* Borders (gold-tinted — alchemical specific) */
+  --border:        rgba(201,168,76,.15);
+  --border-bright: rgba(201,168,76,.40);
+
+  /* Physical */
+  --shadow:    #000;
+  --hi:        #fff;
+  --tint-base: #110f0c;
+}
+
+/* ── Dark — deep violet-indigo (Asdroid default) ─────────────────────────── */
+[data-theme="dark"] {
+  --bg:#0E0B1A; --bg2:#1A1626; --bg3:#231f30;
+  --body:#D9D5E3; --heading:#CABEE4; --meta:#CABEE4; --link:#C6B5FF;
+  --primary:#7D6BF2; --gold:#C8A84B; --gold-dim:#7a6030;
+  --warn:#F4A261; --ok:#4ECBA8; --danger:#E0527A;
+  --orchid:#C3A7F7; --info:#5BB0E5; --accent:#9B8DF5;
+  --border:rgba(125,107,242,.20); --border-bright:rgba(125,107,242,.45);
+  --shadow:#000; --hi:#fff; --tint-base:#1A1626;
+  --radius:11px; --page-max:1280px; --gutter:max(1rem,env(safe-area-inset-left));
+}
+
+/* ── Light — soft lavender ───────────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg:#F3F1FA; --bg2:#DCD9E6; --bg3:#ccc7d8;
+  --body:#2E2545; --heading:#453C68; --meta:#453C68; --link:#6F5CD6;
+  --primary:#4633B8; --gold:#664C08; --gold-dim:#5c440d;
+  --warn:#7E3806; --ok:#145C49; --danger:#962040;
+  --orchid:#7054B8; --info:#2E6FA8; --accent:#6455C4;
+  --border:rgba(109,92,214,.20); --border-bright:rgba(109,92,214,.45);
+  --shadow:#453C68; --hi:#fff; --tint-base:#fff;
+  --radius:11px; --page-max:1280px; --gutter:max(1rem,env(safe-area-inset-left));
+}
+
+/* ── Wood — parchment/forest ─────────────────────────────────────────────── */
+[data-theme="wood"] {
+  --bg:#EDE4CE; --bg2:#DDD0B3; --bg3:#cfc0a0;
+  --body:#4A2E12; --heading:#3A2410; --meta:#5A4128; --link:#7A4B1A;
+  --primary:#1F5A3F; --gold:#5E3F04; --gold-dim:#8c6505;
+  --warn:#763508; --ok:#34501A; --danger:#962010;
+  --orchid:#8C6090; --info:#3F6E94; --accent:#23553D;
+  --border:rgba(45,114,82,.20); --border-bright:rgba(45,114,82,.45);
+  --shadow:#3A2410; --hi:#fff; --tint-base:#fff;
+  --radius:11px; --page-max:1280px; --gutter:max(1rem,env(safe-area-inset-left));
+}

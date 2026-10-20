@@ -1,0 +1,22 @@
+{
+  "status": "success",
+  "data": {
+    "ids": [
+      {
+        "uid": "I-322-db574f21e0936d"
+      },
+      {
+        "uid": "I-322-16edefe510dfa0"
+      },
+      {
+        "uid": "I-322-585118b1eedbd2"
+      },
+      {
+        "uid": "I-322-7b12e2a18aeb4f"
+      },
+      {
+        "uid": "I-322-b426c661317b8d"
+      }
+    ]
+  }
+}

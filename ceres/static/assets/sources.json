@@ -1,0 +1,686 @@
+[
+ {
+  "path": "land/deeds-surveyed/caldera_magical_dragon_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/caldera_magical_dragon_common.jpg",
+  "sha256": "e394ae007d5174eaf26858ec044f97c16a5b4f0b2797a4b33d611278bcf57d3e",
+  "byte_size": 160065
+ },
+ {
+  "path": "land/deeds-surveyed/caldera_magical_dragon_rare.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/caldera_magical_dragon_rare.jpg",
+  "sha256": "9044efab06c7e47cb9516b72a6cdb136b36e6c61a7b106fa880c2b5152671609",
+  "byte_size": 160763
+ },
+ {
+  "path": "land/deeds-surveyed/caldera_natural_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/caldera_natural_common.jpg",
+  "sha256": "21a2122906e5471dae91c5c36ad12fdd61af1df5dc0742fafc0203ba85ef5a27",
+  "byte_size": 144150
+ },
+ {
+  "path": "land/deeds-surveyed/canyon_magical_death_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/canyon_magical_death_common.jpg",
+  "sha256": "5d8b7a23e0772fcca9d923defd83a044ff749deba581b59c7de82e7a3b7bae49",
+  "byte_size": 150358
+ },
+ {
+  "path": "land/deeds-surveyed/canyon_magical_death_rare.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/canyon_magical_death_rare.jpg",
+  "sha256": "2081095eddc678dc2778eadc0dc4fc046064573d0073bc450d9119c75f1a1e22",
+  "byte_size": 151046
+ },
+ {
+  "path": "land/deeds-surveyed/canyon_magical_dragon_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/canyon_magical_dragon_common.jpg",
+  "sha256": "7f3485f15497a0cbf38ea537b8586a022f022539b21212afe6c116149f53773e",
+  "byte_size": 146599
+ },
+ {
+  "path": "land/deeds-surveyed/canyon_magical_dragon_epic.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/canyon_magical_dragon_epic.jpg",
+  "sha256": "c4d57b91c639cd7413e04f7302ace6ed612ddcee12832f896d3c23d0a71eb33b",
+  "byte_size": 147323
+ },
+ {
+  "path": "land/deeds-surveyed/canyon_magical_fire_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/canyon_magical_fire_common.jpg",
+  "sha256": "62338b9fabf54a097f60b8deb64aae8070422bb0c120aff810d80626df1c9f8e",
+  "byte_size": 169777
+ },
+ {
+  "path": "land/deeds-surveyed/canyon_magical_fire_rare.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/canyon_magical_fire_rare.jpg",
+  "sha256": "2f04f3a99df7a9d4fb18217d7104d7773d9a4d155db3d81bfbd14d13267b778b",
+  "byte_size": 170533
+ },
+ {
+  "path": "land/deeds-surveyed/canyon_natural_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/canyon_natural_common.jpg",
+  "sha256": "9dd846f35c24d501b4f9026ef13c5e14f68ba98613160af80de2e5b664780f6c",
+  "byte_size": 131534
+ },
+ {
+  "path": "land/deeds-surveyed/canyon_natural_epic.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/canyon_natural_epic.jpg",
+  "sha256": "22421b4f75cf7fecbdf40e4a7edd23e89f5f398490f0d47a121e433d6c087ed4",
+  "byte_size": 132272
+ },
+ {
+  "path": "land/deeds-surveyed/canyon_natural_legendary.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/canyon_natural_legendary.jpg",
+  "sha256": "b13fbd3d328a462226c12dd59dff3ca20e311f9ae32bd7ab001b26ae123e0d9a",
+  "byte_size": 132483
+ },
+ {
+  "path": "land/deeds-surveyed/canyon_occupied_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/canyon_occupied_common.jpg",
+  "sha256": "6bab8c6e2b0aadd529afaa82138722704eb63df707ec5c8b85300449ff3b98d3",
+  "byte_size": 180664
+ },
+ {
+  "path": "land/deeds-surveyed/canyon_occupied_epic.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/canyon_occupied_epic.jpg",
+  "sha256": "c0492aa64e48dd9ee30f5e7b220c4bc46b5db96e4be98d958211359768ef3816",
+  "byte_size": 181525
+ },
+ {
+  "path": "land/deeds-surveyed/desert_magical_death_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/desert_magical_death_common.jpg",
+  "sha256": "6bb3878534ad6b8e57d822fe9b59aa4ce69c1b0582eeabf8942c93381c5c64a5",
+  "byte_size": 177648
+ },
+ {
+  "path": "land/deeds-surveyed/desert_magical_death_rare.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/desert_magical_death_rare.jpg",
+  "sha256": "94dc8592054435a4effb07c6185c98d4f13bdddbe7db773222af22db5e270d74",
+  "byte_size": 178526
+ },
+ {
+  "path": "land/deeds-surveyed/desert_magical_earth_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/desert_magical_earth_common.jpg",
+  "sha256": "034c36e950efb17558c8bf3b89c5c0ad0601429bb9aba79e356c47d3234d0280",
+  "byte_size": 174524
+ },
+ {
+  "path": "land/deeds-surveyed/desert_magical_fire_rare.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/desert_magical_fire_rare.jpg",
+  "sha256": "502b65a9aebf5df46b0e1c498cb4bdbd446355a939a95e64c6ecfaadfb169b32",
+  "byte_size": 188383
+ },
+ {
+  "path": "land/deeds-surveyed/desert_natural_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/desert_natural_common.jpg",
+  "sha256": "25b56be42970ee5806cd1477856fd2c75b2a8830a98b6861cb3add99c7e824ee",
+  "byte_size": 167073
+ },
+ {
+  "path": "land/deeds-surveyed/desert_natural_epic.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/desert_natural_epic.jpg",
+  "sha256": "567d8be24118f30836c9d2d211c395abf018db3bdac9bd314720975992d2b6fc",
+  "byte_size": 167895
+ },
+ {
+  "path": "land/deeds-surveyed/desert_occupied_rare.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/desert_occupied_rare.jpg",
+  "sha256": "ba7c8da01da5c6e9fb22ccf6212609267b4f5ca51dc02696bdbe48633715878b",
+  "byte_size": 177457
+ },
+ {
+  "path": "land/deeds-surveyed/forest_magical_life_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/forest_magical_life_common.jpg",
+  "sha256": "cddb7ca862e2f6c54c3b904903937239610a5cc81a0e7a57a54c4b010fe192b9",
+  "byte_size": 166946
+ },
+ {
+  "path": "land/deeds-surveyed/forest_natural_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/forest_natural_common.jpg",
+  "sha256": "bba446e4bd0084e80831483b52ad195901d7fe79a91f39ced8cb50f5e40dd63d",
+  "byte_size": 148822
+ },
+ {
+  "path": "land/deeds-surveyed/forest_natural_epic.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/forest_natural_epic.jpg",
+  "sha256": "24c0b0bd7231d32e35d8f6dd955e84f11e920bb1a3ddd122f0e221fe2cf7931d",
+  "byte_size": 149583
+ },
+ {
+  "path": "land/deeds-surveyed/forest_natural_legendary.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/forest_natural_legendary.jpg",
+  "sha256": "7e1c20d85ab6fef05bfcc08524493027cfcae6eee3b1e675961b1d8335bd2ce8",
+  "byte_size": 150047
+ },
+ {
+  "path": "land/deeds-surveyed/forest_natural_rare.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/forest_natural_rare.jpg",
+  "sha256": "8ffcb6b612cdec98d0fd30e2b62660b15235351aceb98eec25cf2f872d39238f",
+  "byte_size": 149501
+ },
+ {
+  "path": "land/deeds-surveyed/forest_occupied_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/forest_occupied_common.jpg",
+  "sha256": "ed0036e986e034498224f877a65fa4ef6678acc52936d7a37fc9053304f887db",
+  "byte_size": 167991
+ },
+ {
+  "path": "land/deeds-surveyed/hills_natural_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/hills_natural_common.jpg",
+  "sha256": "0f8065fc7fef63d7f2f47df0c713b2754606b29ccca5312b72257578aa44bd75",
+  "byte_size": 154781
+ },
+ {
+  "path": "land/deeds-surveyed/jungle_natural_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/jungle_natural_common.jpg",
+  "sha256": "601de55ec5d167ef1d3793e0e3d6c3e52ca60bce596e55f2d7acaf1ab303557d",
+  "byte_size": 163147
+ },
+ {
+  "path": "land/deeds-surveyed/jungle_occupied_epic.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/jungle_occupied_epic.jpg",
+  "sha256": "f34175c04dacf4201db81e847081ec4cfd55fe9d9093168b3991a4ab08578504",
+  "byte_size": 180561
+ },
+ {
+  "path": "land/deeds-surveyed/lake_natural_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/lake_natural_common.jpg",
+  "sha256": "76afd4d7fb93e3394d039edfc3524d35dbdd06339b9c70b4ec705700ba70472b",
+  "byte_size": 171105
+ },
+ {
+  "path": "land/deeds-surveyed/mountain_magical_life_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/mountain_magical_life_common.jpg",
+  "sha256": "50d918962848fb09caba71166b467446ea2ea4380524618be56427bfaa9c7305",
+  "byte_size": 180960
+ },
+ {
+  "path": "land/deeds-surveyed/mountain_natural_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/mountain_natural_common.jpg",
+  "sha256": "4e7cd8bf8d498a0348235271159ef33e81389bf19520928aec314fec5f0b8ce4",
+  "byte_size": 153330
+ },
+ {
+  "path": "land/deeds-surveyed/mountain_natural_legendary.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/mountain_natural_legendary.jpg",
+  "sha256": "a80b714c5b65c3e51d8b17243e7581d03487f9db534b938cb5c0faa332fb886b",
+  "byte_size": 154244
+ },
+ {
+  "path": "land/deeds-surveyed/plains_natural_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/plains_natural_common.jpg",
+  "sha256": "073d6180817b3d3b9df729d48d29a2f7aa01b3e78454ea1afe7ee9efe83f2f67",
+  "byte_size": 158087
+ },
+ {
+  "path": "land/deeds-surveyed/plains_natural_epic.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/plains_natural_epic.jpg",
+  "sha256": "83c2393475c7060f6bdcdc02116a6a80714fe3e885b221d75ab9f925e851d4e4",
+  "byte_size": 158960
+ },
+ {
+  "path": "land/deeds-surveyed/plains_natural_legendary.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/plains_natural_legendary.jpg",
+  "sha256": "8cc8ef31fc3cb2e16d60227738c1f095543459b1d9dfb98360262928df430a05",
+  "byte_size": 159471
+ },
+ {
+  "path": "land/deeds-surveyed/plains_natural_rare.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/plains_natural_rare.jpg",
+  "sha256": "58f35b39356fcc2c1f4cd830b3cbe28db020d91bed1fcc4a3de1d29a635ab11c",
+  "byte_size": 158722
+ },
+ {
+  "path": "land/deeds-surveyed/river_magical_earth_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/river_magical_earth_common.jpg",
+  "sha256": "bbe3e4f64cf4f14f0717fc76bc9cc7c1638714b4af028fc47ed7f37b327f2c51",
+  "byte_size": 197238
+ },
+ {
+  "path": "land/deeds-surveyed/river_magical_water_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/river_magical_water_common.jpg",
+  "sha256": "b567a26f2ef6b5e9585d92b7544a6022d71beb027826875e27e1b6298a10b681",
+  "byte_size": 200386
+ },
+ {
+  "path": "land/deeds-surveyed/river_magical_water_rare.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/river_magical_water_rare.jpg",
+  "sha256": "bcb35083cc04296bbf3cdd5f991ce8bea55bef34e4a85cb1e8e7b14613696f6d",
+  "byte_size": 200701
+ },
+ {
+  "path": "land/deeds-surveyed/river_natural_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/river_natural_common.jpg",
+  "sha256": "2cdca9dc1ce82667e60850e2cf46969ad12f40167015287cc75ac8e60fb0780a",
+  "byte_size": 181897
+ },
+ {
+  "path": "land/deeds-surveyed/river_natural_epic.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/river_natural_epic.jpg",
+  "sha256": "96045e3f6591ee504abf609d66090c18bb894ce062dd3d994eadd68eb64f45f4",
+  "byte_size": 182620
+ },
+ {
+  "path": "land/deeds-surveyed/river_natural_rare.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/river_natural_rare.jpg",
+  "sha256": "f16fb2d5d43dba1bf896b6f783d7d3281bf6dbdc7e2823088701c44322378db0",
+  "byte_size": 182758
+ },
+ {
+  "path": "land/deeds-surveyed/river_occupied_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/river_occupied_common.jpg",
+  "sha256": "ab414817f591b9273103201741eea94ea5d9d75b733055647e10429208e1577c",
+  "byte_size": 178790
+ },
+ {
+  "path": "land/deeds-surveyed/swamp_natural_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/swamp_natural_common.jpg",
+  "sha256": "4d40f3b577f0208c48a3f3746e65855540694bc5be86943aa8417e062766d33f",
+  "byte_size": 147632
+ },
+ {
+  "path": "land/deeds-surveyed/tundra_magical_earth_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/tundra_magical_earth_common.jpg",
+  "sha256": "73e728e83384d3cbc4407b4f8b337c65f952c53a6aa2979855d7148ae01cee96",
+  "byte_size": 179165
+ },
+ {
+  "path": "land/deeds-surveyed/tundra_natural_common.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/tundra_natural_common.jpg",
+  "sha256": "464c3e581f9614c5f8c8f1c43de062c170102ae3f17c8552a156c404fca2889e",
+  "byte_size": 161109
+ },
+ {
+  "path": "land/deeds-surveyed/tundra_natural_rare.jpg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/tundra_natural_rare.jpg",
+  "sha256": "08f629bb492c530534341c34b2e36c887413eed74e84f3d39eef2459c811cd6a",
+  "byte_size": 161899
+ },
+ {
+  "path": "land/status-castle-off.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/sideMenu/castleOff.svg",
+  "sha256": "3f80be311a24d030b990192bf57d2dff30b9d30da517b327f3e35511fadf4a43",
+  "byte_size": 1046
+ },
+ {
+  "path": "land/status-castle-on.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/sideMenu/castleOn.svg",
+  "sha256": "3d0471fd24da0757a5cd2ba004c34cf9b4e823198878c01634b40097ebcf3654",
+  "byte_size": 1045
+ },
+ {
+  "path": "land/status-keeps-off.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/sideMenu/keepsOff.svg",
+  "sha256": "a1e4494b0d4ce1d6fdca08df9fd45889df4d7ee3f287896c36cc63e9b20d83ad",
+  "byte_size": 532
+ },
+ {
+  "path": "land/status-keeps-on.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/sideMenu/keepsOn.svg",
+  "sha256": "c07aa6d725e9fb6640f381289678ea18af2a0314e26657369b00c7549be0cbc0",
+  "byte_size": 531
+ },
+ {
+  "path": "land/status-kingdom-off.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/sideMenu/kingdomOff.svg",
+  "sha256": "ee5030fffc0970a9677aaa252fddeefd7b317fcbc74df395d818cce792d70dbb",
+  "byte_size": 246
+ },
+ {
+  "path": "land/status-kingdom-on.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/sideMenu/kingdomOn.svg",
+  "sha256": "552f84d0721fbdddb0e1e29e4d54e04fb03fa2972666947121b4a520bdbada5c",
+  "byte_size": 242
+ },
+ {
+  "path": "land/status-magical-off.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/sideMenu/magicalOff.svg",
+  "sha256": "c2961afdf71e48075656f2e10f98b34bebc43607ef9ec59cea86e87498911772",
+  "byte_size": 525
+ },
+ {
+  "path": "land/status-magical-on.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/sideMenu/magicalOn.svg",
+  "sha256": "a7ff82a9d14b33c1c5eeb1a32f9846adc88b9bdaf3aaf0d804740ebae6290049",
+  "byte_size": 521
+ },
+ {
+  "path": "land/status-natural-off.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/sideMenu/naturalOff.svg",
+  "sha256": "883b2f4fbbed564c3f6766ea8bac2fa4d7363281b6f19d1c6a4087c3ca8de681",
+  "byte_size": 728
+ },
+ {
+  "path": "land/status-occupied-off.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/sideMenu/occupiedOff.svg",
+  "sha256": "13630570006a518edb502e6b33187575e56ca95a207fae4d66eabac863ad2584",
+  "byte_size": 621
+ },
+ {
+  "path": "land/status-occupied-on.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/sideMenu/occupiedOn.svg",
+  "sha256": "09eeec1ddc6383d47177275d172ec71660536bf662f3daf0dc8132e0a79e613b",
+  "byte_size": 616
+ },
+ {
+  "path": "land/terrain-emblem-badlands.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/deedAssets/img_geography-emblem_badlands.svg",
+  "sha256": "13726fb6db44163bbc456bb73b256b2531a2f100c4bd348717df853f0bf5112b",
+  "byte_size": 3991
+ },
+ {
+  "path": "land/terrain-emblem-bog.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/deedAssets/img_geography-emblem_bog.svg",
+  "sha256": "6716d1941830348c59c6c9652602ec0124780770f041674ad7c2691185452739",
+  "byte_size": 2628
+ },
+ {
+  "path": "land/terrain-emblem-caldera.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/deedAssets/img_geography-emblem_caldera.svg",
+  "sha256": "609425c71943f72bd49f6d59f87d9d90d4d77e72f38c5dbc3c2110aca61c4998",
+  "byte_size": 2308
+ },
+ {
+  "path": "land/terrain-emblem-canyon.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/deedAssets/img_geography-emblem_canyon.svg",
+  "sha256": "1c89efd64bc4419dbae1ec601c806738d84e5e5587ca2ff89e43f89df519a902",
+  "byte_size": 1881
+ },
+ {
+  "path": "land/terrain-emblem-desert.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/deedAssets/img_geography-emblem_desert.svg",
+  "sha256": "cdbe3d15f81f920c8b035958799a41f675470ffcbf0993e0d6360cbb9ebdf618",
+  "byte_size": 2540
+ },
+ {
+  "path": "land/terrain-emblem-forest.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/deedAssets/img_geography-emblem_forest.svg",
+  "sha256": "46573c25bfad7ee0a31ee38c4dbdaec1175877397fac8f9daab69ba882a42c09",
+  "byte_size": 2023
+ },
+ {
+  "path": "land/terrain-emblem-hills.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/deedAssets/img_geography-emblem_hills.svg",
+  "sha256": "57fecf295cd6fb7066a8f63a79f360ac526a0d33114a43d164d0c02e729a2127",
+  "byte_size": 2304
+ },
+ {
+  "path": "land/terrain-emblem-jungle.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/deedAssets/img_geography-emblem_jungle.svg",
+  "sha256": "3976042c662f26094f991f3d25c47dc14ea0796353c458612cfb14102ec9db21",
+  "byte_size": 3703
+ },
+ {
+  "path": "land/terrain-emblem-lake.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/deedAssets/img_geography-emblem_lake.svg",
+  "sha256": "230a435d0025fecd587cadff4116498bb25566162197f774b659ca917e03f76f",
+  "byte_size": 1967
+ },
+ {
+  "path": "land/terrain-emblem-mountain.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/deedAssets/img_geography-emblem_mountain.svg",
+  "sha256": "aaa5696a433696dad241dedc6d5828c51fa32e1d3d8c1c97283fc7e6e1dbf4ea",
+  "byte_size": 2154
+ },
+ {
+  "path": "land/terrain-emblem-plains.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/deedAssets/img_geography-emblem_plains.svg",
+  "sha256": "23974c32b8bf0f38c04c33d1dad86b68cb96428b7be63a39832a344185695fcc",
+  "byte_size": 2381
+ },
+ {
+  "path": "land/terrain-emblem-river.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/deedAssets/img_geography-emblem_river.svg",
+  "sha256": "a744aba3e35b5628153e80bab52f45d9a10718daf4f1cb009f94c6102a311bfb",
+  "byte_size": 4243
+ },
+ {
+  "path": "land/terrain-emblem-swamp.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/deedAssets/img_geography-emblem_swamp.svg",
+  "sha256": "c17dbe780c2ef060b03bf2ab3a885d24e87e49a294ed09ddbbe04dab00ac500f",
+  "byte_size": 2090
+ },
+ {
+  "path": "land/terrain-emblem-tundra.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/lands/deedAssets/img_geography-emblem_tundra.svg",
+  "sha256": "da2304e360f626871475de2bef63742f537d84b7378980f70cb358644266f339",
+  "byte_size": 1967
+ },
+ {
+  "path": "land/token-credits.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon_credits.png",
+  "sha256": "39ef4a37537ef4c82d239504eff4f9667a21bc83b6eadfad64054d192e19dd5b",
+  "byte_size": 5065
+ },
+ {
+  "path": "land/token-dec.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/sps_management/img_dec_flip.png",
+  "sha256": "50ee9dece01775db8cabf1f3787743dd862bf4931044210db480fd7caa7a7501",
+  "byte_size": 25315
+ },
+ {
+  "path": "rarity/gem-common.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/create_team/icon_rarity_common_new.svg",
+  "sha256": "292829716710e7803983d9e0bf88e5a5bbff2bc120e2744bc08aef1996645336",
+  "byte_size": 2150
+ },
+ {
+  "path": "rarity/gem-epic.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/create_team/icon_rarity_epic_new.svg",
+  "sha256": "7e2b1d27becaf4083306c3a8e5acd292b80930cb6511de1c4ee1948ba13e4afc",
+  "byte_size": 1066
+ },
+ {
+  "path": "rarity/gem-legendary.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/create_team/icon_rarity_legendary_new.svg",
+  "sha256": "4a585fa3589bbd9ccf05066757cc1b9c1247bc27a69fdc93375f500a98b7c97e",
+  "byte_size": 1261
+ },
+ {
+  "path": "rarity/gem-rare.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/create_team/icon_rarity_rare_new.svg",
+  "sha256": "84021288e876e065b102d90693e6a92a9c9285fb0e5c38cb96ce69a34b096cb8",
+  "byte_size": 811
+ },
+ {
+  "path": "resources/aura_200.webp",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/resources/aura_200.webp",
+  "sha256": "74afbf948d111d2569a5902939f6c7e13c289c845f713c6ecbb62feade222ff2",
+  "byte_size": 22086
+ },
+ {
+  "path": "resources/aura_500.webp",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/resources/aura_500.webp",
+  "sha256": "af4ee6ac613002f900b808893fbbc0ecf29b839e05795db069bd280441ff3465",
+  "byte_size": 29712
+ },
+ {
+  "path": "resources/grain-cdn-original.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/resources/grain.png",
+  "sha256": "56c5b3c7fb71b0ab147b5df0ad457a06ab066294d9cc0c9494e04c30892ac896",
+  "byte_size": 186048
+ },
+ {
+  "path": "resources/iron_200.webp",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/resources/iron_200.webp",
+  "sha256": "d05cd739ae3b855acc6aae2112eb2d7ad9aad300751839373d1dc8b19cefbbb9",
+  "byte_size": 4970
+ },
+ {
+  "path": "resources/iron_500.webp",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/resources/iron_500.webp",
+  "sha256": "8b91693b09cc06f05f6ed7d9076d9b65576970b0755f56cc3feb1a4a43a11e50",
+  "byte_size": 11126
+ },
+ {
+  "path": "resources/research.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/resources/research.png",
+  "sha256": "8894a59f09f47337aacadf1060c77e31e18500ad0702299735f63c27ddfe9641",
+  "byte_size": 40379
+ },
+ {
+  "path": "resources/sps.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/resources/sps.png",
+  "sha256": "b03802c56244d38696f12bb6db448e05e5bd60746252a7e7806d771164e64d6f",
+  "byte_size": 43343
+ },
+ {
+  "path": "resources/stone_200.webp",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/resources/stone_200.webp",
+  "sha256": "d2db610e7d5d7b0b8b6f89269d03dea9c3e838d99ab274cb768cc25b8e5ccf2c",
+  "byte_size": 3328
+ },
+ {
+  "path": "resources/stone_500.webp",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/resources/stone_500.webp",
+  "sha256": "f647c6b5e642bccaf3bb3c2a8d9f9921f53207eb1211873dd63e9445d92bad26",
+  "byte_size": 7504
+ },
+ {
+  "path": "resources/voucher.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/ui_elements/shop/cl/voucher-css.svg",
+  "sha256": "bc1df78fc0a26243008dbea77eb2bcac95f3f5549dff5ce1f4cdf0b27cdcf1ce",
+  "byte_size": 43784
+ },
+ {
+  "path": "resources/wood_200.webp",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/resources/wood_200.webp",
+  "sha256": "012889d1cfd40f8fbfa52d933c419fbe405b21f147d7dee1362acfebf74ca846",
+  "byte_size": 7452
+ },
+ {
+  "path": "resources/wood_500.webp",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/resources/wood_500.webp",
+  "sha256": "bec7e4b8ecea3642ec31f324f76a99133111b788d3826ffd7905e3b82f2b584b",
+  "byte_size": 19888
+ },
+ {
+  "path": "sets/alpha.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon-edition-alpha.svg",
+  "sha256": "79f82079cd50f3ec35c162f7dce1ff8bcb0512fcfe5e1d462fde71913c663367",
+  "byte_size": 239
+ },
+ {
+  "path": "sets/beta.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon-edition-beta.svg",
+  "sha256": "66b1f2e4dd2811a935f91c5b8c9caa3e636cc6cf0043d2803c6727f435f30144",
+  "byte_size": 273
+ },
+ {
+  "path": "sets/chaos-legion.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon-edition-chaos.svg",
+  "sha256": "ca918b16acea05a4c5ce91720bc8db81e0363004dd4eb35439aa94020c42f248",
+  "byte_size": 624
+ },
+ {
+  "path": "sets/conclave-arcana.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon-edition-conclave-arcana.svg",
+  "sha256": "c8e8b426891cbc99bdc183e05123ef69e3d5c60351152585eaed14622218ef99",
+  "byte_size": 399
+ },
+ {
+  "path": "sets/eternal-land.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon-edition-land.svg",
+  "sha256": "51df1b20af587db95d186d671bf6f781f1f166f9bc1a89d8b47a2bdef536a81b",
+  "byte_size": 858
+ },
+ {
+  "path": "sets/foundations.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon-edition-foundations.svg",
+  "sha256": "7bd2167f326aa6df26627136496b4a2944c155d73b436596f6ad343f0e1876e9",
+  "byte_size": 357
+ },
+ {
+  "path": "sets/rebellion.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon-edition-rebellion.svg",
+  "sha256": "9da62b1547139825201c4e4034920bc414c7dee1b12661b5716374afbb5fd68e",
+  "byte_size": 1154
+ },
+ {
+  "path": "sets/untamed.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon-edition-untamed.svg",
+  "sha256": "a7323e55c96df24b0999adad7fd48101263c9ce40c4fc175552f16210abf3486",
+  "byte_size": 363
+ },
+ {
+  "path": "splinter/death.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/collection/icon_element_death.svg",
+  "sha256": "feab04e412dcba520d6beaa20267185b148de2dcc63ecb0d3676740975f8c6fe",
+  "byte_size": 1470
+ },
+ {
+  "path": "splinter/dragon.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/collection/icon_element_dragon.svg",
+  "sha256": "ddcc741552a2b5c98fc3a6b23d7480b022dedac3f6a964bc34a3df2298fbeda1",
+  "byte_size": 538
+ },
+ {
+  "path": "splinter/earth.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/collection/icon_element_earth.svg",
+  "sha256": "24309f3f90a0114c8a20aed234ede4c03323f29a43fcb796c55e8604a3c0eb51",
+  "byte_size": 1302
+ },
+ {
+  "path": "splinter/fire.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/collection/icon_element_fire.svg",
+  "sha256": "efc65aeec4527a7ecd1beede5dde54681a2ced4eb27e0251389e0773e10b583a",
+  "byte_size": 1656
+ },
+ {
+  "path": "splinter/life.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/collection/icon_element_life.svg",
+  "sha256": "69dff51822aa25dc130b8ef6de52fd2c1c2cd979047b16de0925359fc5ba7e49",
+  "byte_size": 1317
+ },
+ {
+  "path": "splinter/neutral.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/collection/icon_element_neutral.svg",
+  "sha256": "3097899c866249f76e866fd8b820fe333d5c9125dcadc67f86e7fd58ee2e710d",
+  "byte_size": 1726
+ },
+ {
+  "path": "splinter/water.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/collection/icon_element_water.svg",
+  "sha256": "989a9ba2d0d51da6de508f888583b3f0271b3b678a8853d5ff07a1b792421952",
+  "byte_size": 1571
+ },
+ {
+  "path": "titles/title-proven.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon_title_proven.svg",
+  "sha256": "cb2895ba86ceac146f65050ec1d3b000907a119473aa39d5e62ec04b49c6725d",
+  "byte_size": 17331
+ },
+ {
+  "path": "titles/title-renown.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon_title_renown.svg",
+  "sha256": "c940f771d8c19c94ab1694f1739e2049a7f265bee1ec0d94dd715a3eb3c45ce2",
+  "byte_size": 17331
+ },
+ {
+  "path": "titles/title-veteran.svg",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon_title_veteran.svg",
+  "sha256": "9cc61e588b2799535c4f121705b8a2c8d70bf98fc7fd93807d9ae0aed4bce35f",
+  "byte_size": 19038
+ },
+ {
+  "path": "totems/totem-common.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon_totem_1_common_300.png",
+  "sha256": "ee2cf8d1917895fbf567753d971df9689a6e4a9f9e77f88bc65e2b06444821ec",
+  "byte_size": 5367
+ },
+ {
+  "path": "totems/totem-epic.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon_totem_3_epic_300.png",
+  "sha256": "1ac820e192ad25c69c2459a229389b2c3422942d92f96df60619aabfcbb2ace0",
+  "byte_size": 5344
+ },
+ {
+  "path": "totems/totem-legendary.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon_totem_4_legendary_300.png",
+  "sha256": "c124bd0e50367763d7546a15df01c0764788306a427c4672f80eea80efeac7f7",
+  "byte_size": 5364
+ },
+ {
+  "path": "totems/totem-rare.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/icons/icon_totem_2_rare_300.png",
+  "sha256": "8cab4a78a1d0cbcce9f65fe9a8ea47c4ad77b0ce07d43f9fc1ea92fa23732a79",
+  "byte_size": 5356
+ }
+]

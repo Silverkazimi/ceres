@@ -1,0 +1,114 @@
+.wallet-controls { flex: 0 0 auto; min-inline-size: 0; inline-size: 100%; }
+.wallet-toggle { gap: .45rem; }
+.wallet-indicator { inline-size: .5rem; block-size: .5rem; border-radius: 50%; background: var(--meta); }
+.wallet-indicator.is-ready { background: var(--ok); }
+.wallet-logo { display: block; flex: 0 0 1.25em; inline-size: 1.25em; block-size: 1.25em; object-fit: contain; align-self: center; }
+.wallet-providers .ceres-btn > span:last-child { min-inline-size: 0; overflow-wrap: anywhere; }
+.wallet-drawer { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows .24s ease, visibility .24s; }
+.wallet-drawer.is-open { grid-template-rows: 1fr; visibility: visible; }
+.wallet-drawer-body { min-block-size: 0; overflow: hidden; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.wallet-drawer.is-open .wallet-drawer-body { padding-block: .5rem; }
+.wallet-providers { display: grid; grid-template-columns: repeat(2, minmax(max-content, auto)); gap: .5rem; inline-size: max-content; max-inline-size: 100%; }
+.wallet-providers .ceres-btn { min-inline-size: max-content; white-space: nowrap; }
+.wallet-providers:has([data-wallet-disconnect]) { display: flex; flex-wrap: nowrap; align-items: center; }
+.wallet-disconnect-mark { position: relative; display: inline-flex; inline-size: 18px; block-size: 18px; }
+.wallet-disconnect-mark .wallet-logo { inline-size: 18px; block-size: 18px; flex-basis: 18px; }
+.wallet-disconnect-mark::after { content: ''; position: absolute; left: -2px; right: -2px; top: 50%; block-size: 2.5px; background: var(--danger); border-radius: 2px; transform: rotate(-45deg); box-shadow: 0 0 0 1px var(--bg3); }
+.wallet-request { box-sizing: border-box; inline-size: 100%; max-inline-size: 100%; min-inline-size: 0; display: grid; justify-items: center; gap: .5rem; padding: .5rem; }
+.wallet-request-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; inline-size: 100%; min-inline-size: 0; }
+.wallet-request-close { flex: 0 0 auto; color: var(--danger); }
+.wallet-status { display: flex; align-items: center; gap: .5rem; margin: 0; overflow-wrap: anywhere; }
+.wallet-pairing { display: grid; grid-template-columns: minmax(0, 1fr); gap: .5rem; align-items: center; justify-items: center; inline-size: min(100%, 10.5rem); max-inline-size: 100%; min-inline-size: 0; }
+.wallet-pairing a { inline-size: 100%; min-inline-size: 0; white-space: normal; text-decoration: none; }
+.wallet-qr { min-inline-size: 0; inline-size: 100%; aspect-ratio: 1; overflow: hidden; }
+.wallet-qr svg { display: block; inline-size: 100%; block-size: 100%; object-fit: contain; }
+[data-wallet-open-keychain] { display: none; }
+html.ceres-lw-le-1279 [data-wallet-open-keychain] { display: inline-flex; }
+.hm-body > .wallet-controls, .hm-body > .wallet-controls-slot { margin-block-end: .75rem; }
+.wallet-controls-slot { flex-basis: 100%; min-inline-size: 0; }
+.hm-body > .wallet-controls-slot { flex-basis: auto; }
+:is(#worksite-modal-overlay, #harvest-modal-overlay) .hm-foot:has(.wallet-controls) { flex-wrap: wrap; }
+@media (prefers-reduced-motion: reduce) { .wallet-drawer { transition: none; } }
+
+/* the wallet chooser moves left of the Sign button in every signing footer instead of
+ its own row -- .wallet-sign-pair keeps the two glued together through wrap and .is-upward
+ flips the drawer to open above the toggle when the footer sits near the viewport edge. */
+.wallet-sign-pair { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .6rem; min-inline-size: 0; }
+.wallet-sign-pair .wallet-controls { --wallet-anchor-border: color-mix(in srgb, var(--heading) 70%, var(--bg3)); --wallet-anchor-radius: 8px; flex: 0 0 auto; inline-size: auto; position: relative; }
+.wallet-sign-pair > .wallet-controls-slot { flex-basis: auto; }
+/* The drawer is always anchored (never in normal flow) here -- unlike the standalone full-width
+ row, a footer-hosted toggle must not let its own (collapsed, invisible) drawer stretch the
+ footer's width. Default opens below the toggle; .is-upward flips it above when the footer
+ sits close enough to the viewport edge that downward would clip. */
+.wallet-sign-pair .wallet-drawer { --wallet-chooser-overlay: color-mix(in srgb, var(--shadow) 88%, var(--bg)); position: absolute; box-sizing: border-box; inset-inline-end: 0; inset-block-start: calc(100% + .5rem); inline-size: max-content; min-inline-size: min-content; max-inline-size: min(calc(100vw - 1rem), var(--wallet-drawer-max-inline-size, calc(100vw - 1rem))); block-size: fit-content; max-block-size: var(--wallet-drawer-max-block-size, calc(100dvh - 1rem)); overflow: clip; overflow-clip-margin: 8px; z-index: 30; border: 1px solid var(--wallet-anchor-border); border-radius: var(--wallet-anchor-radius); background: var(--wallet-chooser-overlay); box-shadow: 0 8px 22px color-mix(in srgb, var(--shadow) 55%, transparent), inset 0 1px 0 color-mix(in srgb, var(--hi) 6%, transparent); }
+.wallet-sign-pair .wallet-drawer::before, .wallet-sign-pair .wallet-drawer::after { content: ''; position: absolute; inset-inline-start: var(--wallet-drawer-anchor-x, 50%); inline-size: 0; block-size: 0; border: 6px solid transparent; background: none; clip-path: none; transform: translateX(-50%); pointer-events: none; }
+.wallet-sign-pair .wallet-drawer::after { inset-block-start: auto; inset-block-end: 100%; border-bottom-color: var(--wallet-anchor-border); }
+.wallet-sign-pair .wallet-drawer::before { inset-block-start: auto; inset-block-end: calc(100% - 2px); border-bottom-color: var(--wallet-chooser-overlay); }
+.wallet-sign-pair .wallet-drawer-body { padding: .5rem; overflow: visible; }
+#harvest-modal-overlay .hm-foot .wallet-sign-pair .wallet-drawer-body { flex-direction: row; flex-wrap: nowrap; align-items: center; inline-size: max-content; }
+#harvest-modal-overlay .hm-foot .wallet-sign-pair .wallet-drawer-body:has(.wallet-request) { flex-direction: column; flex-wrap: wrap; inline-size: fit-content; }
+#harvest-modal-overlay .hm-foot .wallet-sign-pair .wallet-providers:has(.wallet-request-close) { display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; align-self: stretch; inline-size: auto; }
+#harvest-modal-overlay .hm-foot .wallet-sign-pair .wallet-request { align-self: stretch; justify-items: start; padding-inline: 0; }
+#harvest-modal-overlay .hm-foot .wallet-sign-pair .wallet-request .wallet-status { max-inline-size: none; }
+#harvest-modal-overlay .hm-foot .wallet-sign-pair .wallet-request.is-failed .wallet-status { max-inline-size: 15rem; }
+/* the pairing drawer sizes itself to its content, so the large "Switch to the Hive Keychain app..." line made it 965 px wide on a desktop; the text wraps at a readable width. */
+.wallet-drawer .wallet-status.is-action, #harvest-modal-overlay .hm-foot .wallet-sign-pair .wallet-request .wallet-status.is-action { inline-size: 22rem; max-inline-size: 100%; }   /* an explicit width: a max-width alone still let the window size itself from the unwrapped line */
+/* in the account menu the chooser button and the pairing request stack (as in the harvest footer) instead of sitting side by side, so the window is one request wide. */
+#account-menu .wallet-drawer-body:has(.wallet-request) { flex-direction: column; align-items: flex-start; inline-size: fit-content; }
+.wallet-providers > .wallet-request-close:only-child { margin-inline-start: auto; }   /* alone in its row (the Keychain choice is not part of a connect request) it sits at the end */
+#harvest-modal-overlay .hm-foot .wallet-sign-pair .wallet-pairing { inline-size: 10.5rem; max-inline-size: 100%; justify-self: center; }
+#harvest-modal-overlay .hm-foot .wallet-sign-pair [data-wallet-retry] { justify-self: center; }
+.wallet-sign-pair .wallet-controls.is-upward .wallet-drawer { inset-block-start: auto; inset-block-end: calc(100% + .5rem); }
+.wallet-sign-pair .wallet-controls.is-upward .wallet-drawer::after { inset-block-end: auto; inset-block-start: 100%; border-bottom-color: transparent; border-top-color: var(--wallet-anchor-border); }
+.wallet-sign-pair .wallet-controls.is-upward .wallet-drawer::before { inset-block-end: auto; inset-block-start: calc(100% - 2px); border-bottom-color: transparent; border-top-color: var(--wallet-chooser-overlay); }
+
+/* review, wallet approval, game confirmation, and result use the original SPS rewards card. */
+.wallet-card:has(> .wallet-claim-flow) > :is(.wallet-regions, .wallet-meta, .wallet-claim-wait) { display: none; }
+.wallet-claim-flow { display: grid; gap: .75rem; padding-block-start: .75rem; border-block-start: 1px solid var(--border); }
+.wallet-claim-flow h4, .wallet-claim-flow p { margin: 0; }
+.wallet-claim-flow h4 { font-size: 1.05rem; }
+.wallet-claim-flow .wallet-wait { margin: 0; }
+.wallet-claim-flow .dec-receipt-amount { margin-block: .2rem; }
+.dec-drawer-content .wallet-card:has(> .wallet-claim-flow:is(.is-review, .is-asked, .is-sent, .is-checking, .is-retried)) { border-color: var(--warn); border-block-start-color: var(--warn); background: linear-gradient(135deg, color-mix(in srgb, var(--warn) 16%, transparent), transparent 70%), var(--wallet-glass); }
+.dec-drawer-content .wallet-card:has(> .wallet-claim-flow:is(.is-review, .is-asked, .is-sent, .is-checking, .is-retried)) :is(h3, h4) { color: var(--warn); }
+.dec-drawer-content .wallet-card:has(> .wallet-claim-flow.is-done) { border-color: var(--ok); border-block-start-color: var(--ok); background: linear-gradient(135deg, color-mix(in srgb, var(--ok) 16%, transparent), transparent 70%), var(--wallet-glass); }
+.dec-drawer-content .wallet-card:has(> .wallet-claim-flow.is-done) :is(h3, h4) { color: var(--ok); }
+.dec-drawer-content .wallet-card:has(> .wallet-claim-flow.is-failed) { border-color: var(--danger); border-block-start-color: var(--danger); background: linear-gradient(135deg, color-mix(in srgb, var(--danger) 14%, transparent), transparent 70%), var(--wallet-glass); }
+.dec-drawer-content .wallet-card:has(> .wallet-claim-flow.is-failed) :is(h3, h4) { color: var(--danger); }
+
+.wallet-method { display: inline-flex; align-items: center; gap: .4em; white-space: nowrap; vertical-align: middle; }
+
+.wallet-sign-label { display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .35em; min-inline-size: min-content; white-space: normal; text-align: center; }
+.wallet-sign-label .wallet-method { vertical-align: baseline; }
+.ceres-btn:has(.wallet-sign-label) { min-inline-size: min-content; }
+
+.hm-btns > .ceres-btn:has(.wallet-sign-label) { flex: 1 0 min-content; min-inline-size: min-content; }
+/* DQ-09: Transfer, shared Swap/Transfer tabs and one quiet, aligned inner flow on both wallet entry points. */
+.wallet-swap .wallet-swap-tabs { gap: .35rem; margin-block: 0 .5rem; padding: 0; }
+.wallet-transfer .wallet-transfer-flow { gap: .5rem; }
+.wallet-transfer .wallet-transfer-section + .wallet-transfer-section { padding-block-start: .5rem; border-block-start: 1px solid var(--border); }
+.wallet-transfer .wallet-transfer-section:has(> .wallet-swap-asset > .wallet-swap-amount) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(12rem, 15rem); column-gap: .55rem; }
+.wallet-transfer .wallet-transfer-section:has(> .wallet-swap-asset > .wallet-swap-amount) > :is(.wallet-swap-line, .wallet-swap-asset) { display: contents; }
+.wallet-transfer .wallet-transfer-section:has(> .wallet-swap-asset > .wallet-swap-amount) > .wallet-swap-sub { grid-column: 1 / -1; }
+.wallet-transfer .wallet-transfer-to { display: flex; align-items: center; gap: .5rem; }
+.wallet-transfer .wallet-transfer-to > .ceres-wide-input { flex: 1 1 auto; inline-size: auto; min-inline-size: 0; box-sizing: border-box; }
+.wallet-transfer .wallet-transfer-to > .ceres-btn { flex: 0 0 auto; }
+.wallet-transfer .wallet-transfer-found .is-ok { color: var(--ok); font-weight: 600; overflow-wrap: anywhere; }
+.wallet-transfer .wallet-transfer-status { margin: 0; }
+.wallet-transfer .wallet-swap-receive .wallet-swap-grid { margin-block-start: .35rem; padding-block-start: .5rem; border-block-start: 1px solid var(--border); }
+.wallet-transfer .wallet-pool-figure.is-stale { color: var(--meta); }
+.wallet-transfer .wallet-transfer-review > .wallet-swap-line b { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.wallet-transfer .wallet-transfer-actions { display: grid; gap: .5rem; }
+@media (max-width: 1279px) {
+  .wallet-transfer .wallet-transfer-section:has(> .wallet-swap-asset > .wallet-swap-amount) { grid-template-columns: auto minmax(0, 1fr); row-gap: .45rem; }
+  .wallet-transfer .wallet-transfer-section:has(> .wallet-swap-asset > .wallet-swap-amount) .wallet-swap-pcts { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .3rem; }
+  .wallet-transfer .wallet-transfer-section:has(> .wallet-swap-asset > .wallet-swap-amount) .wallet-swap-pcts > .ceres-btn { min-inline-size: 0; }
+}
+/* desktop, board and Cards page alike. The open slide-out (#wallet-picker, which opens together with the wallet panel) is as wide
+ as the panel below it: the panel's width is .dec-drawer's min(34rem, 100vw - 2rem) and both end at the right page edge, so the
+ tray takes that width minus the closed handle (--edge-w). Its left edge meets the panel's left edge; the resource icons stay
+ packed beside the handle and the slide-in chevron rides the left end. The tray's existing max-width slide carries the motion
+ (no new transition, M-4); closed, the handle is unchanged. */
+html:not(.ceres-lw-le-1279) .edge-picker .edge-tray { flex: none; inline-size: calc(min(34rem, 100vw - 2rem) - var(--edge-w, 48px)); }
+html:not(.ceres-lw-le-1279) .edge-picker[data-open="true"] .edge-tray { max-width: calc(min(34rem, 100vw - 2rem) - var(--edge-w, 48px)); }
+html:not(.ceres-lw-le-1279) .edge-picker .edge-tray-chevron { margin-inline-end: auto; }

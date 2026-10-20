@@ -1,0 +1,42 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements-ceres.txt
+            requirements-dev.txt
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - run: python -m pip install -r requirements-ceres.txt -r requirements-dev.txt
+      - name: tests (no browser, no network)
+        env:
+          CERES_CI_NO_NETWORK: "1"
+        run: python -m pytest -m "not browser and not live" -q
+      - name: pip-audit
+        run: python -m pip_audit -r requirements-ceres.txt --desc off
+      - name: start and health
+        run: |
+          python -m ceres --port 27390 --no-reload-watch & echo $! > ceres.pid
+          for i in $(seq 1 60); do curl -fs http://127.0.0.1:27390/api/health && break; sleep 0.5; done
+          curl -fs http://127.0.0.1:27390/api/health | python -c "import json,sys,pathlib; v=json.load(sys.stdin)['version']; assert v==pathlib.Path('ceres/released_version.txt').read_text().strip(), v"
+          kill "$(cat ceres.pid)"

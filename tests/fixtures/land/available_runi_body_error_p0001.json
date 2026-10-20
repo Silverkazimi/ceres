@@ -1,0 +1,13 @@
+{
+  "status": "success",
+  "data": {
+    "length": 241,
+    "name": "error",
+    "severity": "ERROR",
+    "code": "P0001",
+    "where": "PL/pgSQL function fn_get_land_deed_stakeable_items(character varying,character varying,integer,integer,integer,character varying) line 51 at RAISE",
+    "file": "pl_exec.c",
+    "line": "3931",
+    "routine": "exec_stmt_raise"
+  }
+}

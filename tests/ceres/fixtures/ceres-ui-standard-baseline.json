@@ -1,0 +1,404 @@
+{
+  "schema_version": 1,
+  "rule": "",
+  "recorded_on": "2026-09-28",
+  "recorded_at_version": "1.0.0",
+  "note": "Deviations from library/ceres-ui-standards.md present on master when the guard was recorded. Shrinking ratchet: remove an entry when its deviation is fixed; add one only with an maintainer-approved exception that is also written into the standard. 2026-10-18 : ratchet shrunk to observed counts; added calc(8*/8.6*var(--ability-unit)) font sizes and calc(4*var(--ability-unit)) radius from the maintainer-approved B-5 layout A (, ).",
+  "baseline": {
+    "raw_colour_beyond_s9310_allowlist": [],
+    "m4_fixed_chrome_shadow_filter_motion": [
+      {
+        "file": "canonical.css",
+        "selector": ".theme-picker",
+        "declaration": "transition: background .3s ease, box-shadow .3s ease",
+        "forbidden": [
+          "box-shadow"
+        ]
+      },
+      {
+        "file": "ceres.css",
+        "selector": ".board-header .player-avatar",
+        "declaration": "transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
+        "forbidden": [
+          "box-shadow"
+        ]
+      },
+      {
+        "file": "ceres.css",
+        "selector": ".board-header .player-avatar[data-refresh-state=\"loading\"]",
+        "declaration": "animation: avatar-refresh-border 0.9s ease-in-out infinite",
+        "forbidden": [
+          "box-shadow"
+        ]
+      },
+      {
+        "file": "ceres.css",
+        "selector": ".scroll-top",
+        "declaration": "transition: opacity .3s ease, box-shadow .2s ease",
+        "forbidden": [
+          "box-shadow"
+        ]
+      }
+    ],
+    "keyframes_without_reduced_motion": [
+      {
+        "file": "ceres.css",
+        "keyframes": "eos-portrait-pop-opacity"
+      },
+      {
+        "file": "canonical.css",
+        "keyframes": "fadeInRight"
+      }
+    ],
+    "unused_keyframes": [
+      {
+        "file": "ceres.css",
+        "keyframes": "reload-spin"
+      }
+    ],
+    "font_sizes_off_scale": {
+      "ceres.css": {
+        ".42rem": 1,
+        ".48rem": 2,
+        ".4rem": 1,
+        ".52rem": 2,
+        ".55rem": 1,
+        ".56rem": 2,
+        ".58rem": 5,
+        ".5rem": 1,
+        ".61rem": 2,
+        ".625rem": 1,
+        ".62rem": 5,
+        ".64rem": 5,
+        ".65em": 1,
+        ".65rem": 4,
+        ".66rem": 8,
+        ".67rem": 1,
+        ".68rem": 11,
+        ".69rem": 4,
+        ".6rem": 5,
+        ".72em": 1,
+        ".72rem": 19,
+        ".74rem": 3,
+        ".76rem": 7,
+        ".78rem": 14,
+        ".82em": 1,
+        ".82rem": 5,
+        ".83rem": 2,
+        ".84rem": 2,
+        ".85rem": 28,
+        ".86rem": 3,
+        ".92rem": 4,
+        ".93rem": 1,
+        ".95rem": 10,
+        ".98rem": 1,
+        "0": 1,
+        "1.02rem": 1,
+        "1.05rem": 11,
+        "1.08rem": 1,
+        "1.15rem": 4,
+        "1.1rem": 4,
+        "1.2rem": 5,
+        "1.35rem": 3,
+        "1.3rem": 4,
+        "1.4rem": 3,
+        "1.5rem": 3,
+        "1.6rem": 2,
+        "1.7rem": 1,
+        "1.8rem": 1,
+        "10.5px": 1,
+        "10px": 1,
+        "11.5px": 1,
+        "11px": 2,
+        "12.8px": 1,
+        "12px": 12,
+        "13px": 5,
+        "15px": 3,
+        "16px": 2,
+        "18px": 1,
+        "19px": 2,
+        "2.6rem": 2,
+        "2.8rem": 1,
+        "23px": 1,
+        "calc(100cqi*1.08/6.7)": 1,
+        "calc(100cqi*1.25/2.3)": 1,
+        "calc(100cqi*11.5/107.2)": 1,
+        "calc(100cqi*12.8/107.2)": 1,
+        "calc(7.68*var(--ability-unit))": 1,
+        "clamp(.45rem,13cqi,.7rem)": 1,
+        "var(--ceres-control-font-size,1rem)": 3,
+        "var(--edge-chip-font,1.25rem)": 1,
+        "calc(8*var(--ability-unit))": 1,
+        "calc(8.6*var(--ability-unit))": 1
+      }
+    },
+    "radii_off_scale": {
+      "buttons.css": {
+        ".25rem": 1
+      },
+      "ceres.css": {
+        ".15em": 1,
+        ".25rem": 1,
+        ".35rem": 1,
+        ".3rem": 2,
+        ".4rem": 1,
+        ".75rem": 2,
+        "0 8px 8px 0": 1,
+        "10px": 2,
+        "1rem": 2,
+        "2px": 1,
+        "3px": 1,
+        "4px": 5,
+        "5px": 4,
+        "5px 5px 0 0": 1,
+        "6px": 4,
+        "7px": 5,
+        "9px": 1,
+        "max(0px,calc(var(--radius)-2px))": 1,
+        "var(--ceres-pp-radius)": 3,
+        "var(--edge-radius-inner,5px 0 0 5px)": 3,
+        "var(--edge-radius-outer,5px 0 0 5px)": 2,
+        "var(--radius) var(--radius) 0 0": 1,
+        "calc(4*var(--ability-unit))": 1
+      },
+      "wallet.css": {
+        "2px": 1,
+        "var(--wallet-anchor-radius)": 1
+      }
+    },
+    "input_overrides": [
+      {
+        "file": "ceres.css",
+        "selector": ".r3-edit .csel-trigger, .r3-edit .ceres-wide-input, .r3-edit > button, .r3-protected-setting .ceres-wide-input",
+        "properties": [
+          "block-size",
+          "font-size",
+          "min-block-size"
+        ]
+      },
+      {
+        "file": "ceres.css",
+        "selector": ".r3-percent-field .ceres-wide-input",
+        "properties": [
+          "border-end-end-radius",
+          "border-start-end-radius"
+        ]
+      },
+      {
+        "file": "ceres.css",
+        "selector": ".start-input.ceres-wide-input",
+        "properties": [
+          "padding-inline"
+        ]
+      }
+    ],
+    "buttons_without_ceres_btn": [
+      {
+        "file": "badge-overlay.js",
+        "class": "badge-filter-opt",
+        "count": 1
+      },
+      {
+        "file": "badges.js",
+        "class": "slot-bloodline-badge is-solo",
+        "count": 1
+      },
+      {
+        "file": "candidates.js",
+        "class": "candidate-grid-card candidate-grid-rarity is-${picker.groupId}${disabled ? ' is-unavailable' : ''}",
+        "count": 1
+      },
+      {
+        "file": "candidates.js",
+        "class": "candidate-grid-select",
+        "count": 1
+      },
+      {
+        "file": "candidates.js",
+        "class": "candidate-grid-select candidate-grid-stage",
+        "count": 1
+      },
+      {
+        "file": "candidates.js",
+        "class": "candidate-row candidate-row-item",
+        "count": 1
+      },
+      {
+        "file": "candidates.js",
+        "class": "picker-close chevron-close",
+        "count": 1
+      },
+      {
+        "file": "cards.html",
+        "class": "edge-toggle",
+        "count": 1
+      },
+      {
+        "file": "checkout.js",
+        "class": "ch-plot-jump ch-plot-badge ceres-region-plaque ${cls}",
+        "count": 1
+      },
+      {
+        "file": "editor.js",
+        "class": "eos-close btn-close chevron-close",
+        "count": 1
+      },
+      {
+        "file": "editor.js",
+        "class": "power-satellite is-empty${powerWarning ? ' is-power-required' : ''}",
+        "count": 1
+      },
+      {
+        "file": "editor.js",
+        "class": "power-satellite is-filled",
+        "count": 1
+      },
+      {
+        "file": "editor.js",
+        "class": "slot-tile ${shapeClass}${pickerFocusClass(row, focusGroup, index)} is-empty",
+        "count": 1
+      },
+      {
+        "file": "editor.js",
+        "class": "slot-tile ${shapeClass}${pickerFocusClass(row, focusGroup, index)} is-pending-add${hasArt ? ' has-slot-art' : ''}",
+        "count": 1
+      },
+      {
+        "file": "editor.js",
+        "class": "slot-tile ${shapeClass}${pickerFocusClass(row, focusGroup, index)} is-pending-removal is-stage-elsewhere${hasArt ? ' has-slot-art' : ''}",
+        "count": 1
+      },
+      {
+        "file": "editor.js",
+        "class": "slot-tile ${shapeClass}${pickerFocusClass(row, focusGroup, index)} is-pending-removal${inFlight ? '' : ' is-stage-ready'}${hasArt ? ' has-slot-art' : ''}",
+        "count": 1
+      },
+      {
+        "file": "editor.js",
+        "class": "slot-tile ${shapeClass}${pickerFocusClass(row, focusGroup, index)}${viewOnly}${noPowerEmpty ? ' is-no-power' : ''} is-empty",
+        "count": 1
+      },
+      {
+        "file": "harvest-modal.js",
+        "class": "hm-batch-row-toggle",
+        "count": 1
+      },
+      {
+        "file": "harvest-results.js",
+        "class": "hm-batch-row-toggle",
+        "count": 1
+      },
+      {
+        "file": "index.html",
+        "class": "badge-bar-head",
+        "count": 1
+      },
+      {
+        "file": "index.html",
+        "class": "close-all-btn chevron-close",
+        "count": 1
+      },
+      {
+        "file": "index.html",
+        "class": "edge-toggle",
+        "count": 1
+      },
+      {
+        "file": "index.html",
+        "class": "edge-toggle scroll-top",
+        "count": 1
+      },
+      {
+        "file": "index.html",
+        "class": "mobile-filter-backdrop",
+        "count": 1
+      },
+      {
+        "file": "index.html",
+        "class": "player-avatar",
+        "count": 1
+      },
+      {
+        "file": "operations.js",
+        "class": "${primaryClass}",
+        "count": 2
+      },
+      {
+        "file": "operations.js",
+        "class": "${retryClass}",
+        "count": 1
+      },
+      {
+        "file": "picker-actions.js",
+        "class": "eos-close chevron-close",
+        "count": 1
+      },
+      {
+        "file": "planner.js",
+        "class": "ch-plot-jump ch-plot-badge ceres-region-plaque ${territoryCellHtml(row?.territory, deedUid).cls}",
+        "count": 1
+      },
+      {
+        "file": "regional-dec.js",
+        "class": "edge-opt",
+        "count": 1
+      },
+      {
+        "file": "regional-dec.js",
+        "class": "edge-opt edge-tray-chevron",
+        "count": 1
+      },
+      {
+        "file": "routing-setup.js",
+        "class": "r3-route-chip${selected ? ' is-selected' : ''}",
+        "count": 1
+      },
+      {
+        "file": "rows.js",
+        "class": "createElement('button')",
+        "count": 1
+      },
+      {
+        "file": "terrainAffinity.js",
+        "class": "terrain-affinity-badge${selected ? ' is-selected' : ''}",
+        "count": 1
+      },
+      {
+        "file": "theme.js",
+        "class": "createElement('button')",
+        "count": 2
+      },
+      {
+        "file": "wallet-resources.js",
+        "class": "wallet-tab wallet-tab--icon",
+        "count": 1
+      },
+      {
+        "file": "wallet.js",
+        "class": "${choice}",
+        "count": 2
+      },
+      {
+        "file": "wallet.js",
+        "class": "${secondary}",
+        "count": 2
+      },
+      {
+        "file": "wallet.js",
+        "class": "${secondary} wallet-disconnect",
+        "count": 1
+      },
+      {
+        "file": "wallet.js",
+        "class": "${secondary} wallet-toggle",
+        "count": 1
+      },
+      {
+        "file": "worksite.js",
+        "class": "${classes.join(' ')}",
+        "count": 1
+      }
+    ],
+    "phone_rules_outside_phone_scope": []
+  }
+}

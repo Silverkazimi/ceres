@@ -1,0 +1,5346 @@
+[
+  {
+    "id": 2,
+    "name": "Giant Roc",
+    "color": "Red",
+    "type": "Monster",
+    "sub_type": "Mundane Beast",
+    "rarity": 1,
+    "drop_rate": 80,
+    "stats": {
+      "mana": [
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5
+      ],
+      "attack": [
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        4,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        6
+      ],
+      "speed": [
+        2,
+        2,
+        3,
+        2,
+        3,
+        3,
+        4,
+        4,
+        5,
+        5
+      ],
+      "abilities": [
+        [
+          "Flying",
+          "Reach"
+        ],
+        [],
+        [],
+        [],
+        [],
+        [
+          "Trample"
+        ],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "is_starter": true,
+    "editions": "0,1",
+    "created_block_num": null,
+    "last_update_tx": "0a7277d6eb163d5faa031f07e91c0133f6c828da",
+    "total_printed": 192857,
+    "is_promo": false,
+    "tier": null,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 2,
+        "gold": false,
+        "foil": 0,
+        "edition": 0,
+        "num_cards": "3513",
+        "unbound_cards": "0",
+        "total_xp": "826400",
+        "num_burned": "351",
+        "total_burned_xp": "65720"
+      },
+      {
+        "card_detail_id": 2,
+        "gold": true,
+        "foil": 1,
+        "edition": 1,
+        "num_cards": "743",
+        "unbound_cards": "0",
+        "total_xp": "496050",
+        "num_burned": "318",
+        "total_burned_xp": "160000"
+      },
+      {
+        "card_detail_id": 2,
+        "gold": true,
+        "foil": 1,
+        "edition": 0,
+        "num_cards": "294",
+        "unbound_cards": "0",
+        "total_xp": "226500",
+        "num_burned": "35",
+        "total_burned_xp": "8750"
+      },
+      {
+        "card_detail_id": 2,
+        "gold": false,
+        "foil": 0,
+        "edition": 1,
+        "num_cards": "12084",
+        "unbound_cards": "0",
+        "total_xp": "1659275",
+        "num_burned": "3558",
+        "total_burned_xp": "151685"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "name": "Malric Inferno",
+    "color": "Red",
+    "type": "Summoner",
+    "sub_type": "Djinn",
+    "rarity": 2,
+    "drop_rate": 22,
+    "stats": {
+      "mana": 3,
+      "attack": 1,
+      "ranged": 0,
+      "magic": 0,
+      "armor": 0,
+      "health": 0,
+      "speed": 0
+    },
+    "is_starter": true,
+    "editions": "0,1",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 77764,
+    "is_promo": false,
+    "tier": null,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 5,
+        "gold": false,
+        "foil": 0,
+        "edition": 0,
+        "num_cards": "2168",
+        "unbound_cards": "0",
+        "total_xp": "1552900",
+        "num_burned": "20",
+        "total_burned_xp": "12600"
+      },
+      {
+        "card_detail_id": 5,
+        "gold": true,
+        "foil": 1,
+        "edition": 1,
+        "num_cards": "398",
+        "unbound_cards": "0",
+        "total_xp": "495900",
+        "num_burned": "24",
+        "total_burned_xp": "14000"
+      },
+      {
+        "card_detail_id": 5,
+        "gold": true,
+        "foil": 1,
+        "edition": 0,
+        "num_cards": "139",
+        "unbound_cards": "0",
+        "total_xp": "184000",
+        "num_burned": "2",
+        "total_burned_xp": "1000"
+      },
+      {
+        "card_detail_id": 5,
+        "gold": false,
+        "foil": 0,
+        "edition": 1,
+        "num_cards": "7171",
+        "unbound_cards": "0",
+        "total_xp": "3606900",
+        "num_burned": "597",
+        "total_burned_xp": "76350"
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "name": "Serpentine Soldier",
+    "color": "Red",
+    "type": "Monster",
+    "sub_type": "Saurian",
+    "rarity": 2,
+    "drop_rate": 22,
+    "stats": {
+      "mana": [
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5
+      ],
+      "attack": [
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "health": [
+        4,
+        4,
+        4,
+        4,
+        5,
+        6,
+        6,
+        7
+      ],
+      "speed": [
+        4,
+        5,
+        5,
+        5,
+        5,
+        6,
+        6,
+        6
+      ],
+      "abilities": [
+        [
+          "Shield"
+        ],
+        [],
+        [],
+        [
+          "Dodge"
+        ],
+        [],
+        [],
+        [
+          "Thorns"
+        ],
+        []
+      ]
+    },
+    "is_starter": false,
+    "editions": "0,1",
+    "created_block_num": null,
+    "last_update_tx": "0a7277d6eb163d5faa031f07e91c0133f6c828da",
+    "total_printed": 68795,
+    "is_promo": false,
+    "tier": null,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 6,
+        "gold": false,
+        "foil": 0,
+        "edition": 1,
+        "num_cards": "4714",
+        "unbound_cards": "0",
+        "total_xp": "2769575",
+        "num_burned": "1441",
+        "total_burned_xp": "344650"
+      },
+      {
+        "card_detail_id": 6,
+        "gold": true,
+        "foil": 1,
+        "edition": 0,
+        "num_cards": "122",
+        "unbound_cards": "0",
+        "total_xp": "143500",
+        "num_burned": "24",
+        "total_burned_xp": "20500"
+      },
+      {
+        "card_detail_id": 6,
+        "gold": true,
+        "foil": 1,
+        "edition": 1,
+        "num_cards": "293",
+        "unbound_cards": "0",
+        "total_xp": "354400",
+        "num_burned": "126",
+        "total_burned_xp": "140400"
+      },
+      {
+        "card_detail_id": 6,
+        "gold": false,
+        "foil": 0,
+        "edition": 0,
+        "num_cards": "2320",
+        "unbound_cards": "0",
+        "total_xp": "1461300",
+        "num_burned": "115",
+        "total_burned_xp": "108500"
+      }
+    ]
+  },
+  {
+    "id": 27,
+    "name": "Lyanna Natura",
+    "color": "Green",
+    "type": "Summoner",
+    "sub_type": "Human",
+    "rarity": 2,
+    "drop_rate": 22,
+    "stats": {
+      "mana": 3,
+      "attack": 0,
+      "ranged": 0,
+      "magic": 0,
+      "armor": 0,
+      "health": 1,
+      "speed": 0
+    },
+    "is_starter": true,
+    "editions": "0,1",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 78094,
+    "is_promo": false,
+    "tier": null,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 27,
+        "gold": false,
+        "foil": 0,
+        "edition": 0,
+        "num_cards": "2635",
+        "unbound_cards": "0",
+        "total_xp": "1553000",
+        "num_burned": "29",
+        "total_burned_xp": "19800"
+      },
+      {
+        "card_detail_id": 27,
+        "gold": true,
+        "foil": 1,
+        "edition": 0,
+        "num_cards": "117",
+        "unbound_cards": "0",
+        "total_xp": "164500",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 27,
+        "gold": true,
+        "foil": 1,
+        "edition": 1,
+        "num_cards": "383",
+        "unbound_cards": "0",
+        "total_xp": "475900",
+        "num_burned": "27",
+        "total_burned_xp": "13600"
+      },
+      {
+        "card_detail_id": 27,
+        "gold": false,
+        "foil": 0,
+        "edition": 1,
+        "num_cards": "7266",
+        "unbound_cards": "0",
+        "total_xp": "3603075",
+        "num_burned": "469",
+        "total_burned_xp": "77450"
+      }
+    ]
+  },
+  {
+    "id": 33,
+    "name": "Spirit of the Forest",
+    "color": "Green",
+    "type": "Monster",
+    "sub_type": "Fey",
+    "rarity": 4,
+    "drop_rate": 2,
+    "stats": {
+      "mana": [
+        7,
+        7,
+        7,
+        7
+      ],
+      "attack": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "ranged": [
+        2,
+        2,
+        2,
+        3
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "speed": [
+        6,
+        6,
+        6,
+        6
+      ],
+      "abilities": [
+        [
+          "Flying",
+          "Snipe"
+        ],
+        [
+          "Tank Heal"
+        ],
+        [
+          "Protect"
+        ],
+        []
+      ]
+    },
+    "is_starter": false,
+    "editions": "0,1",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 5650,
+    "is_promo": false,
+    "tier": null,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 33,
+        "gold": false,
+        "foil": 0,
+        "edition": 0,
+        "num_cards": "383",
+        "unbound_cards": "0",
+        "total_xp": "1197000",
+        "num_burned": "12",
+        "total_burned_xp": "22000"
+      },
+      {
+        "card_detail_id": 33,
+        "gold": true,
+        "foil": 1,
+        "edition": 0,
+        "num_cards": "17",
+        "unbound_cards": "0",
+        "total_xp": "77500",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 33,
+        "gold": true,
+        "foil": 1,
+        "edition": 1,
+        "num_cards": "63",
+        "unbound_cards": "0",
+        "total_xp": "226000",
+        "num_burned": "5",
+        "total_burned_xp": "12000"
+      },
+      {
+        "card_detail_id": 33,
+        "gold": false,
+        "foil": 0,
+        "edition": 1,
+        "num_cards": "842",
+        "unbound_cards": "0",
+        "total_xp": "2129750",
+        "num_burned": "33",
+        "total_burned_xp": "46500"
+      }
+    ]
+  },
+  {
+    "id": 40,
+    "name": "Silver Shield Paladin",
+    "color": "White",
+    "type": "Monster",
+    "sub_type": "Human",
+    "rarity": 2,
+    "drop_rate": 22,
+    "stats": {
+      "mana": [
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5
+      ],
+      "attack": [
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        3,
+        3
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        1,
+        2,
+        3,
+        3,
+        4,
+        4,
+        4,
+        4
+      ],
+      "health": [
+        5,
+        6,
+        7,
+        7,
+        7,
+        8,
+        8,
+        9
+      ],
+      "speed": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3
+      ],
+      "abilities": [
+        [
+          "Shield"
+        ],
+        [],
+        [],
+        [],
+        [
+          "Magic Reflect"
+        ],
+        [],
+        [],
+        []
+      ]
+    },
+    "is_starter": false,
+    "editions": "0,1",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 70427,
+    "is_promo": false,
+    "tier": null,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 40,
+        "gold": false,
+        "foil": 0,
+        "edition": 0,
+        "num_cards": "2979",
+        "unbound_cards": "0",
+        "total_xp": "1467020",
+        "num_burned": "97",
+        "total_burned_xp": "39000"
+      },
+      {
+        "card_detail_id": 40,
+        "gold": true,
+        "foil": 1,
+        "edition": 0,
+        "num_cards": "124",
+        "unbound_cards": "0",
+        "total_xp": "162500",
+        "num_burned": "6",
+        "total_burned_xp": "11000"
+      },
+      {
+        "card_detail_id": 40,
+        "gold": true,
+        "foil": 1,
+        "edition": 1,
+        "num_cards": "336",
+        "unbound_cards": "0",
+        "total_xp": "410600",
+        "num_burned": "88",
+        "total_burned_xp": "80000"
+      },
+      {
+        "card_detail_id": 40,
+        "gold": false,
+        "foil": 0,
+        "edition": 1,
+        "num_cards": "5285",
+        "unbound_cards": "0",
+        "total_xp": "3148455",
+        "num_burned": "799",
+        "total_burned_xp": "97075"
+      }
+    ]
+  },
+  {
+    "id": 49,
+    "name": "Zintar Mortalis",
+    "color": "Black",
+    "type": "Summoner",
+    "sub_type": "Undead",
+    "rarity": 2,
+    "drop_rate": 22,
+    "stats": {
+      "mana": 3,
+      "attack": -1,
+      "ranged": 0,
+      "magic": 0,
+      "armor": 0,
+      "health": 0,
+      "speed": 0
+    },
+    "is_starter": true,
+    "editions": "0,1",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 76154,
+    "is_promo": false,
+    "tier": null,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 49,
+        "gold": false,
+        "foil": 0,
+        "edition": 0,
+        "num_cards": "2150",
+        "unbound_cards": "0",
+        "total_xp": "1533600",
+        "num_burned": "30",
+        "total_burned_xp": "23300"
+      },
+      {
+        "card_detail_id": 49,
+        "gold": true,
+        "foil": 1,
+        "edition": 1,
+        "num_cards": "393",
+        "unbound_cards": "0",
+        "total_xp": "439100",
+        "num_burned": "44",
+        "total_burned_xp": "46800"
+      },
+      {
+        "card_detail_id": 49,
+        "gold": true,
+        "foil": 1,
+        "edition": 0,
+        "num_cards": "101",
+        "unbound_cards": "0",
+        "total_xp": "159000",
+        "num_burned": "2",
+        "total_burned_xp": "1000"
+      },
+      {
+        "card_detail_id": 49,
+        "gold": false,
+        "foil": 0,
+        "edition": 1,
+        "num_cards": "7806",
+        "unbound_cards": "0",
+        "total_xp": "3502150",
+        "num_burned": "442",
+        "total_burned_xp": "46525"
+      }
+    ]
+  },
+  {
+    "id": 55,
+    "name": "Lord of Darkness",
+    "color": "Black",
+    "type": "Monster",
+    "sub_type": "Fiend",
+    "rarity": 4,
+    "drop_rate": 2,
+    "stats": {
+      "mana": [
+        7,
+        7,
+        7,
+        7
+      ],
+      "attack": [
+        3,
+        3,
+        4,
+        4
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "health": [
+        8,
+        9,
+        9,
+        10
+      ],
+      "speed": [
+        2,
+        2,
+        3,
+        3
+      ],
+      "abilities": [
+        [
+          "Enrage"
+        ],
+        [
+          "Stun"
+        ],
+        [
+          "Shield"
+        ],
+        [
+          "Retaliate"
+        ]
+      ]
+    },
+    "is_starter": false,
+    "editions": "0,1",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 5768,
+    "is_promo": false,
+    "tier": null,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 55,
+        "gold": true,
+        "foil": 1,
+        "edition": 0,
+        "num_cards": "20",
+        "unbound_cards": "0",
+        "total_xp": "85000",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 55,
+        "gold": true,
+        "foil": 1,
+        "edition": 1,
+        "num_cards": "46",
+        "unbound_cards": "0",
+        "total_xp": "164000",
+        "num_burned": "13",
+        "total_burned_xp": "44000"
+      },
+      {
+        "card_detail_id": 55,
+        "gold": false,
+        "foil": 0,
+        "edition": 1,
+        "num_cards": "867",
+        "unbound_cards": "0",
+        "total_xp": "2153750",
+        "num_burned": "60",
+        "total_burned_xp": "62250"
+      },
+      {
+        "card_detail_id": 55,
+        "gold": false,
+        "foil": 0,
+        "edition": 0,
+        "num_cards": "402",
+        "unbound_cards": "0",
+        "total_xp": "1156000",
+        "num_burned": "19",
+        "total_burned_xp": "53000"
+      }
+    ]
+  },
+  {
+    "id": 60,
+    "name": "Peaceful Giant",
+    "color": "Gray",
+    "type": "Monster",
+    "sub_type": "Giant",
+    "rarity": 1,
+    "drop_rate": 80,
+    "stats": {
+      "mana": [
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5
+      ],
+      "attack": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "speed": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "abilities": [
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "is_starter": false,
+    "editions": "1",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 128321,
+    "is_promo": false,
+    "tier": 1,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 60,
+        "gold": true,
+        "foil": 1,
+        "edition": 1,
+        "num_cards": "810",
+        "unbound_cards": "0",
+        "total_xp": "625000",
+        "num_burned": "108",
+        "total_burned_xp": "37800"
+      },
+      {
+        "card_detail_id": 60,
+        "gold": false,
+        "foil": 0,
+        "edition": 1,
+        "num_cards": "10436",
+        "unbound_cards": "0",
+        "total_xp": "1664685",
+        "num_burned": "1173",
+        "total_burned_xp": "22770"
+      }
+    ]
+  },
+  {
+    "id": 61,
+    "name": "Grumpy Dwarf",
+    "color": "Gray",
+    "type": "Monster",
+    "sub_type": "Dwarf",
+    "rarity": 1,
+    "drop_rate": 80,
+    "stats": {
+      "mana": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "attack": [
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        1,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        2,
+        3,
+        3
+      ],
+      "health": [
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        4
+      ],
+      "speed": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3
+      ],
+      "abilities": [
+        [
+          "Reach"
+        ],
+        [],
+        [],
+        [],
+        [
+          "Enrage"
+        ],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "is_starter": true,
+    "editions": "1",
+    "created_block_num": null,
+    "last_update_tx": "0a7277d6eb163d5faa031f07e91c0133f6c828da",
+    "total_printed": 137086,
+    "is_promo": false,
+    "tier": 1,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 61,
+        "gold": false,
+        "foil": 0,
+        "edition": 1,
+        "num_cards": "15687",
+        "unbound_cards": "0",
+        "total_xp": "1619760",
+        "num_burned": "2463",
+        "total_burned_xp": "99855"
+      },
+      {
+        "card_detail_id": 61,
+        "gold": true,
+        "foil": 1,
+        "edition": 1,
+        "num_cards": "786",
+        "unbound_cards": "0",
+        "total_xp": "484000",
+        "num_burned": "366",
+        "total_burned_xp": "186400"
+      }
+    ]
+  },
+  {
+    "id": 62,
+    "name": "Elven Cutthroat",
+    "color": "Gray",
+    "type": "Monster",
+    "sub_type": "Elf",
+    "rarity": 1,
+    "drop_rate": 80,
+    "stats": {
+      "mana": [
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3
+      ],
+      "attack": [
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        1,
+        2,
+        2,
+        2,
+        3,
+        3,
+        4,
+        4,
+        4,
+        5
+      ],
+      "speed": [
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5,
+        6,
+        6
+      ],
+      "abilities": [
+        [
+          "Sneak"
+        ],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "is_starter": true,
+    "editions": "1",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 136432,
+    "is_promo": false,
+    "tier": 1,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 62,
+        "gold": true,
+        "foil": 1,
+        "edition": 1,
+        "num_cards": "829",
+        "unbound_cards": "0",
+        "total_xp": "655000",
+        "num_burned": "50",
+        "total_burned_xp": "16800"
+      },
+      {
+        "card_detail_id": 62,
+        "gold": false,
+        "foil": 0,
+        "edition": 1,
+        "num_cards": "12397",
+        "unbound_cards": "0",
+        "total_xp": "1769130",
+        "num_burned": "866",
+        "total_burned_xp": "14250"
+      }
+    ]
+  },
+  {
+    "id": 63,
+    "name": "Centaur",
+    "color": "Gray",
+    "type": "Monster",
+    "sub_type": "Fey",
+    "rarity": 1,
+    "drop_rate": 80,
+    "stats": {
+      "mana": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "attack": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ranged": [
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        4,
+        5,
+        5,
+        4,
+        5,
+        5,
+        6,
+        5,
+        5,
+        6
+      ],
+      "speed": [
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5,
+        6,
+        6
+      ],
+      "abilities": [
+        [
+          "Snipe"
+        ],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "is_starter": true,
+    "editions": "1",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 136662,
+    "is_promo": false,
+    "tier": 1,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 63,
+        "gold": true,
+        "foil": 1,
+        "edition": 1,
+        "num_cards": "857",
+        "unbound_cards": "0",
+        "total_xp": "639000",
+        "num_burned": "60",
+        "total_burned_xp": "35200"
+      },
+      {
+        "card_detail_id": 63,
+        "gold": false,
+        "foil": 0,
+        "edition": 1,
+        "num_cards": "12887",
+        "unbound_cards": "0",
+        "total_xp": "1757340",
+        "num_burned": "945",
+        "total_burned_xp": "20775"
+      }
+    ]
+  },
+  {
+    "id": 79,
+    "name": "Highland Archer",
+    "color": "Gray",
+    "type": "Monster",
+    "sub_type": "Human",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3
+      ],
+      "attack": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ranged": [
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        2,
+        2,
+        3,
+        3,
+        3,
+        4,
+        4,
+        5,
+        4,
+        5
+      ],
+      "speed": [
+        1,
+        2,
+        2,
+        2,
+        3,
+        3,
+        4,
+        4,
+        4,
+        4
+      ],
+      "abilities": [
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "is_starter": false,
+    "editions": "3",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 400004,
+    "is_promo": false,
+    "tier": 1,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 79,
+        "gold": true,
+        "foil": 1,
+        "edition": 3,
+        "num_cards": "1862",
+        "unbound_cards": "0",
+        "total_xp": "1052800",
+        "num_burned": "1443",
+        "total_burned_xp": "637000"
+      },
+      {
+        "card_detail_id": 79,
+        "gold": false,
+        "foil": 0,
+        "edition": 3,
+        "num_cards": "42089",
+        "unbound_cards": "0",
+        "total_xp": "3676380",
+        "num_burned": "36335",
+        "total_burned_xp": "1020585"
+      }
+    ]
+  },
+  {
+    "id": 112,
+    "name": "Prince Rennyn",
+    "color": "Green",
+    "type": "Summoner",
+    "sub_type": "Elf",
+    "rarity": 4,
+    "drop_rate": 0,
+    "stats": {
+      "mana": 5,
+      "attack": 0,
+      "ranged": 1,
+      "magic": 0,
+      "armor": 0,
+      "health": 1,
+      "speed": 1
+    },
+    "is_starter": false,
+    "editions": "1",
+    "created_block_num": 30000003,
+    "last_update_tx": "25e5a9feee622267af5423f8eec5e59a5aca648a",
+    "total_printed": 2782,
+    "is_promo": false,
+    "tier": 1,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 112,
+        "gold": true,
+        "foil": 1,
+        "edition": 1,
+        "num_cards": "41",
+        "unbound_cards": "0",
+        "total_xp": "164000",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 112,
+        "gold": false,
+        "foil": 0,
+        "edition": 1,
+        "num_cards": "557",
+        "unbound_cards": "0",
+        "total_xp": "1597500",
+        "num_burned": "5",
+        "total_burned_xp": "1500"
+      }
+    ]
+  },
+  {
+    "id": 114,
+    "name": "Delwyn Dragonscale",
+    "color": "Gold",
+    "type": "Summoner",
+    "sub_type": "Golem",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "mana": 5,
+      "attack": 0,
+      "ranged": 0,
+      "magic": 1,
+      "armor": 0,
+      "health": 0,
+      "speed": 0
+    },
+    "is_starter": false,
+    "editions": "2",
+    "created_block_num": 33391306,
+    "last_update_tx": "61004bcefce4f12df9ee1c75fc75cb0209e74907",
+    "total_printed": 255238,
+    "is_promo": false,
+    "tier": 1,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 114,
+        "gold": true,
+        "foil": 1,
+        "edition": 2,
+        "num_cards": "931",
+        "unbound_cards": "0",
+        "total_xp": "999800",
+        "num_burned": "465",
+        "total_burned_xp": "221800"
+      },
+      {
+        "card_detail_id": 114,
+        "gold": false,
+        "foil": 0,
+        "edition": 2,
+        "num_cards": "26160",
+        "unbound_cards": "0",
+        "total_xp": "3237690",
+        "num_burned": "12987",
+        "total_burned_xp": "491880"
+      }
+    ]
+  },
+  {
+    "id": 118,
+    "name": "Armorsmith",
+    "color": "White",
+    "type": "Monster",
+    "sub_type": "Human",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "attack": [
+        0,
+        0,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        3,
+        3
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        2,
+        3,
+        2,
+        3,
+        3,
+        3,
+        4,
+        4,
+        3,
+        4
+      ],
+      "speed": [
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4
+      ],
+      "abilities": [
+        [
+          "Repair"
+        ],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "is_starter": false,
+    "editions": "2",
+    "created_block_num": 33074679,
+    "last_update_tx": "10349d20f618c131633876a181eff2cc265788a7",
+    "total_printed": 161567,
+    "is_promo": false,
+    "tier": 1,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 118,
+        "gold": true,
+        "foil": 1,
+        "edition": 2,
+        "num_cards": "1012",
+        "unbound_cards": "0",
+        "total_xp": "701100",
+        "num_burned": "1202",
+        "total_burned_xp": "463450"
+      },
+      {
+        "card_detail_id": 118,
+        "gold": false,
+        "foil": 0,
+        "edition": 2,
+        "num_cards": "19798",
+        "unbound_cards": "0",
+        "total_xp": "1667745",
+        "num_burned": "14128",
+        "total_burned_xp": "281025"
+      }
+    ]
+  },
+  {
+    "id": 159,
+    "name": "Magma Troll",
+    "color": "Red",
+    "type": "Monster",
+    "sub_type": "Bruteborn",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "attack": [
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        4
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        3,
+        4,
+        4,
+        4,
+        4,
+        4,
+        5,
+        4,
+        5,
+        5
+      ],
+      "speed": [
+        2,
+        2,
+        3,
+        3,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "abilities": [
+        [
+          "Reach"
+        ],
+        [],
+        [],
+        [],
+        [],
+        [
+          "Affliction"
+        ],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "is_starter": false,
+    "editions": "4",
+    "created_block_num": 38630026,
+    "last_update_tx": "24f9ea07ec79e2e19b0bdffb62572ac42f185af7",
+    "total_printed": 211446,
+    "is_promo": false,
+    "tier": 4,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 159,
+        "gold": true,
+        "foil": 1,
+        "edition": 4,
+        "num_cards": "2063",
+        "unbound_cards": "0",
+        "total_xp": "5849",
+        "num_burned": "679",
+        "total_burned_xp": "1498"
+      },
+      {
+        "card_detail_id": 159,
+        "gold": false,
+        "foil": 0,
+        "edition": 4,
+        "num_cards": "27255",
+        "unbound_cards": "0",
+        "total_xp": "189733",
+        "num_burned": "4050",
+        "total_burned_xp": "14366"
+      }
+    ]
+  },
+  {
+    "id": 299,
+    "name": "Chimney Wallstop",
+    "color": "Red",
+    "type": "Monster",
+    "sub_type": "Human",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10
+      ],
+      "attack": [
+        5,
+        5,
+        5,
+        6,
+        6,
+        6,
+        6,
+        6,
+        5,
+        6
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        4
+      ],
+      "health": [
+        8,
+        8,
+        9,
+        9,
+        8,
+        9,
+        9,
+        9,
+        9,
+        9
+      ],
+      "speed": [
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3
+      ],
+      "abilities": [
+        [
+          "Reach",
+          "Bloodlust"
+        ],
+        [],
+        [],
+        [],
+        [
+          "Repair"
+        ],
+        [],
+        [],
+        [],
+        [
+          "Strengthen"
+        ],
+        []
+      ]
+    },
+    "is_starter": false,
+    "editions": "6",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 1157393,
+    "is_promo": false,
+    "tier": 4,
+    "secondary_color": null,
+    "stake_type_id": 0,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": true,
+    "distribution": [
+      {
+        "card_detail_id": 299,
+        "gold": false,
+        "foil": 0,
+        "edition": 6,
+        "num_cards": "203894",
+        "unbound_cards": "0",
+        "total_xp": "1044593",
+        "num_burned": "42090",
+        "total_burned_xp": "87777"
+      },
+      {
+        "card_detail_id": 299,
+        "gold": true,
+        "foil": 1,
+        "edition": 6,
+        "num_cards": "10745",
+        "unbound_cards": "0",
+        "total_xp": "19490",
+        "num_burned": "4552",
+        "total_burned_xp": "5533"
+      }
+    ]
+  },
+  {
+    "id": 300,
+    "name": "Krash Wanderford",
+    "color": "Red",
+    "type": "Monster",
+    "sub_type": "Human",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "attack": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        6,
+        7,
+        7,
+        7,
+        7,
+        8,
+        7,
+        8,
+        9,
+        9
+      ],
+      "speed": [
+        6,
+        6,
+        7,
+        7,
+        8,
+        8,
+        8,
+        8,
+        8,
+        8
+      ],
+      "abilities": [
+        [
+          "Swiftness",
+          "Bloodlust"
+        ],
+        [],
+        [],
+        [
+          "Thorns"
+        ],
+        [],
+        [],
+        [
+          "Return Fire"
+        ],
+        [],
+        [],
+        [
+          "Dodge"
+        ]
+      ]
+    },
+    "is_starter": false,
+    "editions": "6",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 1156987,
+    "is_promo": false,
+    "tier": 4,
+    "secondary_color": null,
+    "stake_type_id": 0,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": true,
+    "distribution": [
+      {
+        "card_detail_id": 300,
+        "gold": false,
+        "foil": 0,
+        "edition": 6,
+        "num_cards": "205655",
+        "unbound_cards": "0",
+        "total_xp": "1041088",
+        "num_burned": "44145",
+        "total_burned_xp": "90724"
+      },
+      {
+        "card_detail_id": 300,
+        "gold": true,
+        "foil": 1,
+        "edition": 6,
+        "num_cards": "11001",
+        "unbound_cards": "0",
+        "total_xp": "19608",
+        "num_burned": "4598",
+        "total_burned_xp": "5567"
+      }
+    ]
+  },
+  {
+    "id": 334,
+    "name": "Pelacor Mercenary",
+    "color": "Green",
+    "type": "Monster",
+    "sub_type": "Materran",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7
+      ],
+      "attack": [
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "health": [
+        8,
+        9,
+        9,
+        9,
+        10,
+        9,
+        10,
+        10,
+        11,
+        11
+      ],
+      "speed": [
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4
+      ],
+      "abilities": [
+        [
+          "Flying"
+        ],
+        [],
+        [],
+        [],
+        [],
+        [
+          "Heal"
+        ],
+        [],
+        [],
+        [],
+        [
+          "Retaliate"
+        ]
+      ]
+    },
+    "is_starter": false,
+    "editions": "3",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 8000001,
+    "is_promo": false,
+    "tier": 7,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 334,
+        "gold": true,
+        "foil": 1,
+        "edition": 3,
+        "num_cards": "31318",
+        "unbound_cards": "0",
+        "total_xp": "117332",
+        "num_burned": "1097",
+        "total_burned_xp": "14159"
+      },
+      {
+        "card_detail_id": 334,
+        "gold": false,
+        "foil": 0,
+        "edition": 3,
+        "num_cards": "1189440",
+        "unbound_cards": "0",
+        "total_xp": "5351834",
+        "num_burned": "127951",
+        "total_burned_xp": "2516676"
+      }
+    ]
+  },
+  {
+    "id": 337,
+    "name": "Pelacor Bandit",
+    "color": "Blue",
+    "type": "Monster",
+    "sub_type": "Materran",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3
+      ],
+      "attack": [
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        4
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        2,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        4,
+        5,
+        5
+      ],
+      "speed": [
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        6,
+        6,
+        6
+      ],
+      "abilities": [
+        [
+          "Sneak",
+          "Flying"
+        ],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "is_starter": false,
+    "editions": "3",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 8000000,
+    "is_promo": false,
+    "tier": 7,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 337,
+        "gold": true,
+        "foil": 1,
+        "edition": 3,
+        "num_cards": "32073",
+        "unbound_cards": "0",
+        "total_xp": "124199",
+        "num_burned": "872",
+        "total_burned_xp": "8074"
+      },
+      {
+        "card_detail_id": 337,
+        "gold": false,
+        "foil": 0,
+        "edition": 3,
+        "num_cards": "1189563",
+        "unbound_cards": "0",
+        "total_xp": "5395603",
+        "num_burned": "188949",
+        "total_burned_xp": "2472124"
+      }
+    ]
+  },
+  {
+    "id": 382,
+    "name": "Kulu Swimhunter",
+    "color": "Blue",
+    "type": "Monster",
+    "sub_type": "Tideborn",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "attack": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ranged": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        4
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        4,
+        5,
+        5,
+        6,
+        6,
+        5,
+        6,
+        6,
+        7,
+        6
+      ],
+      "speed": [
+        2,
+        2,
+        3,
+        3,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5
+      ],
+      "abilities": [
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "is_starter": false,
+    "editions": "7",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 1306596,
+    "is_promo": false,
+    "tier": 7,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 382,
+        "gold": false,
+        "foil": 0,
+        "edition": 7,
+        "num_cards": "190117",
+        "unbound_cards": "0",
+        "total_xp": "1130027",
+        "num_burned": "20095",
+        "total_burned_xp": "127575"
+      },
+      {
+        "card_detail_id": 382,
+        "gold": true,
+        "foil": 1,
+        "edition": 7,
+        "num_cards": "13653",
+        "unbound_cards": "0",
+        "total_xp": "46886",
+        "num_burned": "1403",
+        "total_burned_xp": "2108"
+      }
+    ]
+  },
+  {
+    "id": 505,
+    "name": "Runi",
+    "color": "Gray",
+    "type": "Monster",
+    "sub_type": "Golem",
+    "rarity": 4,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        6,
+        6,
+        6,
+        6
+      ],
+      "attack": [
+        3,
+        3,
+        3,
+        4
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "health": [
+        5,
+        5,
+        5,
+        5
+      ],
+      "speed": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "abilities": [
+        [
+          "Opportunity",
+          "Rebirth"
+        ],
+        [
+          "True Strike"
+        ],
+        [
+          "Deflect"
+        ],
+        []
+      ]
+    },
+    "is_starter": false,
+    "editions": "2",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 0,
+    "is_promo": true,
+    "tier": 7,
+    "secondary_color": null,
+    "stake_type_id": 3,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 505,
+        "gold": false,
+        "foil": 0,
+        "edition": 2,
+        "num_cards": "3459",
+        "unbound_cards": "0",
+        "total_xp": "38049",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 505,
+        "gold": true,
+        "foil": 1,
+        "edition": 2,
+        "num_cards": "62",
+        "unbound_cards": "0",
+        "total_xp": "248",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      }
+    ]
+  },
+  {
+    "id": 514,
+    "name": "Fungus Flinger",
+    "color": "Green",
+    "type": "Monster",
+    "sub_type": "Fungoid",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3
+      ],
+      "attack": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ranged": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        2,
+        3,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "speed": [
+        1,
+        1,
+        1,
+        2,
+        1,
+        2,
+        3,
+        4,
+        4,
+        4
+      ],
+      "abilities": [
+        [
+          "Martyr"
+        ],
+        [],
+        [],
+        [],
+        [
+          "Blind"
+        ],
+        [],
+        [],
+        [],
+        [
+          "Affliction"
+        ],
+        []
+      ]
+    },
+    "is_starter": false,
+    "editions": "10",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 4626832,
+    "is_promo": false,
+    "tier": 7,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 514,
+        "gold": false,
+        "foil": 0,
+        "edition": 10,
+        "num_cards": "1154157",
+        "unbound_cards": "5089",
+        "total_xp": "3999787",
+        "num_burned": "214519",
+        "total_burned_xp": "516136"
+      },
+      {
+        "card_detail_id": 514,
+        "gold": true,
+        "foil": 1,
+        "edition": 10,
+        "num_cards": "48241",
+        "unbound_cards": "186",
+        "total_xp": "89305",
+        "num_burned": "11667",
+        "total_burned_xp": "21604"
+      }
+    ]
+  },
+  {
+    "id": 515,
+    "name": "Terraceous Grunt",
+    "color": "Green",
+    "type": "Monster",
+    "sub_type": "Golem",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        6
+      ],
+      "attack": [
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        4
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        10,
+        11,
+        10,
+        11,
+        11,
+        11,
+        12,
+        11,
+        12,
+        12
+      ],
+      "speed": [
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3
+      ],
+      "abilities": [
+        [
+          "Dodge"
+        ],
+        [],
+        [],
+        [],
+        [],
+        [
+          "Return Fire"
+        ],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "is_starter": false,
+    "editions": "10",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 4635101,
+    "is_promo": false,
+    "tier": 7,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 515,
+        "gold": false,
+        "foil": 0,
+        "edition": 10,
+        "num_cards": "1111735",
+        "unbound_cards": "1095",
+        "total_xp": "4003193",
+        "num_burned": "211160",
+        "total_burned_xp": "522234"
+      },
+      {
+        "card_detail_id": 515,
+        "gold": true,
+        "foil": 1,
+        "edition": 10,
+        "num_cards": "47053",
+        "unbound_cards": "76",
+        "total_xp": "87487",
+        "num_burned": "12256",
+        "total_burned_xp": "22187"
+      }
+    ]
+  },
+  {
+    "id": 520,
+    "name": "Swamp Spitter",
+    "color": "Blue",
+    "type": "Monster",
+    "sub_type": "Tortisian",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7
+      ],
+      "attack": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ranged": [
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        4
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3
+      ],
+      "health": [
+        5,
+        5,
+        5,
+        4,
+        5,
+        5,
+        6,
+        6,
+        6,
+        6
+      ],
+      "speed": [
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4
+      ],
+      "abilities": [
+        [
+          "Repair"
+        ],
+        [],
+        [],
+        [],
+        [],
+        [
+          "Giant Killer"
+        ],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "is_starter": false,
+    "editions": "10",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 4629187,
+    "is_promo": false,
+    "tier": 7,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 520,
+        "gold": false,
+        "foil": 0,
+        "edition": 10,
+        "num_cards": "1083164",
+        "unbound_cards": "3101",
+        "total_xp": "4022969",
+        "num_burned": "204449",
+        "total_burned_xp": "495968"
+      },
+      {
+        "card_detail_id": 520,
+        "gold": true,
+        "foil": 1,
+        "edition": 10,
+        "num_cards": "46932",
+        "unbound_cards": "162",
+        "total_xp": "88780",
+        "num_burned": "11625",
+        "total_burned_xp": "21470"
+      }
+    ]
+  },
+  {
+    "id": 521,
+    "name": "Coastal Sentry",
+    "color": "Blue",
+    "type": "Monster",
+    "sub_type": "Tideborn",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10
+      ],
+      "attack": [
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        4,
+        4,
+        5,
+        5
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3
+      ],
+      "health": [
+        6,
+        6,
+        6,
+        6,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7
+      ],
+      "speed": [
+        3,
+        3,
+        4,
+        4,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5
+      ],
+      "abilities": [
+        [
+          "Double Strike"
+        ],
+        [],
+        [],
+        [],
+        [],
+        [
+          "Piercing"
+        ],
+        [],
+        [],
+        [],
+        [
+          "Knock Out"
+        ]
+      ]
+    },
+    "is_starter": false,
+    "editions": "10",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 4637736,
+    "is_promo": false,
+    "tier": 7,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 521,
+        "gold": false,
+        "foil": 0,
+        "edition": 10,
+        "num_cards": "1076941",
+        "unbound_cards": "5903",
+        "total_xp": "4032713",
+        "num_burned": "200808",
+        "total_burned_xp": "494384"
+      },
+      {
+        "card_detail_id": 521,
+        "gold": true,
+        "foil": 1,
+        "edition": 10,
+        "num_cards": "47193",
+        "unbound_cards": "254",
+        "total_xp": "90444",
+        "num_burned": "10838",
+        "total_burned_xp": "20195"
+      }
+    ]
+  },
+  {
+    "id": 526,
+    "name": "Possessed Puppet",
+    "color": "Black",
+    "type": "Monster",
+    "sub_type": "Golem",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7
+      ],
+      "attack": [
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        3,
+        4,
+        4
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        3,
+        4,
+        4,
+        3,
+        4,
+        4,
+        5,
+        5,
+        5,
+        5
+      ],
+      "speed": [
+        3,
+        3,
+        4,
+        4,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5
+      ],
+      "abilities": [
+        [
+          "Double Strike"
+        ],
+        [],
+        [],
+        [],
+        [],
+        [
+          "Cripple"
+        ],
+        [],
+        [],
+        [],
+        [
+          "Dispel"
+        ]
+      ]
+    },
+    "is_starter": false,
+    "editions": "10",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 4640014,
+    "is_promo": false,
+    "tier": 7,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 526,
+        "gold": true,
+        "foil": 1,
+        "edition": 10,
+        "num_cards": "48098",
+        "unbound_cards": "76",
+        "total_xp": "87961",
+        "num_burned": "12431",
+        "total_burned_xp": "22426"
+      },
+      {
+        "card_detail_id": 526,
+        "gold": false,
+        "foil": 0,
+        "edition": 10,
+        "num_cards": "1130713",
+        "unbound_cards": "1298",
+        "total_xp": "4020410",
+        "num_burned": "210647",
+        "total_burned_xp": "509217"
+      }
+    ]
+  },
+  {
+    "id": 527,
+    "name": "Wily Coyotian",
+    "color": "Black",
+    "type": "Monster",
+    "sub_type": "Canisan",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "attack": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3
+      ],
+      "health": [
+        2,
+        2,
+        3,
+        3,
+        4,
+        4,
+        5,
+        5,
+        6,
+        6
+      ],
+      "speed": [
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4
+      ],
+      "abilities": [
+        [],
+        [],
+        [],
+        [],
+        [],
+        [
+          "Phase"
+        ],
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "is_starter": false,
+    "editions": "10",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 4628454,
+    "is_promo": false,
+    "tier": 7,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 527,
+        "gold": false,
+        "foil": 0,
+        "edition": 10,
+        "num_cards": "1123001",
+        "unbound_cards": "1271",
+        "total_xp": "4011506",
+        "num_burned": "209366",
+        "total_burned_xp": "506120"
+      },
+      {
+        "card_detail_id": 527,
+        "gold": true,
+        "foil": 1,
+        "edition": 10,
+        "num_cards": "48021",
+        "unbound_cards": "88",
+        "total_xp": "88702",
+        "num_burned": "12455",
+        "total_burned_xp": "22126"
+      }
+    ]
+  },
+  {
+    "id": 715,
+    "name": "Kelan Gaines",
+    "color": "Black",
+    "type": "Monster",
+    "sub_type": "Human",
+    "rarity": 2,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        8,
+        8,
+        8,
+        8,
+        8,
+        8,
+        8,
+        8
+      ],
+      "attack": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        6,
+        6,
+        7,
+        7,
+        8,
+        9,
+        9,
+        9
+      ],
+      "speed": [
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        6,
+        6
+      ],
+      "abilities": [
+        [
+          "Snipe"
+        ],
+        [
+          "Phase"
+        ],
+        [],
+        [
+          "Backfire"
+        ],
+        [],
+        [],
+        [],
+        [
+          "Double Strike"
+        ]
+      ]
+    },
+    "is_starter": false,
+    "editions": "2",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 44146,
+    "is_promo": true,
+    "tier": 12,
+    "secondary_color": "Gold",
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 715,
+        "gold": false,
+        "foil": 0,
+        "edition": 2,
+        "num_cards": "4019",
+        "unbound_cards": "0",
+        "total_xp": "41899",
+        "num_burned": "2",
+        "total_burned_xp": "6"
+      },
+      {
+        "card_detail_id": 715,
+        "gold": true,
+        "foil": 1,
+        "edition": 2,
+        "num_cards": "823",
+        "unbound_cards": "0",
+        "total_xp": "2240",
+        "num_burned": "1",
+        "total_burned_xp": "1"
+      }
+    ]
+  },
+  {
+    "id": 726,
+    "name": "Decrepit Windseer",
+    "color": "Green",
+    "type": "Monster",
+    "sub_type": "Elf",
+    "rarity": 4,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "attack": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "ranged": [
+        1,
+        1,
+        1,
+        2
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        5,
+        5,
+        6,
+        6
+      ],
+      "speed": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "abilities": [
+        [
+          "Bloodline Tribute"
+        ],
+        [
+          "Thorns"
+        ],
+        [
+          "Reveal",
+          "Close Range"
+        ],
+        [
+          "Echo"
+        ]
+      ]
+    },
+    "is_starter": false,
+    "editions": "14",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 4004,
+    "is_promo": false,
+    "tier": 14,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 726,
+        "gold": false,
+        "foil": 3,
+        "edition": 14,
+        "num_cards": "8",
+        "unbound_cards": "0",
+        "total_xp": "32",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 726,
+        "gold": false,
+        "foil": 4,
+        "edition": 14,
+        "num_cards": "1",
+        "unbound_cards": "0",
+        "total_xp": "4",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 726,
+        "gold": true,
+        "foil": 1,
+        "edition": 14,
+        "num_cards": "174",
+        "unbound_cards": "0",
+        "total_xp": "325",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 726,
+        "gold": true,
+        "foil": 2,
+        "edition": 14,
+        "num_cards": "4",
+        "unbound_cards": "0",
+        "total_xp": "16",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 726,
+        "gold": false,
+        "foil": 0,
+        "edition": 14,
+        "num_cards": "1173",
+        "unbound_cards": "0",
+        "total_xp": "3666",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      }
+    ]
+  },
+  {
+    "id": 738,
+    "name": "Zargrul",
+    "color": "Blue",
+    "type": "Monster",
+    "sub_type": "Orc",
+    "rarity": 4,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "attack": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        1,
+        1,
+        2,
+        2
+      ],
+      "armor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "health": [
+        11,
+        11,
+        12,
+        12
+      ],
+      "speed": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "abilities": [
+        [
+          "Taunt"
+        ],
+        [
+          "Bloodline Tribute"
+        ],
+        [
+          "Painforge"
+        ],
+        [
+          "Expose"
+        ]
+      ]
+    },
+    "is_starter": false,
+    "editions": "14",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 4068,
+    "is_promo": false,
+    "tier": 14,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 738,
+        "gold": true,
+        "foil": 1,
+        "edition": 14,
+        "num_cards": "175",
+        "unbound_cards": "0",
+        "total_xp": "343",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 738,
+        "gold": true,
+        "foil": 2,
+        "edition": 14,
+        "num_cards": "4",
+        "unbound_cards": "0",
+        "total_xp": "16",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 738,
+        "gold": false,
+        "foil": 3,
+        "edition": 14,
+        "num_cards": "9",
+        "unbound_cards": "0",
+        "total_xp": "36",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 738,
+        "gold": false,
+        "foil": 4,
+        "edition": 14,
+        "num_cards": "1",
+        "unbound_cards": "0",
+        "total_xp": "4",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 738,
+        "gold": false,
+        "foil": 0,
+        "edition": 14,
+        "num_cards": "1098",
+        "unbound_cards": "0",
+        "total_xp": "3687",
+        "num_burned": "14",
+        "total_burned_xp": "24"
+      }
+    ]
+  },
+  {
+    "id": 750,
+    "name": "Filthy Scavenger",
+    "color": "Black",
+    "type": "Monster",
+    "sub_type": "Gnome",
+    "rarity": 4,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "attack": [
+        3,
+        3,
+        3,
+        4
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "health": [
+        4,
+        4,
+        5,
+        5
+      ],
+      "speed": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "abilities": [
+        [
+          "Opportunity"
+        ],
+        [
+          "Bloodline Tribute"
+        ],
+        [
+          "Redemption"
+        ],
+        [
+          "Ambush"
+        ]
+      ]
+    },
+    "is_starter": false,
+    "editions": "14",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 4112,
+    "is_promo": false,
+    "tier": 14,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 750,
+        "gold": false,
+        "foil": 3,
+        "edition": 14,
+        "num_cards": "9",
+        "unbound_cards": "0",
+        "total_xp": "36",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 750,
+        "gold": true,
+        "foil": 2,
+        "edition": 14,
+        "num_cards": "4",
+        "unbound_cards": "0",
+        "total_xp": "16",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 750,
+        "gold": true,
+        "foil": 1,
+        "edition": 14,
+        "num_cards": "164",
+        "unbound_cards": "0",
+        "total_xp": "326",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 750,
+        "gold": false,
+        "foil": 0,
+        "edition": 14,
+        "num_cards": "1018",
+        "unbound_cards": "0",
+        "total_xp": "3657",
+        "num_burned": "16",
+        "total_burned_xp": "116"
+      }
+    ]
+  },
+  {
+    "id": 867,
+    "name": "Kinbound Druid",
+    "color": "Green",
+    "type": "Monster",
+    "sub_type": "Elf",
+    "rarity": 2,
+    "drop_rate": 0,
+    "stats": {
+      "land_abilities": [
+        [
+          [
+            "DD",
+            -0.05
+          ],
+          [
+            "BLOODLINE",
+            0.05,
+            "Elf"
+          ]
+        ],
+        [
+          [
+            "DD",
+            -0.1
+          ],
+          [
+            "BLOODLINE",
+            0.07,
+            "Elf"
+          ],
+          [
+            "WOOD",
+            0.1
+          ],
+          [
+            "ENERGIZED"
+          ]
+        ],
+        [
+          [
+            "DD",
+            -0.2
+          ],
+          [
+            "BLOODLINE",
+            0.1,
+            "Elf"
+          ],
+          [
+            "WOOD",
+            0.2
+          ],
+          [
+            "ENERGIZED"
+          ]
+        ],
+        [
+          [
+            "DD",
+            -0.5
+          ],
+          [
+            "BLOODLINE",
+            0.15,
+            "Elf"
+          ],
+          [
+            "WOOD",
+            0.3
+          ],
+          [
+            "ENERGIZED"
+          ]
+        ],
+        [
+          [
+            "DD",
+            -0.7
+          ],
+          [
+            "BLOODLINE",
+            0.2,
+            "Elf"
+          ],
+          [
+            "WOOD",
+            0.4
+          ],
+          [
+            "ENERGIZED"
+          ]
+        ],
+        [
+          [
+            "DD",
+            -0.85
+          ],
+          [
+            "BLOODLINE",
+            0.25,
+            "Elf"
+          ],
+          [
+            "WOOD",
+            0.5
+          ],
+          [
+            "ENERGIZED"
+          ]
+        ],
+        [
+          [
+            "DD",
+            -0.99
+          ],
+          [
+            "BLOODLINE",
+            0.3,
+            "Elf"
+          ],
+          [
+            "WOOD",
+            0.6
+          ],
+          [
+            "ENERGIZED"
+          ]
+        ],
+        [
+          [
+            "DD",
+            -0.99
+          ],
+          [
+            "BLOODLINE",
+            0.3,
+            "Elf"
+          ],
+          [
+            "WOOD",
+            0.7
+          ],
+          [
+            "ENERGIZED"
+          ],
+          [
+            "LL"
+          ]
+        ]
+      ]
+    },
+    "is_starter": false,
+    "editions": "19",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 18144,
+    "is_promo": false,
+    "tier": 19,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 867,
+        "gold": true,
+        "foil": 1,
+        "edition": 19,
+        "num_cards": "115",
+        "unbound_cards": "0",
+        "total_xp": "130",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 867,
+        "gold": true,
+        "foil": 2,
+        "edition": 19,
+        "num_cards": "5",
+        "unbound_cards": "0",
+        "total_xp": "110",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 867,
+        "gold": false,
+        "foil": 3,
+        "edition": 19,
+        "num_cards": "6",
+        "unbound_cards": "0",
+        "total_xp": "132",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 867,
+        "gold": false,
+        "foil": 4,
+        "edition": 19,
+        "num_cards": "3",
+        "unbound_cards": "0",
+        "total_xp": "66",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 867,
+        "gold": false,
+        "foil": 0,
+        "edition": 19,
+        "num_cards": "1134",
+        "unbound_cards": "0",
+        "total_xp": "17952",
+        "num_burned": "48",
+        "total_burned_xp": "48"
+      }
+    ]
+  },
+  {
+    "id": 869,
+    "name": "Undying Miner",
+    "color": "Black",
+    "type": "Monster",
+    "sub_type": "Undead",
+    "rarity": 4,
+    "drop_rate": 0,
+    "stats": {
+      "land_abilities": [
+        [
+          [
+            "IRON",
+            0.25
+          ],
+          [
+            "DD",
+            -0.7
+          ],
+          [
+            "BLOODLINE",
+            0.15,
+            "Undead"
+          ]
+        ],
+        [
+          [
+            "IRON",
+            0.5
+          ],
+          [
+            "DD",
+            -0.8
+          ],
+          [
+            "BLOODLINE",
+            0.2,
+            "Undead"
+          ]
+        ],
+        [
+          [
+            "IRON",
+            0.8
+          ],
+          [
+            "DD",
+            -0.9
+          ],
+          [
+            "BLOODLINE",
+            0.3,
+            "Undead"
+          ],
+          [
+            "AURA",
+            0.75
+          ]
+        ],
+        [
+          [
+            "IRON",
+            1
+          ],
+          [
+            "DD",
+            -0.99
+          ],
+          [
+            "BLOODLINE",
+            0.3,
+            "Undead"
+          ],
+          [
+            "AURA",
+            1
+          ],
+          [
+            "LL"
+          ]
+        ]
+      ]
+    },
+    "is_starter": false,
+    "editions": "19",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 1027,
+    "is_promo": false,
+    "tier": 19,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 869,
+        "gold": true,
+        "foil": 1,
+        "edition": 19,
+        "num_cards": "20",
+        "unbound_cards": "0",
+        "total_xp": "23",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 869,
+        "gold": false,
+        "foil": 0,
+        "edition": 19,
+        "num_cards": "185",
+        "unbound_cards": "0",
+        "total_xp": "1000",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 869,
+        "gold": true,
+        "foil": 2,
+        "edition": 19,
+        "num_cards": "1",
+        "unbound_cards": "0",
+        "total_xp": "4",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 869,
+        "gold": false,
+        "foil": 3,
+        "edition": 19,
+        "num_cards": "3",
+        "unbound_cards": "0",
+        "total_xp": "12",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      }
+    ]
+  },
+  {
+    "id": 942,
+    "name": "Ignited Alchemist",
+    "color": "Black",
+    "type": "Monster",
+    "sub_type": "Dwarf",
+    "rarity": 2,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5
+      ],
+      "attack": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ranged": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        2,
+        3,
+        4,
+        4,
+        4,
+        4,
+        5,
+        6
+      ],
+      "health": [
+        4,
+        4,
+        4,
+        4,
+        5,
+        5,
+        5,
+        5
+      ],
+      "speed": [
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        4
+      ],
+      "abilities": [
+        [
+          "Incendiary",
+          "Flying"
+        ],
+        [],
+        [],
+        [
+          "Scattershot"
+        ],
+        [],
+        [
+          "Affliction"
+        ],
+        [],
+        [
+          "Flame Fed"
+        ]
+      ]
+    },
+    "is_starter": false,
+    "editions": "20",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 41797,
+    "is_promo": false,
+    "tier": 14,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": "2026-02-24T18:00:00.000Z",
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 942,
+        "gold": true,
+        "foil": 1,
+        "edition": 20,
+        "num_cards": "412",
+        "unbound_cards": "0",
+        "total_xp": "1618",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 942,
+        "gold": true,
+        "foil": 2,
+        "edition": 20,
+        "num_cards": "17",
+        "unbound_cards": "0",
+        "total_xp": "374",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 942,
+        "gold": false,
+        "foil": 0,
+        "edition": 20,
+        "num_cards": "6430",
+        "unbound_cards": "0",
+        "total_xp": "40087",
+        "num_burned": "46",
+        "total_burned_xp": "48"
+      },
+      {
+        "card_detail_id": 942,
+        "gold": false,
+        "foil": 3,
+        "edition": 20,
+        "num_cards": "18",
+        "unbound_cards": "0",
+        "total_xp": "396",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 942,
+        "gold": false,
+        "foil": 4,
+        "edition": 20,
+        "num_cards": "9",
+        "unbound_cards": "0",
+        "total_xp": "198",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      }
+    ]
+  },
+  {
+    "id": 966,
+    "name": "Lady Stealthfire",
+    "color": "Gray",
+    "type": "Monster",
+    "sub_type": "Human",
+    "rarity": 2,
+    "drop_rate": 0,
+    "stats": {
+      "mana": [
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7
+      ],
+      "attack": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ranged": [
+        1,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3,
+        3
+      ],
+      "magic": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "armor": [
+        1,
+        2,
+        2,
+        2,
+        2,
+        2,
+        4,
+        4
+      ],
+      "health": [
+        6,
+        6,
+        6,
+        6,
+        6,
+        6,
+        7,
+        7
+      ],
+      "speed": [
+        1,
+        2,
+        2,
+        2,
+        3,
+        3,
+        3,
+        3
+      ],
+      "abilities": [
+        [
+          "Camouflage"
+        ],
+        [],
+        [
+          "Repair"
+        ],
+        [],
+        [],
+        [],
+        [],
+        [
+          "Inspire"
+        ]
+      ]
+    },
+    "is_starter": false,
+    "editions": "20",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 41594,
+    "is_promo": false,
+    "tier": 14,
+    "secondary_color": null,
+    "stake_type_id": 1,
+    "print_start_date": "2026-02-24T18:00:00.000Z",
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 966,
+        "gold": false,
+        "foil": 0,
+        "edition": 20,
+        "num_cards": "5353",
+        "unbound_cards": "0",
+        "total_xp": "39925",
+        "num_burned": "46",
+        "total_burned_xp": "49"
+      },
+      {
+        "card_detail_id": 966,
+        "gold": true,
+        "foil": 1,
+        "edition": 20,
+        "num_cards": "412",
+        "unbound_cards": "0",
+        "total_xp": "1577",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 966,
+        "gold": false,
+        "foil": 4,
+        "edition": 20,
+        "num_cards": "8",
+        "unbound_cards": "0",
+        "total_xp": "176",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 966,
+        "gold": true,
+        "foil": 2,
+        "edition": 20,
+        "num_cards": "17",
+        "unbound_cards": "0",
+        "total_xp": "374",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 966,
+        "gold": false,
+        "foil": 3,
+        "edition": 20,
+        "num_cards": "18",
+        "unbound_cards": "0",
+        "total_xp": "396",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      }
+    ]
+  },
+  {
+    "id": 998,
+    "name": "Phlegmwrought",
+    "color": "Blue",
+    "type": "Monster",
+    "sub_type": "Divine Construct",
+    "rarity": 1,
+    "drop_rate": 0,
+    "stats": {
+      "land_abilities": [
+        [
+          [
+            "BLOODLINE",
+            0.01,
+            "Divine Construct"
+          ]
+        ],
+        [
+          [
+            "BLOODLINE",
+            0.02,
+            "Divine Construct"
+          ],
+          [
+            "RATIONING_LITE",
+            -0.01
+          ]
+        ],
+        [
+          [
+            "BLOODLINE",
+            0.02,
+            "Divine Construct"
+          ],
+          [
+            "RATIONING_LITE",
+            -0.03
+          ]
+        ],
+        [
+          [
+            "BLOODLINE",
+            0.03,
+            "Divine Construct"
+          ],
+          [
+            "RATIONING_LITE",
+            -0.03
+          ],
+          [
+            "ALTERATION"
+          ]
+        ],
+        [
+          [
+            "BLOODLINE",
+            0.04,
+            "Divine Construct"
+          ],
+          [
+            "RATIONING_LITE",
+            -0.05
+          ],
+          [
+            "ALTERATION"
+          ]
+        ],
+        [
+          [
+            "BLOODLINE",
+            0.04,
+            "Divine Construct"
+          ],
+          [
+            "RATIONING_LITE",
+            -0.05
+          ],
+          [
+            "ALTERATION"
+          ],
+          [
+            "GLINT_RECOVERY"
+          ]
+        ],
+        [
+          [
+            "BLOODLINE",
+            0.05,
+            "Divine Construct"
+          ],
+          [
+            "RATIONING_LITE",
+            -0.07
+          ],
+          [
+            "ALTERATION"
+          ],
+          [
+            "GLINT_RECOVERY"
+          ],
+          [
+            "DD",
+            -0.1
+          ]
+        ],
+        [
+          [
+            "BLOODLINE",
+            0.06,
+            "Divine Construct"
+          ],
+          [
+            "RATIONING_LITE",
+            -0.1
+          ],
+          [
+            "ALTERATION"
+          ],
+          [
+            "GLINT_RECOVERY"
+          ],
+          [
+            "DD",
+            -0.1
+          ]
+        ],
+        [
+          [
+            "BLOODLINE",
+            0.08,
+            "Divine Construct"
+          ],
+          [
+            "RATIONING_LITE",
+            -0.15
+          ],
+          [
+            "ALTERATION"
+          ],
+          [
+            "GLINT_RECOVERY"
+          ],
+          [
+            "DD",
+            -0.1
+          ]
+        ],
+        [
+          [
+            "BLOODLINE",
+            0.1,
+            "Divine Construct"
+          ],
+          [
+            "RATIONING_LITE",
+            -0.2
+          ],
+          [
+            "ALTERATION"
+          ],
+          [
+            "GLINT_RECOVERY"
+          ],
+          [
+            "DD",
+            -0.1
+          ],
+          [
+            "FORTUNE_SEEKER"
+          ]
+        ]
+      ]
+    },
+    "is_starter": false,
+    "editions": "21",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 21390,
+    "is_promo": false,
+    "tier": 19,
+    "secondary_color": "White",
+    "stake_type_id": 1,
+    "print_start_date": null,
+    "game_type": "splinterlands",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 998,
+        "gold": false,
+        "foil": 0,
+        "edition": 21,
+        "num_cards": "3945",
+        "unbound_cards": "0",
+        "total_xp": "21384",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      },
+      {
+        "card_detail_id": 998,
+        "gold": true,
+        "foil": 1,
+        "edition": 21,
+        "num_cards": "6",
+        "unbound_cards": "0",
+        "total_xp": "6",
+        "num_burned": "0",
+        "total_burned_xp": "0"
+      }
+    ]
+  },
+  {
+    "id": 10007,
+    "name": "Shattered Mirror",
+    "color": "Gray",
+    "type": "Tower",
+    "sub_type": null,
+    "rarity": 3,
+    "drop_rate": 0,
+    "stats": {
+      "importIndex": 7
+    },
+    "is_starter": false,
+    "editions": "9",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 4875,
+    "is_promo": false,
+    "tier": 9,
+    "secondary_color": null,
+    "stake_type_id": null,
+    "print_start_date": null,
+    "game_type": "soulkeep",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 10007,
+        "gold": false,
+        "foil": 0,
+        "edition": 9,
+        "num_cards": "1722",
+        "unbound_cards": "0",
+        "total_xp": "3162",
+        "num_burned": "800",
+        "total_burned_xp": "1525"
+      },
+      {
+        "card_detail_id": 10007,
+        "gold": true,
+        "foil": 1,
+        "edition": 9,
+        "num_cards": "117",
+        "unbound_cards": "0",
+        "total_xp": "138",
+        "num_burned": "36",
+        "total_burned_xp": "50"
+      }
+    ]
+  },
+  {
+    "id": 10023,
+    "name": "Quad Killer",
+    "color": "Gray",
+    "type": "Tower",
+    "sub_type": null,
+    "rarity": 3,
+    "drop_rate": 0,
+    "stats": {
+      "importIndex": 23
+    },
+    "is_starter": false,
+    "editions": "9",
+    "created_block_num": null,
+    "last_update_tx": null,
+    "total_printed": 4918,
+    "is_promo": false,
+    "tier": 9,
+    "secondary_color": null,
+    "stake_type_id": null,
+    "print_start_date": null,
+    "game_type": "soulkeep",
+    "no_pp": false,
+    "distribution": [
+      {
+        "card_detail_id": 10023,
+        "gold": false,
+        "foil": 0,
+        "edition": 9,
+        "num_cards": "1814",
+        "unbound_cards": "0",
+        "total_xp": "3396",
+        "num_burned": "637",
+        "total_burned_xp": "1351"
+      },
+      {
+        "card_detail_id": 10023,
+        "gold": true,
+        "foil": 1,
+        "edition": 9,
+        "num_cards": "92",
+        "unbound_cards": "0",
+        "total_xp": "111",
+        "num_burned": "43",
+        "total_burned_xp": "60"
+      }
+    ]
+  }
+]

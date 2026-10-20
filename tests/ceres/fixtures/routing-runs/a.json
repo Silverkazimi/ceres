@@ -1,0 +1,161 @@
+{
+  "run": "A",
+  "evidence": "historical routing run (private dossier reference removed)",
+  "provenance": "Ceres app payload observed in the cited plan; individual amounts and source regions are not retained in the repository evidence for this run",
+  "historical": {
+    "harvest_transactions": 1,
+    "harvest_operations": 2,
+    "routing_transactions": 11,
+    "routing_operations": 15,
+    "transaction_id_prefixes": [
+      "1cb24434a",
+      "93203a5ebd",
+      "6b9bad0428",
+      "87c0ebcaca",
+      "74741955ad",
+      "0cd59432ff",
+      "3d5303eb96",
+      "837b1b2eed",
+      "d0c3d435b1",
+      "0a0e83076c",
+      "4664eb9886"
+    ],
+    "transaction_operations": [
+      3,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      3,
+      1,
+      1
+    ]
+  },
+  "model": {
+    "note": "Route allocation below follows the approved plan's six sales, four SPS outputs and one wallet-DEC LP. Region attribution and quantities are modeling inputs, not recovered payload facts.",
+    "regions": [
+      "PR-TST-1",
+      "PR-TST-2"
+    ],
+    "routes": [
+      {
+        "id": "a_sale_wood",
+        "kind": "sale_dec",
+        "region": "PR-TST-1",
+        "symbol": "WOOD",
+        "amount": "1000",
+        "slippage": "2.5"
+      },
+      {
+        "id": "a_sale_stone",
+        "kind": "sale_dec",
+        "region": "PR-TST-1",
+        "symbol": "STONE",
+        "amount": "1000",
+        "slippage": "2.5"
+      },
+      {
+        "id": "a_sale_iron",
+        "kind": "sale_dec",
+        "region": "PR-TST-1",
+        "symbol": "IRON",
+        "amount": "1000",
+        "slippage": "2.5"
+      },
+      {
+        "id": "b_sale_wood",
+        "kind": "sale_dec",
+        "region": "PR-TST-2",
+        "symbol": "WOOD",
+        "amount": "1000",
+        "slippage": "2.5"
+      },
+      {
+        "id": "b_sale_stone",
+        "kind": "sale_dec",
+        "region": "PR-TST-2",
+        "symbol": "STONE",
+        "amount": "1000",
+        "slippage": "2.5"
+      },
+      {
+        "id": "b_sale_iron",
+        "kind": "sale_dec",
+        "region": "PR-TST-2",
+        "symbol": "IRON",
+        "amount": "1000",
+        "slippage": "2.5"
+      },
+      {
+        "id": "a_sps_wood",
+        "kind": "sps_out",
+        "region": "PR-TST-1",
+        "symbol": "WOOD",
+        "amount": "1000",
+        "slippage": "2.5"
+      },
+      {
+        "id": "a_sps_stone",
+        "kind": "sps_out",
+        "region": "PR-TST-1",
+        "symbol": "STONE",
+        "amount": "1000",
+        "slippage": "2.5"
+      },
+      {
+        "id": "a_sps_iron",
+        "kind": "sps_out",
+        "region": "PR-TST-1",
+        "symbol": "IRON",
+        "amount": "1000",
+        "slippage": "2.5"
+      },
+      {
+        "id": "a_sps_grain",
+        "kind": "sps_out",
+        "region": "PR-TST-1",
+        "symbol": "GRAIN",
+        "amount": "1000",
+        "slippage": "2.5"
+      },
+      {
+        "id": "a_lp_wood",
+        "kind": "lp_wallet",
+        "region": "PR-TST-1",
+        "symbol": "WOOD",
+        "amount": "1000",
+        "slippage": "2.5"
+      }
+    ],
+    "expected": {
+      "routing_approvals": 3,
+      "total_approvals": 4,
+      "wave_bundle_operations": [
+        [
+          4,
+          3
+        ],
+        [
+          2
+        ]
+      ],
+      "merged_sale_members": [
+        [
+          "a_sale_wood",
+          "a_sps_wood"
+        ],
+        [
+          "a_sale_stone",
+          "a_sps_stone"
+        ],
+        [
+          "a_sale_iron",
+          "a_sps_iron"
+        ]
+      ]
+    }
+  }
+}

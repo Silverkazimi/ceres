@@ -1,0 +1,577 @@
+{
+  "source": "one /land/deeds?region_number=N&limit=1 read per region (game API, public), 2026-10-15; regions 144-200 returned no deeds. The 143 Praetoria regions a transfer may target when the recipient owns no land.",
+  "regions": [
+    {
+      "region_uid": "PR-PNW-1",
+      "name": "001 - Viritas"
+    },
+    {
+      "region_uid": "PR-PNW-2",
+      "name": "002 - Tresgaard"
+    },
+    {
+      "region_uid": "PR-PNW-3",
+      "name": "003 - Wyvernshire"
+    },
+    {
+      "region_uid": "PR-PNW-4",
+      "name": "004 - Balchilven"
+    },
+    {
+      "region_uid": "PR-PNW-5",
+      "name": "005 - Ickledown"
+    },
+    {
+      "region_uid": "PR-PNW-6",
+      "name": "006 - Jadestone"
+    },
+    {
+      "region_uid": "PR-PNW-7",
+      "name": "007 - Osburg"
+    },
+    {
+      "region_uid": "PR-PNW-8",
+      "name": "008 - Saragar"
+    },
+    {
+      "region_uid": "PR-PNW-9",
+      "name": "009 - Quegmoor"
+    },
+    {
+      "region_uid": "PR-PNW-10",
+      "name": "010 - Highmoor"
+    },
+    {
+      "region_uid": "PR-PNW-11",
+      "name": "011 - Weard"
+    },
+    {
+      "region_uid": "PR-PNW-12",
+      "name": "012 - Gillith"
+    },
+    {
+      "region_uid": "PR-PNW-13",
+      "name": "013 - Asten"
+    },
+    {
+      "region_uid": "PR-PNW-14",
+      "name": "014 - Harkden"
+    },
+    {
+      "region_uid": "PR-PNW-15",
+      "name": "015 - Kelworthania"
+    },
+    {
+      "region_uid": "PR-PNW-16",
+      "name": "016 - Xustrucia"
+    },
+    {
+      "region_uid": "PR-PNW-17",
+      "name": "017 - Yorric Dale"
+    },
+    {
+      "region_uid": "PR-PNW-18",
+      "name": "018 - Uprine"
+    },
+    {
+      "region_uid": "PR-PNW-19",
+      "name": "019 - Thistledon"
+    },
+    {
+      "region_uid": "PR-PNW-20",
+      "name": "020 - Lumleigh"
+    },
+    {
+      "region_uid": "PR-BRL-21",
+      "name": "021 - Hollowborne"
+    },
+    {
+      "region_uid": "PR-BRL-22",
+      "name": "022 - Celestine"
+    },
+    {
+      "region_uid": "PR-BRL-23",
+      "name": "023 - Baxdon"
+    },
+    {
+      "region_uid": "PR-BRL-24",
+      "name": "024 - Novus Sol"
+    },
+    {
+      "region_uid": "PR-BRL-25",
+      "name": "025 - Bastionfel"
+    },
+    {
+      "region_uid": "PR-BRL-26",
+      "name": "026 - Torensguard"
+    },
+    {
+      "region_uid": "PR-BRL-27",
+      "name": "027 - Tashuna"
+    },
+    {
+      "region_uid": "PR-BRL-28",
+      "name": "028 - Briarwood"
+    },
+    {
+      "region_uid": "PR-BRL-29",
+      "name": "029 - Kinpath"
+    },
+    {
+      "region_uid": "PR-BRL-30",
+      "name": "030 - Ventian"
+    },
+    {
+      "region_uid": "PR-BRL-31",
+      "name": "031 - El Telria"
+    },
+    {
+      "region_uid": "PR-BRL-32",
+      "name": "032 - Zelria"
+    },
+    {
+      "region_uid": "PR-BRL-33",
+      "name": "033 - Abadonia"
+    },
+    {
+      "region_uid": "PR-BRL-34",
+      "name": "034 - Janistan"
+    },
+    {
+      "region_uid": "PR-BRL-35",
+      "name": "035 - Solvera"
+    },
+    {
+      "region_uid": "PR-BRL-36",
+      "name": "036 - Talopolis"
+    },
+    {
+      "region_uid": "PR-BRL-37",
+      "name": "037 - Wildcall"
+    },
+    {
+      "region_uid": "PR-BRL-38",
+      "name": "038 - Laera"
+    },
+    {
+      "region_uid": "PR-BRL-39",
+      "name": "039 - Hearthen"
+    },
+    {
+      "region_uid": "PR-BRL-40",
+      "name": "040 - Rutherford"
+    },
+    {
+      "region_uid": "PR-BRL-41",
+      "name": "041 - Pandon Reach"
+    },
+    {
+      "region_uid": "PR-LOP-42",
+      "name": "042 - Gentry Heights"
+    },
+    {
+      "region_uid": "PR-LOP-43",
+      "name": "043 - Ros de Dell"
+    },
+    {
+      "region_uid": "PR-LOP-44",
+      "name": "044 - Tidings"
+    },
+    {
+      "region_uid": "PR-LOP-45",
+      "name": "045 - D'ettore"
+    },
+    {
+      "region_uid": "PR-LOP-46",
+      "name": "046 - Thalos"
+    },
+    {
+      "region_uid": "PR-LOP-47",
+      "name": "047 - Rason Detiir"
+    },
+    {
+      "region_uid": "PR-LOP-48",
+      "name": "048 - Tridale"
+    },
+    {
+      "region_uid": "PR-LOP-49",
+      "name": "049 - Aldremis"
+    },
+    {
+      "region_uid": "PR-LOP-50",
+      "name": "050 - Ia'telda"
+    },
+    {
+      "region_uid": "PR-LOP-51",
+      "name": "051 - Ritrough"
+    },
+    {
+      "region_uid": "PR-LOP-52",
+      "name": "052 - Maritria"
+    },
+    {
+      "region_uid": "PR-LOP-53",
+      "name": "053 - Althainia"
+    },
+    {
+      "region_uid": "PR-LOP-54",
+      "name": "054 - Urcht Dire"
+    },
+    {
+      "region_uid": "PR-LOP-55",
+      "name": "055 - Ollistock"
+    },
+    {
+      "region_uid": "PR-LOP-56",
+      "name": "056 - Vonburg"
+    },
+    {
+      "region_uid": "PR-LOP-57",
+      "name": "057 - Edril"
+    },
+    {
+      "region_uid": "PR-LOP-58",
+      "name": "058 - Moonfall"
+    },
+    {
+      "region_uid": "PR-LOP-59",
+      "name": "059 - Lunaden"
+    },
+    {
+      "region_uid": "PR-LOP-60",
+      "name": "060 - Trauton"
+    },
+    {
+      "region_uid": "PR-LOP-61",
+      "name": "061 - Wethen Chapel"
+    },
+    {
+      "region_uid": "PR-LOP-62",
+      "name": "062 - Thece"
+    },
+    {
+      "region_uid": "PR-LOP-63",
+      "name": "063 - Champlain"
+    },
+    {
+      "region_uid": "PR-CEF-64",
+      "name": "064 - Malrose"
+    },
+    {
+      "region_uid": "PR-CEF-65",
+      "name": "065 - Mandar Camden"
+    },
+    {
+      "region_uid": "PR-CEF-66",
+      "name": "066 - Nav'stok"
+    },
+    {
+      "region_uid": "PR-CEF-67",
+      "name": "067 - Stonefall"
+    },
+    {
+      "region_uid": "PR-CEF-68",
+      "name": "068 - Ta los"
+    },
+    {
+      "region_uid": "PR-CEF-69",
+      "name": "069 - Val de Lun"
+    },
+    {
+      "region_uid": "PR-CEF-70",
+      "name": "070 - Balabar"
+    },
+    {
+      "region_uid": "PR-CEF-71",
+      "name": "071 - Kalita"
+    },
+    {
+      "region_uid": "PR-CEF-72",
+      "name": "072 - Whittacer"
+    },
+    {
+      "region_uid": "PR-CEF-73",
+      "name": "073 - Hacrax"
+    },
+    {
+      "region_uid": "PR-CEF-74",
+      "name": "074 - Mors Deep"
+    },
+    {
+      "region_uid": "PR-CEF-75",
+      "name": "075 - Azerc Mizrek"
+    },
+    {
+      "region_uid": "PR-CEF-76",
+      "name": "076 - Asgersan"
+    },
+    {
+      "region_uid": "PR-CEF-77",
+      "name": "077 - Darkmooth"
+    },
+    {
+      "region_uid": "PR-CEF-78",
+      "name": "078 - Dunbright"
+    },
+    {
+      "region_uid": "PR-CEF-79",
+      "name": "079 - Westerbrau"
+    },
+    {
+      "region_uid": "PR-CEF-80",
+      "name": "080 - Findell"
+    },
+    {
+      "region_uid": "PR-CEF-81",
+      "name": "081 - Dorthan Dell"
+    },
+    {
+      "region_uid": "PR-CEF-82",
+      "name": "082 - Khang'wei"
+    },
+    {
+      "region_uid": "PR-CEF-83",
+      "name": "083 - Shijan"
+    },
+    {
+      "region_uid": "PR-CEF-84",
+      "name": "084 - Xo Zhang"
+    },
+    {
+      "region_uid": "PR-CEF-85",
+      "name": "085 - Xiang Pho"
+    },
+    {
+      "region_uid": "PR-WNE-86",
+      "name": "086 - Felixia"
+    },
+    {
+      "region_uid": "PR-WNE-87",
+      "name": "087 - Gattar"
+    },
+    {
+      "region_uid": "PR-WNE-88",
+      "name": "088 - Barencroft"
+    },
+    {
+      "region_uid": "PR-WNE-89",
+      "name": "089 - Shiredale"
+    },
+    {
+      "region_uid": "PR-WNE-90",
+      "name": "090 - Swubia"
+    },
+    {
+      "region_uid": "PR-WNE-91",
+      "name": "091 - Aaraview"
+    },
+    {
+      "region_uid": "PR-WNE-92",
+      "name": "092 - Zilac"
+    },
+    {
+      "region_uid": "PR-WNE-93",
+      "name": "093 - Jamonji"
+    },
+    {
+      "region_uid": "PR-WNE-94",
+      "name": "094 - Shu Vho"
+    },
+    {
+      "region_uid": "PR-WNE-95",
+      "name": "095 - Afrijan"
+    },
+    {
+      "region_uid": "PR-WNE-96",
+      "name": "096 - Udrium"
+    },
+    {
+      "region_uid": "PR-WNE-97",
+      "name": "097 - Kairis"
+    },
+    {
+      "region_uid": "PR-WNE-98",
+      "name": "098 - Sonn"
+    },
+    {
+      "region_uid": "PR-WNE-99",
+      "name": "099 - Gorrondale"
+    },
+    {
+      "region_uid": "PR-WNE-100",
+      "name": "100 - Greathland"
+    },
+    {
+      "region_uid": "PR-WNE-101",
+      "name": "101 - Valens"
+    },
+    {
+      "region_uid": "PR-WNE-102",
+      "name": "102 - Kithden"
+    },
+    {
+      "region_uid": "PR-WNE-103",
+      "name": "103 - Dennant"
+    },
+    {
+      "region_uid": "PR-WNE-104",
+      "name": "104 - Cer Zann"
+    },
+    {
+      "region_uid": "PR-WNE-105",
+      "name": "105 - Jostile"
+    },
+    {
+      "region_uid": "PR-WNE-106",
+      "name": "106 - Almyst"
+    },
+    {
+      "region_uid": "PR-GLL-107",
+      "name": "107 - Ganth"
+    },
+    {
+      "region_uid": "PR-GLL-108",
+      "name": "108 - Sheyton"
+    },
+    {
+      "region_uid": "PR-GLL-109",
+      "name": "109 - Penduline Mir"
+    },
+    {
+      "region_uid": "PR-GLL-110",
+      "name": "110 - Galeshire"
+    },
+    {
+      "region_uid": "PR-GLL-111",
+      "name": "111 - Ecclestone"
+    },
+    {
+      "region_uid": "PR-GLL-112",
+      "name": "112 - Warken Reeve"
+    },
+    {
+      "region_uid": "PR-GLL-113",
+      "name": "113 - Kesmire"
+    },
+    {
+      "region_uid": "PR-GLL-114",
+      "name": "114 - Tostrington"
+    },
+    {
+      "region_uid": "PR-GLL-115",
+      "name": "115 - Pembrook"
+    },
+    {
+      "region_uid": "PR-GLL-116",
+      "name": "116 - Sorenview"
+    },
+    {
+      "region_uid": "PR-GLL-117",
+      "name": "117 - Rustdale"
+    },
+    {
+      "region_uid": "PR-GLL-118",
+      "name": "118 - Everfall"
+    },
+    {
+      "region_uid": "PR-GLL-119",
+      "name": "119 - Lonshire"
+    },
+    {
+      "region_uid": "PR-GLL-120",
+      "name": "120 - Bredaine"
+    },
+    {
+      "region_uid": "PR-GLL-121",
+      "name": "121 - Hamford"
+    },
+    {
+      "region_uid": "PR-GLL-122",
+      "name": "122 - Freemont"
+    },
+    {
+      "region_uid": "PR-GLL-123",
+      "name": "123 - Bakerdire"
+    },
+    {
+      "region_uid": "PR-GLL-124",
+      "name": "124 - Camarthen"
+    },
+    {
+      "region_uid": "PR-GLL-125",
+      "name": "125 - Oxborough"
+    },
+    {
+      "region_uid": "PR-GLL-126",
+      "name": "126 - Vexington"
+    },
+    {
+      "region_uid": "PR-GLL-127",
+      "name": "127 - Hammerset"
+    },
+    {
+      "region_uid": "PR-GLL-128",
+      "name": "128 - Sanctuary"
+    },
+    {
+      "region_uid": "PR-SHC-129",
+      "name": "129 - Balewatch"
+    },
+    {
+      "region_uid": "PR-SHC-130",
+      "name": "130 - Daggerdale"
+    },
+    {
+      "region_uid": "PR-SHC-131",
+      "name": "131 - Ashland"
+    },
+    {
+      "region_uid": "PR-SHC-132",
+      "name": "132 - Queenstone"
+    },
+    {
+      "region_uid": "PR-SHC-133",
+      "name": "133 - Ravenwood"
+    },
+    {
+      "region_uid": "PR-SHC-134",
+      "name": "134 - Smithen"
+    },
+    {
+      "region_uid": "PR-SHC-135",
+      "name": "135 - Hartshone"
+    },
+    {
+      "region_uid": "PR-SHC-136",
+      "name": "136 - Yumbra"
+    },
+    {
+      "region_uid": "PR-SHC-137",
+      "name": "137 - Goresong"
+    },
+    {
+      "region_uid": "PR-SHC-138",
+      "name": "138 - Shadowvale"
+    },
+    {
+      "region_uid": "PR-SHC-139",
+      "name": "139 - Virren"
+    },
+    {
+      "region_uid": "PR-SHC-140",
+      "name": "140 - Doom Edin"
+    },
+    {
+      "region_uid": "PR-SHC-141",
+      "name": "141 - Glorhiel"
+    },
+    {
+      "region_uid": "PR-SHC-142",
+      "name": "142 - Gillan Dol"
+    },
+    {
+      "region_uid": "PR-SHC-143",
+      "name": "143 - Dryae Tor"
+    }
+  ]
+}

@@ -1,0 +1,140 @@
+{
+  "run": "B",
+  "evidence": "historical routing run (private dossier reference removed)",
+  "historical": {
+    "excluded_worksite_transactions": 1,
+    "harvest_transactions": 1,
+    "harvest_operations": 1,
+    "routing_transactions": 11,
+    "routing_operations": 13,
+    "transaction_id_prefixes": [
+      "f8ad23c908",
+      "08fb6c01f9",
+      "dd837a55d8",
+      "13998ffc1f",
+      "c74f0ba222",
+      "12de79fb36",
+      "b8d1caaf45",
+      "9d174ad670",
+      "c8c9d60fc4",
+      "85a96548de",
+      "d6e3795dd4"
+    ],
+    "transaction_operations": [
+      3,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "observed_parent_child_dec": {
+      "sale_quote": "791.689",
+      "sps_input": "791.688",
+      "lp_grain_sale_quote": "418.639",
+      "lp_grain_deposit": "414.473"
+    }
+  },
+  "model": {
+    "note": "Amounts are the observed operation inputs; route-level totals for sell-half combine its observed sale and deposit inputs. Slippage follows the approved plan.",
+    "regions": [
+      "PR-TST-1"
+    ],
+    "routes": [
+      {
+        "id": "sale_wood",
+        "kind": "sale_dec",
+        "region": "PR-TST-1",
+        "symbol": "WOOD",
+        "amount": "2789.777",
+        "slippage": "2.5"
+      },
+      {
+        "id": "sale_stone",
+        "kind": "sale_dec",
+        "region": "PR-TST-1",
+        "symbol": "STONE",
+        "amount": "3498.091",
+        "slippage": "2.5"
+      },
+      {
+        "id": "sale_iron",
+        "kind": "sale_dec",
+        "region": "PR-TST-1",
+        "symbol": "IRON",
+        "amount": "140.525",
+        "slippage": "2.5"
+      },
+      {
+        "id": "sps_grain",
+        "kind": "sps_out",
+        "region": "PR-TST-1",
+        "symbol": "GRAIN",
+        "amount": "106646.011",
+        "slippage": "2.5"
+      },
+      {
+        "id": "half_grain",
+        "kind": "lp_sell_half",
+        "region": "PR-TST-1",
+        "symbol": "GRAIN",
+        "amount": "106646.011",
+        "sale_amount": "56395.030",
+        "deposit_amount": "50250.981",
+        "slippage": "0.5"
+      },
+      {
+        "id": "half_wood",
+        "kind": "lp_sell_half",
+        "region": "PR-TST-1",
+        "symbol": "WOOD",
+        "amount": "2789.777",
+        "sale_amount": "1475.265",
+        "deposit_amount": "1314.512",
+        "slippage": "0.5"
+      },
+      {
+        "id": "half_stone",
+        "kind": "lp_sell_half",
+        "region": "PR-TST-1",
+        "symbol": "STONE",
+        "amount": "3498.091",
+        "sale_amount": "1849.823",
+        "deposit_amount": "1648.268",
+        "slippage": "0.5"
+      },
+      {
+        "id": "half_iron",
+        "kind": "lp_sell_half",
+        "region": "PR-TST-1",
+        "symbol": "IRON",
+        "amount": "140.525",
+        "sale_amount": "74.312",
+        "deposit_amount": "66.213",
+        "slippage": "0.5"
+      }
+    ],
+    "expected": {
+      "routing_approvals": 4,
+      "total_approvals": 5,
+      "wave_bundle_operations": [
+        [
+          4,
+          4
+        ],
+        [
+          4,
+          1
+        ]
+      ],
+      "merged_sale_members": []
+    },
+    "exact_lp_split": false,
+    "exact_lp_split_note": "(Master decision, option b): the historical pool reserves behind run B's sell-half split were never captured, and the guard previews with synthetic pools, so B checks count, members and total conservation of each lp_sell_half route instead of the exact historical split."
+  }
+}

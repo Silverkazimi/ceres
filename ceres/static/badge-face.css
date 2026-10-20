@@ -1,0 +1,121 @@
+/* badge-face.css -- shared glass face, layout A. One glass family, two shapes --
+ tag : .slot-kin-badge (Toil & Kin / Companion), .slot-flag-cooldown (cooling), one row in the name-strip tail
+ band : .slot-wait-badge (Not powered / Unstaking / Waiting / Moving / planned), full tile width below the art midpoint
+ with one height, padding, radius, rim and type (Inter, vendored for badges only, under its own family name).
+ Ink A: heading-colour text, the meaning tone on the rim.
+ html.bf-off switches the shared face off. Loaded by @import from badge-colours.css.
+ Scoped to `.slot-tile`, so the Cards page's `.cb-wait` badges keep their own face. */
+
+@font-face { font-family: "Ceres Badge Inter"; font-style: normal; font-weight: 100 900; font-display: block; src: url("vendor/inter/inter-latin-var.woff2") format("woff2"); }
+
+html:not(.bf-off) .slot-tile {
+  --bf-u: var(--ability-unit, 1.2px);
+  --bf-h: calc(18 * var(--bf-u));
+  --bf-pad: calc(5 * var(--bf-u));
+  --bf-radius: calc(4 * var(--bf-u));
+  --bf-font: "Ceres Badge Inter", var(--font-body);
+  --bf-size: calc(8.8 * var(--bf-u));
+  --bf-gap: calc(3 * var(--bf-u));
+  --bf-inset: calc(3 * var(--bf-u));
+  --bf-x: calc(3px + 1.75rem); /* the remove X's corner (ceres.css .slot-remove top/right 3px, buttons.css 1.75rem) */
+  /* 85-88% glass keeps ink A at >= 5.1:1 over any art (worst case pure black or white) in all four themes */
+  --bf-glass: linear-gradient(color-mix(in srgb, var(--bg2) 85%, transparent), color-mix(in srgb, var(--bg2) 88%, transparent));
+}
+
+/* ── the face (shared) ─────────────────────────────────────────────────────────────────────────────────────────────── */
+html:not(.bf-off) .slot-tile :is(.slot-kin-badge, .slot-wait-badge, .slot-flag) {
+  --bf-tone: var(--border-bright);
+  --bf-ink: var(--heading);
+  box-sizing: border-box;
+  min-height: var(--bf-h);
+  border: 1px solid var(--bf-tone);
+  border-radius: var(--bf-radius);
+  background: var(--bf-glass);
+  color: var(--bf-ink);
+  font-family: var(--bf-font);
+  font-size: var(--bf-size);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0;
+  font-variant-numeric: lining-nums tabular-nums;
+  text-shadow: none;
+}
+
+/* tones (meaning unchanged from today) */
+html:not(.bf-off) .slot-tile .slot-kin-badge.is-paired,
+html:not(.bf-off) .slot-tile .slot-kin-badge.is-companion { --bf-tone: var(--ok); }
+html:not(.bf-off) .slot-tile .slot-kin-badge.is-solo { --bf-tone: var(--warn); }
+html:not(.bf-off) .slot-tile .slot-wait-badge { --bf-tone: var(--gold); }
+html:not(.bf-off) .slot-tile .slot-wait-badge.is-elsewhere { --bf-tone: var(--warn); }
+html:not(.bf-off) .slot-tile .slot-wait-badge.is-planned { --bf-tone: var(--stage-planned); }
+html:not(.bf-off) .slot-tile .slot-wait-badge.is-unpowered { --bf-tone: var(--danger); }
+html:not(.bf-off) .slot-tile .slot-wait-badge.is-removal { --bf-tone: var(--ok); }
+
+/* ── shape 1: tag ─────────────────────────────────────────────────────────────────────────────────────────────────── */
+html:not(.bf-off) .slot-tile .slot-kin-badge {
+  height: var(--bf-h);
+  padding: 0 var(--bf-pad);
+  gap: calc(3 * var(--bf-u));
+}
+html:not(.bf-off) .slot-tile .slot-kin-badge .slot-kin-icon { inline-size: calc(11 * var(--bf-u)); block-size: calc(11 * var(--bf-u)); }
+/* one measured metadata row in the reserved name-strip tail. */
+html:not(.bf-off) .slot-tile .slot-tags {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  right: 4px;
+  z-index: 5;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+html:not(.bf-off) .slot-tile .slot-tags[data-fitted="1"] { visibility: visible; }
+html:not(.bf-off) .slot-tile .slot-tags .slot-kin-badges { display: contents; }
+html:not(.bf-off) .slot-tile .slot-tags :is(.slot-kin-badge, .slot-flag) {
+  position: static;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  max-inline-size: 100%;
+  block-size: 20px;
+  min-height: 20px;
+  font-size: 10px;
+  margin: 0;
+  pointer-events: auto;
+}
+html:not(.bf-off) .slot-tile .slot-tags .slot-kin-badge { padding-inline: 4px; overflow: hidden; }
+html:not(.bf-off) .slot-tile .slot-tags .slot-kin-icon { inline-size: 12px; block-size: 12px; }
+html:not(.bf-off) .slot-tile .slot-tags .slot-kin-text { white-space: nowrap; text-overflow: clip; }
+html:not(.bf-off) .slot-tile .slot-tags .slot-kin-badge.is-icon-only { width: 20px; padding: 0; }
+html:not(.bf-off) .slot-tile .slot-tags .slot-kin-badge.is-icon-only .slot-kin-text { display: none; }
+html:not(.bf-off) .slot-tile .slot-tags .slot-kin-more { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 20px; height: 20px; border: 1px solid var(--border-bright); border-radius: var(--bf-radius); background: var(--bf-glass); color: var(--heading); font: 600 10px var(--bf-font); }
+/* the cooling mark: the same tag, square */
+html:not(.bf-off) .slot-tile .slot-tags .slot-flag {
+  inline-size: 20px;
+  padding: 0;
+  font-size: 10px;
+}
+
+/* ── shape 2: band (full tile width, centred where today's badge sits) ─────────────────────────────────────────────── */
+html:not(.bf-off) .slot-tile .slot-wait-badge {
+  padding: calc(2 * var(--bf-u)) var(--bf-pad);
+  border-left-width: 0;
+  border-right-width: 0;
+  border-radius: 0;
+}
+html:not(.bf-off) .slot-tile .slot-wait-badge:not(.is-planned) { height: 20px; min-height: 20px; padding-block: 0; }
+html:not(.bf-off) .slot-tile .slot-wait-badge.is-planned { height: 28px; padding-block: 1px; line-height: 12px; }
+
+@container (max-width: 128px) {
+  html:not(.bf-off) .slot-tile .slot-tags { bottom: 2px; height: 18px; }
+  html:not(.bf-off) .slot-tile .slot-tags :is(.slot-kin-badge, .slot-flag) { block-size: 18px; min-height: 18px; }
+  html:not(.bf-off) .slot-tile .slot-tags .slot-flag { inline-size: 18px; }
+  html:not(.bf-off) .slot-tile .slot-tags .slot-kin-badge.is-icon-only,
+  html:not(.bf-off) .slot-tile .slot-tags .slot-kin-more { width: 18px; height: 18px; }
+}

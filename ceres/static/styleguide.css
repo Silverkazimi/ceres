@@ -1,0 +1,81 @@
+/* styleguide.css -- : the layout of the living style guide page (/styleguide) ONLY: section frames, specimen
+ boxes, the theme panes of the "all four side by side" mode and the token swatches. It never restyles a component;
+ every specimen is painted by the real stylesheets the page links before this one. Tokens only (C-1), on the T-3 type
+ scale and the E-1 radius scale.
+
+ Host adaptations, each a containing context rather than a component rule:
+ - .sg-band sets the editor band's own layout variables (no worksite picture on this page, so no worksite column);
+ - .sg-demo-controls keeps the sample filter row in its specimen box (the page's real filter row is the sticky one);
+ - .sg-fixed-frame is a containing block (transform) so the fixed new-version banner draws inside its box. */
+
+.sg-page .sg-title { color: var(--heading); font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; margin-inline-end: auto; }
+.sg-page .sg-controls { position: sticky; top: 0; z-index: 20; }
+.sg-page .sg-controls-label { color: var(--text-dim); font-size: 0.75rem; font-weight: 700; }
+.sg-page .sg-theme-group { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
+
+.sg-main { box-sizing: border-box; max-inline-size: 100%; padding: 1rem 1rem 1.5rem; }
+.sg-intro { max-inline-size: 60rem; margin: 0 0 1rem; color: var(--text); font-size: 1rem; line-height: 1.5; }
+.sg-intro code, .sg-meta code, .sg-note code { font-family: var(--font-mono); font-size: 0.75rem; }
+
+.sg-section { margin: 0 0 1.5rem; padding: 1rem; border: 1px solid var(--border-bright); border-radius: var(--radius); background: color-mix(in srgb, var(--bg) 82%, transparent); }
+.sg-section-head { display: grid; gap: 0.35rem; margin-block-end: 1rem; }
+.sg-section-head h2 { margin: 0; color: var(--heading); font-family: var(--font-display); font-size: 1.25rem; }
+.sg-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.35rem; color: var(--text-dim); font-size: 0.75rem; }
+.sg-meta-label { font-weight: 700; color: var(--text); }
+.sg-rule { padding: 0 0.35rem; border: 1px solid var(--accent); border-radius: 999px; color: var(--heading); font-size: 0.75rem; font-weight: 700; }
+.sg-meta code { padding: 0 0.25rem; border-radius: calc(var(--radius) - 3px); background: color-mix(in srgb, var(--bg3) 80%, transparent); color: var(--heading); }
+
+.sg-single { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
+.sg-quad { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; }
+/* canonical.css defines the text aliases on :root (--text: var(--body); --text-dim: var(--meta)), so a nested theme pane would
+ inherit the PAGE theme's resolved text colours; the pane re-resolves the two aliases exactly as canonical.css does. */
+.sg-pane { --text: var(--body); --text-dim: var(--meta); display: flex; flex-direction: column; gap: 1rem; min-inline-size: 0; padding: 0.75rem; border: 1px solid var(--border-bright); border-radius: var(--radius); background: var(--bg); color: var(--text); overflow-x: auto; }
+.sg-pane-label { color: var(--heading); font-family: var(--font-display); font-size: 1rem; font-weight: 700; }
+
+.sg-specimen { box-sizing: border-box; display: grid; gap: 0.5rem; margin: 0; min-inline-size: 0; max-inline-size: 100%; }
+.sg-specimen.is-wide { flex: 1 1 100%; }
+.sg-specimen-body { min-inline-size: 0; max-inline-size: 100%; padding: 0.75rem; border: 1px dashed var(--border-bright); border-radius: calc(var(--radius) - 3px); overflow-x: auto; }
+.sg-specimen figcaption { color: var(--text-dim); font-size: 0.75rem; line-height: 1.4; }
+.sg-note { color: var(--text-dim); font-size: 0.75rem; }
+.sg-row, .sg-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.sg-list { margin: 0.75rem 0 0; padding-inline-start: 1.5rem; color: var(--text-dim); font-size: 0.75rem; line-height: 1.5; }
+
+.sg-tokens { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 0.5rem; flex: 1 1 100%; }
+.sg-all .sg-tokens { grid-template-columns: minmax(0, 1fr); }
+.sg-token { display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: 0.5rem; align-items: center; font-size: 0.75rem; }
+.sg-token .sg-swatch { grid-row: 1 / span 3; inline-size: 2.25rem; block-size: 2.25rem; border: 1px solid var(--border-bright); border-radius: calc(var(--radius) - 3px); }
+.sg-token code { color: var(--heading); font-family: var(--font-mono); font-weight: 700; }
+.sg-token-meaning { color: var(--text); }
+.sg-token-value { color: var(--text-dim); font-family: var(--font-mono); font-size: 0.7rem; }
+.sg-chip-swatch { padding: 0.25rem 0.5rem; border-radius: 999px; color: var(--hi); font-size: 0.75rem; font-weight: 700; }
+
+.sg-type-row { display: grid; grid-template-columns: 9rem 14rem minmax(0, 1fr); gap: 0.75rem; align-items: baseline; padding-block: 0.25rem; border-bottom: 1px solid var(--border); }
+.sg-type-row.is-two { grid-template-columns: 9rem minmax(0, 1fr); }
+.sg-all .sg-type-row { grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
+.sg-type-row code { color: var(--text-dim); font-family: var(--font-mono); font-size: 0.75rem; }
+.sg-num-demo { display: grid; grid-template-columns: auto 8rem; gap: 0.25rem 1rem; font-size: 1rem; }
+.sg-num-demo b { text-align: right; font-variant-numeric: tabular-nums; color: var(--heading); }
+
+.sg-btn-matrix { display: grid; gap: 0.5rem; }
+.sg-btn-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.sg-btn-row > code { inline-size: 6.5rem; color: var(--text-dim); font-family: var(--font-mono); font-size: 0.75rem; }
+
+.sg-demo-controls { position: static; border: 1px solid var(--border); border-radius: calc(var(--radius) - 3px); }
+
+.sg-table { max-inline-size: 100%; overflow-x: auto; }
+
+.sg-band { --worksite-w: 0rem; --worksite-x: 0rem; --eos-band-height: auto; min-inline-size: 0; }
+.sg-band .slot-grid { flex-wrap: wrap; block-size: auto; row-gap: 2rem; }
+
+.sg-grid { min-inline-size: 0; max-inline-size: 72rem; } /* about five tiles of the real 13.5rem minimum: the auto-fit grid would stretch five samples across the page */
+
+.sg-inline-panel { position: relative; max-inline-size: 100%; max-block-size: none; } /* a specimen in the page flow, not a viewport dialog: the 90vh dialog cap would hide the lower rows */
+
+.sg-fixed-frame { position: relative; transform: translateZ(0); min-block-size: 3.5rem; overflow: hidden; border-radius: calc(var(--radius) - 3px); }
+.sg-marker-frame { position: relative; display: flex; align-items: center; min-block-size: 5rem; padding-inline-end: 26rem; overflow-x: auto; }
+
+html.ceres-lw-le-1279 .sg-quad { grid-template-columns: minmax(0, 1fr); }
+html.ceres-lw-le-1279 .sg-type-row { grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
+html.ceres-lw-le-1279 .sg-marker-frame { padding-inline-end: 0; }
+html.ceres-lw-le-1279 .sg-main { padding-inline: 0.5rem; }
+html.ceres-lw-le-1279 .sg-page .sg-title { display: none; }

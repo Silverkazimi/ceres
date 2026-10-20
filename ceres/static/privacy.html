@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What Ceres keeps about you</title>
+<style>
+  :root { color-scheme: light dark; --bg: #f6f7f9; --text: #1b1f27; --muted: #5b6472; --line: #d5dae3; --accent: #2a6fdb; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #11151c; --text: #e6e9ef; --muted: #98a2b3; --line: #2a3140; --accent: #6ea2f5; } }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, sans-serif; }
+  main { max-inline-size: 46rem; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.1rem; margin: 28px 0 6px; }
+  p, li { color: var(--text); } .lead, .small { color: var(--muted); }
+  table { inline-size: 100%; border-collapse: collapse; margin: 8px 0; }
+  th, td { text-align: start; vertical-align: top; padding: 8px 10px; border-block-end: 1px solid var(--line); }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>What Ceres keeps about you</h1>
+  <p class="lead">Ceres shows public Splinterlands data. Looking at any account needs no login and stores nothing about you. This page lists everything the server may keep, for how long, and how to delete it.</p>
+
+  <h2>Nothing is required</h2>
+  <p>Browsing, routing and staging changes work without signing in. Your routing setup and staged changes are then saved in this browser only. Ceres sets no cookies and runs no analytics or advertising.</p>
+
+  <h2>What the server keeps</h2>
+  <table>
+    <tr><th>What</th><th>When it exists</th><th>How long</th></tr>
+    <tr><td><b>Cached game data</b> of an account you opened: board snapshots, deed lists, collection tags. Public data copied from the game.</td><td>After every board read.</td><td>Deleted seven days after the last read of that account. You can delete it earlier (below).</td></tr>
+    <tr><td><b>Your saved space</b>: your routing setup, your staged changes and up to ten older versions of each.</td><td>Only if you choose to sign in and save across devices.</td><td>Until you delete it. It never expires by itself.</td></tr>
+    <tr><td><b>A routing run</b>: the one-time routing after a harvest.</td><td>Only while a routing is in progress, in the memory of the server.</td><td>Deleted when it is done, fails, you refresh the page, after two idle hours, or when the server restarts.</td></tr>
+    <tr><td><b>A safety record</b>: which harvest receipts a routing transaction used, its transaction id and when it can no longer execute. No routes, no setup.</td><td>Only if a transaction may have been sent and its result is not known yet.</td><td>Until the chain shows the result, or you state in the routing screen that your wallet shows it was not sent. It cannot be deleted on request, because it is what stops the same spend from being signed twice.</td></tr>
+    <tr><td><b>Harvest receipts</b>: records of harvests Ceres helped you start.</td><td>After a harvest.</td><td>Kept, so a harvest is never routed twice.</td></tr>
+    <tr><td><b>Server logs</b>: requests and errors. On the public server, account names and IP addresses are replaced by short tags that change at every restart.</td><td>Always.</td><td>Seven days.</td></tr>
+  </table>
+
+  <h2>Signing in</h2>
+  <p>Signing in is optional. Your wallet signs one short text with your Posting key. It is not a transaction, it costs nothing and nothing is sent to the blockchain. Ceres checks the signature against your account's public Posting key. It never sees or stores a private key. The session lives in the page only; refreshing the page ends it.</p>
+
+  <h2>Deleting</h2>
+  <p>Open the account menu (the wallet button in the header). <b>Delete saved data</b> removes your saved routing setup, staged changes and all their older versions from the server. <b>Delete cached data</b> removes the cached game data of your account. Both ask your wallet to sign a text made for exactly that deletion. Copies in your own browsers and devices stay until you remove them there; Ceres cannot reach them.</p>
+
+  <p class="small">This page describes what the software does. If something here ever differs from what you see, tell the operator.</p>
+</main>
+</body>
+</html>

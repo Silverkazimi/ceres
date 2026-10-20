@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ceres — Land Board</title>
+<link rel="icon" type="image/png" sizes="100x100" href="/static/favicon.png">
+<!-- his instruction: "Rotate the background images between all 14 terrains at
+ page load." A per-LOAD choice cannot be expressed in CSS, so it is set here, in the
+ same pre-paint block as the theme, before first paint -- picking it later would show
+ one terrain and then swap it. All 14 ship as `{terrain}_natural.jpg`. -->
+<!-- no
+ per-load terrain any more; --hdr-scene is the landing page's wallpaper (ceres.css). -->
+<script>(function(){try{var t=localStorage.getItem('ceres:theme');document.documentElement.setAttribute('data-theme',t||'dark');}catch(_){document.documentElement.setAttribute('data-theme','dark');}}());</script>
+<!-- (maintainer: browser zoom as a layout mechanism is forbidden; "the table must scale to all
+ sizes gracefully"): there is NO page zoom. The board lays out at the browser's own CSS width, so
+ the user's own browser zoom and Windows scaling (125-150%) simply work. This pre-paint block only
+ publishes the board width -- `--ceres-vw`/`--ceres-vh` and the width classes. The classes are
+ kept by NAME (the phone switch `ceres-lw-le-1279` and the other readers select on them); `s` is
+ the always-reserved scrollbar gutter (scrollbar-gutter: stable), read from a zero-height probe so
+ the width never flips with content height. `window.ceresScale.design` is that width, for the
+ ?diag=width panel; there is no factor any more. -->
+<script>(function(){
+  var root=document.documentElement;
+  var player=new URLSearchParams(location.search).get('player');
+  root.classList.toggle('start-page',!String(player||'').trim());
+  function apply(){
+    root.style.scrollbarGutter='stable';
+    var probe=document.createElement('div');
+    probe.style.cssText='display:block;height:0;margin:0;padding:0;border:0;visibility:hidden';
+    root.appendChild(probe);
+    var s=window.innerWidth-probe.getBoundingClientRect().width;
+    root.removeChild(probe);
+    var w=window.innerWidth-s;
+    // The class boundaries are in em (16px units of the ROOT font), the standard for
+    // text-driven layouts: a larger browser text size narrows the effective width the
+    // same way browser zoom does, so text that no longer fits the table moves to the
+    // card view instead of being cut off. At the default 16px root font e === w.
+    var rem=parseFloat(getComputedStyle(root).fontSize)||16, e=w*16/rem;
+    root.style.setProperty('--ceres-vw',(w/100)+'px');
+    root.style.setProperty('--ceres-vh',(window.innerHeight/100)+'px');
+    root.classList.toggle('ceres-lw-le-1919',e<=1919);
+    // measured follow-up: the frozen table text/row sizes overflow
+    // `.table-scroll` (clip, no scrollbar) with the three material-input columns
+    // visible from 1440 up to ~1650 -- fits again from 1680. Own tier, not reused
+    // from ceres-lw-le-1659 (that one already drives other, unrelated rules).
+    // review fix (2026-09-20): the sort chevron's own inline-flow width (~4.8px
+    // per sortable header) pushed the overflow threshold out from ~1680 to ~1755
+    // MEASURED headless with the chevron change live: 1680 overflows by ~51px, fits
+    // clean again at 1760. Tier renamed 1679 -> 1759 to match (nothing else reads the
+    // 1679 name, grepped clean).
+    root.classList.toggle('ceres-lw-le-1759',e<=1759);
+    root.classList.toggle('ceres-lw-le-1659',e<=1659);
+    root.classList.toggle('ceres-lw-le-1439',e<=1439);
+    root.classList.toggle('ceres-lw-le-1279',e<=1279);
+    root.classList.toggle('ceres-lw-le-767',e<=767);
+    root.classList.toggle('ceres-lw-ge-1400',e>=1400);
+    root.classList.toggle('ceres-lw-le-1099',e<=1099);
+    root.classList.toggle('ceres-lw-le-544',e<=544);
+    root.classList.toggle('ceres-lw-le-960',e<=960);
+    root.dataset.ceresScale='w='+window.innerWidth+' sb='+s;
+    window.ceresScale={design:w,apply:apply};
+  }
+  // the retired zoom scaler's saved keys.
+  try{localStorage.removeItem('ceres:contentW');localStorage.removeItem('ceres:autoZoom');localStorage.removeItem('ceres:designWidth');}catch(_){}
+  apply();
+}());</script>
+<!-- ?v={{CERES_VERSION}} on app.js/ceres.css busts the browser's heuristic cache
+ on every version bump -- these two files are deliberately excluded from
+ _CachedStaticFiles' long Cache-Control (ceres/app.py), so without a
+ changing query token a stale copy could survive indefinitely across
+ deploys. Substituted server-side alongside the header's {{CERES_VERSION}}
+ (see app.py's index() and the .board-version comment below). -->
+<link rel="stylesheet" href="/static/ceres.css?v={{CERES_VERSION}}">
+<link rel="stylesheet" href="/static/buttons.css?v={{CERES_VERSION}}">
+<link rel="stylesheet" href="/static/badge-colours.css?v={{CERES_VERSION}}">
+<link rel="stylesheet" href="/static/mobile-plot.css?v={{CERES_VERSION}}">
+<link rel="stylesheet" href="/static/wallet.css?v={{CERES_VERSION}}">
+</head>
+<body>
+<div id="reload-banner" class="reload-banner" hidden>New version deployed — click to load it</div>
+<script src="/static/version-banner.js?v={{CERES_VERSION}}"></script>
+<header class="board-header">
+  <!-- Item 41 REDONE (2026-08-24, the owner: the flex-column attempt above "got
+ larger/higher and the totalsstrip went under the logo" -- REJECTED on
+ sight; his exact target is quoted verbatim on ceres.css's
+ `header.board-header` rule). `header.board-header` is now a two-column
+ CSS GRID: the logo is its OWN grid child (column 1, spanning both rows
+ full-height) -- moved OUT of `.board-header-row` entirely, no longer
+ that row's first child -- while `.board-header-row` (player switch,
+ capture cluster, checkout dock; row 1) and `.totals-strip` (row 2) both
+ sit in column 2, to the RIGHT of the logo. This also gets `.totals-
+ strip` left-aligned with the player switch for free: with the logo no
+ longer sharing column 2, the player switch is `.board-header-row`'s
+ first child, and both rows share column 2's left edge. `header.board-
+ header` itself keeps its existing `position: sticky; top: 0` -- only
+ its children's placement changed, not its own positioning, so nothing
+ here disturbs the sticky-header contract the rest of this file depends
+ on. See ceres.css's own comments on `header.board-header`, `.board-
+ logo`, `.board-header-row`, and `.totals-strip` for the full grid
+ mechanics. -->
+  <span class="board-logo">
+    <!-- Four theme-matched logos, 2026-08-21 board-polish batch 19 item 11
+ (the owner: commissioned four variants, one per Iris theme, named after
+ them). Retires the single alchemical-only raster (2026-08-21, same-day
+ predecessor commit) which itself retired the hand-drawn crossed-grain
+ SVG mark + separate DOM wordmark ( redraw, kept for the record in
+ library/ceres-history.md). Markup carries only ONE `<img>`, hardcoded
+ to the alchemical file (this page's own default theme) -- the theme
+ swap itself is pure CSS, `content: url(...)` rules keyed off
+ `[data-theme="..."]` in ceres.css (search that file's own comment on
+ `.board-logo-img` for the full mechanism and why no app.js hook is
+ needed). Assets: `ceres/static/assets/logos/ceres-logo-{alchemical,
+ dark,light,wood}-header.png` (225x150, 7-8.7KB, the header-sized "-header"
+ set, exactly 2x for a 75px render height) is what's ever served here;
+ the sibling `ceres-logo-{...}.png` (1536x1024, ~1.5MB, full-size) set
+ in the same directory is for future print/large-format use only, never
+ referenced by any page. `height: 75px` + `width: auto` on
+ `.board-logo-img` (ceres.css) scales the image to a fixed render height
+ so it never grows the header -- the header's height is still set by its
+ padding/line-height, never by the logo. -->
+    <!-- the logo links back to the start page (a URL without ?player= opens it, ). -->
+    <a class="board-logo-link" href="/" data-tip="Start page" aria-label="Ceres — back to the start page"><img class="board-logo-img" src="/static/assets/logos/ceres-logo-alchemical-header.png" width="225" height="150" alt="Ceres"></a>
+    <!-- Version hygiene, the owner 2026-08-21 (docs/ceres.md "Version hygiene"):
+ {{CERES_VERSION}} is substituted server-side, once, when THIS document was
+ served (ceres/app.py's index() route) -- never re-read from a live fetch by
+ app.js. That is deliberate: it must reflect the version actually loaded in
+ this tab, so a stale cached page keeps showing its stale number even while
+ /api/health and the reload banner report a newer one -- the disagreement IS
+ the signal that a hard reload is needed.
+
+ Moved INSIDE .board-logo and pinned bottom-right of the artwork (header-
+ controls polish, the owner: "Move the version number to the bottom right of
+ the logo") -- was a plain sibling span in the header's flex row before.
+ `.board-logo` is now `position: relative` (ceres.css) sized exactly to the
+ 75px-tall image (inline-flex + line-height:0, unchanged), so this absolutely
+ positioned span anchors to the image's own box in all four theme variants
+ without measurement -- they share one 225x150 composition (see the
+ `content: url()` swap comment above), and all four leave the lower-right
+ quadrant of the mark visually empty (checked all four PNGs), so the small,
+ dim version tag never overlaps the artwork. -->
+    <span class="board-version" id="board-version">v{{CERES_RELEASED_VERSION}}</span>{{CERES_LOCAL_MARKER}}
+  </span>
+  <!-- Header round 4 (2026-08-24, the owner: "row 1 and 2 are vert far away from
+ each other and too close to the logo. both are too close to the upper
+ or lower border of the header"). New wrapper -- `.board-header-rows` --
+ is the single grid item that now sits in column 2 (replacing the
+ previous grid-row:1/grid-row:2 split); see ceres.css's own comment on
+ it and on `header.board-header` for why round 3's per-row `align-self:
+ start`/`align-self: end` split, which flushed each row to the logo's
+ top/bottom edge, was the exact mechanism that forced the 22px gap
+ the owner is now reacting to. -->
+  <div class="board-header-rows">
+  <div class="board-header-row">
+  <span class="player-switch" data-tip="Switch player" data-tip-body="Type a player's name and press Enter to load their plots instead." aria-label="Switch player. Type a player's name and press Enter to load their plots instead.">
+    <!-- the account's avatar medallion, left of the field (board.js syncPlayerAvatar). -->
+    <button type="button" id="player-avatar" class="player-avatar" aria-label="Refresh board" data-tip="Refresh board" data-tip-body="Refresh board data while preserving filters and staged changes" hidden></button>
+    <input type="text" id="player-input" class="player-input ceres-wide-input" placeholder="player…" autocomplete="off" spellcheck="false">
+    <button class="player-go-btn ceres-btn ceres-btn--primary" data-control-density="header" data-control-mode="icon" id="player-go-btn" aria-label="Switch player"><svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><circle class="f" cx="8.6" cy="7.2" r="3.9"/><path class="f" d="M1.8 20.2c.5-4.3 3.3-7 6.8-7s6.3 2.7 6.8 7z"/><path class="d" d="M6.9 13.8 8.6 16l1.7-2.2"/><path class="a" d="M14.6 9.4h4.2V6.8l4.2 4.2-4.2 4.2v-2.6h-4.2z"/></svg><span class="spinner spinner-sm" id="player-loading" aria-hidden="true" hidden></span></button>
+    <button type="button" id="account-menu-btn" class="account-menu-btn ceres-btn ceres-btn--primary" data-control-density="header" data-control-mode="icon" aria-haspopup="true" aria-expanded="false" aria-controls="account-menu" data-tip="Account" data-tip-body="Choose your wallet and, if you like, sign in to save your routing setup across devices." aria-label="Account menu"><img class="wallet-logo" src="/static/vendor/wallet/keychain.svg" alt="" aria-hidden="true"></button>
+  </span>
+  <button type="button" class="harvest-header-btn ceres-btn ceres-btn--primary" data-control-density="header" data-control-mode="icon" id="harvest-btn" aria-haspopup="dialog" data-tip="Harvest" data-tip-body="Review and harvest your regions." aria-label="Harvest. Review and harvest your regions.">
+    <svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><path class="f" d="M9 15.8C5.4 11.6 7 4.7 13.5 3.3c4.7-1 8 2.2 7.2 6.1-1.4-2.4-4-3.3-6.5-2.5-3.6 1.1-5 5-3.5 8.3z"/><path class="d" d="M10.9 13.6c-.9-2.9.7-6.2 3.6-7.1"/><path class="a h" d="M9.4 15.3 3.6 21.1"/></svg>
+  </button>
+  <div class="checkout-dock" id="checkout-dock">
+    <button class="checkout-btn ceres-btn ceres-btn--primary" data-control-density="header" id="checkout-btn" data-checkout-action="toggle" aria-controls="checkout-panel" aria-expanded="false" data-tip="Changes" hidden>
+      <svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><path class="f" d="M2.8 4h11.4v6.2l-4 6.6-.6 4.2H2.8z"/><path class="d" d="M5.6 7.6h5.8M5.6 10.8h3.6M5.2 17.4c.9-1.3 1.7.9 2.6-.1"/><path class="a" d="M10.4 20.2c.4-7.2 4.8-14 12.2-18.4-.4 7.8-5 14.2-12.2 18.4z"/><path class="d" d="M11.8 18.2 19.8 6.2"/></svg> <span id="checkout-label">Changes</span> <span class="checkout-count" id="checkout-count" hidden>0</span><span class="checkout-waiting" id="checkout-waiting" hidden></span>
+    </button>
+  </div>
+  <!-- (; : the accent colour, glass, no blur): the Plots | Cards switcher, the same markup as cards.html. The break
+ starts the phone header's second line (ceres.css); the icons and the ?player= links come from header-icons.js. -->
+  <span class="board-header-break" aria-hidden="true"></span>
+  <nav class="ceres-btn-group ceres-page-switch" data-control-density="header" aria-label="Plots or cards">
+    <a id="page-switch-plots" class="ceres-btn ceres-btn--choice" data-control-density="header" data-control-mode="icon" data-header-icon="plots" href="/" aria-current="page" aria-label="Plots" data-tip="Plots"></a>
+    <a id="page-switch-cards" class="ceres-btn ceres-btn--choice" data-control-density="header" data-control-mode="icon" data-header-icon="cards" href="/cards" aria-label="Cards" data-tip="Cards" data-tip-body="Browse this player's cards and their Land PP."></a>
+  </nav>
+  </div>
+
+  </div>
+
+</header>
+<script src="/static/header-icons.js?v={{CERES_VERSION}}"></script>
+<!-- R-141 / , his ruling: "Remove totals-strip entirely from the header. it always
+ forces us to make compromise decisions." The element is NOT deleted -- rows.js still
+ renders into it and no other code changes -- it is moved OUT of <header> and hidden
+ until he says where the five figures belong. Deleting it would answer a question he
+ has not been asked. -->
+<div class="totals-strip totals-strip-detached" id="totals-strip" hidden></div>
+
+<div id="board-notices" class="board-notices" aria-live="polite"></div>
+<!-- the self-heal tail runs BEHIND an unveiled board (v0.9.38); this one muted line is
+ the only sign of it -- his ruling: "A quiet phase label, no veil". board.js writes the
+ running phase here and hides it when the capture settles. -->
+
+<!-- Iris theme-picker dock (2026-08-21, the owner: "move the iris theme switcher
+ below the header, so it does not overlap the text behind it"; moved again same
+ day, "move up the theme switcher so it sits perfectly centered over the filter
+ row"; a hand-tuned CSS offset for that centering regressed to "fully displaced
+ into the middle of the page" and was replaced with app.js's measured
+ `centerThemePicker()` -- see that function's own comment for the full story).
+ NOT the picker itself -- theme.js's mountThemePicker() looks for "#header
+ .container, #header, .header" and mounts its own position:fixed
+ `.theme-picker` widget inside whatever it finds (falling back to <body>
+ otherwise, which is what put it at the raw viewport top-right originally). This
+ empty div is a positioning-only hook: `transform` on it (ceres.css) makes it the
+ fixed-position containing block for the .theme-picker mounted inside it, so the
+ picker's own (Iris-owned, un-editable) `top:10px; right:0` resolve against THIS
+ div's box, not the viewport's -- app.js sets this div's top (inline style) while
+ CSS right-anchors its zero-width box to the viewport edge, keeping the ACTUAL
+ measured picker vertically centered on `header.board-header`. It is a direct
+ child of `<body>` so its z-index participates in the root stacking context above
+ the header. Zero pixels tall/wide, so it adds no visible content of its own and
+ never affects page layout. Per the Iris consumer-protocol
+ ("Hosts may only reposition the picker via non-guarded hooks e.g. a wrapper
+ element's own layout rules"): no .theme-* selector is touched, canonical.css/
+ theme.js stay byte-identical to their Iris source. -->
+<div id="header" class="theme-picker-dock"></div>
+<div class="controls-row">
+  <div class="mobile-filter-sheet-head"><strong id="mobile-filter-sheet-title">Filters</strong><button type="button" class="harvest-x ceres-btn ceres-btn--secondary" data-control-density="touch" data-control-mode="icon" id="mobile-filters-close" aria-label="Close filters"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <!-- Look 2 (maintainer-accepted plan, Variant A): the outer captions (Sort/Filter/
+ Region/Rarity/Terrain/Worksite/Type) are gone visually -- each is now `.sr-only`,
+ kept for a screen reader and for the case JS never wraps the select (progressive
+ enhancement, native select still gets its own name). The interactive control a
+ sighted user actually sees is customSelect.js's own trigger button, which gets its
+ category name via the `ariaLabel` option below (initFilterDropdowns() in board.js)
+ so the identity survives even when a chosen value's text alone would not say which
+ filter it belongs to. -->
+  <label class="board-filter-field"><span class="sr-only">Filter</span><input type="text" id="text-filter" class="ceres-wide-input" placeholder="plot / name…" aria-label="Filter by plot or name"></label>
+  <span class="controls-sep" aria-hidden="true"></span>
+  <label class="board-filter-field"><span class="sr-only">Region</span><select id="region-filter" data-empty-label="Region"><option value="">All</option></select></label>
+  <label class="board-filter-field"><span class="sr-only">Rarity</span><select id="rarity-filter" data-empty-label="Rarity"><option value="">All</option></select></label>
+  <label class="board-filter-field"><span class="sr-only">Terrain</span><select id="terrain-filter" data-empty-label="Terrain"><option value="">All</option></select></label>
+  <label class="board-filter-field"><span class="sr-only">Worksite</span><select id="resource-filter" data-empty-label="Worksite"><option value="">All</option></select></label>
+  <label class="board-filter-field"><span class="sr-only">Type</span><select id="status-filter" data-empty-label="Type"><option value="">All</option></select></label>
+  <label class="board-filter-field"><span class="sr-only">Badges</span><select id="badge-filter" data-empty-label="Badge"><option value="">All</option></select></label>
+  <span class="controls-sep" aria-hidden="true"></span>
+  <label class="picker-toggle board-filter-pill ceres-btn ceres-btn--choice" data-control-density="compact" data-tip="Staged filter" data-tip-body="Shows only plots with a staged change: ready to sign, waiting, or a card moving out to another plot."><span class="ceres-btn__check" aria-hidden="true"></span><input type="checkbox" id="staged-only"><span>Staged (<span id="staged-only-count">0</span>)</span></label>
+  <!-- (maintainer: badges "could be cool as an opt-in overlay"): phone only; shows the badges over each card's art. -->
+  <label class="picker-toggle board-filter-pill ceres-btn ceres-btn--choice card-badges-toggle" data-control-density="compact"><span class="ceres-btn__check" aria-hidden="true"></span><input type="checkbox" id="card-badges"><span>Badges on cards</span></label>
+  <!-- Look 3: an X icon button, visible only while a filter is active
+ (board.js's syncBoardFilterChrome() toggles `hidden`); resets text search +
+ Region/Rarity/Terrain/Worksite/Type/Badges + the two pills above, never Sort or
+ the theme. -->
+  <div class="board-clear-filters-row">
+  <button type="button" id="clear-board-filters" class="board-clear-filters ceres-btn ceres-btn--secondary" data-control-density="compact" data-control-mode="icon" data-tip="Clear all filters" aria-label="Clear all filters" hidden><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <button type="button" id="open-all-plots" class="eos-close btn-close close-all-btn ceres-btn ceres-btn--secondary" data-control-density="compact" data-tip="Open all" data-tip-body="Opens every plot the Staged filter shows." aria-label="Open all staged plots" hidden>Open all</button>
+  <button type="button" id="close-all-plots" class="close-all-btn chevron-close" data-tip="Close all" data-tip-body="Closes every opened plot at once." aria-label="Close all opened plots" hidden><span class="close-all-chevron-stack" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></span></button>
+  <button type="button" id="regional-dec-button" class="ceres-btn ceres-btn--secondary" data-control-density="compact" aria-controls="regional-dec-drawer" aria-expanded="false">Wallet</button>
+</div>
+<!-- (maintainer): "a design that attaches directly sideways into the right edge
+ of the corner. When clicking it, it slides out. Same as iris, respectively."
+ Desktop-only (mobile keeps the filter sheet's own Wallet button and has no
+ badge overlay). Amendment (maintainer, same day): the Badges trigger is no longer a
+ tab here -- it is the whole badge bar (#badge-bar, inside #plot-table-scroll
+ below) attached to the table itself. Only Wallet remains an edge tab. See
+ library/ceres-edge-tabs.md.
+ (maintainer): "Make the top of the wallet mirror exactly the icon only
+ slide-out of Iris." #wallet-picker replicates the Iris theme picker's own
+ tray/toggle shape (never its `.theme-*` classes -- consumer protocol forbids
+ redefining those) under new class names (`.edge-picker`/`.edge-tray`/
+ `.edge-opt`/`.edge-toggle`, ceres.css). regional-dec.js's initRegionalDec()
+ fills `.edge-tray` with one `.edge-opt` per WALLET_TABS symbol; the toggle
+ keeps the id `wallet-edge-tab` so every existing aria-controls wiring and
+ tooltip binding stays intact. See library/ceres-edge-tabs.md §v5.
+ Pre-landing review fix (v6 amendment): moved OUT of `.controls-row` to a direct
+ child of `<body>` here, right after the row -- `.controls-row` is
+ `overflow-x: auto` on desktop (its filter controls can outgrow the viewport),
+ which clipped this element and scrolled it sideways with the row's own content
+ instead of staying visible at the right edge.
+ (maintainer ruling, supersedes the fixed/stacked strip, verbatim:
+ "resource and flag slider must sit centered in the filter row and table header
+ respectively"): `#edge-tabs` is `position: absolute` again (document
+ coordinates), holding ONLY the Wallet picker -- `top` is JS-computed
+ (app.js::centerThemePicker(), document coordinates -- `controlsRect.top +
+ window.scrollY + controlsRect.height / 2 - pickerHeight / 2`) so the Wallet
+ picker tracks `.controls-row`'s own vertical centre and moves with it on
+ scroll, restoring the -era mechanism 's fixed strip replaced.
+ : `right` is CSS `0` again (ceres.css) --
+ the JS-computed gutter this comment used to describe is retired; the Iris
+ dock/`#edge-tabs`/`#scroll-top` all resolve `right: 0` against the true
+ viewport edge (position: fixed/absolute against `body`, which spans the full
+ document width) with no gap at all, matching the vendored Iris picker's own
+ unedited behaviour exactly. -->
+<div id="edge-tabs" class="edge-tabs">
+  <div id="wallet-picker" class="edge-picker" data-open="false"><div id="wallet-picker-tray" class="edge-tray" role="tablist" aria-label="Wallet resource"></div><button type="button" id="wallet-edge-tab" class="edge-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="wallet-picker-tray" data-tip="Wallet" aria-label="Wallet"></button></div>
+</div>
+<!-- (maintainer, verbatim): "add a scroll up button to the bottom right in the
+ iris style" -- a pinned handle at the bottom-right edge (fixed, `bottom: 1rem`).
+ Hidden (opacity 0, no pointer events) until scrollY > 400, then fades in -- a
+ passive, rAF-throttled scroll listener toggles `.is-visible` (app.js). Desktop
+ only, hidden on the start/no-land page (same rules as #edge-tabs). Reuses the
+ `--ceres-chevron-art` mask every other disclosure control in this codebase
+ uses, rotated 180deg from its native down-pointing orientation to point up.
+ measured finding (2026-09-20): shared the strip's own column and
+ covered the bar's bottom two rows -- moved one handle-width left (`right:
+ gutter + var(--edge-w) + 8px`). : the gutter that formula depended on
+ is retired -- `right` is now `calc(var(--edge-w) + 8px)` (flush strip at 0,
+ plus one handle-width, plus the same 8px gap), same net effect (one
+ handle-width left of the now-flush strip), no gutter term needed any more. -->
+<button type="button" id="scroll-top" class="edge-toggle scroll-top" data-tip="Back to top" aria-label="Back to top"></button>
+<!-- . `#badge-bar` moved OUT of `#plot-table-scroll` (see that element's
+ own comment) to a direct child of <body> here -- it needs to reach the TRUE
+ viewport edge, and `#plot-table-scroll` (`overflow-x: clip`) only ever
+ offered its own inset right edge (a page gutter), never the real one.
+ `position: absolute` (document coordinates, so it scrolls WITH the page --
+ its rows track specific table rows, unlike the always-fixed Iris/wallet/
+ scroll-top handles); `top`/`block-size`/`right` are all JS-computed
+ (app.js::centerThemePicker()) from the scroller's own live rect (`top` =
+ the scroller's document top, `block-size` = the scroller's own height,
+ `right` = a negative offset that reaches past `body`'s own narrower edge --
+ see that function's own comment on `--page-gutter` for why `body`'s `right:
+ 0` alone is NOT flush with the true viewport edge when a scrollbar is
+ present, the same scrollbar-vs-viewport mismatch 's own second
+ measured follow-up already documented for the FIXED elements).
+ `--badge-bar-w` (1.5rem/24px, ceres.css) replaces `--edge-w` for this bar and
+ its own head/flag below -- "the entire slide bar must be thinner" -- the
+ Iris/Wallet handles keep their own `--edge-w`.
+ The head glyph moved OUT of the bar too, into a SEPARATE standalone
+ `#badge-flag` (below) -- `position: fixed` (not sticky/nested inside the now
+ document-scrolling `#badge-bar`), because only a `position: fixed` element's
+ `right: 0` reaches the true, scrollbar-proof viewport edge the Iris/Wallet/
+ scroll-top handles already use; nesting it inside the now-absolute `#badge-
+ bar` would inherit THAT element's own (gutter-narrowed) right edge instead,
+ reintroducing exactly the mismatch this whole ticket exists to remove. Its own
+ `top`/`block-size` are JS-computed from `#table-head-sticky`'s own live rect
+ each sync AND on a passive scroll listener (app.js) -- the real thead's
+ viewport position changes continuously with scroll until it "sticks", so a
+ one-shot measurement on layout-change events alone is not enough here (unlike
+ the Iris dock, which centres on the ALWAYS-sticky-at-top:0 app header).
+ `.badge-bar` itself keeps its own `role="button"`/background-click-toggles-
+ group semantics (); `#badge-flag` is a second, independent way to
+ reach the exact same `toggleGroup()` action (badge-overlay.js), same as the
+ retired -era `#badge-flag` did. See library/ceres-badge-overlay.md and
+ ceres-edge-tabs.md v9/v10 for the full design and the headless verification
+ numbers. -->
+ <aside id="badge-bar" class="badge-bar" role="group" aria-label="Plot badge controls"></aside>
+ <div id="badge-filter-tray" class="badge-filter-tray" role="menu" aria-label="Show badge slide-outs by status" data-open="false"></div>
+ <button type="button" id="badge-flag" class="badge-bar-head" aria-expanded="false" aria-controls="badge-overlay" aria-label="Show badges for all visible plots" data-tip="Show badges for all visible plots" data-state="unused"><svg class="hdr-ic badge-flag-icon" viewBox="0 0 24 24" aria-hidden="true"><path class="f" d="M6.5 3.5v17M7 4.5c3.5-2.1 6.5 2.1 10 .1v9c-3.5 2-6.5-2.2-10-.1z"/><path class="d" d="M6.5 3.5v17M7 4.5c3.5-2.1 6.5 2.1 10 .1v9c-3.5 2-6.5-2.2-10-.1z"/><path class="a h" d="M8.8 7.1c1.9-.5 3.6.8 5.5.3"/></svg></button>
+<button type="button" class="mobile-filter-backdrop" id="mobile-filter-backdrop" aria-label="Close filters" hidden></button>
+
+<main id="board-main">
+  <!-- R-145 / — "Sixfold Harvest", his chosen design, built with global tokens
+ only so it follows whichever Iris theme is elected. Replaces the spinner in the
+ full-width bordered box that used to sit here: that box occupied FLOW space, so it
+ shoved the plot table down every time it appeared and snapped it back when it
+ went. This layer is `position: fixed`, so it contributes zero height to
+ `#board-main` and the layout shift goes with it.
+ EVERY BEHAVIOUR CONTRACT IS PRESERVED DELIBERATELY: the same `#board-loading` id,
+ the same `hidden` attribute the delayed-spinner gates in board.js toggle, the same
+ polite status role, and the same `.board-loading-text` node the dynamic progress
+ text is written into. board.js is not touched -- the 200ms entrance gate and the
+ 300ms minimum-visibility floor still decide WHEN this appears, so a fast load
+ still shows nothing at all rather than flashing artwork for 80ms.
+ The art is decorative and `aria-hidden`; the status text remains the only thing a
+ screen reader is given. Nothing here is interactive and nothing takes focus. -->
+  <div class="board-loading" id="board-loading" role="status" aria-live="polite" hidden>
+    <div class="harvest-stage" aria-hidden="true">
+      <!-- second attempt. The first drew the spokes at viewBox radii 131-246
+ while the seal's own radius is 261 -- so every spoke was painted UNDERNEATH the
+ opaque seal and rendered zero visible pixels. Verification caught it by pixel
+ geometry and by looking; I had scaled the mockup's coordinates into a different
+ viewBox without recomputing them against the seal.
+ Checking the geometry properly also showed the hexagon was never regular: the
+ stations sat at radii of 351 and 366 units, so no single ring could pass through
+ them. Both are now derived rather than transcribed -- stations on a true regular
+ hexagon at r=351, seal at r=207 (inset 27%), leaving 58 units of clear space for
+ spokes that are actually visible in it. viewBox is 900x900 and the geometry
+ below is in those units. -->
+      <svg class="harvest-paths" viewBox="0 0 900 900" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="450" cy="450" r="351"/>
+        <circle cx="450" cy="450" r="375" opacity=".4"/>
+        <!-- R-148: the progress arc. It rides the ring that already circumscribes
+ the six stations, so it adds no element to the composition and cannot
+ change its layout. Length is driven by --harvest-progress, which
+ board.js sets from the MEASURED fetched/total; when no total is known
+ yet the host is marked indeterminate and this arc is not drawn at all,
+ rather than being shown at zero. -->
+        <circle class="harvest-progress" cx="450" cy="450" r="375"
+                pathLength="1000" transform="rotate(-90 450 450)"/>
+        <path d="M450 234L450 192M637 342L673 321M637 558L673 579M450 666L450 708M263 558L227 579M263 342L227 321"/>
+      </svg>
+      <div class="harvest-seal">
+        <span class="harvest-scene" aria-hidden="true">
+          <img class="harvest-land" src="/static/assets/web/land/terrain-backgrounds/lake_natural_underwater_build.webp" alt="">
+          <img class="harvest-farm" src="/static/assets/land/worksites/productionBuilding/grain/plot/lake_underwater_lvl_1.webp" alt="">
+        </span>
+        <span class="harvest-glow"></span>
+        <span class="harvest-fill" aria-hidden="true"></span><!-- Capture/read milestones; full charge only after board render. -->
+      </div>
+      <!-- node order is the ring clockwise from 12 o'clock (1=12, 2=2, 3=4, 4=6, 5=8, 6=10). --hd runs
+ the 6 s emphasis pass in that same direction: node k peaks (k-1) s after node 1 (negative delays
+ so nothing waits at start). Lit cascade, spoke dash and bump are keyed on data-node and follow. -->
+      <div class="harvest-node" data-node="1" style="--hx:50%;--hy:11%;--hd:0s"><img src="/static/assets/resources/grain.png" alt=""></div>
+      <div class="harvest-node" data-node="2" style="--hx:83.8%;--hy:30.5%;--hd:-5s"><img src="/static/assets/resources/wood_500.webp" alt=""></div>
+      <div class="harvest-node" data-node="3" style="--hx:83.8%;--hy:69.5%;--hd:-4s"><img src="/static/assets/resources/stone_500.webp" alt=""></div>
+      <div class="harvest-node" data-node="4" style="--hx:50%;--hy:89%;--hd:-3s"><img src="/static/assets/resources/iron_500.webp" alt=""></div>
+      <div class="harvest-node" data-node="5" style="--hx:16.2%;--hy:69.5%;--hd:-2s"><img src="/static/assets/resources/research.png" alt=""></div>
+      <div class="harvest-node" data-node="6" style="--hx:16.2%;--hy:30.5%;--hd:-1s"><img src="/static/assets/resources/aura_500.webp" alt=""></div>
+    </div>
+    <span class="board-loading-text">Reading your plots…</span>
+  </div>
+  <section class="plot-card-list board-content-hidden" id="plot-card-list" aria-label="Plots"></section>
+  <section class="mobile-plot-sheet" id="mobile-plot-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-plot-sheet-title" hidden>
+    <header class="mobile-plot-sheet-head">
+      <div><strong id="mobile-plot-sheet-title">Plot</strong><span id="mobile-plot-sheet-subtitle"></span></div>
+      <button type="button" id="mobile-plot-sheet-close" class="btn-close harvest-x ceres-btn ceres-btn--secondary" data-control-density="compact" data-control-mode="icon" aria-label="Back to plots"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </header>
+    <div class="mobile-plot-sheet-body" id="mobile-plot-sheet-body"></div>
+  </section>
+  <div class="table-scroll board-content-hidden" id="plot-table-scroll">
+  <!-- ONE table, sized by the browser. The header is this table's own sticky <thead>
+ (`#table-head-sticky`, pinned under the board header by CSS); `.table-scroll` clips on x
+ (`overflow-x: clip`, no scroll container, so the sticky header refers to the viewport) and is
+ the inline-size container the table's fluid type and padding read (`cqi`). `table-layout:
+ auto; width: 100%` shares the full width across all 19 columns (PLOT_TABLE_COLUMN_COUNT,
+ state.js) in proportion to their content, with CSS widths for DEC and Lock.
+ Totem and Title remain separate ordinary columns. -->
+  <table class="plot-table" id="plot-table">
+    <colgroup>
+      <col class="col-w-plot"><col class="col-w-rarity"><col class="col-w-type">
+      <col class="col-w-terrain"><col class="col-w-worksite">
+      <col class="col-w-harvestpp"><col class="col-w-boostpp"><col class="col-w-basepp"><col class="col-w-totem"><col class="col-w-title"><col class="col-w-mult">
+      <col class="col-w-harvesthr"><col class="col-w-food">
+      <col class="col-w-wood"><col class="col-w-stone"><col class="col-w-iron">
+      <col class="col-w-workers"><col class="col-w-dec"><col class="col-w-lock"><col class="col-w-count">
+    </colgroup>
+    <!-- Every sortable header uses the shared inline sort-chevron structure. -->
+    <thead class="table-head-sticky board-content-hidden" id="table-head-sticky">
+      <tr>
+        <th class="col-center" data-key="plot">Plot<span class="sort-chevron" aria-hidden="true"></span></th>
+        <th class="col-center" data-key="rarity_rank">Rarity<span class="sort-chevron" aria-hidden="true"></span></th>
+        <th class="col-center" data-key="plot_status_rank">Type<span class="sort-chevron" aria-hidden="true"></span></th>
+        <th data-key="terrain">Terrain<span class="sort-chevron" aria-hidden="true"></span></th>
+        <th class="col-center" data-key="resource">Worksite<span class="sort-chevron" aria-hidden="true"></span></th>
+        <!-- Item 13 (the owner: "Rename Harvest PP to Total PP") -- display text
+ only, `data-key="harvest_pp"` (sort key, field identity) is untouched. -->
+        <th class="col-num" data-key="harvest_pp">Total PP<span class="sort-chevron" aria-hidden="true"></span></th>
+        <th class="col-num" data-key="construction_pp" aria-label="Boostable"><span class="fr1946-column-label-full">Boostable</span><span class="fr1946-column-label-short" data-label="Boost." aria-hidden="true"></span><span class="sort-chevron" aria-hidden="true"></span></th>
+        <th class="col-num" data-key="base_pp">Base PP<span class="sort-chevron" aria-hidden="true"></span></th>
+        <th class="col-center" data-key="totem_boost" aria-sort="none">Totem<span class="sort-chevron" aria-hidden="true"></span></th>
+        <th class="col-center" data-key="title_boost" aria-sort="none">Title<span class="sort-chevron" aria-hidden="true"></span></th>
+        <th class="col-num" data-key="multiplier">Boost<span class="sort-chevron" aria-hidden="true"></span></th>
+        <th class="col-num" data-key="work_per_hour" aria-label="Harvest per hour"><span class="fr1946-column-label-full">Harvest/hr</span><span class="fr1946-column-label-short" data-label="Harv/hr" aria-hidden="true"></span><span class="sort-chevron" aria-hidden="true"></span></th>
+        <th class="col-num" data-key="food_per_hour">Food/hr<span class="sort-chevron" aria-hidden="true"></span></th>
+        <!-- three material-input columns after Food/hr, each sortable (maintainer
+ decision : three separate columns, not one combined Inputs/hr).
+ col-w-wood/stone/iron hide below 1760 (see ceres.css; raised from 1680 by
+ 's inline sort chevron) so the 1280px hard lower bound still fits
+ without horizontal scrolling. -->
+        <th class="col-num col-w-wood" data-key="wood_cost_per_hour" aria-label="Wood per hour">Wood/hr<span class="sort-chevron" aria-hidden="true"></span></th>
+        <th class="col-num col-w-stone" data-key="stone_cost_per_hour" aria-label="Stone per hour">Stone/hr<span class="sort-chevron" aria-hidden="true"></span></th>
+        <th class="col-num col-w-iron" data-key="iron_cost_per_hour" aria-label="Iron per hour">Iron/hr<span class="sort-chevron" aria-hidden="true"></span></th>
+        <!-- Totem and Title are independent columns between Base PP and Boost. -->
+        <th class="col-num" data-key="worker_count" aria-label="Workers"><span class="fr1946-column-label-full">Workers</span><span class="fr1946-column-label-short" data-label="Wkr" aria-hidden="true"></span><span class="sort-chevron" aria-hidden="true"></span></th>
+        <th class="col-num" data-key="dec_needed" aria-label="DEC stake"><span class="fr1946-column-label-full">DEC stake</span><span class="fr1946-column-label-short" data-label="DEC" aria-hidden="true"></span><span class="sort-chevron" aria-hidden="true"></span></th>
+        <th class="col-w-lock" data-key="lock_state" aria-label="Deed lock status"><span class="plot-lock-icon" aria-hidden="true"></span><span class="sort-chevron" aria-hidden="true"></span></th>
+        <!-- (maintainer): a counting column, last (right of the locks, before the badges): 1..N over the plots LISTED (after filters and sort), not sortable; its header shows N. -->
+        <th class="col-w-count" aria-label="Plots listed" data-tip="Plots listed" data-tip-body="The number of plots listed with the current filters. Each row shows its position."><span class="count-total">0</span></th>
+      </tr>
+    </thead>
+    <tbody id="plot-tbody"></tbody>
+  </table>
+  <!-- #badge-bar moved OUT of this scroller entirely
+ -- see the standalone markup near #edge-tabs/#scroll-top, direct child of
+ <body>, for the full design. It used to live right here, absolutely
+ positioned against THIS scroller's own right edge (a page gutter, not the
+ true viewport edge) -- that gutter is exactly what the maintainer rejected. -->
+  </div>
+
+
+</main>
+
+<!-- phone only, shown once scrolled a screen down. -->
+<button type="button" id="scroll-top-btn" class="ceres-btn ceres-btn--secondary scroll-top-btn" data-control-density="touch" data-control-mode="icon" aria-label="Scroll to top" hidden><span class="ceres-chevron" aria-hidden="true"></span></button>
+<nav class="mobile-action-bar board-content-hidden" id="mobile-action-bar" aria-label="Board actions">
+  <button class="ceres-btn ceres-btn--choice" data-control-density="navigation" type="button" id="mobile-filters-btn" aria-controls="board-controls" aria-expanded="false"><span class="ceres-btn__check" aria-hidden="true"></span><span class="mobile-action-symbol"><span class="ceres-btn__icon" data-button-icon="filters" aria-hidden="true"></span><span id="mobile-filters-count" hidden>0</span></span><span>Filters</span></button>
+  <button class="ceres-btn ceres-btn--choice" data-control-density="navigation" type="button" id="mobile-changes-btn" data-checkout-action="toggle" aria-controls="checkout-panel" aria-expanded="false" disabled aria-disabled="true"><span class="ceres-btn__check" aria-hidden="true"></span><span class="mobile-action-symbol"><span class="ceres-btn__icon" data-button-icon="changes" aria-hidden="true"></span><span id="mobile-changes-count" hidden>0</span></span><span>Changes</span></button>
+  <button class="ceres-btn ceres-btn--secondary" data-control-density="navigation" type="button" id="mobile-harvest-btn" aria-haspopup="dialog"><span class="mobile-action-symbol"><span class="ceres-btn__icon" data-button-icon="harvest" aria-hidden="true"></span></span><span>Harvest</span></button>
+  <!-- opens the same wallet as the filter sheet's Wallet. -->
+  <button class="ceres-btn ceres-btn--choice" data-control-density="navigation" type="button" id="mobile-wallet-btn" aria-controls="regional-dec-drawer" aria-expanded="false" aria-haspopup="dialog"><span class="ceres-btn__check" aria-hidden="true"></span><span class="mobile-action-symbol"><img class="mobile-action-dec" alt=""></span><span>Wallet</span></button>
+</nav>
+
+<!-- generated by tools/gen_modulepreload.py -- never hand-edit this
+ block, tests/ceres/test_modulepreload.py asserts it matches the
+ generator's own output byte-for-byte. Lets the browser fetch the whole
+ ES-module import graph in parallel instead of discovering it one
+ `import` at a time as each module is parsed. -->
+<!-- modulepreload:start -->
+<link rel="modulepreload" href="/static/transaction-queue.js">
+<link rel="modulepreload" href="/static/regional-dec.js">
+<link rel="modulepreload" href="/static/account-menu.js">
+<link rel="modulepreload" href="/static/badge-overlay.js">
+<link rel="modulepreload" href="/static/button-icons.js">
+<link rel="modulepreload" href="/static/plot-lock.js">
+<link rel="modulepreload" href="/static/theme.js">
+<link rel="modulepreload" href="/static/board.js">
+<link rel="modulepreload" href="/static/checkout.js">
+<link rel="modulepreload" href="/static/hazard.js">
+<link rel="modulepreload" href="/static/operations.js">
+<link rel="modulepreload" href="/static/picker-actions.js">
+<link rel="modulepreload" href="/static/rows.js">
+<link rel="modulepreload" href="/static/staging.js">
+<link rel="modulepreload" href="/static/pulse-sync.js">
+<link rel="modulepreload" href="/static/planner.js">
+<link rel="modulepreload" href="/static/state.js">
+<link rel="modulepreload" href="/static/table.js">
+<link rel="modulepreload" href="/static/tooltip.js">
+<link rel="modulepreload" href="/static/art.js">
+<link rel="modulepreload" href="/static/harvest-modal.js">
+<link rel="modulepreload" href="/static/worksite.js">
+<link rel="modulepreload" href="/static/plot-warnings.js">
+<link rel="modulepreload" href="/static/wallet.js">
+<link rel="modulepreload" href="/static/format.js">
+<link rel="modulepreload" href="/static/harvest-state.js">
+<link rel="modulepreload" href="/static/harvest-results.js">
+<link rel="modulepreload" href="/static/harvest-resources.js">
+<link rel="modulepreload" href="/static/icons.js">
+<link rel="modulepreload" href="/static/broadcast-gate.js">
+<link rel="modulepreload" href="/static/wallet-resources.js">
+<link rel="modulepreload" href="/static/wallet-claim.js">
+<link rel="modulepreload" href="/static/wallet-lp.js">
+<link rel="modulepreload" href="/static/account-space.js">
+<link rel="modulepreload" href="/static/badges.js">
+<link rel="modulepreload" href="/static/avatar.js">
+<link rel="modulepreload" href="/static/candidates.js">
+<link rel="modulepreload" href="/static/customSelect.js">
+<link rel="modulepreload" href="/static/stage-plans.js">
+<link rel="modulepreload" href="/static/editor.js">
+<link rel="modulepreload" href="/static/changes-model.js">
+<link rel="modulepreload" href="/static/feed-changes.js">
+<link rel="modulepreload" href="/static/stage-navigation.js">
+<link rel="modulepreload" href="/static/fill-plot.js">
+<link rel="modulepreload" href="/static/combine-dialog.js">
+<link rel="modulepreload" href="/static/combine.js">
+<link rel="modulepreload" href="/static/terrainAffinity.js">
+<link rel="modulepreload" href="/static/countdown.js">
+<link rel="modulepreload" href="/static/ws-build.js">
+<link rel="modulepreload" href="/static/eos.js">
+<link rel="modulepreload" href="/static/scale.js">
+<link rel="modulepreload" href="/static/harvest-net.js">
+<link rel="modulepreload" href="/static/harvest-routing.js">
+<link rel="modulepreload" href="/static/routing-setup.js">
+<link rel="modulepreload" href="/static/routing-window.js">
+<link rel="modulepreload" href="/static/harvest-ledger.js">
+<link rel="modulepreload" href="/static/sps-rate.js">
+<link rel="modulepreload" href="/static/badge-state.js">
+<link rel="modulepreload" href="/static/estimates.js">
+<link rel="modulepreload" href="/static/routing-signature-chain.js">
+<link rel="modulepreload" href="/static/routing-route-list.js">
+<link rel="modulepreload" href="/static/routing-run.js">
+<link rel="modulepreload" href="/static/routing-layout.js">
+<!-- modulepreload:end -->
+<script type="module" src="/static/app.js?v={{CERES_VERSION}}"></script>
+</body>
+</html>

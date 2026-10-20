@@ -1,0 +1,791 @@
+{
+  "schema_version": 1,
+  "rule": "",
+  "reviewed_on": "2026-09-15",
+  "legacy_allowlist": [
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #0d1117",
+      "value": "#0d1117",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: repeating-conic-gradient(#22272e 0% 25%, #1a1e24 0% 50%) 50% / 12px 12px",
+      "value": "#1a1e24",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: repeating-conic-gradient(#22272e 0% 25%, #1a1e24 0% 50%) 50% / 12px 12px",
+      "value": "#22272e",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "color: #f0883e",
+      "value": "#f0883e",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #0d1117",
+      "value": "#0d1117",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "border: 1px dashed #f0883e",
+      "value": "#f0883e",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "color: #f0883e",
+      "value": "#f0883e",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #0d1117",
+      "value": "#0d1117",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "color: #f0883e",
+      "value": "#f0883e",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #0d1117",
+      "value": "#0d1117",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #0d1117",
+      "value": "#0d1117",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: rgba(6, 8, 11, 0.86)",
+      "value": "rgba(6, 8, 11, 0.86)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: repeating-conic-gradient(#22272e 0% 25%, #1a1e24 0% 50%) 50% / 16px 16px",
+      "value": "#1a1e24",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: repeating-conic-gradient(#22272e 0% 25%, #1a1e24 0% 50%) 50% / 16px 16px",
+      "value": "#22272e",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #0d1117",
+      "value": "#0d1117",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "color: #a8a8a8",
+      "value": "#a8a8a8",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "color: #00ceff",
+      "value": "#00ceff",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "color: #c964ff",
+      "value": "#c964ff",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "color: #ffb529",
+      "value": "#ffb529",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #265B43",
+      "value": "#265b43",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #357658",
+      "value": "#357658",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #445F1A",
+      "value": "#445f1a",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #494C07",
+      "value": "#494c07",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #4E3F14",
+      "value": "#4e3f14",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #576301",
+      "value": "#576301",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #765542",
+      "value": "#765542",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #796703",
+      "value": "#796703",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #9E9820",
+      "value": "#9e9820",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #A2701B",
+      "value": "#a2701b",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #C19F34",
+      "value": "#c19f34",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #DACDA1",
+      "value": "#dacda1",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "color: #111",
+      "value": "#111",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #A1663C",
+      "value": "#a1663c",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #457D24",
+      "value": "#457d24",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #FFFFFF",
+      "value": "#ffffff",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "border-bottom: 1px solid #777",
+      "value": "#777",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #4CAF50",
+      "value": "#4caf50",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #999999",
+      "value": "#999999",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #FF9800",
+      "value": "#ff9800",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #00BCD4",
+      "value": "#00bcd4",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #F44336",
+      "value": "#f44336",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: #673AB7",
+      "value": "#673ab7",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: linear-gradient(135deg,#fff6d8,#e2b93b 40%,#7a5b12 70%,#fff2c2)",
+      "value": "#7a5b12",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: linear-gradient(135deg,#fff6d8,#e2b93b 40%,#7a5b12 70%,#fff2c2)",
+      "value": "#e2b93b",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: linear-gradient(135deg,#fff6d8,#e2b93b 40%,#7a5b12 70%,#fff2c2)",
+      "value": "#fff2c2",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/assets-preview.html",
+      "match_key": "background: linear-gradient(135deg,#fff6d8,#e2b93b 40%,#7a5b12 70%,#fff2c2)",
+      "value": "#fff6d8",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background: linear-gradient(180deg, rgb(10 8 20 / .25) 0%, rgb(10 8 20 / .55) 45%, rgb(10 8 20 / .9) 100%), url('/static/assets/ui/ceres-terrain-wallpaper-4k.webp') center 30% / cover no-repeat fixed, var(--bg)",
+      "value": "rgb(10 8 20 / .25)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background: linear-gradient(180deg, rgb(10 8 20 / .25) 0%, rgb(10 8 20 / .55) 45%, rgb(10 8 20 / .9) 100%), url('/static/assets/ui/ceres-terrain-wallpaper-4k.webp') center 30% / cover no-repeat fixed, var(--bg)",
+      "value": "rgb(10 8 20 / .55)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background: linear-gradient(180deg, rgb(10 8 20 / .25) 0%, rgb(10 8 20 / .55) 45%, rgb(10 8 20 / .9) 100%), url('/static/assets/ui/ceres-terrain-wallpaper-4k.webp') center 30% / cover no-repeat fixed, var(--bg)",
+      "value": "rgb(10 8 20 / .9)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background-image: linear-gradient(180deg, rgb(10 8 20 / .25) 0%, rgb(10 8 20 / .55) 45%, rgb(10 8 20 / .9) 100%), url('/static/assets/ui/ceres-terrain-wallpaper-1000.webp')",
+      "value": "rgb(10 8 20 / .25)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background-image: linear-gradient(180deg, rgb(10 8 20 / .25) 0%, rgb(10 8 20 / .55) 45%, rgb(10 8 20 / .9) 100%), url('/static/assets/ui/ceres-terrain-wallpaper-1000.webp')",
+      "value": "rgb(10 8 20 / .55)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background-image: linear-gradient(180deg, rgb(10 8 20 / .25) 0%, rgb(10 8 20 / .55) 45%, rgb(10 8 20 / .9) 100%), url('/static/assets/ui/ceres-terrain-wallpaper-1000.webp')",
+      "value": "rgb(10 8 20 / .9)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background-image: linear-gradient(180deg, rgb(10 8 20 / .25) 0%, rgb(10 8 20 / .55) 45%, rgb(10 8 20 / .9) 100%), url('/static/assets/ui/ceres-terrain-wallpaper-phone.webp')",
+      "value": "rgb(10 8 20 / .25)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background-image: linear-gradient(180deg, rgb(10 8 20 / .25) 0%, rgb(10 8 20 / .55) 45%, rgb(10 8 20 / .9) 100%), url('/static/assets/ui/ceres-terrain-wallpaper-phone.webp')",
+      "value": "rgb(10 8 20 / .55)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background-image: linear-gradient(180deg, rgb(10 8 20 / .25) 0%, rgb(10 8 20 / .55) 45%, rgb(10 8 20 / .9) 100%), url('/static/assets/ui/ceres-terrain-wallpaper-phone.webp')",
+      "value": "rgb(10 8 20 / .9)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "text-shadow: 0 2px 10px rgb(0 0 0 / .75)",
+      "value": "rgb(0 0 0 / .75)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "filter: drop-shadow(0 4px 14px rgb(0 0 0 / .6))",
+      "value": "rgb(0 0 0 / .6)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "box-shadow: 0 0 0 1px var(--accent), 0 3px 10px rgb(0 0 0 / .35)",
+      "value": "rgb(0 0 0 / .35)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "box-shadow: 0 4px 14px rgb(0 0 0 / .4)",
+      "value": "rgb(0 0 0 / .4)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "color: #d4a017",
+      "value": "#d4a017",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35)",
+      "value": "rgba(0, 0, 0, 0.35)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "box-shadow: inset 3px 0 0 var(--accent), inset 0 0 0 999px rgba(0, 0, 0, 0.14)",
+      "value": "rgba(0, 0, 0, 0.14)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "color: #ffffff",
+      "value": "#ffffff",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "box-shadow: inset 0 0 0 999px rgba(255, 255, 255, 0.12)",
+      "value": "rgba(255, 255, 255, 0.12)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "box-shadow: inset 0 0 0 999px rgba(255, 255, 255, 0.08)",
+      "value": "rgba(255, 255, 255, 0.08)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "color: #ffffff",
+      "value": "#ffffff",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45)",
+      "value": "rgba(0, 0, 0, 0.45)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "box-shadow: 0 1px 3px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(0, 0, 0, 0.10)",
+      "value": "rgba(0, 0, 0, 0.10)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "box-shadow: 0 1px 3px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(0, 0, 0, 0.10)",
+      "value": "rgba(0, 0, 0, 0.34)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+      "value": "#000",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+      "value": "#000",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+      "value": "#000",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+      "value": "#000",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "box-shadow: 0 2px 6px rgba(0, 0, 0, 0.38), 0 0 0 1px rgba(0, 0, 0, 0.10)",
+      "value": "rgba(0, 0, 0, 0.10)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "box-shadow: 0 2px 6px rgba(0, 0, 0, 0.38), 0 0 0 1px rgba(0, 0, 0, 0.10)",
+      "value": "rgba(0, 0, 0, 0.38)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "outline-color: color-mix(in srgb, var(--stage-tone) 55%, white)",
+      "value": "white",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "border-color: rgba(255,255,255,.9)",
+      "value": "rgba(255,255,255,.9)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "color: #fff",
+      "value": "#fff",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "color: #fff",
+      "value": "#fff",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "text-shadow: 0 1px 2px rgba(0,0,0,0.9)",
+      "value": "rgba(0,0,0,0.9)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background: rgba(0,0,0,.62)",
+      "value": "rgba(0,0,0,.62)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "border: 1px solid rgba(255,255,255,.9)",
+      "value": "rgba(255,255,255,.9)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "color: #fff",
+      "value": "#fff",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "color: #fff",
+      "value": "#fff",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "text-shadow: 0 1px 2px rgba(0,0,0,.9)",
+      "value": "rgba(0,0,0,.9)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background: rgba(0, 0, 0, 0.55)",
+      "value": "rgba(0, 0, 0, 0.55)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background: radial-gradient(ellipse at 16% 75%, color-mix(in srgb, var(--accent) 13%, #13111d), #13111d 65%)",
+      "value": "#13111d",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background: radial-gradient(ellipse at 16% 75%, color-mix(in srgb, var(--accent) 13%, #13111d), #13111d 65%)",
+      "value": "#13111d",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background: radial-gradient(ellipse at 16% 75%, color-mix(in srgb, var(--accent) 13%, #13111d), #13111d 65%)",
+      "value": "#13111d",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background: radial-gradient(ellipse at 16% 75%, color-mix(in srgb, var(--accent) 13%, #13111d), #13111d 65%)",
+      "value": "#13111d",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background: linear-gradient(90deg, transparent, #13111d 1.2rem, #13111d)",
+      "value": "#13111d",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background: linear-gradient(90deg, transparent, #13111d 1.2rem, #13111d)",
+      "value": "#13111d",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background: #13111d",
+      "value": "#13111d",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "color: #e6deeb",
+      "value": "#e6deeb",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "background: linear-gradient(90deg, transparent, #b8a37a, transparent)",
+      "value": "#b8a37a",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.18)",
+      "value": "rgba(0, 0, 0, 0.5)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.18)",
+      "value": "rgba(255, 255, 255, 0.18)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    },
+    {
+      "file": "ceres/static/ceres.css",
+      "match_key": "filter: drop-shadow(0 1px 2px rgb(0 0 0 / .5))",
+      "value": "rgb(0 0 0 / .5)",
+      "reason": "pre- legacy",
+      "expiry_phase": 1,
+      "expiry_date": "2026-12-15"
+    }
+  ]
+}

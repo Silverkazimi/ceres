@@ -1,0 +1,10 @@
+{
+  "keychain.svg": {
+    "source": "https://raw.githubusercontent.com/hive-keychain/hive-keychain-mobile/master/src/assets/images/keychain.svg",
+    "sha256": "4cbcd80637ccc93b7c7e5b5c67f0d4f851e6ac3e02acd7b9ede18c10dc19fc6c"
+  },
+  "hiveauth.svg": {
+    "source": "https://hiveauth.com/wp-content/uploads/2022/02/HiveAuth_logo_safezone.svg",
+    "sha256": "3997846be912ac78700796ce700fd1ccaabd9482acbacb105c62a4d47243ba7c"
+  }
+}

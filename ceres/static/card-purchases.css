@@ -1,0 +1,102 @@
+/* "My purchases" (card-purchases.js): the Cards page glass (card-browser.css : --cb-glass, --cb-glass-edge; the
+ fallbacks below are the same recipe for a mount outside .card-browser), approved buttons, the Market's PP/$ colours (:
+ gold top, green, orange, red -- here against today's going rate), C-4 tokens only, T-3 sizes only. Phone rules are scoped under
+ html.ceres-lw-le-1279 (P-0). */
+.card-purchases {
+  --cp-glass: var(--cb-glass, linear-gradient(160deg, color-mix(in srgb, var(--text) 9%, transparent), color-mix(in srgb, var(--text) 2%, transparent)), color-mix(in srgb, var(--bg) var(--glass-row, 60%), transparent));
+  --cp-edge: var(--cb-glass-edge, color-mix(in srgb, var(--text) 20%, transparent));
+  --cp-inner: color-mix(in srgb, var(--bg) 40%, transparent);
+  display: flex; flex-direction: column; gap: 0.75rem; min-inline-size: 0; color: var(--text); font-family: var(--font-body); font-variant-numeric: tabular-nums;
+}
+.card-purchases .cp-main { display: flex; flex-direction: column; gap: 0.75rem; min-inline-size: 0; }
+.card-purchases .cp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; box-sizing: border-box; padding: 0.5rem 0.75rem; border: 1px solid var(--cp-edge); border-radius: var(--radius); background: var(--cp-glass); box-shadow: inset 0 1px 0 var(--cp-edge); }
+.card-purchases .cp-bar-title { margin: 0; color: var(--heading); font-family: var(--font-body); font-size: 0.8rem; font-weight: 800; white-space: nowrap; }
+.card-purchases .cp-windows { display: inline-flex; gap: 0.35rem; }
+.card-purchases .cp-note { color: var(--text-dim); font-size: 0.75rem; }
+.card-purchases .cp-loading { display: flex; align-items: center; justify-content: center; gap: 0.5rem; min-block-size: 6rem; color: var(--heading); font-size: 0.8rem; }
+.card-purchases .cp-message { margin: 0; padding: 0.75rem 1rem; border: 1px solid var(--cp-edge); border-radius: var(--radius); background: var(--cp-glass); font-size: 0.8rem; }
+.card-purchases .cp-message.is-error { border-color: var(--danger); color: var(--danger); }
+
+/* summary cards */
+.card-purchases .cp-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.5rem; }
+.card-purchases .cp-stat { display: flex; flex-direction: column; gap: 0.25rem; min-inline-size: 0; box-sizing: border-box; padding: 0.75rem; border: 1px solid var(--cp-edge); border-radius: var(--radius); background: var(--cp-glass); box-shadow: inset 0 1px 0 var(--cp-edge), 0 4px 14px color-mix(in srgb, var(--shadow) 22%, transparent); }
+.card-purchases .cp-stat-label { color: var(--meta); font-size: 0.75rem; font-weight: 700; }
+.card-purchases .cp-stat-value { display: flex; align-items: baseline; gap: 0.35rem; color: var(--heading); font-size: 1.25rem; font-weight: 800; line-height: 1.25; }
+.card-purchases .cp-stat-value small { color: var(--text-dim); font-size: 0.75rem; font-weight: 600; }
+.card-purchases .cp-stat-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; color: var(--text-dim); font-size: 0.75rem; }
+.card-purchases .cp-stat-rate .cp-rate { font-size: 1.25rem; font-weight: 800; }
+.card-purchases .cp-going { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem; color: var(--text-dim); font-size: 0.75rem; font-weight: 400; }
+.card-purchases .cp-going strong { color: var(--heading); font-weight: 700; }
+.card-purchases .cp-stats-secondary { grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+.card-purchases .cp-more { min-inline-size: 0; border: 1px solid var(--cp-edge); border-radius: var(--radius); background: var(--cp-glass); }
+.card-purchases .cp-more > summary { display: flex; align-items: center; padding: 0.5rem 0.75rem; color: var(--heading); font-size: 0.8rem; font-weight: 700; cursor: pointer; }
+.card-purchases .cp-more-body { display: flex; flex-direction: column; gap: 0.75rem; padding: 0 0.75rem 0.75rem; }
+.card-purchases .cp-up { color: var(--ok); font-weight: 700; }
+.card-purchases .cp-down { color: var(--danger); font-weight: 700; }
+
+/* DEC after the amount (I-1) */
+.card-purchases .cp-dec { display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
+.card-purchases .cp-dec-icon { inline-size: 1rem; block-size: 1rem; object-fit: contain; }
+.card-purchases .cp-paid-other { white-space: nowrap; }
+
+/* PP/$ colour ( classes, against today's going rate) */
+.card-purchases .cp-rate { display: inline-flex; align-items: center; justify-content: flex-end; box-sizing: border-box; min-inline-size: 3.5rem; padding: 0 0.5rem; border: 1px solid var(--cp-edge); border-radius: calc(var(--radius) - 3px); background: var(--cp-inner); color: var(--heading); font-weight: 700; white-space: nowrap; }
+.card-purchases .cp-rate.is-top { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, var(--cp-inner)); color: var(--gold); }
+.card-purchases .cp-rate.is-good { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, var(--cp-inner)); color: var(--ok); }
+.card-purchases .cp-rate.is-fair { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, var(--cp-inner)); color: var(--warn); }
+.card-purchases .cp-rate.is-dear { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, var(--cp-inner)); color: var(--danger); }
+
+/* breakdown panels */
+.card-purchases .cp-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.5rem; }
+.card-purchases .cp-panel { min-inline-size: 0; box-sizing: border-box; padding: 0.75rem; border: 1px solid var(--cp-edge); border-radius: var(--radius); background: var(--cp-glass); box-shadow: inset 0 1px 0 var(--cp-edge); }
+.card-purchases .cp-panel-title { margin: 0 0 0.5rem; color: var(--heading); font-family: var(--font-body); font-size: 0.8rem; font-weight: 700; }
+.card-purchases .cp-mini { inline-size: 100%; border-collapse: collapse; font-size: 0.75rem; }
+.card-purchases .cp-mini th, .card-purchases .cp-mini td { padding: 0.25rem 0.35rem; border-block-start: 1px solid var(--cp-edge); text-align: end; white-space: nowrap; }
+.card-purchases .cp-mini thead th { border-block-start: 0; color: var(--meta); font-weight: 700; }
+.card-purchases .cp-mini tbody th { color: var(--heading); font-weight: 600; text-align: start; }
+.card-purchases .cp-buys { display: flex; flex-direction: column; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
+.card-purchases .cp-buys li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 0.5rem; font-size: 0.8rem; }
+.card-purchases .cp-buy-name { display: flex; flex-direction: column; min-inline-size: 0; color: var(--heading); font-weight: 600; }
+.card-purchases .cp-buy-name small { overflow: hidden; color: var(--text-dim); font-size: 0.7rem; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.card-purchases .cp-buy-price { color: var(--text); }
+
+/* the purchase list */
+.card-purchases .cp-list { display: flex; flex-direction: column; gap: 0.25rem; }
+.card-purchases .cp-row { display: grid; grid-template-columns: 6rem minmax(12rem, 1fr) 6rem 5rem 12rem 5.5rem; align-items: center; gap: 0.5rem; box-sizing: border-box; min-block-size: 2.5rem; padding: 0.25rem 0.5rem; border: 1px solid var(--cp-edge); border-radius: calc(var(--radius) - 3px); background: var(--cp-glass); color: var(--text); font-size: 0.8rem; }
+.card-purchases .cp-row.cp-head { min-block-size: 0; padding-block: 0.25rem; border-color: transparent; background: none; }
+.card-purchases .cp-art { display: none; }
+.card-purchases .cp-head > span { display: flex; }
+.card-purchases .cp-head > :is(.cp-h-pp, .cp-h-price_usd, .cp-h-pp_per_usd) { justify-content: flex-end; }
+.card-purchases .cp-sort-dir { display: inline-block; inline-size: 0.875rem; block-size: 0.875rem; background: currentColor; -webkit-mask: var(--ceres-chevron-art) center / contain no-repeat; mask: var(--ceres-chevron-art) center / contain no-repeat; }
+.card-purchases .cp-sort-dir.is-asc { transform: rotate(180deg); }
+.card-purchases .cp-c-card { display: flex; flex-direction: column; min-inline-size: 0; }
+.card-purchases .cp-name { overflow: hidden; color: var(--heading); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.card-purchases .cp-c-card small, .card-purchases .cp-c-level small { color: var(--text-dim); font-size: 0.7rem; }
+.card-purchases .cp-c-level { display: flex; flex-direction: column; }
+.card-purchases :is(.cp-c-pp, .cp-c-price, .cp-c-rate) { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; text-align: end; }
+.card-purchases .cp-c-price { flex-wrap: wrap; gap: 0 0.5rem; }
+.card-purchases .cp-usd { color: var(--heading); font-weight: 600; }
+.card-purchases .cp-c-date { color: var(--text-dim); }
+.card-purchases .cp-tags { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-block-start: 0.25rem; }
+.card-purchases .cp-tag { display: inline-flex; align-items: center; block-size: 1.05rem; padding: 0 0.5rem; border: 1px solid var(--warn); border-radius: 999px; color: var(--warn); font-size: 0.7rem; white-space: nowrap; }
+.card-purchases .cp-tag.cp-tag-dim { border-color: var(--cp-edge); color: var(--meta); }
+
+/* phone (P-0): stats two across, each purchase a two-line card */
+html.ceres-lw-le-1279 .card-purchases .cp-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+html.ceres-lw-le-1279 .card-purchases .cp-stats > .cp-stat-rate { grid-column: 1 / -1; }
+html.ceres-lw-le-1279 .card-purchases .cp-stats-secondary { grid-template-columns: minmax(0, 1fr); }
+html.ceres-lw-le-1279 .card-purchases .cp-stat-value { font-size: 1rem; }
+html.ceres-lw-le-1279 .card-purchases .cp-panels { grid-template-columns: minmax(0, 1fr); }
+html.ceres-lw-le-1279 .card-purchases .cp-row { grid-template-columns: 3.5rem minmax(0, 1fr) auto; grid-template-areas: "art card rate" "art level price" "art date pp"; column-gap: 0.5rem; row-gap: 0.25rem; padding: 0.5rem; }
+html.ceres-lw-le-1279 .card-purchases .cp-art { display: block; grid-area: art; align-self: start; inline-size: 3.5rem; block-size: 4.375rem; overflow: hidden; border-radius: calc(var(--radius) - 3px); background: var(--cp-inner); }
+html.ceres-lw-le-1279 .card-purchases .cp-art img { display: block; inline-size: 100%; block-size: 100%; object-fit: contain; }
+html.ceres-lw-le-1279 .card-purchases .cp-art-empty { border: 1px solid var(--cp-edge); box-sizing: border-box; }
+html.ceres-lw-le-1279 .card-purchases .cp-c-card { grid-area: card; }
+html.ceres-lw-le-1279 .card-purchases .cp-c-rate { grid-area: rate; }
+html.ceres-lw-le-1279 .card-purchases .cp-c-level { grid-area: level; flex-direction: row; gap: 0.35rem; align-items: baseline; }
+html.ceres-lw-le-1279 .card-purchases .cp-c-price { grid-area: price; }
+html.ceres-lw-le-1279 .card-purchases .cp-c-date { grid-area: date; font-size: 0.75rem; }
+html.ceres-lw-le-1279 .card-purchases .cp-c-pp { grid-area: pp; font-size: 0.75rem; }
+html.ceres-lw-le-1279 .card-purchases .cp-c-pp::after { content: " PP"; color: var(--text-dim); }
+html.ceres-lw-le-1279 .card-purchases .cp-row.cp-head { display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0; }
+html.ceres-lw-le-1279 .card-purchases .cp-bar { padding: 0.5rem; }

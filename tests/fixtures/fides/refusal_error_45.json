@@ -1,0 +1,9 @@
+{
+  "error": "Error 45: p_stake_cards invalid. One or more cards are dead from survival mode.",
+  "trx_info": {
+    "player": "player0005",
+    "data": "{\"stake\":{\"cards\":[{\"card_uid\":\"C2-505-0000000001\",\"stake_type_uid\":\"STK-LND-RUNI\",\"slot\":null}],\"items\":[]},\"unstake\":{\"cards\":[],\"items\":[]},\"deed_uid\":\"I-294-99ed4b7a4d170e\",\"app\":\"ceres-fides/0.1.0\",\"n\":\"ZyXwVuTsRq\"}",
+    "success": false,
+    "error": "Error 45: p_stake_cards invalid. One or more cards are dead from survival mode."
+  }
+}

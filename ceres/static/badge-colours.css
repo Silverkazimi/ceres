@@ -1,0 +1,92 @@
+/* the worker-tile badge face and placement (one top-left tag row, one centred band). @import must stay the first rule. */
+@import url("badge-face.css");
+
+.badge.badge-group-critical {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.badge.badge-group-warning {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+.badge.badge-group-positive {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.badge.badge-group-info {
+  color: var(--info);
+  border-color: var(--info);
+}
+
+.badge.badge-group-neutral {
+  color: var(--meta);
+  border-color: var(--meta);
+  opacity: 0.6;
+}
+
+.badge.badge-group-special {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+.csel-option.badge-option-group-critical,
+.csel-trigger.badge-filled.badge-option-group-critical {
+  --badge-filter-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 28%, var(--bg2));
+  color: var(--body);
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.csel-option.badge-option-group-warning,
+.csel-trigger.badge-filled.badge-option-group-warning {
+  --badge-filter-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 28%, var(--bg2));
+  color: var(--body);
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+
+.csel-option.badge-option-group-positive,
+.csel-trigger.badge-filled.badge-option-group-positive {
+  --badge-filter-color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 28%, var(--bg2));
+  color: var(--body);
+  box-shadow: inset 3px 0 0 var(--ok);
+}
+
+.csel-option.badge-option-group-info,
+.csel-trigger.badge-filled.badge-option-group-info {
+  --badge-filter-color: var(--info);
+  background: color-mix(in srgb, var(--info) 28%, var(--bg2));
+  color: var(--body);
+  box-shadow: inset 3px 0 0 var(--info);
+}
+
+.csel-option.badge-option-group-neutral,
+.csel-trigger.badge-filled.badge-option-group-neutral {
+  --badge-filter-color: var(--meta);
+  background: color-mix(in srgb, var(--meta) 28%, var(--bg2));
+  color: var(--body);
+  box-shadow: inset 3px 0 0 var(--meta);
+}
+
+.csel-option.badge-option-group-special,
+.csel-trigger.badge-filled.badge-option-group-special {
+  --badge-filter-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 28%, var(--bg2));
+  color: var(--body);
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+/* The selected badge filter uses its fill colour without a left-hand stripe. */
+.controls-row .csel-trigger.badge-filled { box-shadow: none; }
+
+/* Category identity remains stable through selection, hover and keyboard focus. */
+.controls-row .csel-trigger.badge-filled[data-filter-active="true"] {
+  background: color-mix(in srgb, var(--badge-filter-color) 28%, var(--bg2));
+  border-color: var(--badge-filter-color);
+  color: var(--body);
+  box-shadow: none;
+}
