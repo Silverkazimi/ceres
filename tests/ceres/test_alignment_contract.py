@@ -364,7 +364,7 @@ def test_iris_close_never_publishes_transition_widths_to_other_edge_handles(
     for metric, settled_value in settled.items():
         maximum = max(frame[metric] for frame in frames)
         assert maximum <= settled_value + 1, (
-            f"{metric} exceeded its settled closed value during Iris open/close: \"\n f\"settled={settled_value:.2f}px, max={maximum:.2f}px"
+            f"{metric} exceeded its settled closed value during Iris open/close: " f"settled={settled_value:.2f}px, max={maximum:.2f}px"
         )
     page.close()
 
@@ -480,7 +480,7 @@ def test_theme_toggle_stays_topmost_at_its_centre(live_browser: tuple[Browser, s
     page.wait_for_timeout(150)
     scrolled = _theme_toggle_hit()
     assert scrolled["matches"], (
-        f"theme toggle centre hit {scrolled['hit']} at scrollY={scrolled['scrollY']}; \"\n f\"expected {scrolled['toggle']}"
+        f"theme toggle centre hit {scrolled['hit']} at scrollY={scrolled['scrollY']}; " f"expected {scrolled['toggle']}"
     )
     page.close()
 

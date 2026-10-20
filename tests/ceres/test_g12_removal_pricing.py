@@ -141,7 +141,7 @@ def test_g12_staged_unstake_reads_negative(live_browser: tuple[Browser, str]) ->
         if pre_stage_key:
             after = float(pre_stage_key.replace(",", ""))
             assert figure <= after, (
-                f"Total Base badge ({figure}) must not exceed the Base badge's own after-change \"\n f\"figure ({after}) for a pure removal"
+                f"Total Base badge ({figure}) must not exceed the Base badge's own after-change " f"figure ({after}) for a pure removal"
             )
     page.close()
 
@@ -219,6 +219,6 @@ def test_g12_staged_replace_with_smaller_card_shrinks_total(
         # only thing counted, so the loss can only ever look flat or bigger).
         if pre_stage_loss > 0:
             assert loss < pre_stage_loss, (
-                f"Over cap loss must shrink after replacing with a smaller card: \"\n f\"before={pre_stage_loss}, after={loss}"
+                f"Over cap loss must shrink after replacing with a smaller card: " f"before={pre_stage_loss}, after={loss}"
             )
     page.close()

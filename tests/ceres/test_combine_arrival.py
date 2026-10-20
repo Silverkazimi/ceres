@@ -74,7 +74,7 @@ def _first_combinable_worker(base_url: str) -> tuple[dict, dict]:
     for row in board["plots"]:
         if not row.get("assets_loaded"):
             continue
-        detail = _get(base_url, f"api/plots/{urllib.parse.quote(row['deed_uid'], safe='')}")
+        detail = _get(base_url, f"/api/plots/{urllib.parse.quote(row['deed_uid'], safe='')}")
         for worker in detail.get("workers") or []:
             if worker.get("asset_ref") and isinstance(worker.get("slot"), int) and worker["slot"] >= 1 \
                     and worker.get("card_detail_id") is not None and worker.get("edition") is not None \

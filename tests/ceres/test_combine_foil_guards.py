@@ -144,7 +144,7 @@ def _staked_worker(base_url: str) -> tuple[dict, dict]:
         if not plot.get("assets_loaded"):
             continue
         deed_uid = plot["deed_uid"]
-        detail = _get(base_url, f"api/plots/{urllib.parse.quote(deed_uid, safe='')}")
+        detail = _get(base_url, f"/api/plots/{urllib.parse.quote(deed_uid, safe='')}")
         for worker in detail.get("workers") or []:
             if worker.get("card_detail_id") is not None and worker.get("edition") is not None and isinstance(worker.get("slot"), int) and worker["slot"] >= 1:
                 return detail, worker
@@ -160,7 +160,7 @@ def _open_slot_candidate_template(base_url: str) -> tuple[str, dict]:
         if (plot.get("capacity") or {}).get("open_slots", 0) > 0:
             deed_uid = plot["deed_uid"]
             params = urllib.parse.urlencode({"group_id": "worker", "limit": 5, "offset": 0, "sort": "construction_pp", "bucket": "all", "preset": "net_gain_default"})
-            payload = _get(base_url, f"api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates?{params}")
+            payload = _get(base_url, f"/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates?{params}")
             if payload.get("candidates"):
                 return deed_uid, copy.deepcopy(payload["candidates"][0])
     raise AssertionError("no live plot with an open worker slot returned a candidate to build a fixture from")

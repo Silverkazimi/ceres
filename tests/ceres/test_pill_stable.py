@@ -25,7 +25,7 @@ def test_pending_worksite_verification_keeps_shared_pill_stable(live_browser: tu
         "const title = node?.innerText || ''; const prior = window.__ir8322TitleHistory.at(-1)?.title; "
         "if (title && title !== prior) { const pill = document.querySelector('#ceres-confirmation-banner'); "
         "const rect = el => { const r = el.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height}; }; "
-        "window.__ir8322TitleHistory.push({title, outer: rect(pill), titleBox: rect(pill.querySelector('.worksite-banner-title')) "
+        "window.__ir8322TitleHistory.push({title, outer: rect(pill), titleBox: rect(pill.querySelector('.worksite-banner-title')), "
         "detailBox: rect(pill.querySelector('.worksite-banner-detail'))}); } })"
         ".observe(document, {subtree: true, childList: true, characterData: true}); "
         "window.hive_keychain = {requestBroadcast(_account, _ops, _key, callback) { "

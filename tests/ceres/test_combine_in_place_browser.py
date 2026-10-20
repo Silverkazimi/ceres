@@ -87,7 +87,7 @@ def _run(width: int, height: int) -> dict:
             header_modes = page.eval_on_selector_all(".cb-mode .ceres-btn", "(els) => els.map((b) => ({name:b.getAttribute('aria-label'), icon:!!b.querySelector('svg')}))")
             page.click("label:has(#cb-mode-combine)")
             page.wait_for_selector("#cx-list .cx-entry", timeout=30000)
-            mode = page.evaluate("() => ({ mode: document.body.dataset.cbMode, pill: document.getElementById('cb-mode-combine').checked"
+            mode = page.evaluate("() => ({ mode: document.body.dataset.cbMode, pill: document.getElementById('cb-mode-combine').checked,"
                                  " cards: document.getElementById('cb-mode-cards').getAttribute('aria-pressed') })")
             before = [r[1] for r in record]
             url_before = page.url

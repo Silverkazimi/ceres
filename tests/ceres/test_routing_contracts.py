@@ -725,7 +725,8 @@ def _routing_footer_markup(step_state: str = "reviewed", queue_state: str | None
     from tests.ceres.vm_context import run_in_module_context
 
     tx_id = "f" * 40 if queue_state else ""
-    queue_setup = (f"localStorage.setItem('ceres:signed-queue:v1:player0005', \"\n f\"JSON.stringify([{{txId: '{tx_id}', account: 'player0005', state: '{queue_state}'}}]));"
+    queue_setup = (f"localStorage.setItem('ceres:signed-queue:v1:player0005', "
+                   f"JSON.stringify([{{txId: '{tx_id}', account: 'player0005', state: '{queue_state}'}}]));"
                    if queue_state else "")
     body_js = r"""
 (async () => {
@@ -1576,7 +1577,7 @@ def test_routing_review_caps_real_cards_and_footer_at_56rem(viewport_width, devi
             # .harvest-panel (see M.routing.footerHtml() in harvest-modal.js), not nested inside
             # .harvest-routing itself, so the real modal skeleton is reproduced here too.
             page.set_content(
-                f"<!doctype html><html><head><style>{styles}</style></head><body>\"\n f\"<div id='harvest-modal-overlay'><div class='harvest-panel'>\"\n f\"<div class='hm-body'>{html_part}</div>{footer_part}\"\n f\"</div></div></body></html>"
+                f"<!doctype html><html><head><style>{styles}</style></head><body>" f"<div id='harvest-modal-overlay'><div class='harvest-panel'>" f"<div class='hm-body'>{html_part}</div>{footer_part}" f"</div></div></body></html>"
             )
             measured = page.evaluate("""
 () => {
@@ -1599,7 +1600,7 @@ def test_routing_review_caps_real_cards_and_footer_at_56rem(viewport_width, devi
                     context.close()
             except Exception:
                 pass
-    print(f"routing-width viewport={viewport_width} dpr={device_scale_factor} \"\n f\"container={measured['routing']:.2f} cards={','.join(f'{width:.2f}' for width in measured['cards'])} \"\n f\"footer={measured['footer']:.2f} overflow={measured['overflow']}")
+    print(f"routing-width viewport={viewport_width} dpr={device_scale_factor} " f"container={measured['routing']:.2f} cards={','.join(f'{width:.2f}' for width in measured['cards'])} " f"footer={measured['footer']:.2f} overflow={measured['overflow']}")
 
     assert measured["routing"] <= 56 * 16 + .01
     assert all(abs(width - measured["routing"]) <= .01 for width in measured["cards"])

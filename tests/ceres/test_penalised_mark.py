@@ -26,21 +26,21 @@ FIGURES = {
     "wood": "6d2210",
 }
 PLATE_SELECTOR = (
-    ".editor-base-pp-cell.is-filled.is-cap-clipped "
+    ".editor-base-pp-cell.is-filled.is-cap-clipped, "
     ".editor-base-pp-cell.is-filled.is-terrain-penalised"
 )
 FIGURE_SELECTOR = (
-    ".slot-editor-footer .editor-base-pp-cell.is-cap-clipped b "
+    ".slot-editor-footer .editor-base-pp-cell.is-cap-clipped b, "
     ".slot-editor-footer .editor-base-pp-cell.is-terrain-penalised b"
 )
 POLARITY_SELECTOR = (
-    '[data-theme="light"] .slot-editor-footer .editor-base-pp-cell.is-cap-clipped b '
-    '[data-theme="light"] .slot-editor-footer .editor-base-pp-cell.is-terrain-penalised b '
-    '[data-theme="wood"] .slot-editor-footer .editor-base-pp-cell.is-cap-clipped b '
+    '[data-theme="light"] .slot-editor-footer .editor-base-pp-cell.is-cap-clipped b, '
+    '[data-theme="light"] .slot-editor-footer .editor-base-pp-cell.is-terrain-penalised b, '
+    '[data-theme="wood"] .slot-editor-footer .editor-base-pp-cell.is-cap-clipped b, '
     '[data-theme="wood"] .slot-editor-footer .editor-base-pp-cell.is-terrain-penalised b'
 )
 GLYPH_SELECTOR = (
-    ".slot-editor-footer .editor-base-pp-cell.is-cap-clipped b::before "
+    ".slot-editor-footer .editor-base-pp-cell.is-cap-clipped b::before, "
     ".slot-editor-footer .editor-base-pp-cell.is-terrain-penalised b::before"
 )
 

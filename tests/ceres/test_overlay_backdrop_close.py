@@ -134,7 +134,7 @@ def _backdrop_listener_pattern(overlay_id: str, close_fn: str) -> str:
 def _assert_all_overlays_have_backdrop_close(source: str) -> None:
     for overlay_id, close_fn in _OVERLAY_CLOSE_FN.items():
         assert _backdrop_listener_pattern(overlay_id, close_fn) in source, (
-            f"#{overlay_id} is missing the backdrop-click-closes listener \"\n f\"(event.target === overlay -> {close_fn}())"
+            f"#{overlay_id} is missing the backdrop-click-closes listener " f"(event.target === overlay -> {close_fn}())"
         )
 
 

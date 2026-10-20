@@ -548,7 +548,7 @@ def test_data_tip_aria_gaps_are_limited_to_known_static_selectors(tooltip_harves
     missing = _missing_aria(tooltip_harvest)
     unexpected = [entry for entry in missing if entry["selector"] not in KNOWN_ARIA_GAPS]
     assert not unexpected, (
-        "app-wide data-tip aria-label assertion failed; \"\n f\"all missing elements: {json.dumps(missing, sort_keys=True)}"
+        "app-wide data-tip aria-label assertion failed; " f"all missing elements: {json.dumps(missing, sort_keys=True)}"
     )
 
 

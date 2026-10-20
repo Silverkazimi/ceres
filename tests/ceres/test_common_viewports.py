@@ -82,7 +82,7 @@ def test_common_viewport_has_no_unclaimed_slack(live_browser, width: int, height
         table = _table_visible(page)
         if not table:
             got = page.evaluate(
-                "({cards: document.querySelectorAll('#plot-card-list .plot-card').length"
+                "({cards: document.querySelectorAll('#plot-card-list .plot-card').length,"
                 " docCW: document.documentElement.clientWidth, docSW: document.documentElement.scrollWidth})"
             )
             assert "ceres-lw-le-1279" in tiers["actual"], json.dumps(got)

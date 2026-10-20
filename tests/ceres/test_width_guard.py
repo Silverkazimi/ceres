@@ -389,8 +389,8 @@ def test_badges_wrap_only_when_the_board_is_too_narrow(live_browser) -> None:
 
 
 _STAGEABLE_SLOT = (
-    '.editor-band [data-slot-action="add"]:not([disabled])'
-    ' .editor-band [data-slot-action="replace"]:not([disabled])'
+    '.editor-band [data-slot-action="add"]:not([disabled]), '
+    '.editor-band [data-slot-action="replace"]:not([disabled])'
 )
 
 

@@ -30,7 +30,7 @@ def test_lane_icons_use_explain_tooltips():
     context, page = _loaded_page()
     try:
         attributes = page.locator(
-            "img.rarity-gem, img.terrain-emblem, img.resource-icon "
+            "img.rarity-gem, img.terrain-emblem, img.resource-icon, "
             "img.type-mark, img.splinter-icon, img.set-icon"
         ).evaluate_all(
             """elements => elements.map(element => ({
@@ -108,7 +108,7 @@ def test_lane_icon_aria_labels_match_tooltips():
     context, page = _loaded_page()
     try:
         attributes = page.locator(
-            "img.rarity-gem, img.terrain-emblem, img.resource-icon "
+            "img.rarity-gem, img.terrain-emblem, img.resource-icon, "
             "img.type-mark, img.splinter-icon, img.set-icon"
         ).evaluate_all(
             """elements => elements

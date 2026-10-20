@@ -61,7 +61,7 @@ def test_header_block_size_and_type():
 
 def test_header_gradient_every_theme():
     gradient = (
-        "linear-gradient(180deg, color-mix(in srgb, var(--primary) 65%, var(--heading) 35%) "
+        "linear-gradient(180deg, color-mix(in srgb, var(--primary) 65%, var(--heading) 35%), "
         "color-mix(in srgb, var(--primary) 50%, var(--heading) 50%))"
     )
     # ( for the Badges flag) ended the
@@ -206,7 +206,7 @@ def test_totem_and_title_are_separate_fluid_columns_between_base_pp_and_boost():
     assert 'class="col-w-title"' in HTML
     assert 'totem-title' not in HTML + ROWS + CSS
     width_rule = re.search(
-        r"table\.plot-table col\.col-w-totem,\n\"\n r\"table\.plot-table col\.col-w-title,\n\"\n r\"table\.plot-table th\[data-key=\"totem_boost\"\],\n\"\n r\"table\.plot-table th\[data-key=\"title_boost\"\],\n\"\n r\"table\.plot-table td\.totem-cell,\n\"\n r\"table\.plot-table td\.title-cell \{(.*?)\n\}",
+        r"table\.plot-table col\.col-w-totem,\n" r"table\.plot-table col\.col-w-title,\n" r"table\.plot-table th\[data-key=\"totem_boost\"\],\n" r"table\.plot-table th\[data-key=\"title_boost\"\],\n" r"table\.plot-table td\.totem-cell,\n" r"table\.plot-table td\.title-cell \{(.*?)\n\}",
         CSS,
         re.S,
     )
@@ -216,7 +216,7 @@ def test_totem_and_title_are_separate_fluid_columns_between_base_pp_and_boost():
 
 def test_totem_and_title_reuse_the_shared_centering_rule():
     center_rule = re.search(
-        r"table\.plot-table th\.col-center,\n\"\n r\"table\.plot-table td\.plot-cell,\n\"\n r\"table\.plot-table td\.rarity-cell,\n\"\n r\"table\.plot-table td\.resource-cell,\n\"\n r\"table\.plot-table td\.type-cell,\n\"\n r\"table\.plot-table td\.totem-cell,\n\"\n r\"table\.plot-table td\.title-cell \{(.*?)\n\}",
+        r"table\.plot-table th\.col-center,\n" r"table\.plot-table td\.plot-cell,\n" r"table\.plot-table td\.rarity-cell,\n" r"table\.plot-table td\.resource-cell,\n" r"table\.plot-table td\.type-cell,\n" r"table\.plot-table td\.totem-cell,\n" r"table\.plot-table td\.title-cell \{(.*?)\n\}",
         CSS,
         re.S,
     )

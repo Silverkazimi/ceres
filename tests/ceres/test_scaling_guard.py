@@ -348,7 +348,7 @@ def _check_picker(grid: dict, phone: bool = False) -> list[str]:
     if grid["tracks"] != grid["fits"]:
         failures.append(f"picker shows {grid['tracks']} per row, {grid['fits']} fit")
     if grid["cardMin"] > grid["scaledMin"] + 1:
-        failures.append(f"picker card minimum {grid['cardMin']}px does not scale (<= {grid['scaledMin']:.0f}px\"\n f\" at a {grid['content']:.0f}px grid)")
+        failures.append(f"picker card minimum {grid['cardMin']}px does not scale (<= {grid['scaledMin']:.0f}px" f" at a {grid['content']:.0f}px grid)")
     if grid["minTrack"] < grid["cardMin"] - 0.5 or grid["spill"]:
         failures.append(f"picker cards cramped: track {grid['minTrack']:.0f} < {grid['cardMin']}, spill {grid['spill']}")
     if grid["docSW"] > grid["docCW"] + 1:
@@ -383,9 +383,9 @@ def real_window_measurement(live_server, request):
             column_failures += _check_columns(got)
         else:
             got = page.evaluate(
-                "({cards: document.querySelectorAll('#plot-card-list .plot-card').length, inner: innerWidth"
-                " client: document.documentElement.clientWidth, docSW: document.documentElement.scrollWidth"
-                " phone: document.documentElement.classList.contains('ceres-lw-le-1279')"
+                "({cards: document.querySelectorAll('#plot-card-list .plot-card').length, inner: innerWidth,"
+                " client: document.documentElement.clientWidth, docSW: document.documentElement.scrollWidth,"
+                " phone: document.documentElement.classList.contains('ceres-lw-le-1279'),"
                 " zoom: getComputedStyle(document.documentElement).zoom})"
             )
             report["cards"] = got

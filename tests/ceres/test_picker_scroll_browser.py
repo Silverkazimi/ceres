@@ -26,7 +26,7 @@ MEASURE = r"""(uid) => {
  picker: !!document.querySelector('.inline-picker[data-picker="1"]'),
  maxScroll: document.documentElement.scrollHeight - innerHeight };
 }"""
-TILE = ('tr.expand-row[data-deed-uid="{uid}"] [data-group-id="worker"][data-slot-action="add"] '
+TILE = ('tr.expand-row[data-deed-uid="{uid}"] [data-group-id="worker"][data-slot-action="add"], '
         'tr.expand-row[data-deed-uid="{uid}"] [data-group-id="worker"][data-slot-action="replace"]')
 
 
@@ -101,14 +101,14 @@ def _run(width: int, height: int, motion: str) -> dict:
             # plots with worker slots (the Workers cell reads "n/m", m > 0) whose assets the set recorded, in board order
             recorded = _recorded_plots()
             uids = [u for u in page.eval_on_selector_all("#plot-tbody > tr.plot-row", "els => els.filter((e) => [...e.children].some((td) => "
-                                                         "^\\s*\\d+\\/[1-9]\\d*(\\+R)?\\s*$/.test(td.textContent))).map((e) => e.dataset.deedUid)")
+                                                         "/^\\s*\\d+\\/[1-9]\\d*(\\+R)?\\s*$/.test(td.textContent))).map((e) => e.dataset.deedUid)")
                     if u in recorded]
             assert len(uids) >= 3, uids
             # a plot from the middle, parked 300 px below the header line; closed with the picker's Close
             middle = uids[len(uids) // 2]
             _open_plot(page, middle)
             mid = _cycle(page, middle, f"scrollY + document.querySelector('tr.plot-row[data-deed-uid=\"{middle}\"]').getBoundingClientRect().top - 300 "
-                                       "Math.max(0, ...['header.board-header', '#table-head-sticky'].map((s) => document.querySelector(s)?.getBoundingClientRect().bottom || 0))",
+                                       "- Math.max(0, ...['header.board-header', '#table-head-sticky'].map((s) => document.querySelector(s)?.getBoundingClientRect().bottom || 0))",
                          "button")
             page.locator(f'tr.plot-row[data-deed-uid="{middle}"]').click()  # close that plot again
             _settle(page)

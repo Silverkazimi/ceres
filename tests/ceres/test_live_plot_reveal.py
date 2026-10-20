@@ -1041,16 +1041,16 @@ def test_g18_pending_write_cancellation_matrix(intent, count, report, details_by
                 names = {box["name"] for box in after["boxes"]}
                 assert required <= names, f"R-161 missing permanent geometry frame(s): {sorted(required - names)}"
                 assert after["permanentCount"] == before["permanentCount"], (
-                    "R-161 permanent frame count changed: \"\n f\"before={before['permanentCount']} after={after['permanentCount']}"
+                    "R-161 permanent frame count changed: " f"before={before['permanentCount']} after={after['permanentCount']}"
                 )
                 assert [box["name"] for box in after["boxes"]] == [box["name"] for box in before["boxes"]], (
-                    "R-161 permanent frame set changed: \"\n f\"before={[box['name'] for box in before['boxes']]} \"\n f\"after={[box['name'] for box in after['boxes']]}"
+                    "R-161 permanent frame set changed: " f"before={[box['name'] for box in before['boxes']]} " f"after={[box['name'] for box in after['boxes']]}"
                 )
                 for old, new in zip(before["boxes"], after["boxes"]):
                     for dimension in ("x", "y", "width", "height"):
                         delta = new[dimension] - old[dimension]
                         assert abs(delta) <= 1, (
-                            f"R-161 frame {old['name']} {dimension} delta={delta:.3f}px \"\n f\"(before={old[dimension]:.3f}px after={new[dimension]:.3f}px)"
+                            f"R-161 frame {old['name']} {dimension} delta={delta:.3f}px " f"(before={old[dimension]:.3f}px after={new[dimension]:.3f}px)"
                         )
                 remove = f.band().locator('[data-slot-action="remove"][data-group-id="worker"]').first
                 await remove.click(force=True)

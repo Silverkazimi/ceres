@@ -90,7 +90,7 @@ def _render_failed_consumed_tile(css_source: str) -> dict:
 
 def _assert_dashed_placeholder(result: dict) -> None:
     assert result["border"] == "dashed", (
-        f"expected the tile's own computed border-style to be 'dashed' once the outer \"\n f\"card carries `is-none`, got {result['border']!r} -- the selector mismatch is back"
+        f"expected the tile's own computed border-style to be 'dashed' once the outer " f"card carries `is-none`, got {result['border']!r} -- the selector mismatch is back"
     )
     assert result["name_visible"] is True, "the destroyed card's name must be visible once art fails to load"
 

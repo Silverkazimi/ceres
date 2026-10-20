@@ -75,7 +75,7 @@ def _get_json(base_url: str, path: str) -> dict:
 
 
 def _detail(base_url: str, deed_uid: str) -> dict:
-    return _get_json(base_url, f"api/plots/{urllib.parse.quote(deed_uid, safe='')}")
+    return _get_json(base_url, f"/api/plots/{urllib.parse.quote(deed_uid, safe='')}")
 
 
 def _candidate_payload(base_url: str, deed_uid: str, slot_index: int, *, limit: int = 25) -> dict:
@@ -85,7 +85,7 @@ def _candidate_payload(base_url: str, deed_uid: str, slot_index: int, *, limit: 
     })
     return _get_json(
         base_url,
-        f"api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates?{params}",
+        f"/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates?{params}",
     )
 
 

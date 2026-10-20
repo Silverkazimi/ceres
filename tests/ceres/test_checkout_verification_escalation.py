@@ -106,7 +106,7 @@ def test_checkout_verification_escalates_after_repeated_check_again_clicks(
         code = "verification_pending_escalated" if escalated else "verification_pending"
         message = (
             "Still not confirmed after several checks — this did not resolve in the "
-            "expected window. It may still be propagating, or it may need attention "
+            "expected window. It may still be propagating, or it may need attention — "
             "check the game directly, or try again."
         ) if escalated else "Not confirmed yet — the game may still be catching up."
         notice = {
@@ -143,7 +143,7 @@ def test_checkout_verification_escalates_after_repeated_check_again_clicks(
     # is the escalated notice.
     for _ in range(4):
         retry_button.click()
-        page.locator("#ceres-confirmation-banner.phase-pending "
+        page.locator("#ceres-confirmation-banner.phase-pending, "
                      "#ceres-confirmation-banner.phase-pending-escalated").first.wait_for(timeout=30_000)
 
     page.locator("#ceres-confirmation-banner.phase-pending-escalated").wait_for(timeout=30_000)
