@@ -33,7 +33,9 @@ jobs:
           CERES_CI_NO_NETWORK: "1"
         run: python -m pytest -m "not browser and not live" -q
       - name: pip-audit
-        run: python -m pip_audit -r requirements-ceres.txt --desc off
+        # PYSEC-2026-1325 (ecdsa timing leak when signing/keygen/ECDH) does not apply: Ceres only verifies
+        # login signatures with public keys. See SECURITY.md "Dependencies". Ignore nothing else.
+        run: python -m pip_audit -r requirements-ceres.txt --desc off --ignore-vuln PYSEC-2026-1325
       - name: start and health
         run: |
           python -m ceres --port 27390 --no-reload-watch & echo $! > ceres.pid
