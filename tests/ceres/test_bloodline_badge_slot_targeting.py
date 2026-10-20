@@ -13,9 +13,10 @@ import pytest
 from playwright.sync_api import Browser, Locator, Page
 
 from .conftest import spawn_live_ceres
+from . import board_basic_recording as recording
 
 
-DEED_UID = "I-295-116f9bb372e311"
+DEED_UID = recording.RUNI.uid
 SCREEN_DIR = Path(__file__).parents[2] / "work" / "ceres-bloodline-badge-slot"
 
 

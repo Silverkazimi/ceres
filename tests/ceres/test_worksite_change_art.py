@@ -30,8 +30,9 @@ import pytest
 from playwright.sync_api import Browser
 
 from .conftest import spawn_live_ceres
+from . import board_basic_recording as recording
 
-MID_CHANGE_DEED = "I-294-f0b7b8d0bb89b6"
+MID_CHANGE_DEED = recording.PENDING.uid
 
 
 @pytest.fixture(scope="module")

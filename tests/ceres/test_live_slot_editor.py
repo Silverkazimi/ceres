@@ -12,10 +12,11 @@ import pytest
 from playwright.sync_api import Browser, Locator, Page
 
 from .conftest import settle, spawn_live_ceres, wait_for_board
+from . import board_basic_recording as recording
 
 
 SCREEN_DIR = Path(__file__).parents[2] / "work" / "ceres-fr1698-items"
-TITLE_DEEDS = ("I-298-6c3970d55b37f5", "I-294-982768c3d66537")
+TITLE_DEEDS = (recording.ORDINARY.uid,)
 
 
 
@@ -413,7 +414,7 @@ def test_real_board_slot_editor_contract(live_browser: tuple[Browser, str]) -> N
     zero_index = page.evaluate(
         """deedUid => [...document.querySelectorAll('#plot-tbody > tr.plot-row')]
  .findIndex(row => row.dataset.deedUid === deedUid)""",
-        "I-290-10b2d21ed7bb77",
+        recording.EMPTY_POWERED.uid,
     )
     assert zero_index >= 0
     _expand(page, zero_index)

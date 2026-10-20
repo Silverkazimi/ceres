@@ -23,14 +23,15 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import settle, spawn_live_ceres, wait_for_board
+from . import board_basic_recording as recording
 
 
 CSS = Path(__file__).parents[2] / "ceres" / "static" / "ceres.css"
 CANONICAL = Path(__file__).parents[2] / "ceres" / "static" / "canonical.css"
 SCREEN_DIR = Path(__file__).parents[2] / "work" / "ceres-fr1698-items"
 
-PAIRED_DEED = "I-294-99ed4b7a4d170e"
-SOLO_DEED = "I-293-fd92f682618429"
+PAIRED_DEED = recording.OVERCAP.uid
+SOLO_DEED = recording.SOLO.uid
 
 # Mirrors tests/ceres/test_power_warning_contrast.py's own fixture -- the four
 # Iris themes this board actually ships, read directly from canonical.css.

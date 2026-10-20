@@ -12,11 +12,12 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import settle, spawn_live_ceres
+from . import board_basic_recording as recording
 
 
-ORDINARY = "I-298-6c3970d55b37f5"
-CASCADE = "I-294-99ed4b7a4d170e"
-RUNI = "I-290-d05b84f1965811"
+ORDINARY = recording.ORDINARY.uid
+CASCADE = recording.OVERCAP.uid
+RUNI = recording.RUNI_SLOT5.uid
 THEMES = ("alchemical", "dark", "light", "wood")
 VIEWPORTS = (1920, 1745, 1536)
 PLAQUE_DEED = ORDINARY

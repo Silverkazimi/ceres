@@ -9,8 +9,9 @@ import pytest
 from playwright.sync_api import Browser
 
 from .conftest import spawn_live_ceres
+from . import board_basic_recording as recording
 
-REPORTED_PLOT = "065-07-085"
+REPORTED_PLOT = recording.NEVER_BUILT.label
 
 
 @pytest.fixture(scope="module")

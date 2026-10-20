@@ -21,6 +21,7 @@ import pytest
 from ceres import capture as capture_mod
 from ceres.config import CeresConfig
 from ceres.routes_board import _board_cache_key, _parse_plot_filter, _plot_label_key, get_board
+from . import board_basic_recording as recording
 
 STATIC = Path(__file__).resolve().parents[2] / "ceres" / "static"
 
@@ -242,7 +243,7 @@ def test_plot_first_page_in_the_browser():
     from tests.ceres.conftest import LIVE_PLAYER, spawn_live_ceres
 
     with spawn_live_ceres() as (browser, base_url):
-        plot = _label_of(base_url, "I-290-10b2d21ed7bb77")
+        plot = _label_of(base_url, recording.COMBINE.uid)
         assert plot, "fixture plot missing"
         label = "-".join(part.zfill(width) for part, width in zip(plot.split("-"), (3, 2, 3)))
         context = browser.new_context(viewport={"width": 1366, "height": 900}, reduced_motion="reduce")

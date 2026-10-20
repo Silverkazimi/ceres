@@ -24,11 +24,12 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import spawn_live_ceres, wait_for_board
+from . import board_basic_recording as recording
 
 SCREEN_DIR = Path(__file__).parents[2] / "work" / "ceres-pending-change-chip"
 SCREEN_DIR.mkdir(parents=True, exist_ok=True)
 
-PENDING_DEED = "I-294-f0b7b8d0bb89b6"
+PENDING_DEED = recording.PENDING.uid
 PENDING_PLOT_LABEL = "65-5-1"
 PENDING_TO_LABEL = "Logging Camp"
 

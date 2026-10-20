@@ -9,6 +9,7 @@ from typing import Iterator
 from playwright.sync_api import Page
 
 from .conftest import LIVE_PLAYER, spawn_live_ceres
+from . import board_basic_recording as recording
 
 
 @contextmanager
@@ -26,7 +27,7 @@ def _live_page() -> Iterator[Page]:
 def _expand_until_ability_tooltip(page: Page) -> int:
     # Recorded Baxdon has both Toil and Kin and a worker-only ability. Do not
     # scan an maintainer's changing board or silently skip absent fixture coverage.
-    page.locator("tr.plot-row[data-deed-uid='I-292-e2bccfb74acf97']").click()
+    page.locator(f"tr.plot-row[data-deed-uid='{recording.ABILITIES.uid}']").click()
     page.wait_for_selector("[data-ability-tip]", timeout=10_000)
     return page.locator("[data-ability-tip]").count()
 
@@ -34,7 +35,7 @@ def _expand_until_ability_tooltip(page: Page) -> int:
 def _open_combine_dialog(page: Page) -> None:
     # The recorded Daria worker has three synthetic idle partners in the
     # browser-combine overlay. Use the current per-tile entry point.
-    deed_uid = "I-290-10b2d21ed7bb77"
+    deed_uid = recording.COMBINE.uid
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
     page.locator(f".tile-combine-chip[data-deed-uid='{deed_uid}']").first.click()
     page.wait_for_function(

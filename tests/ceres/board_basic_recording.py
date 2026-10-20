@@ -130,6 +130,11 @@ class Plot:
         return f"I-{DEED_TYPE_ID[self.terrain]}-{_hex('deed:' + self.key, 14)}"
 
     @property
+    def plot(self) -> str:
+        """The board's `plot` field, e.g. "37-4-18"."""
+        return f"{self.region}-{self.tract}-{self.number}"
+
+    @property
     def label(self) -> str:
         return f"{self.region:03d}-{self.tract:02d}-{self.number:03d}"
 

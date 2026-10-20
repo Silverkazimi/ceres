@@ -16,11 +16,12 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import spawn_live_ceres
+from . import board_basic_recording as recording
 
 CSS = Path(__file__).parents[2] / "ceres" / "static" / "ceres.css"
 # A live plot with a rendered worksite building, from player0005's cached snapshot
 # same deed used throughout this polish pass's own manual verification.
-DEED = "I-290-d05b84f1965811"
+DEED = recording.RUNI_SLOT5.uid
 
 
 @pytest.fixture(scope="module")

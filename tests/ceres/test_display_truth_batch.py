@@ -11,12 +11,13 @@ from playwright.sync_api import Browser, Page
 from ceres.board import project_single_plot
 from ceres.candidates import rank_candidates
 from .conftest import spawn_live_ceres
+from . import board_basic_recording as recording
 
 
-CASCADE_DEED_UID = "I-294-99ed4b7a4d170e"
-CASCADE_PLOT = "41-9-56"
-RUNI_DEED_UID = "I-295-116f9bb372e311"
-RUNI_PLOT = "41-2-27"
+CASCADE_DEED_UID = recording.OVERCAP.uid
+CASCADE_PLOT = recording.OVERCAP.plot
+RUNI_DEED_UID = recording.RUNI.uid
+RUNI_PLOT = recording.RUNI.plot
 CASCADE_FIGURES = (
     ("Lyanna Natura", 40_000.000, 40_000.000),
     ("Silver Shield Paladin", 32_941.176, 32_941.176),

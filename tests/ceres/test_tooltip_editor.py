@@ -9,9 +9,10 @@ from PIL import Image
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from .conftest import settle, spawn_live_ceres
+from . import board_basic_recording as recording
 
 
-PLOT_WITH_RUNI = "041-09-056"
+PLOT_WITH_RUNI = recording.OVERCAP.label
 
 
 def _open_editor(page, base_url: str, plot: str) -> None:

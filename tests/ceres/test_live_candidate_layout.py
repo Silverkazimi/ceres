@@ -5,9 +5,10 @@ import pytest
 from playwright.sync_api import Browser
 
 from .conftest import settle, spawn_live_ceres
+from . import board_basic_recording as recording
 
 
-TARGET_DEED = "I-294-99ed4b7a4d170e"
+TARGET_DEED = recording.OVERCAP.uid
 
 
 
