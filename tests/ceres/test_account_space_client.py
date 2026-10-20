@@ -11,25 +11,25 @@ const sig = 'ab'.repeat(65);
 const calls = [];
 const server = { doc: null, etag: null, revision: 0 };
 globalThis.fetch = async (url, init = {}) => {
- const path = String(url), method = init.method || 'GET', headers = init.headers || {};
- calls.push({ path, method, headers, body: init.body ? JSON.parse(init.body) : null });
- const reply = (status, data, etag) => ({ status, ok: status < 400, json: async () => data, headers: { get: name => (name === 'ETag' ? etag || null : null) } });
- if (path === '/api/auth/challenge') return reply(200, { challenge_id: 'cid', message: 'CERES OFF-CHAIN AUTH v1\nx' });
- if (path === '/api/auth/verify') return reply(200, { account: 'alice', token: 't'.repeat(43) });
- if (path === '/api/auth/logout') return reply(200, { ok: true });
- if (path === '/api/me/routing' && method === 'GET') {
- if (headers.Authorization !== 'Bearer ' + 't'.repeat(43)) return reply(401, {});
- return server.doc ? reply(200, server.doc, server.etag) : reply(200, { exists: false });
- }
- if (path === '/api/me/routing' && method === 'PUT') {
- if (headers.Authorization !== 'Bearer ' + 't'.repeat(43)) return reply(401, {});
- const expected = headers['If-Match'] || null;
- if (server.doc ? expected !== server.etag : expected) return reply(412, { current: server.doc });
- server.revision += 1; server.etag = '"g:' + server.revision + '"';
- server.doc = { revision: server.revision, payload: JSON.parse(init.body).payload };
- return reply(200, server.doc, server.etag);
- }
- return reply(404, {});
+  const path = String(url), method = init.method || 'GET', headers = init.headers || {};
+  calls.push({ path, method, headers, body: init.body ? JSON.parse(init.body) : null });
+  const reply = (status, data, etag) => ({ status, ok: status < 400, json: async () => data, headers: { get: name => (name === 'ETag' ? etag || null : null) } });
+  if (path === '/api/auth/challenge') return reply(200, { challenge_id: 'cid', message: 'CERES OFF-CHAIN AUTH v1\nx' });
+  if (path === '/api/auth/verify') return reply(200, { account: 'alice', token: 't'.repeat(43) });
+  if (path === '/api/auth/logout') return reply(200, { ok: true });
+  if (path === '/api/me/routing' && method === 'GET') {
+    if (headers.Authorization !== 'Bearer ' + 't'.repeat(43)) return reply(401, {});
+    return server.doc ? reply(200, server.doc, server.etag) : reply(200, { exists: false });
+  }
+  if (path === '/api/me/routing' && method === 'PUT') {
+    if (headers.Authorization !== 'Bearer ' + 't'.repeat(43)) return reply(401, {});
+    const expected = headers['If-Match'] || null;
+    if (server.doc ? expected !== server.etag : expected) return reply(412, { current: server.doc });
+    server.revision += 1; server.etag = '"g:' + server.revision + '"';
+    server.doc = { revision: server.revision, payload: JSON.parse(init.body).payload };
+    return reply(200, server.doc, server.etag);
+  }
+  return reply(404, {});
 };
 window.hive_keychain = { requestSignBuffer: (account, message, role, cb) => cb({ success: true, result: sig }), requestBroadcast() {} };
 """
@@ -38,8 +38,8 @@ window.hive_keychain = { requestSignBuffer: (account, message, role, cb) => cb({
 def test_merge_keeps_every_route_of_both_sides_honours_removals_and_keeps_unknown_fields():
     run_in_module_context(r"""
 const merged = mergeRouting(
- { rules: [{ id: 'a' }, { id: 'c', x: 1 }, 'odd'], deleted: [{ id: 'old' }], protected_wallet_dec: '5', mine: 1 },
- { rules: [{ id: 'a' }, { id: 'b' }, { id: 'old' }, { id: 'gone' }], deleted: [{ id: 'gone' }], protected_wallet_dec: '9', theirs: 2 });
+  { rules: [{ id: 'a' }, { id: 'c', x: 1 }, 'odd'], deleted: [{ id: 'old' }], protected_wallet_dec: '5', mine: 1 },
+  { rules: [{ id: 'a' }, { id: 'b' }, { id: 'old' }, { id: 'gone' }], deleted: [{ id: 'gone' }], protected_wallet_dec: '9', theirs: 2 });
 const ids = merged.rules.map(r => r.id).filter(Boolean).sort().join(',');
 if (ids !== 'a,b,c') throw Error('routes: ' + ids);
 if (!merged.rules.includes('odd')) throw Error('an entry without an id was dropped');
@@ -52,7 +52,7 @@ if (mergeRouting(null, null).rules.length !== 0) throw Error('empty merge');
 def test_sign_in_signs_one_text_keeps_the_session_in_memory_only_and_a_401_ends_it():
     run_in_module_context("(async () => {\n" + STUBS + r"""
 if (hasSession('alice')) throw Error('a session before sign-in');
-const result = await player0013('alice');
+const result = await player0014('alice');
 if (!result.ok || !hasSession('alice')) throw Error('sign-in failed: ' + JSON.stringify(result));
 const verify = calls.find(c => c.path === '/api/auth/verify');
 if (verify.body.signatures.length !== 1 || !/^[0-9a-f]{64}$/.test(JSON.stringify(calls.find(c => c.path === '/api/auth/challenge').body.binding).slice(1, -1))) throw Error('wrong proof request');
@@ -62,14 +62,14 @@ if (doc.exists !== false) throw Error('expected an empty space');
 await signOut('alice');
 if (hasSession('alice')) throw Error('still signed in');
 window.hive_keychain.requestSignBuffer = (a, m, r, cb) => cb({ success: false });
-const declined = await player0013('alice');
+const declined = await player0014('alice');
 if (declined.ok || declined.reason !== 'declined' || hasSession('alice')) throw Error('a declined wallet must not sign in');
 })().catch(error => { console.error(error && error.stack || error); process.exit(1); });""", entry=STATIC / "account-space.js")
 
 
 def test_a_stale_save_never_overwrites_and_sync_retries_with_the_current_version():
     run_in_module_context("(async () => {\n" + STUBS + r"""
-await player0013('alice');
+await player0014('alice');
 server.doc = { revision: 1, payload: { rules: [{ id: 'remote' }] } }; server.etag = '"g:1"'; server.revision = 1;
 let local = { rules: [{ id: 'local' }] };
 const result = await syncRouting('alice', { read: () => local, write: root => { local = root; } });
@@ -94,9 +94,9 @@ window.addEventListener = (type, fn) => { (listeners[type] ||= []).push(fn); };
 window.removeEventListener = (type, fn) => { listeners[type] = (listeners[type] || []).filter(item => item !== fn); };
 window.dispatchEvent = (event) => { for (const fn of listeners[event.type] || []) fn(event); return true; };
 const setup = createRoutingSetup({ player: 'alice', scope: { kind: 'all' }, regions: [{ region_uid: 'PR-LOP-60' }], receipts: [], enabledKinds: ['lp_wallet'],
- signingEnabled: true, onRender: () => {}, isCurrent: () => true });
-if (setup.html().includes('data-r3="space-player0013"')) throw Error('the sign-in control belongs to the account menu now');
-const result = await connect('alice'); // what the account menu does
+  signingEnabled: true, onRender: () => {}, isCurrent: () => true });
+if (setup.html().includes('data-r3="space-player0014"')) throw Error('the sign-in control belongs to the account menu now');
+const result = await connect('alice');                     // what the account menu does
 if (!result.ok) throw Error('connect failed ' + JSON.stringify(result));
 await new Promise(resolve => setTimeout(resolve, 30));
 const shown = setup.html();
@@ -119,12 +119,12 @@ const result = await connect('alice');
 if (!result.ok) throw Error('connect failed');
 if (localStorage.getItem('ceres:harvest-routing:v1:alice') !== '{not json') throw Error('an unreadable local record was overwritten');
 for (const receipts of [[], ['attempt-1']]) {
- const setup = createRoutingSetup({ player: 'alice', scope: { kind: 'all' }, regions: [{ region_uid: 'PR-LOP-60' }], receipts, enabledKinds: ['lp_wallet'],
- signingEnabled: true, onRender: () => {}, isCurrent: () => true });
- const html = setup.html();
- const actions = html.slice(html.indexOf('<template class="r3-actions">'), html.indexOf('</template>'));
- if (!actions.includes('wallet-sign-pair') || !actions.includes('wallet-controls')) throw Error('no wallet chooser beside Sign');
- if (receipts.length && actions.indexOf('wallet-controls') > actions.indexOf('data-r3="start"')) throw Error('the chooser must come before Sign');
+  const setup = createRoutingSetup({ player: 'alice', scope: { kind: 'all' }, regions: [{ region_uid: 'PR-LOP-60' }], receipts, enabledKinds: ['lp_wallet'],
+    signingEnabled: true, onRender: () => {}, isCurrent: () => true });
+  const html = setup.html();
+  const actions = html.slice(html.indexOf('<template class="r3-actions">'), html.indexOf('</template>'));
+  if (!actions.includes('wallet-sign-pair') || !actions.includes('wallet-controls')) throw Error('no wallet chooser beside Sign');
+  if (receipts.length && actions.indexOf('wallet-controls') > actions.indexOf('data-r3="start"')) throw Error('the chooser must come before Sign');
 }
 })().catch(error => { console.error(error && error.stack || error); process.exit(1); });""", entry=STATIC / "routing-setup.js")
 
@@ -132,12 +132,12 @@ for (const receipts of [[], ['attempt-1']]) {
 def test_the_account_menu_has_one_sign_in_action_and_keeps_delete_controls_folded():
     run_in_module_context("(async () => {\n" + STUBS + r"""
 const html = accountMenuHtml('alice');
-if (!html.includes('data-account="player0013"') || html.includes('wallet-controls') || html.includes('data-account="signout"')) throw Error('the account menu must have one direct sign-in action');
+if (!html.includes('data-account="player0014"') || html.includes('wallet-controls') || html.includes('data-account="signout"')) throw Error('the account menu must have one direct sign-in action');
 if (!html.includes('ceres-btn--primary') || !html.includes('>Sign in</button>')) throw Error('the sign-in action is missing');
 if (!html.includes('no transaction, no cost.')) throw Error('the reassurance line is missing');
-await player0013('alice');
+await player0014('alice');
 const after = accountMenuHtml('alice');
-if (!after.includes('Signed in as alice') || !after.includes('data-account="signout"') || after.includes('data-account="player0013"')) throw Error('signed-in state: ' + after.slice(0, 300));
+if (!after.includes('Signed in as alice') || !after.includes('data-account="signout"') || after.includes('data-account="player0014"')) throw Error('signed-in state: ' + after.slice(0, 300));
 if (!after.includes('ceres-btn--secondary') || after.includes('wallet-controls') || !after.includes('Saved data options')) throw Error('signed-in controls');
 if (!accountMenuHtml('').includes('Enter a player name first')) throw Error('empty account');
 })().catch(error => { console.error(error && error.stack || error); process.exit(1); });""", entry=STATIC / "account-menu.js")
@@ -161,7 +161,7 @@ def test_the_routing_setup_always_says_where_the_routes_are_saved_and_when_they_
 navigator.locks = { request: async (_n, fn) => fn() };
 const KEY = 'ceres:harvest-routing:v1:alice';
 const make = () => createRoutingSetup({ player: 'alice', scope: { kind: 'all' }, regions: [{ region_uid: 'PR-LOP-60' }], receipts: [], enabledKinds: ['lp_wallet'],
- signingEnabled: true, onRender: () => {}, isCurrent: () => true });
+  signingEnabled: true, onRender: () => {}, isCurrent: () => true });
 const status = html => (/<span class="r3-save-state ([^"]*)"[^>]*>([^<]*)<\/span>/.exec(html) || []).slice(1);
 // 1. the default: saved on this device
 let setup = make(); let [tone, text] = status(setup.html());
@@ -213,7 +213,7 @@ localStorage.setItem(KEY, JSON.stringify({ rules: [rule('a')] }));
 const setup = createRoutingSetup({ player: 'alice', scope: { kind: 'all' }, regions: [{ region_uid: 'PR-LOP-60', active: true }], receipts: [], enabledKinds: ['lp_wallet'], signingEnabled: true, onRender: () => {}, isCurrent: () => true });
 if (!status(setup.html())[0].includes('is-warn')) throw Error('before any sync it is orange');
 await connect('alice');
-await signOut('alice'); // the session ended (restart, idle limit): nothing can sync now
+await signOut('alice');                                                     // the session ended (restart, idle limit): nothing can sync now
 let [tone, text] = status(setup.html());
 if (text !== 'Saved across devices' || !tone.includes('is-ok')) throw Error('this device equals the saved copy: ' + text);
 setup.action('add', {});
@@ -245,12 +245,12 @@ def test_no_destructive_button_has_a_red_dot_but_all_keep_the_destructive_border
 RUN_STUBS = r"""
 const calls = [];
 globalThis.fetch = async (url, init = {}) => {
- const path = String(url); calls.push({ path, method: init.method || 'GET', body: init.body ? JSON.parse(init.body) : null });
- const reply = (status, data) => ({ status, ok: status < 400, json: async () => data, headers: { get: () => null } });
- if (path.includes('/safety/check')) return reply(200, { state: 'released', records: [] });
- if (path.includes('/safety')) return reply(200, { records: [{ id: 'run1:b1', tx_id: null, started: 1790000000, expires_at: 1790003900, expired: false, attempt_ids: ['x'] }] });
- if (path.includes('/discard')) return reply(200, { ok: true });
- return reply(404, {});
+  const path = String(url); calls.push({ path, method: init.method || 'GET', body: init.body ? JSON.parse(init.body) : null });
+  const reply = (status, data) => ({ status, ok: status < 400, json: async () => data, headers: { get: () => null } });
+  if (path.includes('/safety/check')) return reply(200, { state: 'released', records: [] });
+  if (path.includes('/safety')) return reply(200, { records: [{ id: 'run1:b1', tx_id: null, started: 1790000000, expires_at: 1790003900, expired: false, attempt_ids: ['x'] }] });
+  if (path.includes('/discard')) return reply(200, { ok: true });
+  return reply(404, {});
 };
 """
 
@@ -259,7 +259,7 @@ def test_a_run_of_an_earlier_page_is_discarded_never_resumed_and_a_new_run_is_ne
     run_in_module_context("(async () => {\n" + RUN_STUBS + r"""
 localStorage.setItem('ceres:routing-v2-run:alice', 'a'.repeat(32));
 const run = createRoutingRun({ player: 'alice', onRender: () => {}, isCurrent: () => true, api: async (player, path, body, method) => {
- calls.push({ path, body, method }); if (path === 'run') return { run_id: 'b'.repeat(32), preview_id: 'p2', state: 'ready', bundles: { b1: { state: 'planned' } }, manifest: { bundles: [] } }; return { ok: true }; } });
+  calls.push({ path, body, method }); if (path === 'run') return { run_id: 'b'.repeat(32), preview_id: 'p2', state: 'ready', bundles: { b1: { state: 'planned' } }, manifest: { bundles: [] } }; return { ok: true }; } });
 const loaded = await run.load();
 if (loaded !== null) throw Error('an earlier page run must not be resumed');
 if (!calls.some(c => c.path === 'discard' && c.body.run_id === 'a'.repeat(32))) throw Error('the earlier run was not discarded on the server');
@@ -290,12 +290,12 @@ def test_staged_merge_unions_both_devices_and_a_removal_stays_removed_unless_sta
     run_in_module_context(r"""
 const t = (n) => new Date(Date.UTC(2026, 9, 1, 0, n)).toISOString();
 const merged = mergeStaged(
- { plans: { 'a|w|0': { created_at: t(1) }, 'c|w|0': { created_at: t(9) } }, worksites: { d1: { created_at: t(2) } }, removed: { 'b|w|0': t(5) }, mine: 1 },
- { plans: { 'b|w|0': { created_at: t(1) }, 'a|w|0': { created_at: t(0), old: true }, 'c|w|0': { created_at: t(3) } }, worksites: { d2: { created_at: t(2) } }, removed: { 'w:d2': t(4) }, theirs: 2 });
+  { plans: { 'a|w|0': { created_at: t(1) }, 'c|w|0': { created_at: t(9) } }, worksites: { d1: { created_at: t(2) } }, removed: { 'b|w|0': t(5) }, mine: 1 },
+  { plans: { 'b|w|0': { created_at: t(1) }, 'a|w|0': { created_at: t(0), old: true }, 'c|w|0': { created_at: t(3) } }, worksites: { d2: { created_at: t(2) } }, removed: { 'w:d2': t(4) }, theirs: 2 });
 const ids = Object.keys(merged.plans).sort().join(',');
-if (ids !== 'a|w|0,c|w|0') throw Error('plans: ' + ids); // b was removed after it was staged
+if (ids !== 'a|w|0,c|w|0') throw Error('plans: ' + ids);   // b was removed after it was staged
 if (merged.plans['a|w|0'].old) throw Error('the older copy won');
-if (Object.keys(merged.worksites).join(',') !== 'd1') throw Error('worksites: ' + Object.keys(merged.worksites)); // d2 removed after staging
+if (Object.keys(merged.worksites).join(',') !== 'd1') throw Error('worksites: ' + Object.keys(merged.worksites));   // d2 removed after staging
 if (merged.mine !== 1 || merged.theirs !== 2) throw Error('fields were dropped');
 const again = mergeStaged({ plans: { 'b|w|0': { created_at: t(8) } }, removed: { 'b|w|0': t(5) } }, null);
 if (!again.plans['b|w|0']) throw Error('a change staged again after its removal was dropped');
@@ -305,7 +305,7 @@ if (Object.keys(mergeStaged(null, null).plans).length) throw Error('empty merge'
 
 def test_staged_sync_saves_both_ways_and_only_writes_the_device_when_it_gained_something():
     run_in_module_context("(async () => {\n" + STUBS.replace("/api/me/routing", "/api/me/staged") + r"""
-await player0013('alice');
+await player0014('alice');
 let local = { plans: { 'a|w|0': { created_at: '2026-10-01T00:00:00Z' } }, worksites: {}, removed: {} };
 let writes = 0;
 const first = await syncStaged('alice', { read: () => local, write: m => { writes += 1; local = m; } });
@@ -321,16 +321,16 @@ if (!server.doc.payload.plans['a|w|0'] || !server.doc.payload.plans['z|w|1']) th
 
 def test_delete_saved_signs_the_servers_own_wording_and_ends_this_pages_session():
     run_in_module_context("(async () => {\n" + STUBS + r"""
-await player0013('alice');
+await player0014('alice');
 let signed = null;
 const base = globalThis.fetch;
 globalThis.fetch = async (url, init = {}) => {
- const path = String(url);
- if (path === '/api/me/delete') {
- calls.push({ path, method: 'POST', body: JSON.parse(init.body) });
- return { status: 200, ok: true, json: async () => ({ account: 'alice', scope: 'space', documents: 3, kept_safety_records: 1 }), headers: { get: () => null } };
- }
- return base(url, init);
+  const path = String(url);
+  if (path === '/api/me/delete') {
+    calls.push({ path, method: 'POST', body: JSON.parse(init.body) });
+    return { status: 200, ok: true, json: async () => ({ account: 'alice', scope: 'space', documents: 3, kept_safety_records: 1 }), headers: { get: () => null } };
+  }
+  return base(url, init);
 };
 const result = await deleteSaved('alice', 'space', { sign: async (account, message) => { signed = message; return sig; } });
 if (!result.ok || result.documents !== 3 || result.kept_safety_records !== 1) throw Error('result: ' + JSON.stringify(result));

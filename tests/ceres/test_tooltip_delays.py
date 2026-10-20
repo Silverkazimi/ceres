@@ -20,8 +20,8 @@ def live_browser() -> tuple[Browser, str]:
 def test_first_hover_shows_tooltip_within_one_animation_frame(live_browser: tuple[Browser, str]) -> None:
     """A freshly loaded page must not pay a first-hover delay.
 
- Injection: restoring the old 140ms delay leaves the tooltip hidden at the
- first requestAnimationFrame and turns this rendered assertion red.
+    Injection: restoring the old 140ms delay leaves the tooltip hidden at the
+    first requestAnimationFrame and turns this rendered assertion red.
     """
     browser, base_url = live_browser
     page = browser.new_page(viewport=VIEWPORT)
@@ -32,8 +32,8 @@ def test_first_hover_shows_tooltip_within_one_animation_frame(live_browser: tupl
     target.hover()
     visible_in_frame = page.evaluate(
         """() => new Promise(resolve => requestAnimationFrame(() => resolve(
- Boolean(document.querySelector('#ceres-tooltip.is-visible:not([hidden])'))
- )))"""
+          Boolean(document.querySelector('#ceres-tooltip.is-visible:not([hidden])'))
+        )))"""
     )
     assert visible_in_frame is True
     page.close()
@@ -42,9 +42,9 @@ def test_first_hover_shows_tooltip_within_one_animation_frame(live_browser: tupl
 def test_pointer_can_cross_from_trigger_to_tooltip_body(live_browser: tuple[Browser, str]) -> None:
     """The rendered tooltip remains reachable after leaving its trigger.
 
- Injection: changing the close timer to 0 is intentionally exercised here;
- if the rendered crossing breaks at that minimum, this assertion turns red.
- The current browser probe confirms 0ms is safe, so no close delay is needed.
+    Injection: changing the close timer to 0 is intentionally exercised here;
+    if the rendered crossing breaks at that minimum, this assertion turns red.
+    The current browser probe confirms 0ms is safe, so no close delay is needed.
     """
     browser, base_url = live_browser
     page = browser.new_page(viewport=VIEWPORT)

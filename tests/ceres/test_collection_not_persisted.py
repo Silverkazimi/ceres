@@ -1,4 +1,4 @@
-"""Ceres' capture never persists the raw collection response, but keeps the deeds bundle."""
+""": Ceres' capture never persists the raw collection response, but keeps the deeds bundle."""
 from __future__ import annotations
 
 from pathlib import Path

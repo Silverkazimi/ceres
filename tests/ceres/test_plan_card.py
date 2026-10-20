@@ -1,4 +1,4 @@
-"""the plan card's four steps sit two by two in Changes. : no "Leave out" on a copy whose unstake is signed."""
+""": the plan card's four steps sit two by two in Changes. : no "Leave out" on a copy whose unstake is signed."""
 from pathlib import Path
 
 STATIC = Path(__file__).parents[2] / "ceres" / "static"
@@ -6,7 +6,7 @@ STATIC = Path(__file__).parents[2] / "ceres" / "static"
 
 def test_leave_out_only_for_unsigned_copies():
     ui = (STATIC / "combine-chain-ui.js").read_text(encoding="utf-8")
-    assert "const leave = (input) => signed || input.unstake?.tx_id ? ''" in ui
+    assert "const leave = (input) => signed || input.unstake?.tx_id ? '' :" in ui
 
 
 def test_plan_card_steps_two_by_two():
@@ -34,7 +34,7 @@ def test_cooldown_step_has_one_large_live_timer():
     ui = (STATIC / "combine-chain-ui.js").read_text(encoding="utf-8")
     css = (STATIC / "ceres.css").read_text(encoding="utf-8")
     assert '<div class="chain-timer" role="timer"' in ui and '<span class="spinner" aria-hidden="true"></span><b data-countdown-until=' in ui
-    assert "Ready when the last one ends" not in ui
+    assert "Ready when the last one ends:" not in ui
     assert ".chain-timer b { font-size: 1.5rem;" in css
 
 

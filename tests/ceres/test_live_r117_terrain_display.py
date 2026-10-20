@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .test_candidate_redesign_frontend import _real_detail_row
 
 ROOT = Path(__file__).parents[2]
@@ -43,7 +43,7 @@ def mountain_row(live_browser):
     row = copy.deepcopy(_real_detail_row(base_url))
     row.update(terrain="Mountain", biome=MOUNTAIN.copy())
     workers = [copy.deepcopy(w) for w in row["workers"] if not w.get("is_runi")][:2]
-    assert workers, "fixture requires a real worker"
+    assert workers, " fixture requires a real worker"
     if len(workers) == 1:
         workers.append(copy.deepcopy(workers[0]))
         workers[-1]["asset_ref"] = "r117-second-staked-worker"
@@ -105,16 +105,16 @@ def _open(page, *, empty=False):
 
 def _geometry(page):
     return page.evaluate("""() => {
- const band=document.querySelector('.editor-band'), origin=band.getBoundingClientRect();
- const rect=el=>{const r=el.getBoundingClientRect();return {x:r.x-origin.x,y:r.y-origin.y,width:r.width,height:r.height};};
- const scene=band.querySelector('.editor-scene'), style=getComputedStyle(scene), art=getComputedStyle(scene,'::before');
- const table=document.querySelector('#plot-table');
- return {band:rect(band),main:rect(band.querySelector('.editor-main')),scene:rect(scene),
- tableWidth:table.getBoundingClientRect().width,
- registration:[style.backgroundSize,style.backgroundPosition,art.backgroundImage,art.backgroundSize,art.backgroundPosition,art.bottom,getComputedStyle(scene,'::after').bottom],
- tiles:[...band.querySelectorAll('.slot-tile')].map(rect),
- facts:[...band.querySelectorAll('.editor-facts, .slot-editor-footer')].map(rect)};
- }""")
+      const band=document.querySelector('.editor-band'), origin=band.getBoundingClientRect();
+      const rect=el=>{const r=el.getBoundingClientRect();return {x:r.x-origin.x,y:r.y-origin.y,width:r.width,height:r.height};};
+      const scene=band.querySelector('.editor-scene'), style=getComputedStyle(scene), art=getComputedStyle(scene,'::before');
+      const table=document.querySelector('#plot-table');
+      return {band:rect(band),main:rect(band.querySelector('.editor-main')),scene:rect(scene),
+        tableWidth:table.getBoundingClientRect().width,
+        registration:[style.backgroundSize,style.backgroundPosition,art.backgroundImage,art.backgroundSize,art.backgroundPosition,art.bottom,getComputedStyle(scene,'::after').bottom],
+        tiles:[...band.querySelectorAll('.slot-tile')].map(rect),
+        facts:[...band.querySelectorAll('.editor-facts, .slot-editor-footer')].map(rect)};
+    }""")
 
 
 def _assert_geometry(actual, expected):
@@ -130,12 +130,12 @@ def _assert_geometry(actual, expected):
 
 def _intrinsic_geometry(page):
     return page.evaluate("""() => {
- const band=document.querySelector('.editor-band'),origin=band.getBoundingClientRect();
- const measure=el=>{const r=el.getBoundingClientRect();return {x:r.x-origin.x,y:r.y-origin.y,width:r.width,height:r.height,
- scrollWidth:el.scrollWidth,scrollHeight:el.scrollHeight};};
- const selectors=['.editor-band','#plot-table','#plot-table-scroll','.editor-main','.editor-facts','.slot-editor-footer','.worksite-change-btn','.slot-grid'];
- return Object.fromEntries(selectors.map(selector=>[selector,[...document.querySelectorAll(selector)].map(measure)]));
- }""")
+      const band=document.querySelector('.editor-band'),origin=band.getBoundingClientRect();
+      const measure=el=>{const r=el.getBoundingClientRect();return {x:r.x-origin.x,y:r.y-origin.y,width:r.width,height:r.height,
+        scrollWidth:el.scrollWidth,scrollHeight:el.scrollHeight};};
+      const selectors=['.editor-band','#plot-table','#plot-table-scroll','.editor-main','.editor-facts','.slot-editor-footer','.worksite-change-btn','.slot-grid'];
+      return Object.fromEntries(selectors.map(selector=>[selector,[...document.querySelectorAll(selector)].map(measure)]));
+    }""")
 
 
 def _assert_zero_intrinsic_growth(page):
@@ -161,9 +161,9 @@ def _assert_placement(page, *, picker=True):
     if picker:
         assert page.locator(PICKER_PROFILE).count() == 1, "G5 Worker identity header owns run"
         header = page.locator(".candidate-columns")
-        assert header.locator("scope > span").count() == 7, "G5 existing direct spans"
+        assert header.locator(":scope > span").count() == 7, "G5 existing direct spans"
         assert header.get_attribute("aria-hidden") != "true", "G4 header facts exposed"
-        assert header.locator("scope > span:not(:nth-child(2))[aria-hidden='true']").count() == 6, "G4 only non-Worker labels decorative"
+        assert header.locator(":scope > span:not(:nth-child(2))[aria-hidden='true']").count() == 6, "G4 only non-Worker labels decorative"
 
 
 def _expected_states(biome):
@@ -248,21 +248,21 @@ def _assert_accessible(page):
 
 def _assert_fit(page):
     measured = page.evaluate("""() => {
- const rect=el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
- const root=parseFloat(getComputedStyle(document.documentElement).fontSize);
- const footer=document.querySelector('.slot-editor-footer'),group=footer?.querySelector(':scope > [data-terrain-affinity]');
- const button=footer?.querySelector('.worksite-change-btn');
- const picker=document.querySelector('.candidate-visible-slice');
- const probe=document.createElement('span');probe.style.cssText='position:absolute;inline-size:var(--worksite-w);block-size:0';footer.append(probe);
- const worksite=probe.getBoundingClientRect().width;probe.remove();
- return {root,footer:rect(footer),button:button&&rect(button),run:rect(group),worksite,
- footerCenter:footer.getBoundingClientRect().left+worksite/2,badges:[...group.querySelectorAll('[data-splinter]')].map(rect),
- tiles:[...document.querySelectorAll('.editor-band .slot-tile')].map(rect),
- clientTop:footer?.clientTop,pointer:getComputedStyle(group).pointerEvents,
- editorGated:!!group.closest('[inert],[aria-hidden="true"]'),
- pickerOverflow:picker?picker.scrollWidth-picker.clientWidth:null,
- pageOverflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
- }""")
+      const rect=el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
+      const root=parseFloat(getComputedStyle(document.documentElement).fontSize);
+      const footer=document.querySelector('.slot-editor-footer'),group=footer?.querySelector(':scope > [data-terrain-affinity]');
+      const button=footer?.querySelector('.worksite-change-btn');
+      const picker=document.querySelector('.candidate-visible-slice');
+      const probe=document.createElement('span');probe.style.cssText='position:absolute;inline-size:var(--worksite-w);block-size:0';footer.append(probe);
+      const worksite=probe.getBoundingClientRect().width;probe.remove();
+      return {root,footer:rect(footer),button:button&&rect(button),run:rect(group),worksite,
+        footerCenter:footer.getBoundingClientRect().left+worksite/2,badges:[...group.querySelectorAll('[data-splinter]')].map(rect),
+        tiles:[...document.querySelectorAll('.editor-band .slot-tile')].map(rect),
+        clientTop:footer?.clientTop,pointer:getComputedStyle(group).pointerEvents,
+        editorGated:!!group.closest('[inert],[aria-hidden="true"]'),
+        pickerOverflow:picker?picker.scrollWidth-picker.clientWidth:null,
+        pageOverflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+    }""")
     root, footer, run = measured["root"], measured["footer"], measured["run"]
     assert run["width"] == pytest.approx(12 * root, abs=.5), "G6 existing 192px budget"
     assert run["height"] == pytest.approx(1.5 * root, abs=.5), "G6 no badge wrapping"
@@ -292,8 +292,8 @@ def _assert_fit(page):
 
 def _candidate_structure(page):
     return page.locator(".candidate-row").evaluate_all("""rows=>rows.map(row=>{
- const copy=row.cloneNode(true);for(const value of copy.querySelectorAll('.candidate-terrain > strong'))value.removeAttribute('class');return copy.outerHTML;
- })""")
+      const copy=row.cloneNode(true);for(const value of copy.querySelectorAll('.candidate-terrain > strong'))value.removeAttribute('class');return copy.outerHTML;
+    })""")
 
 
 @pytest.mark.parametrize("biome", [MOUNTAIN, MIXED, {}, {key: 0 for key in MOUNTAIN}])
@@ -424,7 +424,7 @@ def test_candidate_terrain_value_integrity(live_browser, mountain_row):
         assert page.locator(".candidate-terrain > strong").all_text_contents() == ["+10%", "−50%", "0%", "—"], "G8 genuine candidate zero preserved"
         assert page.locator(f".candidate-list {PROFILE}, .candidate-terrain img, .candidate-terrain svg").count() == 0
         for candidate in page.locator(".candidate-row").all():
-            assert candidate.locator("scope > *").count() == 4
+            assert candidate.locator(":scope > *").count() == 4
             assert candidate.locator(".candidate-metric").count() == 4
             assert candidate.locator(".candidate-terrain > *").count() == 2
             assert candidate.locator(".candidate-identity img.splinter-icon").count() == 1
@@ -445,11 +445,11 @@ def test_header_constant_cost_and_nonworker_scope(live_browser, mountain_row):
             results.append((profile.inner_html(), profile.bounding_box()["height"]))
             for group in ("runi", "totem", "title", "power_core"):
                 page.evaluate("""async group=>{
- const {S}=await import('/static/state.js');
- const {renderInlineCandidatePicker}=await import('/static/candidates.js');
- S.CERES_PICKER.groupId=group;
- document.querySelector('.candidate-visible-slice').outerHTML=renderInlineCandidatePicker(S.CERES_PICKER.row);
- }""", group)
+                  const {S}=await import('/static/state.js');
+                  const {renderInlineCandidatePicker}=await import('/static/candidates.js');
+                  S.CERES_PICKER.groupId=group;
+                  document.querySelector('.candidate-visible-slice').outerHTML=renderInlineCandidatePicker(S.CERES_PICKER.row);
+                }""", group)
                 assert page.locator(f".inline-picker {PROFILE}").count() == 0, "G5 worker-only profile"
     assert results[0] == results[1], "G5 constant profile cost for one and one hundred candidates"
 
@@ -457,9 +457,9 @@ def test_header_constant_cost_and_nonworker_scope(live_browser, mountain_row):
 def test_shared_model_reaches_both_surfaces(live_browser, mountain_row):
     browser, base_url = live_browser
     source = (ROOT / "ceres/static/format.js").read_text(encoding="utf-8")
-    anchor = "Object.freeze(['red', 'Fire'])"
+    anchor = "Object.freeze(['red', 'Fire']),"
     assert source.count(anchor) == 1, "shared-join mutation anchor must exist exactly once"
-    mutated = source.replace(anchor, "Object.freeze(['red', ' model probe'])", 1)
+    mutated = source.replace(anchor, "Object.freeze(['red', ' model probe']),", 1)
     assert mutated != source
     with closing(browser.new_page(viewport={"width": 1920, "height": 1080})) as page:
         page.route("**/static/format.js*", lambda route: route.fulfill(status=200, content_type="text/javascript", body=mutated))
@@ -467,7 +467,7 @@ def test_shared_model_reaches_both_surfaces(live_browser, mountain_row):
         _open(page)
         for selector in (EDITOR_PROFILE, PICKER_PROFILE):
             names = page.locator(selector).locator(BADGE).evaluate_all("els=>els.map(el=>el.dataset.splinter)")
-            assert "model probe" in names and "Fire" not in names, "model mutation must land in both real renderers"
+            assert " model probe" in names and "Fire" not in names, "model mutation must land in both real renderers"
         with pytest.raises(AssertionError, match="G4 meaning first and default splinter order within state"):
             _assert_badges(page, MOUNTAIN)
 
@@ -477,14 +477,14 @@ VIEWPORT = ".terrain-affinity-viewport"
 
 def _scroll_state(page):
     return page.locator(VIEWPORT).evaluate("""el=>{
- const rect=node=>{const r=node.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
- const root=parseFloat(getComputedStyle(document.documentElement).fontSize), box=rect(el);
- return {root,box,cell:rect(el.closest('.candidate-columns > span')),left:el.scrollLeft,max:el.scrollWidth-el.clientWidth,
- overflow:getComputedStyle(el).overflowX,tab:el.getAttribute('tabindex'),
- focus:{active:el.matches(':focus-visible'),outline:getComputedStyle(el).outlineStyle,width:parseFloat(getComputedStyle(el).outlineWidth),offset:parseFloat(getComputedStyle(el).outlineOffset),shadow:getComputedStyle(el).boxShadow},
- badges:[...el.querySelectorAll('[data-splinter]')].map(b=>({name:b.dataset.splinter,box:rect(b)})),
- edges:[...el.parentElement.querySelectorAll('.terrain-affinity-edge')].map(edge=>({box:rect(edge),shadow:getComputedStyle(edge).boxShadow,outline:getComputedStyle(edge).outlineStyle,outlineWidth:parseFloat(getComputedStyle(edge).outlineWidth),visible:!edge.hidden&&getComputedStyle(edge).display!=='none'&&getComputedStyle(edge).visibility!=='hidden'}))};
- }""")
+      const rect=node=>{const r=node.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
+      const root=parseFloat(getComputedStyle(document.documentElement).fontSize), box=rect(el);
+      return {root,box,cell:rect(el.closest('.candidate-columns > span')),left:el.scrollLeft,max:el.scrollWidth-el.clientWidth,
+        overflow:getComputedStyle(el).overflowX,tab:el.getAttribute('tabindex'),
+        focus:{active:el.matches(':focus-visible'),outline:getComputedStyle(el).outlineStyle,width:parseFloat(getComputedStyle(el).outlineWidth),offset:parseFloat(getComputedStyle(el).outlineOffset),shadow:getComputedStyle(el).boxShadow},
+        badges:[...el.querySelectorAll('[data-splinter]')].map(b=>({name:b.dataset.splinter,box:rect(b)})),
+        edges:[...el.parentElement.querySelectorAll('.terrain-affinity-edge')].map(edge=>({box:rect(edge),shadow:getComputedStyle(edge).boxShadow,outline:getComputedStyle(edge).outlineStyle,outlineWidth:parseFloat(getComputedStyle(edge).outlineWidth),visible:!edge.hidden&&getComputedStyle(edge).display!=='none'&&getComputedStyle(edge).visibility!=='hidden'}))};
+    }""")
 
 
 def _assert_visible_badge(page, name):
@@ -521,7 +521,7 @@ def _assert_scroll_contract(page):
     reached = {"Fire"}
     for _ in range(8):
         viewport.press("ArrowRight")
-        page.wait_for_timeout(60)
+        settle(page)
         current = _scroll_state(page)
         reached.update(b["name"] for b in current["badges"]
                        if b["box"]["left"] >= current["box"]["left"] - 1 and b["box"]["right"] <= current["box"]["right"] + 1)
@@ -581,10 +581,10 @@ def test_container_boundary_keeps_worker_states_and_metric_registration(live_bro
             else:
                 assert labels.evaluate_all("els=>els.every(el=>getComputedStyle(el).display!=='none')"), "G6 desktop metric labels retained"
                 aligned = page.evaluate("""()=>{
- const heads=[...document.querySelector('.candidate-columns').children].slice(2,6);
- const metrics=[...document.querySelector('.candidate-row').querySelectorAll('.candidate-metric')];
- return heads.map((h,i)=>[h.getBoundingClientRect().left-metrics[i].getBoundingClientRect().left,h.getBoundingClientRect().right-metrics[i].getBoundingClientRect().right]);
- }""")
+                  const heads=[...document.querySelector('.candidate-columns').children].slice(2,6);
+                  const metrics=[...document.querySelector('.candidate-row').querySelectorAll('.candidate-metric')];
+                  return heads.map((h,i)=>[h.getBoundingClientRect().left-metrics[i].getBoundingClientRect().left,h.getBoundingClientRect().right-metrics[i].getBoundingClientRect().right]);
+                }""")
                 assert len(aligned) == 4
                 assert all(abs(delta) <= 1 for pair in aligned for delta in pair), "G6 shared metric registration"
             assert page.locator(PICKER_PROFILE).is_visible(), "G6 breakpoint never hides Worker facts"
@@ -592,18 +592,18 @@ def test_container_boundary_keeps_worker_states_and_metric_registration(live_bro
 
 def _contrast_samples(page):
     return page.locator(BADGE).evaluate_all("""badges=>{
- const canvas=document.createElement('canvas');canvas.width=canvas.height=1;
- const ctx=canvas.getContext('2d',{willReadFrequently:true});
- const rgba=color=>{ctx.clearRect(0,0,1,1);ctx.fillStyle=color;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data];};
- const luminance=color=>rgba(color).slice(0,3).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
- const ratio=(a,b)=>{const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
- return badges.map(badge=>{
- const s=getComputedStyle(badge),icon=badge.querySelector('.splinter-icon'),is=getComputedStyle(icon);
- return {name:badge.dataset.splinter,state:badge.dataset.affinityState,opacity:s.opacity,alpha:rgba(s.backgroundColor)[3],
- image:icon.hasAttribute('src')?icon.currentSrc:'',iconAlpha:rgba(is.backgroundColor)[3],iconOpacity:is.opacity,
- frame:ratio(s.borderTopColor,s.backgroundColor)};
- });
- }""")
+      const canvas=document.createElement('canvas');canvas.width=canvas.height=1;
+      const ctx=canvas.getContext('2d',{willReadFrequently:true});
+      const rgba=color=>{ctx.clearRect(0,0,1,1);ctx.fillStyle=color;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data];};
+      const luminance=color=>rgba(color).slice(0,3).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+      const ratio=(a,b)=>{const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+      return badges.map(badge=>{
+        const s=getComputedStyle(badge),icon=badge.querySelector('.splinter-icon'),is=getComputedStyle(icon);
+         return {name:badge.dataset.splinter,state:badge.dataset.affinityState,opacity:s.opacity,alpha:rgba(s.backgroundColor)[3],
+           image:icon.hasAttribute('src')?icon.currentSrc:'',iconAlpha:rgba(is.backgroundColor)[3],iconOpacity:is.opacity,
+           frame:ratio(s.borderTopColor,s.backgroundColor)};
+      });
+    }""")
 
 
 def _assert_contrast(page):
@@ -618,10 +618,10 @@ def _assert_contrast(page):
 
 def _sign_style_snapshot(page):
     return page.locator(".candidate-row").evaluate_all("""rows=>rows.map(row=>{
- const cell=row.querySelector('.candidate-terrain'),label=cell.querySelector('small'),icon=row.querySelector('.candidate-identity .splinter-icon');
- const style=el=>{const s=getComputedStyle(el);return {color:s.color,background:s.backgroundColor,border:s.borderColor,filter:s.filter};};
- return {row:style(row),cell:style(cell),label:style(label),icon:style(icon),tooltip:cell.getAttribute('data-tip-body')};
- })""")
+      const cell=row.querySelector('.candidate-terrain'),label=cell.querySelector('small'),icon=row.querySelector('.candidate-identity .splinter-icon');
+      const style=el=>{const s=getComputedStyle(el);return {color:s.color,background:s.backgroundColor,border:s.borderColor,filter:s.filter};};
+      return {row:style(row),cell:style(cell),label:style(label),icon:style(icon),tooltip:cell.getAttribute('data-tip-body')};
+    })""")
 
 
 @pytest.mark.parametrize("theme", [None, *THEMES])
@@ -662,18 +662,18 @@ def test_profiles_update_from_plot_without_candidate_selection(live_browser, mou
         candidate_before = _candidate_structure(page)
         before_requests = len(requests)
         page.evaluate("""async row=>{
- const {S}=await import('/static/state.js');
- const {BOARD}=await import('/static/board.js');
- const {renderSlotEditor}=await import('/static/editor.js');
- const {beforePlotContentReplace,mountPlotPresentation}=await import('/static/eos.js');
- const {initPickerFilterDropdowns}=await import('/static/picker-actions.js');
- Object.assign(BOARD.plots.find(plot=>plot.deed_uid===row.deed_uid),row);
- S.CERES_PICKER.row=row;
- beforePlotContentReplace(row.deed_uid);
- document.querySelector('.slot-editor').outerHTML=renderSlotEditor(row);
- mountPlotPresentation(row, document.querySelector('.editor-band'), {dataReady:true});
- initPickerFilterDropdowns(document);
- }""", {**mountain_row, "biome": MIXED})
+          const {S}=await import('/static/state.js');
+          const {BOARD}=await import('/static/board.js');
+           const {renderSlotEditor}=await import('/static/editor.js');
+          const {beforePlotContentReplace,mountPlotPresentation}=await import('/static/eos.js');
+          const {initPickerFilterDropdowns}=await import('/static/picker-actions.js');
+          Object.assign(BOARD.plots.find(plot=>plot.deed_uid===row.deed_uid),row);
+          S.CERES_PICKER.row=row;
+          beforePlotContentReplace(row.deed_uid);
+          document.querySelector('.slot-editor').outerHTML=renderSlotEditor(row);
+          mountPlotPresentation(row, document.querySelector('.editor-band'), {dataReady:true});
+          initPickerFilterDropdowns(document);
+        }""", {**mountain_row, "biome": MIXED})
         _wait_presentation(page)
         assert page.locator(PICKER_PROFILE).inner_html() != first, "G8 plot change must refresh header"
         _assert_badges(page, MIXED)
@@ -693,13 +693,13 @@ def test_header_fact_survives_candidate_response_states(live_browser, mountain_r
         _mount(page, base_url, {**mountain_row, "biome": MIXED}, [])
         _open(page, empty=True)
         page.evaluate("""async status=>{
- const {S}=await import('/static/state.js');
- const {renderInlineCandidatePicker}=await import('/static/candidates.js');
- S.CERES_PICKER.loading=status==='loading';
- S.CERES_PICKER.error=status==='error'?' injected candidate error':null;
- S.CERES_PICKER.candidates=[];
- document.querySelector('.candidate-visible-slice').outerHTML=renderInlineCandidatePicker(S.CERES_PICKER.row);
- }""", status)
+          const {S}=await import('/static/state.js');
+          const {renderInlineCandidatePicker}=await import('/static/candidates.js');
+          S.CERES_PICKER.loading=status==='loading';
+          S.CERES_PICKER.error=status==='error'?' injected candidate error':null;
+          S.CERES_PICKER.candidates=[];
+          document.querySelector('.candidate-visible-slice').outerHTML=renderInlineCandidatePicker(S.CERES_PICKER.row);
+        }""", status)
         _assert_placement(page)
         _assert_badges(page, MIXED)
         _assert_accessible(page)
@@ -707,16 +707,16 @@ def test_header_fact_survives_candidate_response_states(live_browser, mountain_r
 
 def _render_plaque_case(page, row, status):
     page.evaluate("""async ({row,status})=>{
- const {CERES_STAGE}=await import('/static/staging.js');
- const {renderSlotEditor}=await import('/static/editor.js');
- const {beforePlotContentReplace,mountPlotPresentation}=await import('/static/eos.js');
- CERES_STAGE.splice(0);
- if(status!=='unstaged') CERES_STAGE.push({deed_uid:row.deed_uid,group_id:'worker',slot_index:0,action:'stake',
- _asset:row.workers[0],base:{status:status==='overcap'?'point':status,value:status==='unknown'?null:1000000,low:500000,high:1000000}});
- beforePlotContentReplace(row.deed_uid);
- document.querySelector('.slot-editor').outerHTML=renderSlotEditor(row);
- mountPlotPresentation(row, document.querySelector('.editor-band'), {dataReady:true});
- }""", {"row": row, "status": status})
+      const {CERES_STAGE}=await import('/static/staging.js');
+      const {renderSlotEditor}=await import('/static/editor.js');
+      const {beforePlotContentReplace,mountPlotPresentation}=await import('/static/eos.js');
+      CERES_STAGE.splice(0);
+      if(status!=='unstaged') CERES_STAGE.push({deed_uid:row.deed_uid,group_id:'worker',slot_index:0,action:'stake',
+        _asset:row.workers[0],base:{status:status==='overcap'?'point':status,value:status==='unknown'?null:1000000,low:500000,high:1000000}});
+      beforePlotContentReplace(row.deed_uid);
+      document.querySelector('.slot-editor').outerHTML=renderSlotEditor(row);
+      mountPlotPresentation(row, document.querySelector('.editor-band'), {dataReady:true});
+    }""", {"row": row, "status": status})
     _wait_presentation(page)
 
 
@@ -727,13 +727,13 @@ def _assert_plaque(page, *, present, cap=False):
     if not present:
         return
     measure = plaque.evaluate("""el=>{
- const rect=node=>{const r=node.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
- const anchor=el.parentElement,run=document.querySelector('.slot-editor-footer > [data-terrain-affinity]');
- const content=[...el.querySelectorAll('strong,.change-badge-cap')];
- return {root:parseFloat(getComputedStyle(document.documentElement).fontSize),box:rect(el),anchor:rect(anchor),run:rect(run),
- content:content.map(node=>{const s=getComputedStyle(node),range=document.createRange();range.selectNodeContents(node);return {box:rect(node),text:node.textContent,visible:s.display!=='none'&&s.visibility==='visible'&&s.opacity==='1',
- font:parseFloat(s.fontSize),overflow:node.scrollWidth-node.clientWidth,heightClipped:['hidden','clip'].includes(s.overflowY)&&node.scrollHeight>node.clientHeight+1,lines:[...range.getClientRects()].map(r=>({left:r.left,right:r.right,top:r.top,bottom:r.bottom}))};})};
- }""")
+      const rect=node=>{const r=node.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
+      const anchor=el.parentElement,run=document.querySelector('.slot-editor-footer > [data-terrain-affinity]');
+      const content=[...el.querySelectorAll('strong,.change-badge-cap')];
+      return {root:parseFloat(getComputedStyle(document.documentElement).fontSize),box:rect(el),anchor:rect(anchor),run:rect(run),
+        content:content.map(node=>{const s=getComputedStyle(node),range=document.createRange();range.selectNodeContents(node);return {box:rect(node),text:node.textContent,visible:s.display!=='none'&&s.visibility==='visible'&&s.opacity==='1',
+          font:parseFloat(s.fontSize),overflow:node.scrollWidth-node.clientWidth,heightClipped:['hidden','clip'].includes(s.overflowY)&&node.scrollHeight>node.clientHeight+1,lines:[...range.getClientRects()].map(r=>({left:r.left,right:r.right,top:r.top,bottom:r.bottom}))};})};
+    }""")
     box, run, root = measure["box"], measure["run"], measure["root"]
     # one line, never two -- a wrapped cap suffix would push the box past ~1.1 rem.
     assert box["height"] <= 1.2 * root + .5, "G9 Total Base badge stays on one line"
@@ -790,9 +790,9 @@ def test_no_button_source_fixture_keeps_reserved_affinity_center(live_browser, m
     with closing(browser.new_page(viewport={"width":1920,"height":1080})) as page:
         _mount(page,base_url,row)
         result=page.evaluate("""async row=>{
- const {worksiteChangeButtonHtml}=await import('/static/worksite.js');
- return worksiteChangeButtonHtml(row);
- }""",row)
+          const {worksiteChangeButtonHtml}=await import('/static/worksite.js');
+          return worksiteChangeButtonHtml(row);
+        }""",row)
         assert result == "" and page.locator('.slot-editor-footer > .worksite-change-btn').count()==0, "G5 real no-button fixture exercises worksite helper"
         _assert_placement(page,picker=False)
         _assert_fit(page)
@@ -808,9 +808,9 @@ def test_identity_and_state_geometry_are_separate(live_browser, mountain_row):
         _mount(page, base_url, {**mountain_row, "biome": MIXED})
         _open(page)
         samples = page.locator(BADGE).evaluate_all("""els=>els.map(el=>{
- const i=el.querySelector('.splinter-icon').getBoundingClientRect(),b=el.getBoundingClientRect();
- return {icon:[i.width,i.height],bubble:[b.width,b.height],svg:el.querySelectorAll('svg').length};
- })""")
+          const i=el.querySelector('.splinter-icon').getBoundingClientRect(),b=el.getBoundingClientRect();
+          return {icon:[i.width,i.height],bubble:[b.width,b.height],svg:el.querySelectorAll('svg').length};
+        })""")
         assert len(samples) == 12
         for sample in samples:
             assert sample["icon"] == pytest.approx([16, 16], abs=.5), "G6 official silhouette remains 16px"
@@ -852,12 +852,12 @@ def test_overflow_binding_cleanup_on_rerender_close_and_rebind(live_browser, mou
         _open(page)
         page.wait_for_function("document.querySelector('.terrain-affinity-viewport').hasAttribute('tabindex')")
         result = page.evaluate("""async()=>{
- const {bindTerrainAffinityOverflow}=await import('/static/terrainAffinity.js');
- const host=document.querySelector('.candidate-worker-affinity'),viewport=host.querySelector('.terrain-affinity-viewport');
- bindTerrainAffinityOverflow(host);const cleanup=bindTerrainAffinityOverflow(host);cleanup();
- viewport.scrollLeft=0;const event=new KeyboardEvent('keydown',{key:'End',bubbles:true,cancelable:true});viewport.dispatchEvent(event);
- return {prevented:event.defaultPrevented,scroll:viewport.scrollLeft,cleared:viewport._terrainAffinityCleanup===undefined};
- }""")
+          const {bindTerrainAffinityOverflow}=await import('/static/terrainAffinity.js');
+          const host=document.querySelector('.candidate-worker-affinity'),viewport=host.querySelector('.terrain-affinity-viewport');
+          bindTerrainAffinityOverflow(host);const cleanup=bindTerrainAffinityOverflow(host);cleanup();
+          viewport.scrollLeft=0;const event=new KeyboardEvent('keydown',{key:'End',bubbles:true,cancelable:true});viewport.dispatchEvent(event);
+          return {prevented:event.defaultPrevented,scroll:viewport.scrollLeft,cleared:viewport._terrainAffinityCleanup===undefined};
+        }""")
         assert result == {"prevented": False, "scroll": 0, "cleared": True}, "G7 cleanup removes old navigation handlers"
 
 
@@ -969,15 +969,15 @@ def test_plaque_guard_rejects_landed_mutation(live_browser, mountain_row, mutati
 
 def _assert_candidate_figure_contrast(page):
     samples = page.locator(".candidate-terrain > strong").evaluate_all("""els=>{
- const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d',{willReadFrequently:true});
- const lum=color=>{ctx.clearRect(0,0,1,1);ctx.fillStyle=color;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data].slice(0,3).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);};
- const ratio=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
- return els.filter(el=>el.className.includes('is-r117-')).map(el=>{
- const row=el.closest('.candidate-row'),s=getComputedStyle(row),color=getComputedStyle(el).color;
- const probe=document.createElement('span');row.append(probe);probe.style.color='var(--bg3)';const bg3=getComputedStyle(probe).color;probe.style.color='var(--bg)';const bg=getComputedStyle(probe).color;probe.remove();
- return {color,ratios:[s.backgroundColor,bg,bg3].map(back=>ratio(color,back))};
- });
- }""")
+      const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d',{willReadFrequently:true});
+      const lum=color=>{ctx.clearRect(0,0,1,1);ctx.fillStyle=color;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data].slice(0,3).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);};
+      const ratio=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+      return els.filter(el=>el.className.includes('is-r117-')).map(el=>{
+        const row=el.closest('.candidate-row'),s=getComputedStyle(row),color=getComputedStyle(el).color;
+        const probe=document.createElement('span');row.append(probe);probe.style.color='var(--bg3)';const bg3=getComputedStyle(probe).color;probe.style.color='var(--bg)';const bg=getComputedStyle(probe).color;probe.remove();
+        return {color,ratios:[s.backgroundColor,bg,bg3].map(back=>ratio(color,back))};
+      });
+    }""")
     assert len(samples) == 2 and samples[0]["color"] != samples[1]["color"], "G9 two scoped signed figure samples"
     assert all(ratio >= 4.5 for sample in samples for ratio in sample["ratios"]), "G9 signed figures meet 4.5 against normal/top/hover backing"
 

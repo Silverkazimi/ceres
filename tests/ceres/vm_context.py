@@ -74,8 +74,9 @@ them without flattening unrelated module-local declarations into one scope.
   properties once its module body runs; the placeholders let earlier modules
   observe the same no-player/no-board startup state instead of failing on an
   undeclared identifier.
-- **Timers** -- `setTimeout`/`clearTimeout`/`setInterval`/`clearInterval`,
-  Node's real ones, so module-scope `setTimeout(...)` calls do not throw.
+- **Timers** -- `setTimeout`/`clearTimeout`/`setInterval`/`clearInterval`
+  and `queueMicrotask`, Node's real ones, so module-scope `setTimeout(...)`
+  calls and `updateMountedRow`'s `queueMicrotask(syncCloseAll)` do not throw.
 - **`console`** -- Node's real console, so `console.error`/`console.warn`
   calls in the module are visible in the test's own output instead of
   throwing.
@@ -299,6 +300,7 @@ const context = {
   navigator: { locks: { request: async (_name, callback) => callback() }, clipboard: { writeText() { return Promise.resolve(); } }, userAgent: 'node' },
   console,
   setTimeout,
+  queueMicrotask,
   clearTimeout,
   requestAnimationFrame: window.requestAnimationFrame,
   cancelAnimationFrame: window.cancelAnimationFrame,

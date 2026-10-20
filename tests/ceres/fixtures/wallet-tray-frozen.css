@@ -1,0 +1,24 @@
+/* Frozen declarations of the wallet tray and its options (see test_wallet_tray.py). */
+.edge-tray {
+  display: flex;
+  align-items: center;
+  max-width: 0;
+  overflow: hidden;
+  transition: max-width .5s cubic-bezier(.4, .8, .4, 1);
+}
+.edge-opt {
+  height: 34px;
+  min-height: 34px;
+  background: none;
+  border: 0;
+  color: var(--body);
+  cursor: pointer;
+  padding: 0 8px;
+  opacity: .4;
+  transition: opacity .2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.edge-picker[data-open="true"] .edge-tray { max-width: 20rem; }
+.edge-opt:hover { opacity: .8; }

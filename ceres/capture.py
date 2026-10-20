@@ -58,7 +58,7 @@ def _shared_capture() -> LandCapture:
     capture.budget_for_deeds = derive_request_budget  # sized from the live deed list, first read included
     # (2026-09-14): Ceres fetches the collection live on every read (ttl=0, ) and
     # never reads `collection_<player>.json` back, yet each whale read wrote it to the praetoria
-    # cache (162.8 MB per read on player0016). Skip the write; `land_deeds_<player>` stays persisted
+    # cache (162.8 MB per read on player0017). Skip the write; `land_deeds_<player>` stays persisted
     # for `previous_bundle` in capture_quick. Ordinary plot expand now uses narrow live reads.
     capture.persist_cache = lambda key: not key.startswith("collection_")
     return capture
@@ -123,7 +123,7 @@ _snapshot_cache_bytes: dict[str, int] = {}
 _snapshot_cache_total_bytes = 0
 _plot_overlay_cache: OrderedDict[str, tuple[tuple[Any, ...], dict[str, Any]]] = OrderedDict()
 _plot_overlay_lock = threading.Lock()
-# Byte budget, not just an entry cap: one parsed whale report (player0016, 6,303 deeds)
+# Byte budget, not just an entry cap: one parsed whale report (player0017, 6,303 deeds)
 # retains 105.6 MB, so a handful of distinct players already exhausts a 1.5GB production
 # cgroup (). 200MB fits roughly two whale-sized reports at once, which is the
 # realistic worst case for a small public deployment.
@@ -286,7 +286,7 @@ def _put_snapshot_cache_locked(
 # rather than fetched, , so it costs no request), plus a 10% margin
 # for short pages/retries. Derived, not a raised constant -- a fixed budget the size of
 # `DEFAULT_REQUEST_BUDGET` (200) fails outright for a whale account (e.g. 6,303 deeds
-# measured live for "player0016" on 2026-08-21).
+# measured live for "player0017" on 2026-08-21).
 _REQUEST_OVERHEAD = 6
 _BUDGET_MARGIN = 1.10
 
@@ -577,7 +577,7 @@ class CaptureStatus:
             "phase": self.phase,
             # follow-up (2026-09-07): the field was added to both dataclasses in
             # v0.9.18 and NOT to this hand-written dict, so the status route never carried
-            # it and the browser's early render never fired. Found by a player0016 reproduction
+            # it and the browser's early render never fired. Found by a player0017 reproduction
             # that printed `board_ready: None` from the live status endpoint.
             "board_ready": self.board_ready,
             "interim": self.interim,
@@ -2300,7 +2300,7 @@ def _save_merged(config: CeresConfig, player: str, report: dict[str, Any]) -> di
     permanently 503/failed.
 
     : ONLY those two. A `MemoryError` (orjson could not get its parse buffer under
-    the worker's cap -- a 98.7 MB player0016 board) or any other failure while READING the
+    the worker's cap -- a 98.7 MB player0017 board) or any other failure while READING the
     existing snapshot aborts the save without writing anything and fails the run; the
     old blanket catch overwrote a good 6303-plot board with a 0-of-6303 one."""
     with _snapshot_write_lock(player):
@@ -2469,7 +2469,7 @@ def _self_heal_refetches(
         uid for uid in merged.get("coverage", {}).get("assets", {}).get("needs_refetch", [])
         if uid not in unfetched
     ][:_MAX_SELF_HEAL_DEEDS]
-    # history: v0.9.83 sent all 6,300 never-fetched player0016 plots in one batch and wedged the 1-vCPU
+    # history: v0.9.83 sent all 6,300 never-fetched player0017 plots in one batch and wedged the 1-vCPU
     # webserver; v0.9.84 capped it at 200 per read; v0.9.359 skipped it above 1000 plots; v0.9.360 ()
     # skips it for every account -- only retries are queued.
     if unfetched:

@@ -23,6 +23,7 @@ def test_terrain_penalty_notice_names_the_picker_splinter_icons() -> None:
 
     candidates_source = (ROOT / "ceres/static/candidates.js").read_text()
     assert re.search(
-        r"if \(Number\(excluded\.terrain_penalty\) > 0\) \{\s*\"\n r\"return `<p class=\"picker-empty\">\$\{esc\(noticeMessage\(noticeFor\('terrain_penalty'\)\)\)\}</p>`;",
+        r"if \(Number\(excluded\.terrain_penalty\) > 0\) \{\s*"
+        r"return `<p class=\"picker-empty\">\$\{esc\(noticeMessage\(noticeFor\('terrain_penalty'\)\)\)\}</p>`;",
         candidates_source,
     ) is not None

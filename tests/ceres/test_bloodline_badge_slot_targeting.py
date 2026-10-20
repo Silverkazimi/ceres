@@ -13,9 +13,10 @@ import pytest
 from playwright.sync_api import Browser, Locator, Page
 
 from .conftest import spawn_live_ceres
+from . import board_basic_recording as recording
 
 
-DEED_UID = "I-295-116f9bb372e311"
+DEED_UID = recording.RUNI.uid
 SCREEN_DIR = Path(__file__).parents[2] / "work" / "ceres-bloodline-badge-slot"
 
 
@@ -136,9 +137,9 @@ def test_full_plot_footer_notice_never_selects_occupied_slot(live_browser: tuple
     footer = expand.locator(".slot-editor-footer")
     footer.evaluate(
         """(element, deedUid) => element.insertAdjacentHTML(
- 'afterbegin',
- `<button class="notice-action" data-notice-action="open-bloodline-pairs" data-deed-uid="${deedUid}">Find a matching companion</button>`,
- )""",
+          'afterbegin',
+          `<button class="notice-action" data-notice-action="open-bloodline-pairs" data-deed-uid="${deedUid}">Find a matching companion</button>`,
+        )""",
         deed_uid,
     )
     footer.locator("[data-notice-action='open-bloodline-pairs']").click()

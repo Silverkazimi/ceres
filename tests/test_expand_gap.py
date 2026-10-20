@@ -23,7 +23,7 @@ from praetoria.transport import ResponseTooLarge
 
 def _raise_too_large(*_args, **_kwargs):
     raise ResponseTooLarge(
-        endpoint="/land/deeds?player=player0016",
+        endpoint="/land/deeds?player=player0017",
         trace_id="trace-expand-bundle",
         limit_bytes=268435456,
         observed_bytes=300000000,
@@ -34,7 +34,7 @@ def _raise_too_large(*_args, **_kwargs):
 def _expand_raises_too_large(monkeypatch):
     monkeypatch.setattr(routes_board, "_require_same_origin", lambda _request: None)
     monkeypatch.setattr(routes_board, "_config", lambda _request: object())
-    monkeypatch.setattr(routes_board, "player_for_request", lambda _request, _player: "player0016")
+    monkeypatch.setattr(routes_board, "player_for_request", lambda _request, _player: "player0017")
     monkeypatch.setattr(capture_mod, "is_running", lambda _player: False)
     monkeypatch.setattr(capture_mod, "expand_plot", _raise_too_large)
     return SimpleNamespace(headers={}, url=SimpleNamespace(path="/api/plots/deed-1/expand"))
@@ -52,5 +52,5 @@ def test_row_expand_failure_names_the_endpoint_and_trace_id(_expand_raises_too_l
         routes_board.expand_plot("deed-1", _expand_raises_too_large)
     detail = str(raised.value.detail)
     # The two facts that make the failure actionable rather than merely reported.
-    assert "/land/deeds?player=player0016" in detail
+    assert "/land/deeds?player=player0017" in detail
     assert "trace-expand-bundle" in detail

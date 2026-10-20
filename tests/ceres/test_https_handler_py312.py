@@ -1,4 +1,4 @@
-"""urllib.request.HTTPSHandler lost its _check_hostname attribute in Python 3.12, so reading it made every HTTPS call
+""": urllib.request.HTTPSHandler lost its _check_hostname attribute in Python 3.12, so reading it made every HTTPS call
 through the observed opener fail on the production server (3.12) while working on 3.10. The handler must not depend on it."""
 import urllib.request
 

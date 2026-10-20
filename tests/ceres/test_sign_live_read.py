@@ -1,4 +1,4 @@
-"""Sign reads every staged plot live, in memory only (, , ). --
+""": Sign reads every staged plot live, in memory only (, , ). --
 a plot-open patch vanished on the next capture, so the staged cards were missing from the stored board.
 """
 import json

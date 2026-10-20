@@ -1,4 +1,4 @@
-"""G12 -- (R-85): a staged removal must never contribute `+0`.
+"""G12 --  (R-85): a staged removal must never contribute `+0`.
 
 The maintainer's live report, verbatim: *"any changes to workers fully breaks the basePP
 display on all fronts and always says it is growing, even if it shrinks."* Root cause:
@@ -35,7 +35,7 @@ import re
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 
 
 @pytest.fixture(scope="module")
@@ -54,9 +54,9 @@ def _expanded_editor(live_browser: tuple[Browser, str]) -> Page:
     )
     page.evaluate(
         """() => {
- const rows = [...document.querySelectorAll('#plot-tbody > tr.plot-row')];
- (rows.find(r => r.textContent.includes('/5')) || rows[0]).click();
- }"""
+            const rows = [...document.querySelectorAll('#plot-tbody > tr.plot-row')];
+            (rows.find(r => r.textContent.includes('/5')) || rows[0]).click();
+        }"""
     )
     page.wait_for_selector(".editor-facts", timeout=15_000)
     return page
@@ -64,21 +64,21 @@ def _expanded_editor(live_browser: tuple[Browser, str]) -> Page:
 
 def _stage_a_removal(page: Page) -> bool:
     """Clicks the first occupied worker tile's `×` unstake control, same helper
- shape as `test_editor_change_badges.py::_stage_a_removal` -- kept as a sibling
- copy rather than a cross-module import so this guard has no load-order
- dependency on that module's fixtures."""
+    shape as `test_editor_change_badges.py::_stage_a_removal` -- kept as a sibling
+    copy rather than a cross-module import so this guard has no load-order
+    dependency on that module's fixtures."""
     staged = page.evaluate(
         """() => {
- const btn = document.querySelector(
- '.slot-editor-body .slot-tile[data-group-id="worker"]:not(.is-empty) .slot-remove'
- );
- if (!btn) return false;
- btn.click();
- return true;
- }"""
+            const btn = document.querySelector(
+                '.slot-editor-body .slot-tile[data-group-id="worker"]:not(.is-empty) .slot-remove'
+            );
+            if (!btn) return false;
+            btn.click();
+            return true;
+        }"""
     )
     if staged:
-        page.wait_for_timeout(1500)
+        settle(page)
     return bool(staged)
 
 
@@ -98,8 +98,8 @@ def _total_base_badge(page):
 
 def test_g12_staged_unstake_reads_negative(live_browser: tuple[Browser, str]) -> None:
     """The maintainer's exact complaint: a staged unstake must read a NEGATIVE Base PP
- change, in both the change badge and the R-167 Total Base badge, and the
- projected total must decrease -- never `+0`, never a grow arrow on a shrink."""
+    change, in both the change badge and the R-167 Total Base badge, and the
+    projected total must decrease -- never `+0`, never a grow arrow on a shrink."""
     page = _expanded_editor(live_browser)
 
     stage_total_before = page.evaluate(
@@ -119,7 +119,7 @@ def test_g12_staged_unstake_reads_negative(live_browser: tuple[Browser, str]) ->
     assert signed is not None, f"Base PP badge had no signed figure: {base_badges[0]!r}"
     assert signed < 0, (
         f"a staged removal must read a NEGATIVE Base PP change, got {base_badges[0]!r} "
-        "this is the exact +0 defect fixes"
+        "-- this is the exact +0 defect  fixes"
     )
 
     badge = _total_base_badge(page)
@@ -133,15 +133,15 @@ def test_g12_staged_unstake_reads_negative(live_browser: tuple[Browser, str]) ->
         # "never re-derive a PP figure in JS" rule).
         pre_stage_key = page.evaluate(
             """() => {
- const badge = [...document.querySelectorAll('.editor-change-badges .editor-change-badge')]
- .find(e => e.textContent.trim().startsWith('Base '));
- return badge ? badge.getAttribute('data-tip-key') : null;
- }"""
+                const badge = [...document.querySelectorAll('.editor-change-badges .editor-change-badge')]
+                    .find(e => e.textContent.trim().startsWith('Base '));
+                return badge ? badge.getAttribute('data-tip-key') : null;
+            }"""
         )
         if pre_stage_key:
             after = float(pre_stage_key.replace(",", ""))
             assert figure <= after, (
-                f"Total Base badge ({figure}) must not exceed the Base badge's own after-change \"\n f\"figure ({after}) for a pure removal"
+                f"Total Base badge ({figure}) must not exceed the Base badge's own after-change " f"figure ({after}) for a pure removal"
             )
     page.close()
 
@@ -150,18 +150,18 @@ def test_g12_staged_replace_with_smaller_card_shrinks_total(
     live_browser: tuple[Browser, str],
 ) -> None:
     """Second G12 assertion: replacing an occupied worker slot with a smaller card
- must shrink the projected total, and on an over-cap plot, the inline "· cap −N" suffix
- must shrink too -- never grow. Skips (rather than fabricates a fixture) when the
- live board has no over-cap plot with a smaller replacement available, since this
- guard's job is to observe real staged pricing, not to manufacture the scenario."""
+    must shrink the projected total, and on an over-cap plot, the inline "· cap −N" suffix
+    must shrink too -- never grow. Skips (rather than fabricates a fixture) when the
+    live board has no over-cap plot with a smaller replacement available, since this
+    guard's job is to observe real staged pricing, not to manufacture the scenario."""
     page = _expanded_editor(live_browser)
 
     over_cap_plot = page.evaluate(
         """() => {
- const rows = [...document.querySelectorAll('#plot-tbody > tr.plot-row')];
- const row = rows.find(r => r.querySelector('.badge-over_cap'));
- return row ? row.getAttribute('data-deed-uid') : null;
- }"""
+            const rows = [...document.querySelectorAll('#plot-tbody > tr.plot-row')];
+            const row = rows.find(r => r.querySelector('.badge-over_cap'));
+            return row ? row.getAttribute('data-deed-uid') : null;
+        }"""
     )
     if not over_cap_plot:
         pytest.skip("no over-cap plot on the live board to exercise the shrink assertion against")
@@ -195,17 +195,17 @@ def test_g12_staged_replace_with_smaller_card_shrinks_total(
     # smallest available -- the picker's own `base_pp` sort, already server-driven.
     page.evaluate(
         """() => {
- const sortBtn = [...document.querySelectorAll('[data-picker-action="sort"]')]
- .find(el => el.dataset.sort === 'base_pp');
- if (sortBtn) sortBtn.click();
- }"""
+            const sortBtn = [...document.querySelectorAll('[data-picker-action="sort"]')]
+                .find(el => el.dataset.sort === 'base_pp');
+            if (sortBtn) sortBtn.click();
+        }"""
     )
-    page.wait_for_timeout(800)
+    settle(page)
     choose = page.locator('[data-picker-action="choose"]').first
     if choose.count() == 0:
         pytest.skip("no picker candidate available to replace with")
     choose.click()
-    page.wait_for_timeout(1200)
+    settle(page)
 
     cap_line_after = page.locator(".change-badge-cap")
     if cap_line_after.count():
@@ -219,6 +219,6 @@ def test_g12_staged_replace_with_smaller_card_shrinks_total(
         # only thing counted, so the loss can only ever look flat or bigger).
         if pre_stage_loss > 0:
             assert loss < pre_stage_loss, (
-                f"Over cap loss must shrink after replacing with a smaller card: \"\n f\"before={pre_stage_loss}, after={loss}"
+                f"Over cap loss must shrink after replacing with a smaller card: " f"before={pre_stage_loss}, after={loss}"
             )
     page.close()

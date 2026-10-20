@@ -69,8 +69,8 @@ def assets_response_with_shape(field, shape):
 
 def worksite_change_op_dict(deed_uid, target, region_uid="PR-BRL-41"):
     """The real captured shape (a captured op):
- {"op":"worksite_aura_construction","region_uid":"PR-BRL-41",
- "deed_uids":["I-298-2dd53d9ac60331"],"time_crystals":0,"app":"...","n":"..."}"""
+    {"op":"worksite_aura_construction","region_uid":"PR-BRL-41",
+     "deed_uids":["I-298-2dd53d9ac60331"],"time_crystals":0,"app":"...","n":"..."}"""
     import json
     payload = {"op": f"worksite_{target}_construction", "region_uid": region_uid, "deed_uids": [deed_uid], "time_crystals": 0, "app": "x", "n": "n"}
     return {"id": "sm_land_operation", "json": json.dumps(payload), "required_auths": [], "required_posting_auths": ["player0005"]}
@@ -233,9 +233,17 @@ class LandVerificationSpecTests(unittest.TestCase):
     def test_worksite_feed_domain_verified_when_construction_is_settled(self):
         def fetch_worksite(deed_uid):
             return {"project_type": "worksite_stone", "project_id": 397948, "is_construction": False}
+        # A settled worksite alone is not proof that THIS Feed Worker transaction did it
+        # completion is verified only once the game has accepted the transaction.
         spec = LandVerificationSpec(lambda d: {}, fetch_worksite_facts=fetch_worksite)
         result = spec.check_domain("wave-1", [worksite_feed_op_dict("deed-1")])
+        self.assertEqual(result["status"], "domain_pending")
+        self.assertIn("awaiting this transaction's game acceptance", result["evidence"]["pending"][0])
+
+        accepted = LandVerificationSpec(lambda d: {}, fetch_worksite_facts=fetch_worksite, worksite_completion_accepted=True)
+        result = accepted.check_domain("wave-1", [worksite_feed_op_dict("deed-1")])
         self.assertEqual(result["status"], "domain_verified")
+        self.assertEqual(result["evidence"]["deeds"]["deed-1"]["completed_project_id"], 397948)
 
     def test_worksite_feed_domain_pending_while_construction_remains(self):
         def fetch_worksite(deed_uid):

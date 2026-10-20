@@ -131,10 +131,10 @@ def test_harvest_prepares_then_signs_without_intervening_reads(reject_second, sa
     source = read_entry_source(entry)
     source = source.rsplit('}', 1)[0] + """
 Object.defineProperties(globalThis, {
- M: {get: () => M},
- openRouting: {get: () => openRouting, set: value => {openRouting = value;}},
- render: {get: () => render, set: value => {render = value;}},
- postJson: {get: () => postJson, set: value => {postJson = value;}}
+  M: {get: () => M},
+  openRouting: {get: () => openRouting, set: value => {openRouting = value;}},
+  render: {get: () => render, set: value => {render = value;}},
+  postJson: {get: () => postJson, set: value => {postJson = value;}}
 });
 }
 """
@@ -154,16 +154,16 @@ let signed = 0;
 let uuid = 0;
 globalThis.crypto = {randomUUID:() => 'attempt000000000'+(++uuid)};
 postJson = async (url, body) => {
- if (url.endsWith('/preflight')) {events.push('preflight');return {outcome:'PERMIT', chunk:pv.chunks[body.chunk_index]};}
- if (url.endsWith('/prepare')) {events.push('prepare');if(body.attempts.length !== 3) throw Error('incomplete preparation');return {};}
- if (url.endsWith('/attempt')) {events.push('receipt');return {};}
- throw Error('unexpected request '+url);
+  if (url.endsWith('/preflight')) {events.push('preflight');return {outcome:'PERMIT', chunk:pv.chunks[body.chunk_index]};}
+  if (url.endsWith('/prepare')) {events.push('prepare');if(body.attempts.length !== 3) throw Error('incomplete preparation');return {};}
+  if (url.endsWith('/attempt')) {events.push('receipt');return {};}
+  throw Error('unexpected request '+url);
 };
 prepareSigningBatch = async () => null;
 requestSignatureThroughGate = async () => {
- events.push('wallet');signed++;
- if (REJECT_SECOND && signed === 2) {const e=Error('User declined');e.broadcasted=false;throw e;}
- return {txId:'tx-'+signed, blockNum:null, submitted:Promise.resolve()};
+  events.push('wallet');signed++;
+  if (REJECT_SECOND && signed === 2) {const e=Error('User declined');e.broadcasted=false;throw e;}
+  return {txId:'tx-'+signed, blockNum:null, submitted:Promise.resolve()};
 };
 verifyUntilFinal = async () => {events.push('verify');return 'success';};
 await confirmHarvest();
@@ -171,7 +171,7 @@ const expected = REJECT_SECOND ? 'preflight,preflight,preflight,prepare,wallet,w
 if (events.slice(0, expected.split(',').length).join(',') !== expected) throw Error(events.join(','));
 if (M.run.busy) throw Error('busy state leaked');
 if (REJECT_SECOND) {
- if (M.run.phase !== 'failed' || M.run.members[0].outcome === 'not_sent' || M.run.members[2].outcome !== 'not_sent') throw Error('partial receipt misclassified');
+  if (M.run.phase !== 'failed' || M.run.members[0].outcome === 'not_sent' || M.run.members[2].outcome !== 'not_sent') throw Error('partial receipt misclassified');
 } else if (M.run.phase !== 'success') throw Error('batch not successful');
 if (events.includes('routes')) throw Error('routing must wait for the results action');
 })().then(() => process.exit(0), error => {console.error(error);process.exit(1);});

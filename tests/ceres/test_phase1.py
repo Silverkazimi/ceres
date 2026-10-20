@@ -11,6 +11,14 @@ from praetoria.transport import ResponseData
 from tests.ceres.test_shared_verification_evidence import _bundle
 
 
+def _complete_bundle() -> dict:
+    """Add plot status to every deed so quick capture sees a complete bundle."""
+    bundle = _bundle()
+    for deed in bundle["data"]["deeds"]:
+        deed["plot_status"] = "natural"
+    return bundle
+
+
 class _AssetsOnlyLandClient:
     def __init__(self) -> None:
         self.asset_calls: list[str] = []
@@ -18,7 +26,7 @@ class _AssetsOnlyLandClient:
 
     def bundle(self, player: str) -> ResponseData:
         self.bundle_calls += 1
-        return ResponseData(_bundle(), "2037-01-01T00:00:01Z", 1)
+        return ResponseData(_complete_bundle(), "2037-01-01T00:00:01Z", 1)
 
     def assets(self, deed_uid: str) -> ResponseData:
         self.asset_calls.append(deed_uid)
@@ -45,7 +53,7 @@ def _capture(tmp_path: Path) -> tuple[LandCapture, _AssetsOnlyLandClient, _NoCol
     )
     capture._asset_repair_context = AssetRepairContext(
         player="player0005",
-        bundle=_bundle(),
+        bundle=_complete_bundle(),
         bundle_observed_at="2037-01-01T00:00:01Z",
         collection={"cards": []},
         collection_observed_at="2037-01-01T00:00:05Z",

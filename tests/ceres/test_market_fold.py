@@ -19,13 +19,13 @@ ROWS_JS = r"""
 const eq = (a, b, what) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw Error(what + ': ' + JSON.stringify(a) + ' != ' + JSON.stringify(b)); };
 // one print, max CC 400; PP = CC (1 PP per CC); price sets the PP/$
 const row = (name, bcx, usd, extra = {}) => ({ name: name + ' card', card_detail_id: 7, edition: 7, foil: 0, card_set: 'chaos', rarity: 'common', splinters: [],
- level: 1, bcx, bcx_max: 400, land_base_pp: bcx, max_level_pp: 400, price_usd: usd, price_dec: usd * 2000, combined: 1, lkey: name, ...extra });
+  level: 1, bcx, bcx_max: 400, land_base_pp: bcx, max_level_pp: 400, price_usd: usd, price_dec: usd * 2000, combined: 1, lkey: name, ...extra });
 """
 
 
 def test_fold_rule_boundaries_25_percent_cc_and_20_percent_deal():
     run_in_module_context(ROWS_JS + r"""
-CC share: 100 of 400 is exactly 25 % -> own tile; 99 is below (and a poor deal here) -> folds
+// CC share: 100 of 400 is exactly 25 % -> own tile; 99 is below (and a poor deal here) -> folds
 eq(cmFoldKeeps(row('a', 100, 1000), 1), true, '25 % CC keeps');
 eq(cmFoldKeeps(row('b', 99, 1000), 1), false, 'under 25 % CC and a poor deal folds');
 // deal: best 1 PP/$; a copy at 1/1.2 PP/$ is exactly 20 % dearer per PP -> own tile; a hair more -> folds
@@ -38,7 +38,7 @@ eq(cmFoldKeeps(row('f', 1, 1, { bcx_max: null }), 100), true, 'unknown max CC ne
 
 def test_container_count_price_and_place_in_the_order():
     run_in_module_context(ROWS_JS + r"""
-Price sort: the small copies are the cheapest and fold; the big copy and the good deal keep their tiles
+// Price sort: the small copies are the cheapest and fold; the big copy and the good deal keep their tiles
 // best PP/$ of the print: 2 (deal, big); the small copies give 1, 0.8 and 0.75 PP/$ and hold under 25 % of 400 CC
 const rows = [row('small1', 1, 1), row('small2', 2, 2.5), row('big', 200, 100), row('deal', 20, 10), row('small3', 3, 4)];
 const other = { ...row('other', 1, 1.5), card_detail_id: 8, lkey: 'o' };

@@ -32,21 +32,21 @@ def _render_card_art(page, base_url: str, record: dict) -> None:
     page.wait_for_function("document.querySelector('#plot-tbody > tr.plot-row') !== null", timeout=30_000)
     page.evaluate(
         """async (record) => {
- const { editorCardImageHtml } = await import('/static/editor.js');
- const host = document.createElement('span');
- host.id = 'card-art-guard';
- host.innerHTML = editorCardImageHtml(record, { alt: `${record.name} card art` });
- document.body.append(host);
- // editorCardImageHtml() emits loading="lazy". Appended to the bottom of a
- // 129-row board the host lands ~4000px below a 720px-tall headless viewport
- // and Chromium defers the fetch INDEFINITELY -- so neither load nor error
- // ever fires and the request is never even issued. Measured 2026-09-04: that
- // is indistinguishable from an ORB-blocked response from the outside, and it
- // sent three readers hunting a Chrome behaviour that was never involved.
- // Scrolling the host into view is what makes this guard exercise the fix
- // rather than time out against the browser's own laziness.
- host.scrollIntoView();
- }""",
+          const { editorCardImageHtml } = await import('/static/editor.js');
+          const host = document.createElement('span');
+          host.id = 'card-art-guard';
+          host.innerHTML = editorCardImageHtml(record, { alt: `${record.name} card art` });
+          document.body.append(host);
+          // editorCardImageHtml() emits loading="lazy". Appended to the bottom of a
+          // 129-row board the host lands ~4000px below a 720px-tall headless viewport,
+          // and Chromium defers the fetch INDEFINITELY -- so neither load nor error
+          // ever fires and the request is never even issued. Measured 2026-09-04: that
+          // is indistinguishable from an ORB-blocked response from the outside, and it
+          // sent three readers hunting a Chrome behaviour that was never involved.
+          // Scrolling the host into view is what makes this guard exercise the fix
+          // rather than time out against the browser's own laziness.
+          host.scrollIntoView();
+        }""",
         record,
     )
 
@@ -65,9 +65,9 @@ def test_chaos_403_advances_to_numeric_edition_art(live_browser: tuple[Browser, 
     _render_card_art(page, base_url, HARKLAW)
     page.wait_for_function(
         """() => {
- const image = document.querySelector('#card-art-guard img');
- return Boolean(image && image.complete && image.naturalWidth > 0);
- }""",
+          const image = document.querySelector('#card-art-guard img');
+          return Boolean(image && image.complete && image.naturalWidth > 0);
+        }""",
         timeout=10_000,
     )
     assert page.eval_on_selector("#card-art-guard img", "image => image.complete && image.naturalWidth > 0") is True
@@ -116,18 +116,18 @@ def test_every_held_record_keeps_its_numeric_edition_candidate(live_browser: tup
     page.wait_for_function("document.querySelector('#plot-tbody > tr.plot-row') !== null", timeout=30_000)
     results = page.evaluate(
         """async (records) => {
- const { editorCardImageCandidates } = await import('/static/editor.js');
- const { CARD_CDN_SET } = await import('/static/icons.js');
- return records.map((record) => {
- const numericFolder = CARD_CDN_SET[Number(record.edition)];
- const candidates = editorCardImageCandidates(record);
- return {
- name: record.name,
- numericFolder,
- hasNumericCandidate: candidates.some((url) => new URL(url).pathname.split('/').filter(Boolean)[0] === numericFolder),
- };
- });
- }""",
+          const { editorCardImageCandidates } = await import('/static/editor.js');
+          const { CARD_CDN_SET } = await import('/static/icons.js');
+          return records.map((record) => {
+            const numericFolder = CARD_CDN_SET[Number(record.edition)];
+            const candidates = editorCardImageCandidates(record);
+            return {
+              name: record.name,
+              numericFolder,
+              hasNumericCandidate: candidates.some((url) => new URL(url).pathname.split('/').filter(Boolean)[0] === numericFolder),
+            };
+          });
+        }""",
         records,
     )
     missing = [result for result in results if result["numericFolder"] and not result["hasNumericCandidate"]]

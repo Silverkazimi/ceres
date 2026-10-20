@@ -1,10 +1,10 @@
 """Mutation coverage for #ceres-tooltip's baseline contrast and severity accent. Two claims are guarded here, both on the
 OBSERVABLE (resolved colour), never on a class name or CSS string alone:
- 1. The tooltip's own text-on-fill contrast clears WCAG AA in all four
- themes (alchemical/dark/light/wood) -- the baseline-visibility fix.
- 2. A danger-severity tooltip (Clear plot) and a caution-severity tooltip
- (Sort by contribution) resolve to genuinely DIFFERENT colours, and
- neither collapses onto the neutral no-severity default, in every theme.
+  1. The tooltip's own text-on-fill contrast clears WCAG AA in all four
+     themes (alchemical/dark/light/wood) -- the baseline-visibility fix.
+  2. A danger-severity tooltip (Clear plot) and a caution-severity tooltip
+     (Sort by contribution) resolve to genuinely DIFFERENT colours, and
+     neither collapses onto the neutral no-severity default, in every theme.
 
 Mutation check performed by hand while writing this test: with
 `#ceres-tooltip[data-severity="danger"]`/`[data-severity="caution"]`'s
@@ -97,8 +97,8 @@ def test_tooltip_base_contrast_meets_wcag_aa_in_every_theme() -> None:
 
 def test_severity_resolves_to_different_colours_per_theme() -> None:
     """The three coloured severities (10% color-mix onto --bg3) must each
- differ from the neutral --bg3 default AND from each other, in every
- theme -- resolved to real hex, not compared by CSS variable name."""
+    differ from the neutral --bg3 default AND from each other, in every
+    theme -- resolved to real hex, not compared by CSS variable name."""
     for theme, (_heading, bg3_hex, warn_hex, danger_hex, ok_hex, _accent) in THEME_TOKENS.items():
         neutral = bg3_hex.lower()
         caution = _mix(warn_hex, bg3_hex, 0.10).lower()
@@ -119,39 +119,39 @@ def live_browser() -> tuple[Browser, str]:
 
 def test_severity_reflected_in_live_dom(live_browser: tuple[Browser, str]) -> None:
     """Census row 37 (batch B): extends this file's own pre-existing live guard
- (per plan §3.1: "the live test already does this for two cases -- extend
- it to cover the substring-only ones instead of adding a third mechanism")
- to replace THREE dropped source-scans:
- - `test_tipattrs_severity_argument_and_dom_mirroring_present` (line 119):
- `tipAttrs(model, severity)`'s signature and `TOOLTIP_EL`'s
- `setAttribute`/`removeAttribute('data-severity', ...)` mirroring --
- now proven by this test's own `severity`/`borderLeft` reads below,
- which only pass if that exact plumbing is intact end to end.
- - `test_clear_plot_tooltip_is_danger` (line 129): the structured danger
- model reaching the real Clear Plot call site -- now proven by hovering
- the REAL button and reading `data-severity="danger"` (was previously
- a regex over a literal `tipAttrs({...})` object).
- - `test_badge_severity_reaches_the_tooltip` (line 197, app.js half only
- -- the `ceres.notices.badge_meta_projection()` Python-side half is
- kept below, unchanged, out of this census row's JS-reading scope):
- now proven by hovering a REAL live badge chip carrying a caution
- severity and reading its rendered `data-severity`/colour.
+    (per plan §3.1: "the live test already does this for two cases -- extend
+    it to cover the substring-only ones instead of adding a third mechanism")
+    to replace THREE dropped source-scans:
+      - `test_tipattrs_severity_argument_and_dom_mirroring_present` (line 119):
+        `tipAttrs(model, severity)`'s signature and `TOOLTIP_EL`'s
+        `setAttribute`/`removeAttribute('data-severity', ...)` mirroring --
+        now proven by this test's own `severity`/`borderLeft` reads below,
+        which only pass if that exact plumbing is intact end to end.
+      - `test_clear_plot_tooltip_is_danger` (line 129): the structured danger
+        model reaching the real Clear Plot call site -- now proven by hovering
+        the REAL button and reading `data-severity="danger"` (was previously
+        a regex over a literal `tipAttrs({...})` object).
+      - `test_badge_severity_reaches_the_tooltip` (line 197, app.js half only
+        -- the `ceres.notices.badge_meta_projection()` Python-side half is
+        kept below, unchanged, out of this census row's JS-reading scope):
+        now proven by hovering a REAL live badge chip carrying a caution
+        severity and reading its rendered `data-severity`/colour.
 
- Real Chromium guard: hovers the Clear plot button (danger) and a real
- live caution-severity badge chip (`dark_discount_wasted`, same fixture
- plot `test_tooltip_callsite_models.py` uses) in the same page, and reads
- the ACTUAL computed border-left-color/background of #ceres-tooltip for
- each -- never the class name or the data-severity attribute's spelling --
- confirming they resolve to genuinely different colours, neither the
- neutral default.
+    Real Chromium guard: hovers the Clear plot button (danger) and a real
+    live caution-severity badge chip (`dark_discount_wasted`, same fixture
+    plot `test_tooltip_callsite_models.py` uses) in the same page, and reads
+    the ACTUAL computed border-left-color/background of #ceres-tooltip for
+    each -- never the class name or the data-severity attribute's spelling --
+    confirming they resolve to genuinely different colours, neither the
+    neutral default.
 
- Named injection (not applied here; independently watched red/green per
- ): `renderTooltip()`'s
- `if (severity) TOOLTIP_EL.setAttribute('data-severity', severity);`
- branch removed entirely (the `else TOOLTIP_EL.removeAttribute(...)` stays).
- Expected red: both `danger["severity"]` and `caution["severity"]` come
- back `None`, and their border colours collapse to the same (neutral)
- value."""
+    Named injection (not applied here; independently watched red/green per
+    ): `renderTooltip()`'s
+    `if (severity) TOOLTIP_EL.setAttribute('data-severity', severity);`
+    branch removed entirely (the `else TOOLTIP_EL.removeAttribute(...)` stays).
+    Expected red: both `danger["severity"]` and `caution["severity"]` come
+    back `None`, and their border colours collapse to the same (neutral)
+    value."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
     page.goto(base_url)
@@ -189,9 +189,9 @@ def test_severity_reflected_in_live_dom(live_browser: tuple[Browser, str]) -> No
 
 def test_badge_meta_projection_carries_a_real_caution_severity() -> None:
     """Reads `ceres.notices`, not `ceres/static/*.js` -- outside this census
- row's JS-reading scope, left unchanged (the app.js half of the old
- combined test is now proven by `test_severity_reflected_in_live_dom`
- above)."""
+    row's JS-reading scope, left unchanged (the app.js half of the old
+    combined test is now proven by `test_severity_reflected_in_live_dom`
+    above)."""
     from ceres import notices
 
     projection = notices.badge_meta_projection()

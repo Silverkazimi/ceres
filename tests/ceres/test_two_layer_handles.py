@@ -61,13 +61,13 @@ def test_flag_inner_chip_tracks_used_and_unused_state():
     assert "right: var(--edge-pad-right, 0px);" in before_rule
     # (maintainer): the flag's chip is the wallet/Iris toggle chip, always on.
     assert "background: color-mix(in srgb, var(--primary) 22%, transparent);" in before_rule
-    assert "box-shadow: var(--edge-chip-shadow" in before_rule
+    assert "box-shadow: var(--edge-chip-shadow," in before_rule
     assert 'flag.dataset.state = allOpen ? \'used\' : \'unused\';' in js
 
 
 def test_flag_expanded_state_does_not_add_a_pill_glow():
-    """expanded state keeps the outer pill free of ambient glow;
- hover/focus-visible remains the only outer-pill glow affordance."""
+    """: expanded state keeps the outer pill free of ambient glow;
+    hover/focus-visible remains the only outer-pill glow affordance."""
     css = CERES_CSS.read_text(encoding="utf-8")
     assert '.badge-bar-head[aria-expanded="true"] {' not in css
 
@@ -85,8 +85,8 @@ def test_flag_aria_expanded_mirrors_the_bars_own_live_open_fact():
 
 def test_wallet_toggle_chip_stays_always_visible_unlike_the_flag():
     """The Wallet keeps its own always-on chip (it shows the SELECTED resource,
- not an open/closed state) -- only changed the flag's own toggle
- behaviour, not the Wallet's."""
+    not an open/closed state) --  only changed the flag's own toggle
+    behaviour, not the Wallet's."""
     css = CERES_CSS.read_text(encoding="utf-8")
     toggle_rule = _rule(css, ".edge-toggle {")
     assert "background: color-mix(in srgb, var(--primary) 22%, transparent);" in toggle_rule

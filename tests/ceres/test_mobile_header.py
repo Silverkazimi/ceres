@@ -1,4 +1,4 @@
-"""mobile header polish (maintainer ruling 2026-09-19) -- narrower player
+""": mobile header polish (maintainer ruling 2026-09-19) -- narrower player
 field pushed right, square left corners fully covered by the avatar, and a
 larger board logo. Mobile tier only (html.ceres-lw-le-1919.ceres-lw-le-1279);
 desktop rules are untouched.

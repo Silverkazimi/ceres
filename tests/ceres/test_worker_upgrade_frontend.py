@@ -39,31 +39,31 @@ def test_upgrade_chip_renders_only_for_the_eligible_worker_not_the_maxed_one(
     live_browser: tuple[Browser, str],
 ) -> None:
     r"""Replaces the two node-sliced `workerUpgradeIsAvailable()` tests (census row 42's
- node tests: `test_maxed_worker_has_no_upgrade_affordance` and
- `test_maxed_worker_affordance_guard_mutation_goes_red`) with the real rendered
- affordance. `workerUpgradeIsAvailable` is live -- called from
- `workerUpgradeCopyCount()` (`ceres/static/app.js:417-433`), which the real
- candidate-row renderer calls at `app.js:4324` to produce the `.candidate-upgrade`
- "N combinable copies owned" chip next to a picker candidate that duplicates one of
- the plot's own staked workers.
+    node tests: `test_maxed_worker_has_no_upgrade_affordance` and
+    `test_maxed_worker_affordance_guard_mutation_goes_red`) with the real rendered
+    affordance. `workerUpgradeIsAvailable` is live -- called from
+    `workerUpgradeCopyCount()` (`ceres/static/app.js:417-433`), which the real
+    candidate-row renderer calls at `app.js:4324` to produce the `.candidate-upgrade`
+    "N combinable copies owned" chip next to a picker candidate that duplicates one of
+    the plot's own staked workers.
 
- Setup: a plot with two staked workers occupying slots 1-2 of a 3-capacity worker
- group (one open slot) -- `maxed-worker` (`bcx: 10, bcx_max: 10`, at its known
- ceiling) and `eligible-worker` (`bcx: 3, bcx_max: None`, headroom). Each worker's
- mocked `/workers/<asset_ref>/upgrade-options` response reports `eligible: true`
- with one combinable other copy matching one of two mocked picker candidates by
- identity (`card_detail_id`/`edition`/foil). Opening the empty slot's picker must
- show the chip on the candidate matching the eligible worker and NOT on the
- candidate matching the maxed one -- proving `workerUpgradeIsAvailable`'s own
- `bcx >= bcx_max` ceiling gates the chip even though the maxed worker's own
- upgrade-options response claims `eligible: true`.
+    Setup: a plot with two staked workers occupying slots 1-2 of a 3-capacity worker
+    group (one open slot) -- `maxed-worker` (`bcx: 10, bcx_max: 10`, at its known
+    ceiling) and `eligible-worker` (`bcx: 3, bcx_max: None`, headroom). Each worker's
+    mocked `/workers/<asset_ref>/upgrade-options` response reports `eligible: true`
+    with one combinable other copy matching one of two mocked picker candidates by
+    identity (`card_detail_id`/`edition`/foil). Opening the empty slot's picker must
+    show the chip on the candidate matching the eligible worker and NOT on the
+    candidate matching the maxed one -- proving `workerUpgradeIsAvailable`'s own
+    `bcx >= bcx_max` ceiling gates the chip even though the maxed worker's own
+    upgrade-options response claims `eligible: true`.
 
- Named injection, run and watched red, then reverted and watched green: in
- `ceres/static/app.js`'s `workerUpgradeIsAvailable()`, `return !(Number.isFinite(bcx)
- && Number.isFinite(bcxMax) && bcx >= bcxMax);` was replaced with `return true;`.
- Red: the maxed candidate's row rendered a `.candidate-upgrade` chip it must not
- have -- `assert maxed_chip.count() == 0` failed (count was 1). Restoring the
- ceiling check made this test pass again (whole-file run: 2 passed)."""
+    Named injection, run and watched red, then reverted and watched green: in
+    `ceres/static/app.js`'s `workerUpgradeIsAvailable()`, `return !(Number.isFinite(bcx)
+    && Number.isFinite(bcxMax) && bcx >= bcxMax);` was replaced with `return true;`.
+    Red: the maxed candidate's row rendered a `.candidate-upgrade` chip it must not
+    have -- `assert maxed_chip.count() == 0` failed (count was 1). Restoring the
+    ceiling check made this test pass again (whole-file run: 2 passed)."""
     browser, base_url = live_browser
     row = _real_detail_row(base_url)
     deed_uid = row["deed_uid"]

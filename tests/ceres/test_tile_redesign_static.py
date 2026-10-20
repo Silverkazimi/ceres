@@ -21,14 +21,18 @@ EOS = ROOT / "ceres" / "static" / "eos.js"
 BADGES = ROOT / "ceres" / "static" / "badges.js"
 ICONS = ROOT / "ceres" / "static" / "icons.js"
 ABILITY_DOC = ROOT / "library" / "land-worker-abilities.md"
+DOCUMENTED_ABILITY_CODES = frozenset({
+    "ALTERATION", "AURA", "BLOODLINE", "DD", "ENERGIZED", "FORTUNE_SEEKER", "GLINT_RECOVERY", "GRAIN",
+    "IRON", "LL", "RATIONING", "RATIONING_LITE", "RESEARCH", "SPS", "STONE", "WOOD",
+})
 BARE_BROWSER_GLOBALS_JS = """
 window.getComputedStyle = () => ({
- fontSize: '16px',
- borderLeftWidth: '0px',
- borderRightWidth: '0px',
- borderTopLeftRadius: '11px',
- borderTopWidth: '0px',
- getPropertyValue() { return ''; },
+  fontSize: '16px',
+  borderLeftWidth: '0px',
+  borderRightWidth: '0px',
+  borderTopLeftRadius: '11px',
+  borderTopWidth: '0px',
+  getPropertyValue() { return ''; },
 });
 context.getComputedStyle = window.getComputedStyle;
 context.requestAnimationFrame = window.requestAnimationFrame;
@@ -39,6 +43,8 @@ context.performance = { now: () => Date.now() };
 
 
 def _documented_ability_codes() -> set[str]:
+    if not ABILITY_DOC.is_file():
+        return set(DOCUMENTED_ABILITY_CODES)
     source = ABILITY_DOC.read_text(encoding="utf-8")
     table = source[source.index("## 2. Full ability code table"):source.index("## 2a.")]
     codes = set()
@@ -71,8 +77,15 @@ def test_documented_abilities_have_tiers_slugs_and_existing_assets() -> None:
         code: (value[1:-1] if value.startswith("'") else fallback)
         for code, value in re.findall(r"\b([A-Z][A-Z0-9_]*)\s*:\s*('[^']+'|ABILITY_ICON_FALLBACK_SLUG)", slug_body)
     }
-    for code in documented:
-        assert (ROOT / "ceres" / "static" / "assets" / "abilities" / f"ability_{slug_values[code]}.png").is_file()
+    assets = ROOT / "ceres" / "static" / "assets"
+    source_manifest = assets / "sources.json"
+    downloadable = {row["path"] for row in (json.loads(source_manifest.read_text(encoding="utf-8")) if source_manifest.is_file() else [])}
+    unavailable = sorted(
+        code for code in documented
+        if not (assets / "abilities" / f"ability_{slug_values[code]}.png").is_file()
+        and f"abilities/ability_{slug_values[code]}.png" not in downloadable
+    )
+    assert not unavailable, f"ability icons neither shipped nor downloadable: {unavailable}"
 
     # (790c4e52, 2026-09-18 docs reconciliation) rewrote
     # library/land-worker-abilities.md's ElectroFox example prose that used to give
@@ -84,7 +97,7 @@ def test_documented_abilities_have_tiers_slugs_and_existing_assets() -> None:
     # appears in ABILITY_ICON_SLUG above it, so the object's own opening brace is
     # included to target only this object), so it is the mutation canary now.
     mutated = source.replace(
-        "export const LAND_ABILITY_TIERS = Object.freeze({\n BLOODLINE: 'toil-and-kin',\n",
+        "export const LAND_ABILITY_TIERS = Object.freeze({\n  BLOODLINE: 'toil-and-kin',\n",
         "export const LAND_ABILITY_TIERS = Object.freeze({\n",
         1,
     )
@@ -96,10 +109,10 @@ def _render(abilities: list[list[object]], *, bubble: bool = False, foil: str = 
 const row = {{ deed_uid: 'static-tile', workers: [] }};
 const group = {{ id: 'worker', label: 'Workers', actionable: true, capacity: 5, slots: [null], slotNumbers: [1] }};
 const occupant = {{ asset_ref: 'worker-1', name: 'Static Worker', image: null, image_candidates: [], base_pp: 1000,
- base_pp_after_cap: null, current_harvest_pp: 1000, badges: ['server badge'], rarity: 'common',
- splinter: 'Water', card_set: 'land', edition: 19, editions: '19', foil: {json.dumps(foil)},
- gold: false, land_abilities: {json.dumps(abilities)}, sole_holder_for: ['Bountiful Grain'],
- cooldown: {json.dumps({"ready": False}) if cooling else 'null'}, sub_type: 'Human' }};
+  base_pp_after_cap: null, current_harvest_pp: 1000, badges: ['server badge'], rarity: 'common',
+  splinter: 'Water', card_set: 'land', edition: 19, editions: '19', foil: {json.dumps(foil)},
+  gold: false, land_abilities: {json.dumps(abilities)}, sole_holder_for: ['Bountiful Grain'],
+  cooldown: {json.dumps({"ready": False}) if cooling else 'null'}, sub_type: 'Human' }};
 const html = renderEditorTile(row, group, 0, occupant, {{ cell: true, hasEnergizedBubble: {str(bubble).lower()} }}) + ({str(bubble).lower()} ? renderEnergizedBadge(occupant) : '');
 console.log(JSON.stringify(html));
 """
@@ -109,7 +122,7 @@ console.log(JSON.stringify(html));
 
 def test_ability_order_and_overflow_render_from_real_tile_renderer() -> None:
     """MUTATION: changing `orderLandAbilities()` to preserve source order makes the
- first three URLs fail this assertion; the +N body also proves hidden source order."""
+    first three URLs fail this assertion; the +N body also proves hidden source order."""
     # v0.9.192 (/) raised ABILITY_MAX from 3 to 5 (up to
     # 4 visible + overflow) and gave exactly 6 abilities their own dedicated arc
     # layout (no overflow at all) -- 7 abilities are used here so the overflow path
@@ -129,7 +142,7 @@ def test_ability_order_and_overflow_render_from_real_tile_renderer() -> None:
     # so the flat icon row no longer repeats it: 6 icons remain, 4 visible + "+2".
     assert icon_slugs[:3] == ["bountiful-grain", "bountiful-stone", "bountiful-wood"]
     assert "toil-and-kin" not in icon_slugs
-    assert ">+2</button>" in html
+    assert re.search(r'<span class="slot-ability-count"[^>]*>\+2</span>', html)
     assert html.index("Dark Discount") < html.index("Light Rationing")
     tile = html[html.index('<div class="slot-tile'):]
     assert tile.index('<div class="slot-foot">') < tile.index('class="slot-caption')  # the foot sits inside the tile, above the name
@@ -138,7 +151,7 @@ def test_ability_order_and_overflow_render_from_real_tile_renderer() -> None:
 
 def test_energized_is_bubble_art_not_an_ability_icon() -> None:
     """Explicit guard: ENERGIZED has a separate power-bubble role, so it is
- excluded from the ability-icon query while the local asset remains present."""
+    excluded from the ability-icon query while the local asset remains present."""
     html = _render([["ENERGIZED"], ["GRAIN", 0.6], ["BLOODLINE", 0.3, "Elf"]], bubble=True)
     ability_images = re.findall(r'<img class="ability-icon[^>]+src="([^\"]+)', html)
     assert all("ability_energized.png" not in src for src in ability_images)
@@ -152,8 +165,8 @@ def test_energized_is_bubble_art_not_an_ability_icon() -> None:
 
 def test_tile_has_no_moved_badge_markup_and_keeps_names_and_corner_marks() -> None:
     """MUTATION: restoring any old caption badge interpolation makes the forbidden
- selector set appear in this rendered tile; the corner selectors are the retained
- phase-one marks, while phase two consumes `tileBadgeChips()` separately."""
+    selector set appear in this rendered tile; the corner selectors are the retained
+    phase-one marks, while phase two consumes `tileBadgeChips()` separately."""
     html = _render([["BLOODLINE", 0.3, "Elf"]], foil="1", cooling=True)
     tile = html[html.index('<div class="slot-tile'):]
     for forbidden in ("slot-foil-badge", "slot-bloodline-badge", "slot-cooldown-badge", "slot-in-flight", "slot-badges"):
@@ -171,14 +184,14 @@ def test_tile_has_no_moved_badge_markup_and_keeps_names_and_corner_marks() -> No
 
 
 def test_tile_badge_chips_preserve_phase_two_data_and_tooltips() -> None:
-    """(v0.9.130, aa4a22ae, "delete the worker badge row
- completely") deleted `tileBadgeChips()` and the whole worker-badge-row feature
- this test's phase-two chips (foil/combine/cooldown/bloodline/staged) covered --
- that commit's own message flags this exact test as needing an update ("two tile
- tests that also assert on it still need updating"). Its replacement: foil and
- companion pairing now live ONLY in the tile's own tooltip (this file's other
- tests already cover the forbidden old badge-row selectors), matching the
- commit's stated behaviour -- "Foil and companion stay in each tile's tooltip"."""
+    """/:  (v0.9.130, aa4a22ae, "delete the worker badge row
+    completely") deleted `tileBadgeChips()` and the whole worker-badge-row feature
+    this test's phase-two chips (foil/combine/cooldown/bloodline/staged) covered --
+    that commit's own message flags this exact test as needing an update ("two tile
+    tests that also assert on it still need updating"). Its replacement: foil and
+    companion pairing now live ONLY in the tile's own tooltip (this file's other
+    tests already cover the forbidden old badge-row selectors), matching the
+    commit's stated behaviour -- "Foil and companion stay in each tile's tooltip"."""
     source = read_entry_source(entry=BADGES)
     assert "tileBadgeChips" not in source
     abilities = [["BLOODLINE", 0.3, "Elf", {"active": True, "companions": ["Elf mate"]}]]
@@ -192,7 +205,7 @@ def test_tile_badge_chips_preserve_phase_two_data_and_tooltips() -> None:
 
 def test_tile_css_preserves_frozen_satellite_and_clamped_base_pp_radius() -> None:
     """MUTATION: changing either frozen satellite geometry or the radius clamp is
- intended to make this source guard fail; rendered live radius is covered separately."""
+    intended to make this source guard fail; rendered live radius is covered separately."""
     source = CSS.read_text(encoding="utf-8")
     assert "both wrappers remain 36.8px and left 35.2px/top -18.4px" in source
     assert "border-radius: var(--radius);" in source
@@ -249,7 +262,7 @@ def test_band_geometry_gradient_and_fixed_ability_icons_are_mutation_guarded() -
         ".editor-band {\n"
         "  box-sizing: border-box; inline-size: 100%; max-inline-size: 100%;\n"
         "  block-size: var(--eos-band-height, 18.5125rem); min-block-size: var(--eos-band-height, 18.5125rem);\n"
-        "  eos-facts: .45rem; --eos-controls: 1.6rem; --eos-cards: 12.45rem; --eos-footer: 2.7rem; /* flipped: the +1.25rem sits at the top */\n"
+        "  --eos-facts: .45rem; --eos-controls: 1.6rem; --eos-cards: 12.45rem; --eos-footer: 2.7rem; /*  flipped: the +1.25rem sits at the top */\n"
         "  background: radial-gradient(ellipse at 16% 75%, color-mix(in srgb, var(--accent) 13%, #13111d), #13111d 65%);\n"
         "}"
     )
@@ -288,7 +301,7 @@ def test_band_geometry_gradient_and_fixed_ability_icons_are_mutation_guarded() -
 
 def test_order_guard_rejects_a_source_order_mutation() -> None:
     """Red mutation: a source-order sort bypasses the runtime tier assertion and
- must fail before a reordered ability list can reach the renderer."""
+    must fail before a reordered ability list can reach the renderer."""
     source = read_entry_source()
     anchor = "ranked.sort((left, right) => left.rank - right.rank || left.index - right.index);"
     assert source.count(anchor) == 1

@@ -1,4 +1,4 @@
-"""opt-in multi-select in the shared
+""": opt-in multi-select in the shared
 customSelect.js component and the board's filter row (OR within one filter, AND across filters).
 
 Pure helpers and the board's filter logic run in the shared vm harness; the component's real DOM behaviour
@@ -58,16 +58,16 @@ BOARD_STUBS = r"""
 const els = {};
 const sel = (values) => ({ value: values[0] || '', selectedOptions: values.map((value) => ({ value })), options: [] });
 const setFilters = (f) => {
- for (const id of ['region-filter', 'rarity-filter', 'terrain-filter', 'resource-filter', 'status-filter', 'badge-filter']) els[id] = sel(f[id] || []);
+  for (const id of ['region-filter', 'rarity-filter', 'terrain-filter', 'resource-filter', 'status-filter', 'badge-filter']) els[id] = sel(f[id] || []);
 };
 els['text-filter'] = { value: '' };
 els['staged-only'] = { checked: false };
 document.getElementById = (id) => els[id] || null;
 const rows = [
- { deed_uid: 'a', plot: '65-1-1', rarity: 'common', terrain: 'Plains', resource: 'GRAIN', plot_status: 'natural' },
- { deed_uid: 'b', plot: '70-2-2', rarity: 'rare', terrain: 'River', resource: 'WOOD', plot_status: 'magical', magic_type: 'Fire' },
- { deed_uid: 'c', plot: '65-3-3', rarity: 'epic', terrain: 'Lake', resource: 'STONE', plot_status: 'magical', magic_type: 'Water' },
- { deed_uid: 'd', plot: '101-4-4', rarity: 'legendary', terrain: 'Plains', resource: 'IRON', plot_status: 'kingdom' },
+  { deed_uid: 'a', plot: '65-1-1', rarity: 'common', terrain: 'Plains', resource: 'GRAIN', plot_status: 'natural' },
+  { deed_uid: 'b', plot: '70-2-2', rarity: 'rare', terrain: 'River', resource: 'WOOD', plot_status: 'magical', magic_type: 'Fire' },
+  { deed_uid: 'c', plot: '65-3-3', rarity: 'epic', terrain: 'Lake', resource: 'STONE', plot_status: 'magical', magic_type: 'Water' },
+  { deed_uid: 'd', plot: '101-4-4', rarity: 'legendary', terrain: 'Plains', resource: 'IRON', plot_status: 'kingdom' },
 ];
 const pick = (f) => { setFilters(f); return rows.filter((row) => matchesFilters(row)).map((row) => row.deed_uid); };
 """
@@ -136,11 +136,11 @@ window.READY = true;
 def _state(page, sel_id):
     return page.evaluate(
         """(id) => { const s = document.getElementById(id); const c = s._csel;
- return { values: CS.selectValues(s), value: s.value, label: c.trigger.textContent.trim(), open: !c.list.hidden,
- multi: c.list.getAttribute('aria-multiselectable'),
- selected: [...c.list.querySelectorAll('.csel-option')].filter((li) => li.getAttribute('aria-selected') === 'true').map((li) => li.dataset.value),
- checks: [...c.list.querySelectorAll('.csel-option.is-selected .csel-check')].length,
- checkSlots: c.list.querySelectorAll('.csel-check').length }; }""",
+        return { values: CS.selectValues(s), value: s.value, label: c.trigger.textContent.trim(), open: !c.list.hidden,
+          multi: c.list.getAttribute('aria-multiselectable'),
+          selected: [...c.list.querySelectorAll('.csel-option')].filter((li) => li.getAttribute('aria-selected') === 'true').map((li) => li.dataset.value),
+          checks: [...c.list.querySelectorAll('.csel-option.is-selected .csel-check')].length,
+          checkSlots: c.list.querySelectorAll('.csel-check').length }; }""",
         sel_id,
     )
 
@@ -215,22 +215,22 @@ def test_programmatic_set_values_and_trigger_decoration(page):
 
 def test_icon_choices_use_name_then_icons_then_count(page):
     result = page.evaluate("""() => {
- const s = document.createElement('select');
- s.multiple = true;
- s.innerHTML = '<option value="">All</option>' + ['Fire','Water','Earth','Life'].map(v => `<option value="${v}">${v}</option>`).join('');
- document.body.appendChild(s);
- CS.initCustomSelect(s, {ariaLabel:'Splinter filter', emptyLabel:'Splinter', pluralNoun:'splinters',
- decorateOption:(v) => v ? {icon:`<span class="test-icon">${v[0]}</span>`} : null});
- const states = [];
- for (const values of [[], ['Fire'], ['Fire','Water','Earth'], ['Fire','Water','Earth','Life']]) {
- CS.setSelectValues(s, values); CS.syncCustomSelect(s);
- states.push({text:s._csel.trigger.querySelector('.csel-value-text').textContent,
- icons:s._csel.trigger.querySelectorAll('.csel-picked-icon, .test-icon').length,
- aria:s._csel.trigger.getAttribute('aria-label'), title:s._csel.trigger.title});
- }
- s._csel.wrap.remove();
- return states;
- }""")
+      const s = document.createElement('select');
+      s.multiple = true;
+      s.innerHTML = '<option value="">All</option>' + ['Fire','Water','Earth','Life'].map(v => `<option value="${v}">${v}</option>`).join('');
+      document.body.appendChild(s);
+      CS.initCustomSelect(s, {ariaLabel:'Splinter filter', emptyLabel:'Splinter', pluralNoun:'splinters',
+        decorateOption:(v) => v ? {icon:`<span class="test-icon">${v[0]}</span>`} : null});
+      const states = [];
+      for (const values of [[], ['Fire'], ['Fire','Water','Earth'], ['Fire','Water','Earth','Life']]) {
+        CS.setSelectValues(s, values); CS.syncCustomSelect(s);
+        states.push({text:s._csel.trigger.querySelector('.csel-value-text').textContent,
+          icons:s._csel.trigger.querySelectorAll('.csel-picked-icon, .test-icon').length,
+          aria:s._csel.trigger.getAttribute('aria-label'), title:s._csel.trigger.title});
+      }
+      s._csel.wrap.remove();
+      return states;
+    }""")
     assert result[0]["text"] == "Splinter"
     assert result[1]["text"] == "Fire" and result[1]["icons"] == 1
     assert result[2]["text"] == "" and result[2]["icons"] >= 3

@@ -28,12 +28,13 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import spawn_live_ceres, wait_for_board
+from . import board_basic_recording as recording
 
 
 SCREEN_DIR = Path(__file__).parents[2] / "work" / "ceres-tilefix"
 SCREEN_DIR.mkdir(parents=True, exist_ok=True)
 
-PAIRED_DEED = "I-294-99ed4b7a4d170e"
+PAIRED_DEED = recording.OVERCAP.uid
 
 
 

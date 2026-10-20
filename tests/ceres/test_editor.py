@@ -15,7 +15,7 @@ from ceres.capacity import (
     structure_capacity_index,
 )
 from ceres.candidates import _projected_worksite_row, _worker_slot_capacity
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 
 # an earlier queue's source-text guard here (kept, NOT
 # converted, pending an maintainer ruling on the dead `powerWarning` computation
@@ -162,22 +162,22 @@ def _real_detail_row(base_url: str, *, min_open_slots: int = 0) -> dict:
 
 def test_unpowered_editor_projects_non_five_capacity_and_keeps_tiles_actionable(live_browser: tuple[Browser, str]) -> None:
     r"""Replaces the node-sliced `editorGroups()` capacity test (census row 20's
- first node test) with the real rendered editor for a plot that is fully
- unpowered (no Power Core, not Energized) but whose `capacity.
- potential_card_capacity` response is deliberately injected as 12: the editor
- must render 12 real, clickable (non-disabled) empty worker tiles despite having
- no power source, proving the generic non-worksite capacity contract and that the
- worker group stays `actionable: true` unconditionally.
+    first node test) with the real rendered editor for a plot that is fully
+    unpowered (no Power Core, not Energized) but whose `capacity.
+    potential_card_capacity` response is deliberately injected as 12: the editor
+    must render 12 real, clickable (non-disabled) empty worker tiles despite having
+    no power source, proving the generic non-worksite capacity contract and that the
+    worker group stays `actionable: true` unconditionally.
 
- Named injection, run and watched red, then reverted and watched green: in
- `ceres/static/app.js`'s `editorGroups()`, the worker group's
- `actionable: true` literal was changed to
- `actionable: facts.is_power_core_staked === true || facts.is_energized === true`
- (ties tile actionability to power). Red: `AssertionError: assert not True ...
- is_disabled()` on the first empty tile -- it stayed a real `<button>` (the tag
- assertion passed) but rendered `disabled` because `group.actionable` was now
- false. Restoring the literal made this test pass again (whole-file run:
- 6 passed)."""
+    Named injection, run and watched red, then reverted and watched green: in
+    `ceres/static/app.js`'s `editorGroups()`, the worker group's
+    `actionable: true` literal was changed to
+    `actionable: facts.is_power_core_staked === true || facts.is_energized === true`
+    (ties tile actionability to power). Red: `AssertionError: assert not True ...
+    is_disabled()` on the first empty tile -- it stayed a real `<button>` (the tag
+    assertion passed) but rendered `disabled` because `group.actionable` was now
+    false. Restoring the literal made this test pass again (whole-file run:
+    6 passed)."""
     browser, base_url = live_browser
     row = _real_detail_row(base_url)
     deed_uid = row["deed_uid"]
@@ -208,19 +208,19 @@ def test_unpowered_editor_projects_non_five_capacity_and_keeps_tiles_actionable(
 
 def test_extreme_projected_capacity_fails_safe_to_zero_slots(live_browser: tuple[Browser, str]) -> None:
     r"""Second half of census row 20's first node test: `editorGroups()`'s own
- integer/range guard on `capacity.potential_card_capacity` (independent of, and
- a second layer behind, the Python-side `potential_worker_capacity()` safety
- covered above) -- an absurd value must render ZERO worker tiles, not attempt
- to build an enormous grid.
+    integer/range guard on `capacity.potential_card_capacity` (independent of, and
+    a second layer behind, the Python-side `potential_worker_capacity()` safety
+    covered above) -- an absurd value must render ZERO worker tiles, not attempt
+    to build an enormous grid.
 
- Named injection, run and watched red, then reverted and watched green: in
- `ceres/static/app.js`'s `editorGroups()`, the capacity guard
- `Number.isInteger(rawCapacity) && rawCapacity >= 0 && rawCapacity <= 50 ?
- rawCapacity : 0` had its `<= 50` upper bound removed (`Number.isInteger(rawCapacity)
- && rawCapacity >= 0 ? rawCapacity : 0`). Red: this test's page load hung/timed
- out building a 10,000,000-cell grid (`playwright._impl._errors.TimeoutError`
- waiting for `.slot-group[data-group-id='worker']`). Restoring the bound made
- this test pass again (whole-file run: 6 passed)."""
+    Named injection, run and watched red, then reverted and watched green: in
+    `ceres/static/app.js`'s `editorGroups()`, the capacity guard
+    `Number.isInteger(rawCapacity) && rawCapacity >= 0 && rawCapacity <= 50 ?
+    rawCapacity : 0` had its `<= 50` upper bound removed (`Number.isInteger(rawCapacity)
+    && rawCapacity >= 0 ? rawCapacity : 0`). Red: this test's page load hung/timed
+    out building a 10,000,000-cell grid (`playwright._impl._errors.TimeoutError`
+    waiting for `.slot-group[data-group-id='worker']`). Restoring the bound made
+    this test pass again (whole-file run: 6 passed)."""
     browser, base_url = live_browser
     row = _real_detail_row(base_url)
     deed_uid = row["deed_uid"]
@@ -244,18 +244,18 @@ def test_extreme_projected_capacity_fails_safe_to_zero_slots(live_browser: tuple
 
 def test_stage_reservation_reaches_every_picker_on_the_same_plot_and_releases_on_unstage(live_browser: tuple[Browser, str]) -> None:
     r"""Replaces the node-sliced `stagedIncomingAssetRefs()`/`candidateQuery()` test
- (census row 20's second node test). Real click path on a plot with 2 real open
- worker slots: staging a mocked candidate into slot 0 must make slot 1's picker
- request exclude that SAME asset_ref via `reserved_asset_ref` (so the same card
- cannot be picked into two slots at once); undoing the slot-0 stage must release
- the reservation, and slot 1's picker must no longer exclude it.
+    (census row 20's second node test). Real click path on a plot with 2 real open
+    worker slots: staging a mocked candidate into slot 0 must make slot 1's picker
+    request exclude that SAME asset_ref via `reserved_asset_ref` (so the same card
+    cannot be picked into two slots at once); undoing the slot-0 stage must release
+    the reservation, and slot 1's picker must no longer exclude it.
 
- Named injection, run and watched red, then reverted and watched green: in
- `ceres/static/app.js`, `stagedIncomingAssetRefs()`'s body was replaced with
- `return new Set();` (always reports nothing staged). Red:
- `AssertionError: assert None == ['reservation-test-card']` -- the second
- slot's request carried no `reserved_asset_ref` param at all. Restoring the
- function made this test pass again (whole-file run: 6 passed)."""
+    Named injection, run and watched red, then reverted and watched green: in
+    `ceres/static/app.js`, `stagedIncomingAssetRefs()`'s body was replaced with
+    `return new Set();` (always reports nothing staged). Red:
+    `AssertionError: assert None == ['reservation-test-card']` -- the second
+    slot's request carried no `reserved_asset_ref` param at all. Restoring the
+    function made this test pass again (whole-file run: 6 passed)."""
     browser, base_url = live_browser
     row = _real_detail_row(base_url, min_open_slots=2)
     deed_uid = row["deed_uid"]
@@ -297,7 +297,7 @@ def test_stage_reservation_reaches_every_picker_on_the_same_plot_and_releases_on
     empty_tiles = worker_group.locator(".slot-tile-cell .slot-tile.is-empty")
     with page.expect_request(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*"):
         empty_tiles.first.click()
-    page.wait_for_timeout(300)
+    settle(page)
     assert candidate_requests, "opening the second empty slot's picker made no candidates request"
     reserved_params = urllib.parse.parse_qs(urllib.parse.urlparse(candidate_requests[-1]).query)
     assert reserved_params.get("reserved_asset_ref") == ["reservation-test-card"], reserved_params
@@ -312,7 +312,7 @@ def test_stage_reservation_reaches_every_picker_on_the_same_plot_and_releases_on
     empty_tiles = worker_group.locator(".slot-tile-cell .slot-tile.is-empty")
     with page.expect_request(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*"):
         empty_tiles.first.click()
-    page.wait_for_timeout(300)
+    settle(page)
     assert candidate_requests
     released_params = urllib.parse.parse_qs(urllib.parse.urlparse(candidate_requests[-1]).query)
     assert "reservation-test-card" not in released_params.get("reserved_asset_ref", [])
@@ -320,34 +320,34 @@ def test_stage_reservation_reaches_every_picker_on_the_same_plot_and_releases_on
 
 
 def test_worker_power_warning_computation_is_dead_code_not_rendered_anywhere():
-    """Deleted, per dispatcher ruling (Phase 1 queue F2, §15
- pattern): a test asserting the shape of dead code guards nothing. Dead
- symbol: `powerWarning`, computed at `ceres/static/app.js:4656-4657` inside
- `renderSlotEditor()` (`const powerWarning = hasPowerConcern &&
- !reviewedPowerNotice ? renderNotices(...) : '';`) and READ NOWHERE ELSE in
- the file -- grep confirms exactly one other occurrence of the identifier
- outside its own declaration line, a comment at `app.js:4480` distinguishing
- it from an unrelated notice. No template literal in `renderSlotEditor()`'s
- return path references it; the `workers_staged_without_power` advisory it
- would have produced never reaches the DOM.
+    """Deleted, per  dispatcher ruling (Phase 1 queue F2, §15
+    pattern): a test asserting the shape of dead code guards nothing. Dead
+    symbol: `powerWarning`, computed at `ceres/static/app.js:4656-4657` inside
+    `renderSlotEditor()` (`const powerWarning = hasPowerConcern &&
+    !reviewedPowerNotice ? renderNotices(...) : '';`) and READ NOWHERE ELSE in
+    the file -- grep confirms exactly one other occurrence of the identifier
+    outside its own declaration line, a comment at `app.js:4480` distinguishing
+    it from an unrelated notice. No template literal in `renderSlotEditor()`'s
+    return path references it; the `workers_staged_without_power` advisory it
+    would have produced never reaches the DOM.
 
- An earlier queue found this (see this file's module-header comment above)
- and left the source-text assertions in place, STOPPED, pending an maintainer ruling
- on whether to wire the advisory up or delete the computation. That ruling
- has now been made by the dispatcher: delete.
+    An earlier queue found this (see this file's module-header comment above)
+    and left the source-text assertions in place, STOPPED, pending an maintainer ruling
+    on whether to wire the advisory up or delete the computation. That ruling
+    has now been made by the dispatcher: delete.
 
- This test's fifth assertion -- `"id: 'worker', label: 'Workers', capacity,
- actionable: true" in source` -- named LIVE code (`editorGroups()`,
- `app.js:3526`), but its observable behaviour (the worker group renders as
- actionable regardless of power state) is already covered as rendered DOM,
- not source text, by this file's own
- `test_unpowered_editor_projects_non_five_capacity_and_keeps_tiles_actionable`
- above (12 real, non-disabled `<button>` tiles on a fully unpowered plot).
- Not duplicated here.
+    This test's fifth assertion -- `"id: 'worker', label: 'Workers', capacity,
+    actionable: true" in source` -- named LIVE code (`editorGroups()`,
+    `app.js:3526`), but its observable behaviour (the worker group renders as
+    actionable regardless of power state) is already covered as rendered DOM,
+    not source text, by this file's own
+    `test_unpowered_editor_projects_non_five_capacity_and_keeps_tiles_actionable`
+    above (12 real, non-disabled `<button>` tiles on a fully unpowered plot).
+    Not duplicated here.
 
- Manifest note: `powerWarning` (app.js:4656) and the `hasPowerConcern`/
- `stagedPowered` locals it depends on move nowhere on their own merit in the
- app.js split -- they are read by nothing and should be marked for removal,
- not relocation, unless the maintainer instead chooses to wire
- `workers_staged_without_power` into `renderSlotEditor()`'s return path
- (unchanged from the earlier queue's finding)."""
+    Manifest note: `powerWarning` (app.js:4656) and the `hasPowerConcern`/
+    `stagedPowered` locals it depends on move nowhere on their own merit in the
+    app.js split -- they are read by nothing and should be marked for removal,
+    not relocation, unless the maintainer instead chooses to wire
+    `workers_staged_without_power` into `renderSlotEditor()`'s return path
+    (unchanged from the earlier queue's finding)."""

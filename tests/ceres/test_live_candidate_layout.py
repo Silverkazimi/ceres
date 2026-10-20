@@ -4,10 +4,11 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Browser
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
+from . import board_basic_recording as recording
 
 
-TARGET_DEED = "I-294-99ed4b7a4d170e"
+TARGET_DEED = recording.OVERCAP.uid
 
 
 
@@ -20,37 +21,37 @@ def live_browser() -> tuple[Browser, str]:
 def _geometry(page) -> dict[str, float | bool]:
     return page.evaluate(
         """() => {
- const scroll = document.querySelector('#plot-table-scroll');
- const panel = document.querySelector('.candidate-visible-slice');
- const plot = document.querySelector('.candidate-plot-change');
- const list = document.querySelector('.candidate-list');
- const picker = document.querySelector('.inline-picker');
- const header = [...document.querySelectorAll('.candidate-columns:not(.is-item-columns) > span')];
- const row = document.querySelector('.candidate-row:not(.candidate-row-item)');
- const box = node => {
- const rect = node.getBoundingClientRect();
- return {left: rect.left, right: rect.right};
- };
- const metricValues = [...document.querySelectorAll('.candidate-row:first-child .candidate-metric strong')];
- const sr = scroll.getBoundingClientRect();
- const pr = panel.getBoundingClientRect();
- const dr = plot.getBoundingClientRect();
- return {
- scrollLeft: scroll.scrollLeft,
- tableScrollWidth: scroll.scrollWidth,
- panelLeft: pr.left,
- panelRight: pr.right,
- scrollLeftEdge: sr.left,
- scrollRightEdge: sr.right,
- plotRight: dr.right,
- panelNestedOverflow: panel.scrollWidth > panel.clientWidth + 1,
- listNestedOverflow: list.scrollWidth > list.clientWidth + 1,
- pickerNestedOverflow: picker.scrollWidth > picker.clientWidth + 1,
- headerMetricBoxes: header.slice(2, 6).map(box),
- rowMetricBoxes: [...row.querySelectorAll('.candidate-metric')].map(box),
- metricValueClipped: metricValues.some(node => node.scrollWidth > node.clientWidth + 1),
- };
- }"""
+          const scroll = document.querySelector('#plot-table-scroll');
+          const panel = document.querySelector('.candidate-visible-slice');
+          const plot = document.querySelector('.candidate-plot-change');
+          const list = document.querySelector('.candidate-list');
+          const picker = document.querySelector('.inline-picker');
+          const header = [...document.querySelectorAll('.candidate-columns:not(.is-item-columns) > span')];
+          const row = document.querySelector('.candidate-row:not(.candidate-row-item)');
+          const box = node => {
+            const rect = node.getBoundingClientRect();
+            return {left: rect.left, right: rect.right};
+          };
+          const metricValues = [...document.querySelectorAll('.candidate-row:first-child .candidate-metric strong')];
+          const sr = scroll.getBoundingClientRect();
+          const pr = panel.getBoundingClientRect();
+          const dr = plot.getBoundingClientRect();
+          return {
+            scrollLeft: scroll.scrollLeft,
+            tableScrollWidth: scroll.scrollWidth,
+            panelLeft: pr.left,
+            panelRight: pr.right,
+            scrollLeftEdge: sr.left,
+            scrollRightEdge: sr.right,
+            plotRight: dr.right,
+            panelNestedOverflow: panel.scrollWidth > panel.clientWidth + 1,
+            listNestedOverflow: list.scrollWidth > list.clientWidth + 1,
+            pickerNestedOverflow: picker.scrollWidth > picker.clientWidth + 1,
+            headerMetricBoxes: header.slice(2, 6).map(box),
+            rowMetricBoxes: [...row.querySelectorAll('.candidate-metric')].map(box),
+            metricValueClipped: metricValues.some(node => node.scrollWidth > node.clientWidth + 1),
+          };
+        }"""
     )
 
 
@@ -62,10 +63,10 @@ def test_candidate_panel_stays_in_visible_slice_and_reflows(live_browser: tuple[
     row.wait_for(timeout=30_000)
     initial = page.evaluate(
         """() => {
- const scroll = document.querySelector('#plot-table-scroll');
- const table = document.querySelector('#plot-table');
- return {scrollWidth: scroll.scrollWidth, tableWidth: table.getBoundingClientRect().width};
- }"""
+          const scroll = document.querySelector('#plot-table-scroll');
+          const table = document.querySelector('#plot-table');
+          return {scrollWidth: scroll.scrollWidth, tableWidth: table.getBoundingClientRect().width};
+        }"""
     )
     row.click()
     expanded = page.locator(f"tr.expand-row[data-deed-uid='{TARGET_DEED}']")
@@ -95,10 +96,10 @@ def test_candidate_panel_stays_in_visible_slice_and_reflows(live_browser: tuple[
     assert not geometry["pickerNestedOverflow"]
     opened = page.evaluate(
         """() => {
- const scroll = document.querySelector('#plot-table-scroll');
- const table = document.querySelector('#plot-table');
- return {scrollWidth: scroll.scrollWidth, tableWidth: table.getBoundingClientRect().width};
- }"""
+          const scroll = document.querySelector('#plot-table-scroll');
+          const table = document.querySelector('#plot-table');
+          return {scrollWidth: scroll.scrollWidth, tableWidth: table.getBoundingClientRect().width};
+        }"""
     )
     assert opened["scrollWidth"] == pytest.approx(initial["scrollWidth"], abs=1)
     assert opened["tableWidth"] == pytest.approx(initial["tableWidth"], abs=1)
@@ -107,7 +108,7 @@ def test_candidate_panel_stays_in_visible_slice_and_reflows(live_browser: tuple[
     maximum = scroll.evaluate("node => node.scrollWidth - node.clientWidth")
     for left in (0, maximum / 2, maximum):
         scroll.evaluate("(node, value) => { node.scrollLeft = value; }", left)
-        page.wait_for_timeout(50)
+        settle(page)
         geometry = _geometry(page)
         assert geometry["panelLeft"] >= geometry["scrollLeftEdge"] - 1
         assert geometry["panelRight"] <= geometry["scrollRightEdge"] + 1
@@ -118,7 +119,7 @@ def test_candidate_panel_stays_in_visible_slice_and_reflows(live_browser: tuple[
     for width, root_size in ((1280, 16), (800, 20), (800, 24), (375, 32)):
         page.set_viewport_size({"width": width, "height": 900})
         page.evaluate("size => { document.documentElement.style.fontSize = `${size}px`; }", root_size)
-        page.wait_for_timeout(100)
+        settle(page)
         geometry = _geometry(page)
         assert geometry["panelLeft"] >= geometry["scrollLeftEdge"] - 1
         assert geometry["panelRight"] <= geometry["scrollRightEdge"] + 1

@@ -1,4 +1,4 @@
-"""a staged change that leaves the store (undone, signed, done) is remembered as removed, so the other device's copy is not brought back by the sync."""
+""": a staged change that leaves the store (undone, signed, done) is remembered as removed, so the other device's copy is not brought back by the sync."""
 from pathlib import Path
 import subprocess
 
@@ -8,11 +8,11 @@ def test_a_plan_that_leaves_the_store_is_tombstoned_and_a_restaged_one_is_not():
     fn = source[source.index("export function persistStagePlans() {"):source.index("export function droppedStagePlans")].replace("export ", "")
     # include the real imported compactor and lock coordinator in this legacy sliced harness.
     account_source = (Path(__file__).parents[2] / "ceres/static/account-space.js").read_text()
-    helper = account_source[account_source.index("export function compactChains"):account_source.index("Staged changes (plans")].replace("export ", "")
+    helper = account_source[account_source.index("export function compactChains"):account_source.index("// Staged changes (plans")].replace("export ", "")
     fn = helper + fn
     script = """
 const assert = require('node:assert/strict');
-Object.defineProperty(globalThis, 'navigator', { value: { locks: { request: async (_name, callback) => callback() } }, configurable: true }); // B03: ordinary writes participate too.
+Object.defineProperty(globalThis, 'navigator', { value: { locks: { request: async (_name, callback) => callback() } }, configurable: true }); //  B03: ordinary writes participate too.
 const store = {}; globalThis.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
 const LISTENERS = new Set(); const CERES_STAGE = []; const CERES_STAGED_WORKSITES = new Map();
 const PLANS = { open: true, account: 'alice', revision: 0, pending: new Map(), pendingWorksites: new Map(), dropped: [], lastSig: null, warned: new Set(), removed: {}, known: new Set(), migrateKey: null };
@@ -40,12 +40,12 @@ def test_a_stale_tab_merges_with_what_the_other_tab_saved_instead_of_skipping_or
     root = Path(__file__).parents[2] / "ceres/static"
     source = (root / "stage-plans.js").read_text()
     merge = (root / "account-space.js").read_text()
-    helper = merge[merge.index("export function compactChains"):merge.index("Staged changes (plans")]
+    helper = merge[merge.index("export function compactChains"):merge.index("// Staged changes (plans")]
     merge = (helper + merge[merge.index("export function mergeStaged"):merge.index("export function stagedDigest")]).replace("export ", "")
     fn = source[source.index("export function persistStagePlans() {"):source.index("export function droppedStagePlans")].replace("export ", "")
     script = """
 const assert = require('node:assert/strict');
-Object.defineProperty(globalThis, 'navigator', { value: { locks: { request: async (_name, callback) => callback() } }, configurable: true }); // B03: ordinary writes participate too.
+Object.defineProperty(globalThis, 'navigator', { value: { locks: { request: async (_name, callback) => callback() } }, configurable: true }); //  B03: ordinary writes participate too.
 const store = {}; globalThis.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
 const LISTENERS = new Set(); const CERES_STAGE = []; const CERES_STAGED_WORKSITES = new Map(); let restored = 0; const restoreStagePlans = () => { restored += 1; };
 const PLANS = { open: true, account: 'alice', revision: 0, pending: new Map(), pendingWorksites: new Map(), dropped: [], lastSig: null, warned: new Set(), removed: {}, known: new Set(), migrateKey: null };
@@ -73,7 +73,7 @@ def test_an_expired_in_flight_record_is_archived_and_an_unrestorable_worksite_pl
     arch = plans[plans.index("function archiveWorksitePlan"):plans.index("async function restoreWorksitePlans")]
     script = """
 const assert = require('node:assert/strict');
-Object.defineProperty(globalThis, 'navigator', { value: { locks: { request: async (_name, callback) => callback() } }, configurable: true }); // B03: ordinary writes participate too.
+Object.defineProperty(globalThis, 'navigator', { value: { locks: { request: async (_name, callback) => callback() } }, configurable: true }); //  B03: ordinary writes participate too.
 const store = {}; globalThis.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
 const IN_FLIGHT_RECORD_TTL_MS = 24 * 3600 * 1000; const inFlightStoreKey = () => 'k'; const inFlightStoreFailure = () => { throw new Error('store'); };
 const PLANS = { account: 'alice' };
@@ -92,7 +92,7 @@ console.log('ok');
 
 
 def test_a_staged_sync_never_re_triggers_itself():
-    """the production server polled /api/me/staged every two seconds: the sync's own store write fired the change listener, which scheduled another sync."""
+    """the production server  polled /api/me/staged every two seconds: the sync's own store write fired the change listener, which scheduled another sync."""
     js = (Path(__file__).parents[2] / "ceres/static/staged-sync.js").read_text()
     assert "!running && !stagedSavedHere(name)" in js      # only a REAL change of this device's staged changes starts a push
     assert "if (!stagedSavedHere(name)) schedule();" in js  # and a change queued during a sync only counts if it is real

@@ -17,11 +17,11 @@ if (common === legendary) throw new Error('rarity bonus ignored the row counterf
 def test_magical_icons_share_the_title_style_single_trigger() -> None:
     run_in_module_context(r"""
 const row = {
- plot: '1-1-1', deed_uid: 'magic-tip', territory: 'Praetoria', terrain: 'Plains', resource: 'Grain',
- worksite_type: 'Farm', plot_status: 'magical', magic_type: 'fire', rarity: 'rare', rarity_production_bonus: 0.25,
- harvest_pp: 300, construction_pp: 200, base_pp: 100, base_pp_after_cap: 100, base_pp_cap: 100000,
- pp_tooltip: { workers: ['Fire Worker'], terrain_boost: 1, production_boost: 0.5, production_modifiers: { deed_rarity_boost: 0.25, title_boost: 0.25 } },
- multiplier: 1, work_per_hour: 2, food_per_hour: 0, input_costs_per_hour: {}, capacity: { display: '1' }, dec: { needed: 0 }, bonus: { totem: null, title: null },
+  plot: '1-1-1', deed_uid: 'magic-tip', territory: 'Praetoria', terrain: 'Plains', resource: 'Grain',
+  worksite_type: 'Farm', plot_status: 'magical', magic_type: 'fire', rarity: 'rare', rarity_production_bonus: 0.25,
+  harvest_pp: 300, construction_pp: 200, base_pp: 100, base_pp_after_cap: 100, base_pp_cap: 100000,
+  pp_tooltip: { workers: ['Fire Worker'], terrain_boost: 1, production_boost: 0.5, production_modifiers: { deed_rarity_boost: 0.25, title_boost: 0.25 } },
+  multiplier: 1, work_per_hour: 2, food_per_hour: 0, input_costs_per_hour: {}, capacity: { display: '1' }, dec: { needed: 0 }, bonus: { totem: null, title: null },
 };
 const typeCell = plotRowCellsHtml(row).match(/<td class="type-cell"[^]*?<\/td>/)?.[0] || '';
 if ((typeCell.match(/\bdata-tip=/g) || []).length !== 1) throw new Error(`magical type must own one trigger: ${typeCell}`);
@@ -46,8 +46,8 @@ if (!/removes 30 PP/.test(over)) throw new Error('over-cap row lacks actual loss
 def test_boostable_and_total_use_plot_specific_workers_and_modifiers() -> None:
     run_in_module_context(r"""
 const row = {
- base_pp: 100, base_pp_after_cap: 100, construction_pp: 125, harvest_pp: 200,
- pp_tooltip: { workers: ['Alpha', 'Beta'], terrain_boost: 0.25, production_boost: 0.6, production_modifiers: { deed_rarity_boost: 0.1, title_boost: 0.5 } },
+  base_pp: 100, base_pp_after_cap: 100, construction_pp: 125, harvest_pp: 200,
+  pp_tooltip: { workers: ['Alpha', 'Beta'], terrain_boost: 0.25, production_boost: 0.6, production_modifiers: { deed_rarity_boost: 0.1, title_boost: 0.5 } },
 };
 const changed = { ...row, construction_pp: 80, harvest_pp: 88, pp_tooltip: { ...row.pp_tooltip, workers: ['Gamma'], terrain_boost: -0.2, production_boost: 0.1, production_modifiers: { deed_rarity_boost: 0.1 } } };
 const boostable = boostablePpTipAttrs(row);

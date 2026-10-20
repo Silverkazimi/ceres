@@ -8,9 +8,9 @@ const rewards = {total:'5.000',rows:[{label:'Land',source:'land',balance:'5.000'
 const base = {player:'player0005',busy:false,signing:false,rewards,claim:{busy:false,review:null,pending:null,checking:false}};
 const row = {nonce:'a'.repeat(16),tx_id:'b'.repeat(40),total:'5.000',status:'pending'};
 for (const phase of ['asked','sent','checking','retried']) {
- const html = claimHtml({...base,signing:phase==='asked',claim:{...base.claim,pending:{...row,phase}}});
- if (!html.includes('wallet-claim-flow is-'+phase)) throw Error(phase+' not in shared flow');
- if (/Transaction ID|Discard this claim|Check transaction|Check again|Change transaction ID/.test(html)) throw Error('manual recovery shown: '+html);
+  const html = claimHtml({...base,signing:phase==='asked',claim:{...base.claim,pending:{...row,phase}}});
+  if (!html.includes('wallet-claim-flow is-'+phase)) throw Error(phase+' not in shared flow');
+  if (/Transaction ID|Discard this claim|Check transaction|Check again|Change transaction ID/.test(html)) throw Error('manual recovery shown: '+html);
 }
 const asked = claimHtml({...base,signing:true,claim:{...base.claim,pending:{...row,phase:'asked'}}});
 if (!asked.includes('Check Keychain for approval')) throw Error('Keychain instruction missing');
@@ -26,7 +26,7 @@ def test_confirmed_claim_emits_balance_change_without_done_and_retries_same_id()
     body = """
 globalThis.setTimeout = fn => { fn(); return 1; };
 const D={player:'player0005',generation:0,error:'',signing:false,busy:false,
- claim:{busy:false,review:null,pending:{nonce:'a'.repeat(16),tx_id:'b'.repeat(40),total:'5.000',status:'pending'},checking:false}};
+  claim:{busy:false,review:null,pending:{nonce:'a'.repeat(16),tx_id:'b'.repeat(40),total:'5.000',status:'pending'},checking:false}};
 let reloads=0, balanceEvents=0;
 window.dispatchEvent = event => { if (event.type === 'ceres:balances-changed' && event.detail.assets.includes('SPS')) balanceEvents++; return true; };
 (async()=>{

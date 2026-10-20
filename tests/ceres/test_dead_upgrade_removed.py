@@ -1,4 +1,4 @@
-"""the unreachable legacy worker action stays removed."""
+""": the unreachable legacy worker action stays removed."""
 from pathlib import Path
 
 STATIC = Path(__file__).parents[2] / "ceres" / "static"

@@ -1,4 +1,4 @@
-"""Concurrent per-deed asset fan-out (2026-08-21 -- was very slow to
+"""Concurrent per-deed asset fan-out (2026-08-21 --  was very slow to
 capture large accounts). All offline -- fake `land_client`
 with a small `time.sleep` standing in for the measured ~0.48s server think-time, so the
 concurrency win is provable without any real network I/O. `min_delay=0.0` throughout
@@ -32,8 +32,8 @@ def _response(data):
 
 class SlowLandClient:
     """Every `assets()` call sleeps `PER_REQUEST_DELAY` before returning -- simulates
- real server think-time so concurrency has something real to overlap. Thread-safe
- bookkeeping (a lock around the shared lists) since this is called from a pool."""
+    real server think-time so concurrency has something real to overlap. Thread-safe
+    bookkeeping (a lock around the shared lists) since this is called from a pool."""
 
     def __init__(self, deed_uids, fail_for=()):
         self.deed_uids = deed_uids
@@ -106,7 +106,7 @@ class ConcurrencyTests(unittest.TestCase):
 
     def test_output_is_deterministic_regardless_of_completion_order(self):
         """Plots are always sorted by deed_uid (analyze_bundle's own contract) no
- matter which thread finished first -- run twice, compare the plot order."""
+        matter which thread finished first -- run twice, compare the plot order."""
         deed_uids = [f"I-1-{i}" for i in range(12)]
         with TemporaryDirectory() as tmp1, TemporaryDirectory() as tmp2:
             report1 = _capture(SlowLandClient(deed_uids), tmp1, concurrency=8).capture("player0005", as_of=AS_OF)
@@ -160,8 +160,8 @@ class ConcurrencyTests(unittest.TestCase):
 
     def test_full_capture_passes_lazy_asset_mapping(self):
         """Injecting the old response-valued dict into analyze_bundle makes this guard fail.
- The full capture must pass cache keys through a lazy mapping instead of retaining
- every raw asset response in its fan-out result.
+        The full capture must pass cache keys through a lazy mapping instead of retaining
+        every raw asset response in its fan-out result.
         """
         deed_uids = [f"I-1-{i}" for i in range(4)]
         with TemporaryDirectory() as tmp:

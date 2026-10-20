@@ -1,5 +1,5 @@
 {
-  "_status": "derived from a live fetch of https:// api.splinterlands.com/settings, 2026-08-30",
+  "_status": "derived from a live fetch of https://api.splinterlands.com/settings, 2026-08-30",
   "_provenance": {
     "source": "https://api.splinterlands.com/settings",
     "source_tier": "primary-api-direct",

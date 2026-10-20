@@ -1,12 +1,12 @@
-""" the two Ceres-side halves of the snapshot-corruption fix, both offline
+""" -- the two Ceres-side halves of the snapshot-corruption fix, both offline
 (fake `LandCapture.expand_deed`, no network):
 
 1. A corrupt on-disk snapshot must not be TERMINAL: `_save_merged` (used by both quick
- and full capture) must recover by overwriting it, not by propagating the parse error
- forever (`POST /api/capture/refresh` used to fail with no way to clear it).
+   and full capture) must recover by overwriting it, not by propagating the parse error
+   forever (`POST /api/capture/refresh` used to fail with no way to clear it).
 2. Two concurrent `expand_plot` calls for the same player must not silently drop one
- deed's merge -- the read-merge-write around the on-disk snapshot is now serialised
- per player (`capture._snapshot_write_lock`).
+   deed's merge -- the read-merge-write around the on-disk snapshot is now serialised
+   per player (`capture._snapshot_write_lock`).
 
 Both guards were confirmed by hand: temporarily reverting the fix under test --
 removing the `try/except` around `latest_snapshot()` in `_save_merged` for #1;

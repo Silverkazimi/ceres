@@ -47,26 +47,26 @@ MARKET = {"player": "sample01", "read_at": "2026-10-15T00:00:00Z", "filters": {}
 
 SAMPLER = r"""
 () => {
- const S = window.__ir9287 = { frames: [], removed: 0, on: true };
- let nid = 0; const ids = new WeakMap(); const id = (el) => { if (!ids.has(el)) ids.set(el, ++nid); return ids.get(el); };
- const grid = document.querySelector(document.body.dataset.cbMode === 'market' ? '#cm-grid' : '#cb-grid');
- new MutationObserver((list) => { for (const m of list) S.removed += [...m.removedNodes].filter((n) => n.nodeType === 1).length; })
- .observe(grid, { subtree: true, childList: true });
- const tick = () => {
- if (!S.on) return;
- const vh = innerHeight, tiles = [];
- for (const el of grid.children) {
- if (!el.classList.contains('cb-tile')) continue;
- const r = el.getBoundingClientRect();
- if (r.bottom <= 0 || r.top >= vh || !r.height) continue;
- const img = el.querySelector('.cb-art > img');
- tiles.push({ id: id(el), top: Math.round(r.top), op: +getComputedStyle(el).opacity,
- art: img ? { op: +getComputedStyle(img).opacity, src: img.currentSrc || img.src, nw: img.naturalWidth } : null });
- }
- S.frames.push({ y: Math.round(scrollY), tiles });
- requestAnimationFrame(tick);
- };
- requestAnimationFrame(tick);
+  const S = window.__ir9287 = { frames: [], removed: 0, on: true };
+  let nid = 0; const ids = new WeakMap(); const id = (el) => { if (!ids.has(el)) ids.set(el, ++nid); return ids.get(el); };
+  const grid = document.querySelector(document.body.dataset.cbMode === 'market' ? '#cm-grid' : '#cb-grid');
+  new MutationObserver((list) => { for (const m of list) S.removed += [...m.removedNodes].filter((n) => n.nodeType === 1).length; })
+    .observe(grid, { subtree: true, childList: true });
+  const tick = () => {
+    if (!S.on) return;
+    const vh = innerHeight, tiles = [];
+    for (const el of grid.children) {
+      if (!el.classList.contains('cb-tile')) continue;
+      const r = el.getBoundingClientRect();
+      if (r.bottom <= 0 || r.top >= vh || !r.height) continue;
+      const img = el.querySelector('.cb-art > img');
+      tiles.push({ id: id(el), top: Math.round(r.top), op: +getComputedStyle(el).opacity,
+        art: img ? { op: +getComputedStyle(img).opacity, src: img.currentSrc || img.src, nw: img.naturalWidth } : null });
+    }
+    S.frames.push({ y: Math.round(scrollY), tiles });
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
 """
 
@@ -138,7 +138,7 @@ async def _run(mode: str, width: int, height: int, touch: bool) -> dict:
             await page.wait_for_selector(tile, timeout=30000)
             # every built tile's art has arrived (read when the tile is built, not when it nears the screen)
             await page.wait_for_function("""() => { const imgs = [...document.querySelectorAll('.cb-grid > .cb-tile .cb-art > img')];
- return imgs.length > 0 && imgs.every((i) => i.complete && i.naturalWidth > 0); }""", timeout=30000)
+              return imgs.length > 0 && imgs.every((i) => i.complete && i.naturalWidth > 0); }""", timeout=30000)
             await page.wait_for_timeout(600)
             if not touch:
                 await page.mouse.move(width / 2, height / 2)  # the pointer rests on a tile: the others dim ()

@@ -1,4 +1,4 @@
-""" in a real Chromium, hermetic: the page's files are served from ceres/static through page.route and
+""" /  in a real Chromium, hermetic: the page's files are served from ceres/static through page.route and
 every /api read is a fixture (no server, no network, nothing signed -- the test never presses the sign button).
 
 Checks: Find combinables is the filter row's pill; Combine opens the combine dialog over /cards without navigation and
@@ -87,7 +87,7 @@ def _run(width: int, height: int) -> dict:
             header_modes = page.eval_on_selector_all(".cb-mode .ceres-btn", "(els) => els.map((b) => ({name:b.getAttribute('aria-label'), icon:!!b.querySelector('svg')}))")
             page.click("label:has(#cb-mode-combine)")
             page.wait_for_selector("#cx-list .cx-entry", timeout=30000)
-            mode = page.evaluate("() => ({ mode: document.body.dataset.cbMode, pill: document.getElementById('cb-mode-combine').checked"
+            mode = page.evaluate("() => ({ mode: document.body.dataset.cbMode, pill: document.getElementById('cb-mode-combine').checked,"
                                  " cards: document.getElementById('cb-mode-cards').getAttribute('aria-pressed') })")
             before = [r[1] for r in record]
             url_before = page.url
@@ -97,27 +97,27 @@ def _run(width: int, height: int) -> dict:
             page.wait_for_function("!!document.querySelector('.combine-sign') && !document.querySelector('.combine-sign').disabled", timeout=30000)
             after = record[mark:]
             dialog = page.evaluate("""() => {
- const o = document.getElementById('combine-dialog-overlay');
- const box = o.querySelector('.combine-dialog-panel').getBoundingClientRect();
- return { title: document.getElementById('combine-dialog-title').textContent,
- sign: document.querySelector('.combine-sign').textContent,
- on: [...o.querySelectorAll('.combine-preset.is-on')].map((b) => b.textContent),
- text: o.innerText, z: getComputedStyle(o).zIndex,
- onTop: document.elementFromPoint(box.left + box.width / 2, box.top + 20)?.closest('#combine-dialog-overlay') === o,
- table: !!document.getElementById('table') };
- }""")
+              const o = document.getElementById('combine-dialog-overlay');
+              const box = o.querySelector('.combine-dialog-panel').getBoundingClientRect();
+              return { title: document.getElementById('combine-dialog-title').textContent,
+                sign: document.querySelector('.combine-sign').textContent,
+                on: [...o.querySelectorAll('.combine-preset.is-on')].map((b) => b.textContent),
+                text: o.innerText, z: getComputedStyle(o).zIndex,
+                onTop: document.elementFromPoint(box.left + box.width / 2, box.top + 20)?.closest('#combine-dialog-overlay') === o,
+                table: !!document.getElementById('table') };
+            }""")
             dialog["layout"] = page.evaluate("""() => {
- const o = document.getElementById('combine-dialog-overlay'), vw = document.documentElement.clientWidth, vh = window.innerHeight;
- const box = (e) => e.getBoundingClientRect();
- const left = box(o.querySelector('.combine-editor-left')), info = box(o.querySelector('.combine-editor-info'));
- const sign = box(o.querySelector('.combine-sign')), cancel = box(o.querySelector('[data-combine-action="close-dialog"].picker-chip'));
- const panel = box(o.querySelector('.combine-dialog-panel'));
- return { vw, oneColumn: info.top >= left.bottom - 1 && Math.abs(info.left - left.left) < 2,
- overflow: [...o.querySelectorAll('*')].filter((e) => box(e).width && box(e).right > vw + 0.5).map((e) => e.className),
- small: [...o.querySelectorAll('button')].filter((e) => box(e).width && (box(e).height < 43.5 || box(e).width < 43.5)).map((e) => e.className),
- footerVisible: sign.bottom <= vh && sign.top >= 0 && cancel.bottom <= vh && cancel.top >= 0,
- panelInside: panel.left >= 0 && panel.right <= vw && panel.bottom <= vh && panel.top >= 0 };
- }""")
+              const o = document.getElementById('combine-dialog-overlay'), vw = document.documentElement.clientWidth, vh = window.innerHeight;
+              const box = (e) => e.getBoundingClientRect();
+              const left = box(o.querySelector('.combine-editor-left')), info = box(o.querySelector('.combine-editor-info'));
+              const sign = box(o.querySelector('.combine-sign')), cancel = box(o.querySelector('[data-combine-action="close-dialog"].picker-chip'));
+              const panel = box(o.querySelector('.combine-dialog-panel'));
+              return { vw, oneColumn: info.top >= left.bottom - 1 && Math.abs(info.left - left.left) < 2,
+                overflow: [...o.querySelectorAll('*')].filter((e) => box(e).width && box(e).right > vw + 0.5).map((e) => e.className),
+                small: [...o.querySelectorAll('button')].filter((e) => box(e).width && (box(e).height < 43.5 || box(e).width < 43.5)).map((e) => e.className),
+                footerVisible: sign.bottom <= vh && sign.top >= 0 && cancel.bottom <= vh && cancel.top >= 0,
+                panelInside: panel.left >= 0 && panel.right <= vw && panel.bottom <= vh && panel.top >= 0 };
+            }""")
             page.keyboard.press("Escape")
             page.wait_for_function("document.getElementById('combine-dialog-overlay').hidden === true")
             after_close = page.evaluate("document.querySelector('#cx-list [data-cx-action=\"combine\"]')?.textContent || null")

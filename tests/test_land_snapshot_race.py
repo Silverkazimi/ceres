@@ -1,4 +1,4 @@
-"""`save_snapshot`'s temp file used to be scoped to the PROCESS
+""": `save_snapshot`'s temp file used to be scoped to the PROCESS
 (`target.with_suffix(f".{os.getpid()}.tmp")`), not the writer. Ceres calls
 `save_snapshot` from FastAPI's sync threadpool, so two THREADS in one process picked
 the same temp path, both opened it for write, and interleaved -- corrupting the file
@@ -40,8 +40,8 @@ def _report(tag: str) -> dict:
 
 def test_concurrent_writers_produce_a_valid_file():
     """Two threads racing `save_snapshot` against the SAME path must never leave a
- file that fails to parse -- whichever write lands last, it must be a complete,
- valid document, not an interleave of both."""
+    file that fails to parse -- whichever write lands last, it must be a complete,
+    valid document, not an interleave of both."""
     with TemporaryDirectory() as directory:
         target = Path(directory) / "land-race-latest.json"
         errors: list[Exception] = []

@@ -1,4 +1,4 @@
-"""the worker group's top-left button row gets this plot's terrain-affinity
+""": the worker group's top-left button row gets this plot's terrain-affinity
 splinter icons -- the exact same markup/classes/renderer the worker picker's filter bar
 already uses (terrainAffinityHtml(row, 'picker')) -- immediately before the Fill plot
 button, with a divider, vertically centred on the button row, same icon sizes as the
@@ -24,25 +24,25 @@ CSS = (ROOT / "ceres/static/ceres.css").read_text(encoding="utf-8")
 
 def test_splinter_row_uses_the_shared_picker_renderer() -> None:
     """The exact same call the worker picker's filter bar makes (candidates.js:816),
- not a re-implementation.
+    not a re-implementation.
 
- /: the plot row itself is no
- longer clickable, so it now calls the 'editor-row' surface instead of 'picker'
- -- terrainAffinityHtml still shares the same badge renderer/classes/sizing,
- just non-interactive for this surface. The picker's own filter bar is
- untouched (still 'picker')."""
+    /: the plot row itself is no
+    longer clickable, so it now calls the 'editor-row' surface instead of 'picker'
+    -- terrainAffinityHtml still shares the same badge renderer/classes/sizing,
+    just non-interactive for this surface. The picker's own filter bar is
+    untouched (still 'picker')."""
     assert "terrainAffinityHtml(row, 'picker', filter.splinter)" in CANDIDATES
     assert "terrainAffinityHtml(row, 'editor-row')" in EDITOR
     assert "terrainAffinityHtml(row, 'picker')" not in EDITOR
 
 
 def test_editor_row_surface_is_non_interactive() -> None:
-    """terrainAffinityHtml only renders real <button> filter chips
- (data-picker-action, aria-pressed) for surface === 'picker'; every other
- surface, including the new 'editor-row', renders plain <span role="img">
- icons with no button semantics -- and still gets the picker's scroll shell
- (terrain-affinity-scroll/-viewport) so sizing/alignment/shadow rules that key
- off those classes keep working unchanged."""
+    """/: terrainAffinityHtml only renders real <button> filter chips
+    (data-picker-action, aria-pressed) for surface === 'picker'; every other
+    surface, including the new 'editor-row', renders plain <span role="img">
+    icons with no button semantics -- and still gets the picker's scroll shell
+    (terrain-affinity-scroll/-viewport) so sizing/alignment/shadow rules that key
+    off those classes keep working unchanged."""
     TERRAIN_AFFINITY = (ROOT / "ceres/static/terrainAffinity.js").read_text(encoding="utf-8")
     assert "const interactive = surface === 'picker';" in TERRAIN_AFFINITY
     assert "if (surface !== 'picker' && surface !== 'editor-row') return run;" in TERRAIN_AFFINITY
@@ -50,8 +50,8 @@ def test_editor_row_surface_is_non_interactive() -> None:
 
 def test_splinter_row_sits_before_fill_plot_with_a_divider() -> None:
     """Markup order inside the controls div: (optional upgrade status), the splinter
- row, its divider, THEN the worker-group buttons string (whose first element is
- the Fill plot button, action='fill_plot' -- see EDITOR's own `actions` array)."""
+    row, its divider, THEN the worker-group buttons string (whose first element is
+    the Fill plot button, action='fill_plot' -- see EDITOR's own `actions` array)."""
     marker = "const splinterAffinityHtml = group.id === 'worker'"
     assert marker in EDITOR
     block = EDITOR[EDITOR.index(marker):]
@@ -67,7 +67,7 @@ def test_splinter_row_sits_before_fill_plot_with_a_divider() -> None:
 def test_splinter_row_is_worker_group_only_and_desktop_only() -> None:
     # Fill plot only exists on the worker group -- the row must not render for
     # totem/title/power_core/runi groups, which have no Fill plot button to sit before.
-    assert "group.id === 'worker'\n ? `<span class=\"editor-splinter-affinity\">" in EDITOR
+    assert "group.id === 'worker'\n    ? `<span class=\"editor-splinter-affinity\">" in EDITOR
     # The mobile plot sheet (rows.js) never calls renderEditorGroup -- it builds its own
     # markup (workerSubtable) with no Fill plot button, so this is desktop-only by
     # construction; there is nothing to gate explicitly in that file.
@@ -95,7 +95,7 @@ def test_affinity_row_is_vertically_centred_and_receives_pointer_events() -> Non
 
 def test_no_filter_predicate_or_persistence_was_added() -> None:
     """'s maintainer clarification: this is the plot's own terrain-affinity display,
- NOT a board filter -- no new filter key, no board.js change, no localStorage key."""
+    NOT a board filter -- no new filter key, no board.js change, no localStorage key."""
     board_js = (ROOT / "ceres/static/board.js").read_text(encoding="utf-8")
     assert "editor-splinter-affinity" not in board_js
     assert "splinter-row" not in board_js.lower()
@@ -109,23 +109,23 @@ def test_touched_js_parses() -> None:
 
 
 def test_editor_badges_match_the_button_height() -> None:
-    """`.editor-splinter-affinity` sits inside `.editor-band`, whose
- own fluid `--eos-affinity-size` rule () would otherwise resize these badges away
- from the target size -- see ceres.css's `:is(.editor-band, .mobile-plot-affinity)
- .terrain-affinity-badge` block. These narrower, higher-specificity rules instead size
- the badges to `--ceres-control-min-block`, the same token `.slot-group-controls`'s own
- buttons use, so the badge box is always exactly the button height."""
+    """: `.editor-splinter-affinity` sits inside `.editor-band`, whose
+    own fluid `--eos-affinity-size` rule () would otherwise resize these badges away
+    from the target size -- see ceres.css's `:is(.editor-band, .mobile-plot-affinity)
+    .terrain-affinity-badge` block. These narrower, higher-specificity rules instead size
+    the badges to `--ceres-control-min-block`, the same token `.slot-group-controls`'s own
+    buttons use, so the badge box is always exactly the button height."""
     assert ".editor-band .editor-splinter-affinity .terrain-affinity-badge { padding: 0; border: 0; font: inherit; appearance: none; background: var(--bg); --eos-splinter-row-size: var(--ceres-control-min-block, 1.875rem); flex-basis: var(--eos-splinter-row-size); inline-size: var(--eos-splinter-row-size); block-size: var(--eos-splinter-row-size); }" in CSS
     assert ".editor-band .editor-splinter-affinity .terrain-affinity-badge > .splinter-icon { inline-size: 66.666667%; block-size: 66.666667%; }" in CSS
 
 
 def test_editor_badges_have_no_ua_button_border() -> None:
-    """terrainAffinityHtml(row,
- 'picker') renders a real <button>, and only `.picker-bar .terrain-affinity-badge` reset
- its UA chrome -- this row sits outside `.picker-bar`, so the default `2px outset` button
- border painted over the base `.terrain-affinity-badge` box-shadow. The reset above
- removes the border; the shared box-shadow rule (ceres.css's plain `.terrain-affinity-badge`)
- was never touched and needs no reset here."""
+    """: terrainAffinityHtml(row,
+    'picker') renders a real <button>, and only `.picker-bar .terrain-affinity-badge` reset
+    its UA chrome -- this row sits outside `.picker-bar`, so the default `2px outset` button
+    border painted over the base `.terrain-affinity-badge` box-shadow. The reset above
+    removes the border; the shared box-shadow rule (ceres.css's plain `.terrain-affinity-badge`)
+    was never touched and needs no reset here."""
     assert "padding: 0; border: 0; font: inherit; appearance: none;" in CSS
 
 
@@ -134,10 +134,10 @@ def test_editor_badges_have_no_ua_button_border() -> None:
 @pytest.fixture(scope="module")
 def bare_browser():
     """A plain Chromium instance with NO live Ceres server behind it -- same self-contained
- pattern as test_penalised_mark.py's `paint_browser`/`_page`: a stub route serves a
- minimal HTML shell for "/" and the project's own static files for "/static/*", so the real
- terrainAffinity.js module (and its transitive imports, which need `document`) can be
- exercised in a real browser without spawning `python3 -m ceres` or needing live game data."""
+    pattern as test_penalised_mark.py's `paint_browser`/`_page`: a stub route serves a
+    minimal HTML shell for "/" and the project's own static files for "/static/*", so the real
+    terrainAffinity.js module (and its transitive imports, which need `document`) can be
+    exercised in a real browser without spawning `python3 -m ceres` or needing live game data."""
     with sync_playwright() as playwright:
         with closing(playwright.chromium.launch()) as browser:
             yield browser
@@ -163,13 +163,14 @@ def _bare_page(browser):
 
 
 def test_editor_row_renders_plain_spans_picker_bar_renders_buttons(bare_browser) -> None:
-    """the plot's own row is a non-clickable
- <span role="img"> with a tooltip, no data-picker-action, no aria-pressed, and no tab stop
- (dropped -- a plain icon should not be a tab stop); the worker picker's own filter bar
- (unchanged, frozen) still renders real, tabbable <button> chips."""
+    """/: the plot's own row is a non-clickable
+    <span role="img"> with a tooltip, no data-picker-action, no aria-pressed, and no tab stop
+    (dropped -- a plain icon should not be a tab stop); the worker picker's own filter bar
+    (unchanged,  frozen) still renders real, tabbable <button> chips."""
     with closing(_bare_page(bare_browser)) as page:
         result = page.evaluate(
             """async () => {
+ await import('/static/wallet.js'); // the app's module entry order: board.js must finish before wallet.js reads it
  const { terrainAffinityHtml } = await import('/static/terrainAffinity.js');
  const row = { terrain: 'Forest', plot: '001-001-1', biome: { fire: 10, water: -10, earth: 0 } };
  const host = document.createElement('div');

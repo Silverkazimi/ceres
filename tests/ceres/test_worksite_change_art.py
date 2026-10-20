@@ -30,8 +30,9 @@ import pytest
 from playwright.sync_api import Browser
 
 from .conftest import spawn_live_ceres
+from . import board_basic_recording as recording
 
-MID_CHANGE_DEED = "I-294-f0b7b8d0bb89b6"
+MID_CHANGE_DEED = recording.PENDING.uid
 
 
 @pytest.fixture(scope="module")
@@ -47,22 +48,22 @@ def _scene_worksite_url(page, base_url: str, deed_uid: str) -> str | None:
     band = page.locator(".editor-band")
     band.wait_for(timeout=30_000)
     style = band.get_attribute("style") or ""
-    if "scene-worksite: none" in style:
+    if "--scene-worksite: none" in style:
         return None
-    marker = "scene-worksite: url('"
+    marker = "--scene-worksite: url('"
     start = style.index(marker) + len(marker)
     return style[start:style.index("')", start)]
 
 
 def test_plot_mid_worksite_change_resolves_art_for_its_incoming_worksite(live_browser: tuple[Browser, str]) -> None:
     r"""Named injection, run and watched red, then reverted and watched green: in
- `ceres/static/app.js`'s `worksiteOverlayPath()`, the branch that reads
- `row.pending_change` was removed so the function fell back to keying off
- `row.resource` alone (the exact pre-fix defect). Red: the real plot
- `I-294-f0b7b8d0bb89b6` -- the only one of 130 in this mid-worksite-change
- state -- rendered `--scene-worksite: none` on `.editor-band`, i.e. bare ground
- despite having a real worksite. Restoring the branch made this test pass
- again (whole-file run: 3 passed)."""
+    `ceres/static/app.js`'s `worksiteOverlayPath()`, the branch that reads
+    `row.pending_change` was removed so the function fell back to keying off
+    `row.resource` alone (the exact pre-fix defect). Red: the real plot
+    `I-294-f0b7b8d0bb89b6` -- the only one of 130 in this mid-worksite-change
+    state -- rendered `--scene-worksite: none` on `.editor-band`, i.e. bare ground
+    despite having a real worksite. Restoring the branch made this test pass
+    again (whole-file run: 3 passed)."""
     browser, base_url = live_browser
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=10) as response:
         board = json.loads(response.read().decode("utf-8"))
@@ -80,8 +81,8 @@ def test_plot_mid_worksite_change_resolves_art_for_its_incoming_worksite(live_br
 
 def test_never_built_land_legitimately_has_no_worksite_art(live_browser: tuple[Browser, str]) -> None:
     """The control. A real never-built plot (no worksite, no pending change)
- resolves no `--scene-worksite` background. Without this the test above could
- pass against a function that returns art for every row regardless of state."""
+    resolves no `--scene-worksite` background. Without this the test above could
+    pass against a function that returns art for every row regardless of state."""
     browser, base_url = live_browser
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=10) as response:
         board = json.loads(response.read().decode("utf-8"))
@@ -103,12 +104,12 @@ def test_never_built_land_legitimately_has_no_worksite_art(live_browser: tuple[B
 
 def test_the_two_states_are_indistinguishable_on_resource_alone(live_browser: tuple[Browser, str]) -> None:
     """Records WHY this defect is invisible: a real mid-worksite-change row and a
- real never-built row agree on every field the art path used to read
- (`resource`, `worksite_type`), and differ only in `pending_change` -- read off
- the real board payload, not a hand-built fixture.
+    real never-built row agree on every field the art path used to read
+    (`resource`, `worksite_type`), and differ only in `pending_change` -- read off
+    the real board payload, not a hand-built fixture.
 
- If this ever fails, the board has gained a distinguishing field on one of the
- two agreed keys and the fix may be simpler than reading `pending_change`."""
+    If this ever fails, the board has gained a distinguishing field on one of the
+    two agreed keys and the fix may be simpler than reading `pending_change`."""
     browser, base_url = live_browser
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=10) as response:
         board = json.loads(response.read().decode("utf-8"))

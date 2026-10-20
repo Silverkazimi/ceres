@@ -1,6 +1,6 @@
 """Independent browser paint guards for the R-117 affinity medallions.
 
-These checks deliberately inspect pixels from a real rendered page. They are
+These checks deliberately inspect pixels from a real rendered page.  They are
 kept in their own dedicated queue because class names alone cannot prove the
 four boundaries remain visually distinct.
 """
@@ -49,6 +49,7 @@ def _paint_fixture(page):
     page.route("**/*", route_local)
     page.goto("http://r117.test/")
     page.evaluate("""async () => {
+ await import('/static/wallet.js'); // the app's module entry order: board.js must finish before wallet.js reads it
  const {terrainAffinityHtml} = await import('/static/terrainAffinity.js');
  const row = {plot:1, terrain:'Mountain', biome:{red:.1, blue:-.5, green:0, white:null, black:0, gold:.1}};
  document.body.style.cssText = 'margin:0;padding:0;background:#101010';
@@ -61,13 +62,14 @@ def _paint_fixture(page):
  await Promise.all([...document.querySelectorAll('.splinter-icon')].map(img => img.decode()));
  }""")
     page.wait_for_function("""() => {
- const images = [...document.querySelectorAll('[data-terrain-affinity] .splinter-icon')];
- return images.length === 12 && images.every(img => img.complete && img.naturalWidth > 0);
- }""")
+      const images = [...document.querySelectorAll('[data-terrain-affinity] .splinter-icon')];
+      return images.length === 12 && images.every(img => img.complete && img.naturalWidth > 0);
+    }""")
 
 
 def _fire_states(page):
     page.evaluate("""async () => {
+ await import('/static/wallet.js'); // the app's module entry order: board.js must finish before wallet.js reads it
  const {terrainAffinityHtml} = await import('/static/terrainAffinity.js');
  const host = document.createElement('div');
  host.id = 'r117-paint-probe'; host.className = 'terrain-affinity';
@@ -132,8 +134,8 @@ def _luma(pixel):
 def _common_monochrome(page):
     page.add_style_tag(content="""
       #r117-paint-probe .terrain-affinity-badge {
- color: #f4f4f4 !important; background-color: #202020 !important;
- }
+        color: #f4f4f4 !important; background-color: #202020 !important;
+      }
     """)
 
 
@@ -203,22 +205,22 @@ def test_bonus_vs_penalty_DPR1_hue_removed(paint_browser, tmp_path):
 
 def _assert_original_assets(page):
     records = page.locator(f"{PROFILE} {BADGE}").evaluate_all("""async els => Promise.all(els.map(async el => {
- const img = el.querySelector('img.splinter-icon');
- if (!img || !img.complete || !img.naturalWidth) return {name: el.dataset.splinter, complete: false, width: 0};
- await img.decode();
- const s = getComputedStyle(img), box = img.getBoundingClientRect(), badge = el.getBoundingClientRect();
- const reference = new Image(); reference.src = `/static/assets/splinter/${el.dataset.splinter.toLowerCase()}.svg`;
- await reference.decode();
- const refCanvas = document.createElement('canvas'); refCanvas.width = refCanvas.height = 16;
- const refCtx = refCanvas.getContext('2d', {willReadFrequently:true}); refCtx.drawImage(reference, 0, 0, 16, 16);
- const expected = [...refCtx.getImageData(0, 0, 16, 16).data];
- return {name: el.dataset.splinter, src: img.currentSrc, width: img.naturalWidth,
- box: [box.width, box.height], x:box.x, y:box.y,
- badge: {x:badge.x, y:badge.y, width:badge.width, height:badge.height},
- complete: img.complete, filter: s.filter, mask: s.maskImage,
- blend: s.mixBlendMode, opacity: s.opacity, objectFit: s.objectFit,
- expected};
- }))""")
+      const img = el.querySelector('img.splinter-icon');
+      if (!img || !img.complete || !img.naturalWidth) return {name: el.dataset.splinter, complete: false, width: 0};
+      await img.decode();
+      const s = getComputedStyle(img), box = img.getBoundingClientRect(), badge = el.getBoundingClientRect();
+      const reference = new Image(); reference.src = `/static/assets/splinter/${el.dataset.splinter.toLowerCase()}.svg`;
+      await reference.decode();
+      const refCanvas = document.createElement('canvas'); refCanvas.width = refCanvas.height = 16;
+      const refCtx = refCanvas.getContext('2d', {willReadFrequently:true}); refCtx.drawImage(reference, 0, 0, 16, 16);
+      const expected = [...refCtx.getImageData(0, 0, 16, 16).data];
+      return {name: el.dataset.splinter, src: img.currentSrc, width: img.naturalWidth,
+        box: [box.width, box.height], x:box.x, y:box.y,
+        badge: {x:badge.x, y:badge.y, width:badge.width, height:badge.height},
+        complete: img.complete, filter: s.filter, mask: s.maskImage,
+        blend: s.mixBlendMode, opacity: s.opacity, objectFit: s.objectFit,
+        expected};
+    }))""")
     assert len(records) == 12 and all(record["complete"] and record["width"] > 0 for record in records), "G12 loaded original rasters"
     assert {record["name"] for record in records} == set(NAMES), "G12 all six identities present"
     assert all(record["src"].endswith(ASSET_SUFFIX[record["name"]]) for record in records), "G12 exact original asset URLs"
@@ -368,32 +370,32 @@ def test_ring_paint_guard_rejects_red_mutations(paint_browser, tmp_path, mutatio
 
 def _assert_surface_contrast(page):
     records = page.locator('#r117-paint-probe [data-affinity-state]').evaluate_all("""els => {
- const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
- const ctx = canvas.getContext('2d', {willReadFrequently:true});
- const channels = colour => {
- ctx.clearRect(0,0,1,1); ctx.fillStyle=colour; ctx.fillRect(0,0,1,1);
- return [...ctx.getImageData(0,0,1,1).data];
- };
- const surfaces = {};
- for (const name of ['bg','bg3','top']) {
- const swatch = document.createElement('div');
- if (name === 'top') swatch.className='candidate-row is-top';
- else swatch.style.backgroundColor=`var(--${name})`;
- document.body.append(swatch);
- surfaces[name]=channels(getComputedStyle(swatch).backgroundColor);
- swatch.remove();
- }
- return els.map(el => {
- const style=getComputedStyle(el), before=getComputedStyle(el,'::before');
- let ink=before.borderTopColor;
- if (el.dataset.affinityState==='penalised') {
- const colours=before.backgroundImage.match(/(?:rgba?|color)\\([^)]*\\)/g) || [];
- ink=colours.find(colour => channels(colour)[3] > 0) || 'transparent';
- }
- return {state:el.dataset.affinityState, ink:channels(ink), surfaces,
- opacity:style.opacity, beforeOpacity:before.opacity};
- });
- }""")
+      const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
+      const ctx = canvas.getContext('2d', {willReadFrequently:true});
+      const channels = colour => {
+        ctx.clearRect(0,0,1,1); ctx.fillStyle=colour; ctx.fillRect(0,0,1,1);
+        return [...ctx.getImageData(0,0,1,1).data];
+      };
+      const surfaces = {};
+      for (const name of ['bg','bg3','top']) {
+        const swatch = document.createElement('div');
+        if (name === 'top') swatch.className='candidate-row is-top';
+        else swatch.style.backgroundColor=`var(--${name})`;
+        document.body.append(swatch);
+        surfaces[name]=channels(getComputedStyle(swatch).backgroundColor);
+        swatch.remove();
+      }
+      return els.map(el => {
+        const style=getComputedStyle(el), before=getComputedStyle(el,'::before');
+        let ink=before.borderTopColor;
+        if (el.dataset.affinityState==='penalised') {
+          const colours=before.backgroundImage.match(/(?:rgba?|color)\\([^)]*\\)/g) || [];
+          ink=colours.find(colour => channels(colour)[3] > 0) || 'transparent';
+        }
+        return {state:el.dataset.affinityState, ink:channels(ink), surfaces,
+          opacity:style.opacity, beforeOpacity:before.opacity};
+      });
+    }""")
     assert len(records) == 4 and {record['state'] for record in records} == set(STATES), "G13 contrast covers all four semantic states"
     ratios = {}
     for record in records:
@@ -428,11 +430,11 @@ def test_contrast_guard_rejects_state_ink_equal_to_bg3(paint_browser, theme, sta
         _assert_surface_contrast(page)
         badge = page.locator(f'#r117-paint-probe [data-affinity-state="{state}"]')
         assert badge.evaluate("""el => {
- el.style.color='var(--bg3)';
- const swatch=document.createElement('div');swatch.style.color='var(--bg3)';
- document.body.append(swatch);
- const landed=getComputedStyle(el).color===getComputedStyle(swatch).color;
- swatch.remove();return landed;
- }""") is True, f'{state}_ink_equals_bg3: mutation landed'
+          el.style.color='var(--bg3)';
+          const swatch=document.createElement('div');swatch.style.color='var(--bg3)';
+          document.body.append(swatch);
+          const landed=getComputedStyle(el).color===getComputedStyle(swatch).color;
+          swatch.remove();return landed;
+        }""") is True, f'{state}_ink_equals_bg3: mutation landed'
         with pytest.raises(AssertionError, match=f'G13 {state} against'):
             _assert_surface_contrast(page)

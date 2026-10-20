@@ -1,4 +1,4 @@
-"""all eligible copy locations, and current-worker safety gates."""
+""": all eligible copy locations, and current-worker safety gates."""
 from ceres.combine_chain import input_ready, live_ready_at, plan_ready_at, upgrade_inputs
 from ceres.worker_upgrade import project_worker_upgrade_options
 

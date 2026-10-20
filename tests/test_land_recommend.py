@@ -40,14 +40,14 @@ DETAILS = {
 
 def _report_with_farmhand_plot():
     """One GRAIN plot, fully staked (2/2 slots): Tireless Farmhand (level 10, base 100, current
- harvest 160 = 100 x (1 + 0.6 GRAIN ability)) and a co-occupant "Victim Whale" (base 10000,
- current harvest 16000 -- also riding Farmhand's plot-wide 0.6 GRAIN broadcast). One unassigned
- candidate card (base 300, no ability of its own) is available to replace Farmhand.
+    harvest 160 = 100 x (1 + 0.6 GRAIN ability)) and a co-occupant "Victim Whale" (base 10000,
+    current harvest 16000 -- also riding Farmhand's plot-wide 0.6 GRAIN broadcast). One unassigned
+    candidate card (base 300, no ability of its own) is available to replace Farmhand.
 
- Evicting Farmhand for the candidate looks net-positive on Farmhand's own line alone
- (candidate's estimated new harvest 480 > Farmhand's own 160, +320), but the real, total effect
- is a plot-wide GRAIN-boost collapse: Victim Whale's harvest falls from 16000 to 10000 (-6000)
- the moment the plot's sole ability-holder is evicted -- a true net of 320 - 6000 = -5680.
+    Evicting Farmhand for the candidate looks net-positive on Farmhand's own line alone
+    (candidate's estimated new harvest 480 > Farmhand's own 160, +320), but the real, total effect
+    is a plot-wide GRAIN-boost collapse: Victim Whale's harvest falls from 16000 to 10000 (-6000)
+    the moment the plot's sole ability-holder is evicted -- a true net of 320 - 6000 = -5680.
     """
     plot = {
         "deed_uid": "plot-1",
@@ -97,8 +97,8 @@ def _report_with_farmhand_plot():
 class NetNegativeMoveMustNotRankPositiveTests(unittest.TestCase):
     def test_without_card_details_the_side_effect_is_not_evaluated_and_is_labelled_as_such(self):
         """Documents the still-honest degraded mode: with no `details_by_id`, the tool cannot see
- the ability/bloodline side effect at all, and says so explicitly rather than silently
- assuming zero -- it must NOT claim a net delta it cannot actually support."""
+        the ability/bloodline side effect at all, and says so explicitly rather than silently
+        assuming zero -- it must NOT claim a net delta it cannot actually support."""
         report = _report_with_farmhand_plot()
         result = recommend_land(report, top_k=5, beam_width=5)
         replace_rows = [row for row in result["recommendations"] if row["action"] == "replace"]
@@ -113,14 +113,14 @@ class NetNegativeMoveMustNotRankPositiveTests(unittest.TestCase):
 
     def test_unevaluated_side_effects_empty_list_must_not_be_mistaken_for_a_confirmed_zero(self):
         """The trap this must close: `side_effects: []` looks IDENTICAL whether it means "checked,
- genuinely zero" or "never checked at all". Without `details_by_id`, the same net-negative
- Farmhand eviction that `test_with_card_details_the_ability_side_effect_is_priced_and_the_
- eviction_is_not_recommended` proves gets SUPPRESSED once evaluated is instead surfaced here
- as an ordinary, gross-positive-scored recommendation with `side_effects: []` -- so a
- consumer who reads an empty `side_effects` list as "no side effects" (rather than gating on
- the `side_effects_evaluated` flag) would ship a real net loss of about -5680 PP as if it
- were a vetted +320 gain. This is the -class risk for the degraded/no-card-details
- path specifically: the flag, not the list's emptiness, is the only trustworthy signal."""
+        genuinely zero" or "never checked at all". Without `details_by_id`, the same net-negative
+        Farmhand eviction that `test_with_card_details_the_ability_side_effect_is_priced_and_the_
+        eviction_is_not_recommended` proves gets SUPPRESSED once evaluated is instead surfaced here
+        as an ordinary, gross-positive-scored recommendation with `side_effects: []` -- so a
+        consumer who reads an empty `side_effects` list as "no side effects" (rather than gating on
+        the `side_effects_evaluated` flag) would ship a real net loss of about -5680 PP as if it
+        were a vetted +320 gain. This is the -class risk for the degraded/no-card-details
+        path specifically: the flag, not the list's emptiness, is the only trustworthy signal."""
         report = _report_with_farmhand_plot()
         result = recommend_land(report, top_k=5, beam_width=5)
         candidate_rows = [row for row in result["recommendations"] if row["proposal"]["asset_ref"] == "candidate-1"]
@@ -142,9 +142,9 @@ class NetNegativeMoveMustNotRankPositiveTests(unittest.TestCase):
 
     def test_with_card_details_the_ability_side_effect_is_priced_and_the_eviction_is_not_recommended(self):
         """The fix: once `details_by_id` is supplied, evicting Farmhand's plot-wide GRAIN broadcast
- collapse for Victim Whale (-6000) is priced into the net delta, flipping a naively
- gross-positive (+320) candidate into a genuinely net-negative one (-5680) -- and a
- net-negative candidate must never be selected as a recommendation."""
+        collapse for Victim Whale (-6000) is priced into the net delta, flipping a naively
+        gross-positive (+320) candidate into a genuinely net-negative one (-5680) -- and a
+        net-negative candidate must never be selected as a recommendation."""
         report = _report_with_farmhand_plot()
         result = recommend_land(report, top_k=5, beam_width=5, details_by_id=DETAILS)
         recommended_asset_refs = {row["proposal"]["asset_ref"] for row in result["recommendations"]}
@@ -155,7 +155,7 @@ class NetNegativeMoveMustNotRankPositiveTests(unittest.TestCase):
 
     def test_side_effect_pricing_matches_the_hand_computed_net(self):
         """Even before ranking/selection, the evaluated candidate's own delta (once side effects
- are folded in) must equal the hand-computed net, not the gross figure."""
+        are folded in) must equal the hand-computed net, not the gross figure."""
         from praetoria import land_recommend as lr
 
         report = _report_with_farmhand_plot()
@@ -222,7 +222,7 @@ class EstimateCardPpResourceDivisorTests(unittest.TestCase):
 
     def test_land_recommend_uses_the_targets_actual_resource(self):
         """End-to-end: a GRAIN-plot recommendation's evidence must not silently carry the Iron
- divisor's work_per_hour."""
+        divisor's work_per_hour."""
         report = _report_with_farmhand_plot()
         result = recommend_land(report, top_k=5, beam_width=5)
         target_estimates = [row["evidence"]["target_estimate"] for row in result["recommendations"] if row["evidence"]["target_estimate"].get("total_harvest_pp") is not None]

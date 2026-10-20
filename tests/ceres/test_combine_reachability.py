@@ -10,47 +10,47 @@ census row 14, method `ceres-ir1854-retire-app-js-slice-harness.md`). The prior
 version of this file sliced `renderEditorGroup`/`verifyCombineBroadcast`/
 `handleCombineStakePromptAction`/the door-3 render functions/`settleCombineRefresh`
 out of `ceres/static/app.js` by hand-picked string markers and ran each slice in a
-bare `node -e`, with a `_foil_helpers()` patch (an earlier queue)
+bare `node -e`, with a `_foil_helpers()` patch (an earlier  queue)
 working around `cardFoilValue`/`isNonCombinableFoil` having been hoisted out of the
-sliced byte range. retires the slicing technique entirely; this replaces it
+sliced byte range.  retires the slicing technique entirely; this replaces it
 with two real substitutes, chosen per test by whether the guard is about RENDERED,
 CLICKED behaviour or about a pure function's return value:
 
 - Door 1 and door 2's dialog flow are now real Playwright tests against a real
- running Ceres (`spawn_live_ceres`, model: `test_combine_sign_verify.py`), with
- `/api/idle-cards`, `/api/combine/preview`, `/api/combine/build` and
- `/api/op-verify` route-mocked and `window.hive_keychain` stubbed -- nothing real
- is ever signed. Every assertion reads rendered DOM.
+  running Ceres (`spawn_live_ceres`, model: `test_combine_sign_verify.py`), with
+  `/api/idle-cards`, `/api/combine/preview`, `/api/combine/build` and
+  `/api/op-verify` route-mocked and `window.hive_keychain` stubbed -- nothing real
+  is ever signed. Every assertion reads rendered DOM.
 - Door 3's render functions and `settleCombineRefresh` are pure-function/fetch-state
- guards with no meaningful DOM to read beyond the HTML STRING the function itself
- returns, so they now load the REAL, WHOLE module through
- `tests/ceres/vm_context.py`'s `vm.runInNewContext` sandbox instead of slicing --
- no more hand-stubbed `cardFoilValue`/`isNonCombinableFoil`, since the whole module
- carries its own real helpers.
+  guards with no meaningful DOM to read beyond the HTML STRING the function itself
+  returns, so they now load the REAL, WHOLE module through
+  `tests/ceres/vm_context.py`'s `vm.runInNewContext` sandbox instead of slicing --
+  no more hand-stubbed `cardFoilValue`/`isNonCombinableFoil`, since the whole module
+  carries its own real helpers.
 
 Two rulings recorded here, per this ticket's brief:
 
 (a) OVERTURNED, door 1 (census §3c: `process.exit(21)`, a genuine functional
- mismatch, not a stale stub). Reading `renderEditorGroup` (app.js ~3881-3960)
- shows why: its own comment says "The plot-level Combine control is REMOVED
- unconditionally... The per-tile chip is the single combine affordance." No
- code anywhere in app.js emits an element carrying
- `data-slot-action="combine-plot"` any more; `handleSlotEditorClick`'s branch
- for it (app.js ~6689) is live but unreachable from the rendered page. The old
- assertion ("button appears given a genuine duplicate") tested a contract the
- product deliberately dropped. This file now reads what the product does
- TODAY: the button stays ABSENT even under the single condition most likely to
- have shown it before (a genuine duplicate, filter on).
+    mismatch, not a stale stub). Reading `renderEditorGroup` (app.js ~3881-3960)
+    shows why: its own comment says "The plot-level Combine control is REMOVED
+    unconditionally... The per-tile chip is the single combine affordance." No
+    code anywhere in app.js emits an element carrying
+    `data-slot-action="combine-plot"` any more; `handleSlotEditorClick`'s branch
+    for it (app.js ~6689) is live but unreachable from the rendered page. The old
+    assertion ("button appears given a genuine duplicate") tested a contract the
+    product deliberately dropped. This file now reads what the product does
+    TODAY: the button stays ABSENT even under the single condition most likely to
+    have shown it before (a genuine duplicate, filter on).
 (b) PRODUCT CONTRADICTION, door 3 (census §3c: `process.exit(16)`, confirmed
- Class A against `cardFoilValue`, now moot since vm_context needs no stub).
- `combineTileActionHtml` (app.js :488) sets `const label = 'Combine';` -- the
- count is carried only in the tooltip/`aria-label` (app.js :489-490) -- while
- the adjacent comment (app.js :485-486) reads "Owner ruling (2026-08-30): the
- glyph rendered as tofu... word + count only, no parentheses..." The comment
- and the code it sits next to disagree about whether the count belongs in the
- visible label. This file asserts the label AS THE PRODUCT RENDERS IT TODAY
- (`'Combine'`, no count) and reports the contradiction rather than picking a
- side -- that is a product question, not a test-migration one ().
+    Class A against `cardFoilValue`, now moot since vm_context needs no stub).
+    `combineTileActionHtml` (app.js :488) sets `const label = 'Combine';` -- the
+    count is carried only in the tooltip/`aria-label` (app.js :489-490) -- while
+    the adjacent comment (app.js :485-486) reads "Owner ruling (2026-08-30): the
+    glyph rendered as tofu... word + count only, no parentheses..." The comment
+    and the code it sits next to disagree about whether the count belongs in the
+    visible label. This file asserts the label AS THE PRODUCT RENDERS IT TODAY
+    (`'Combine'`, no count) and reports the contradiction rather than picking a
+    side -- that is a product question, not a test-migration one ().
 
 / guard note, same as `test_combine_arrival.py`/`test_combine_sign_verify.py`:
 door 1 and door 3/settle keep intact-plus-injected-red mutation pairs (cheap,
@@ -78,7 +78,7 @@ from ceres import capture_freshness
 from ceres.config import CeresConfig
 from ceres.routes_op_preview import op_preview, plot_op_preview
 
-from .conftest import LIVE_PLAYER, spawn_live_ceres, wait_for_board
+from .conftest import LIVE_PLAYER, settle, spawn_live_ceres, wait_for_board, wait_ready
 from .vm_context import ENTRY, read_entry_source, run_in_module_context
 
 ROOT = Path(__file__).parents[2]
@@ -136,9 +136,9 @@ def _status_for(config, body) -> int:
 
 def test_stake_after_combine_refuses_a_capture_older_than_the_combine(tmp_path, monkeypatch):
     """The tile door's 'stake it' choice must refuse until a capture NEWER than the
- combine exists (the internal rules's standing restake rule: 'a restake must refuse until a
- capture newer than the combine exists') -- backed by
- `ceres.capture_freshness.capture_is_newer_than`."""
+    combine exists (the internal rules's standing restake rule: 'a restake must refuse until a
+    capture newer than the combine exists') -- backed by
+    `ceres.capture_freshness.capture_is_newer_than`."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     report = _report(generated_at="2026-08-29T00:59:59Z")  # captured BEFORE the combine
     monkeypatch.setattr(capture_mod, "latest_snapshot", lambda config, player: (report, object()))
@@ -150,7 +150,7 @@ def test_stake_after_combine_refuses_a_capture_older_than_the_combine(tmp_path, 
 
 def test_stake_after_combine_accepts_a_capture_newer_than_the_combine(tmp_path, monkeypatch):
     """Counterpart to the refusal above: a capture taken AFTER the combine must not
- be blocked by the same gate -- otherwise the feature could never actually stake."""
+    be blocked by the same gate -- otherwise the feature could never actually stake."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     report = _report(generated_at="2026-08-29T01:00:01Z")  # captured AFTER the combine
     monkeypatch.setattr(capture_mod, "latest_snapshot", lambda config, player: (report, object()))
@@ -159,8 +159,8 @@ def test_stake_after_combine_accepts_a_capture_newer_than_the_combine(tmp_path, 
 
 def test_stake_freshness_gate_mutation_is_red(tmp_path, monkeypatch):
     """Injected defect: monkeypatch capture_freshness.capture_is_newer_than() to always
- report fresh, as if routes_op_preview.py's gate were bypassed entirely -- the
- refusal proven above must then fail to fire."""
+    report fresh, as if routes_op_preview.py's gate were bypassed entirely -- the
+    refusal proven above must then fail to fire."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     report = _report(generated_at="2026-08-29T00:59:59Z")  # still stale
     monkeypatch.setattr(capture_mod, "latest_snapshot", lambda config, player: (report, object()))
@@ -217,20 +217,20 @@ CERES_STAGE.length = 0;
 CERES_STAGE.push({deed_uid: 'deed-1', group_id: 'worker', slot_index: 0, action: 'replace', asset_ref: 'new-ref', evict_asset_ref: 'old-ref'});
 const previewRequests = [];
 fetch = async (url, options) => {
- previewRequests.push(JSON.parse(options.body));
- return {ok: true, json: async () => ({})};
+  previewRequests.push(JSON.parse(options.body));
+  return {ok: true, json: async () => ({})};
 };
 (async () => {
- await requestOperationPreview({scope: 'portfolio'});
- const body = previewRequests[0];
- if (!body || body.capture_generated_at !== BOARD.generated_at) process.exit(30);
- if (body.combine_verified_at !== undefined) process.exit(31);
+  await requestOperationPreview({scope: 'portfolio'});
+  const body = previewRequests[0];
+  if (!body || body.capture_generated_at !== BOARD.generated_at) process.exit(30);
+  if (body.combine_verified_at !== undefined) process.exit(31);
 })().catch((error) => { console.error(error); process.exit(1); });
 """
 
 
 def test_picker_preview_attaches_capture_provenance_via_real_module() -> None:
-    """the ordinary picker/checkout preview carries the board generation stamp."""
+    """: the ordinary picker/checkout preview carries the board generation stamp."""
     run_in_module_context(_PICKER_PREVIEW_PROVENANCE_BODY)
 
 
@@ -246,16 +246,16 @@ def _get(base_url: str, path: str) -> dict:
 
 def _first_combinable_worker(base_url: str) -> tuple[dict, dict]:
     """A worker the real `combineTileActionHtml()` will actually offer a chip
- for: besides `card_detail_id`/`edition`, it also requires
- `hasResolvedCombineCeiling()` (both `bcx` and `bcx_max` present) and NOT
- `isCardMaxed()` (`bcx < bcx_max`) -- a worker with an unresolved or
- already-maxed ceiling never renders the chip, no matter what idle-cards
- mock is installed."""
+    for: besides `card_detail_id`/`edition`, it also requires
+    `hasResolvedCombineCeiling()` (both `bcx` and `bcx_max` present) and NOT
+    `isCardMaxed()` (`bcx < bcx_max`) -- a worker with an unresolved or
+    already-maxed ceiling never renders the chip, no matter what idle-cards
+    mock is installed."""
     board = _get(base_url, "/api/board")
     for row in board["plots"]:
         if not row.get("assets_loaded"):
             continue
-        detail = _get(base_url, f"api/plots/{urllib.parse.quote(row['deed_uid'], safe='')}")
+        detail = _get(base_url, f"/api/plots/{urllib.parse.quote(row['deed_uid'], safe='')}")
         for worker in detail.get("workers") or []:
             if worker.get("asset_ref") and isinstance(worker.get("slot"), int) and worker["slot"] >= 1 \
                     and worker.get("card_detail_id") is not None and worker.get("edition") is not None \
@@ -306,10 +306,10 @@ def _mock_combine_build(page: Page) -> None:
 def _install_keychain_stub(page: Page, *, tx_id: str = "FAKE-COMBINE-TX", delay_ms: int = 10) -> None:
     page.add_init_script(
         f"""window.__ceresBroadcastCount = 0;
- window.hive_keychain = {{requestBroadcast: (account, operations, key, callback) => {{
- window.__ceresBroadcastCount += 1;
- setTimeout(() => callback({{success: true, result: {{id: '{tx_id}'}}}}), {delay_ms});
- }}}};"""
+        window.hive_keychain = {{requestBroadcast: (account, operations, key, callback) => {{
+          window.__ceresBroadcastCount += 1;
+          setTimeout(() => callback({{success: true, result: {{id: '{tx_id}'}}}}), {delay_ms});
+        }}}};"""
     )
 
 
@@ -327,7 +327,8 @@ def _mock_op_verify(page: Page, responses: list[dict]) -> None:
 def _expand_row(page: Page, base_url: str, row: dict):
     page.goto(f"{base_url}/?player={LIVE_PLAYER}")
     wait_for_board(page)
-    page.wait_for_timeout(1200)
+    wait_ready(page)
+    settle(page)
     page_row = page.locator(f"tr.plot-row[data-deed-uid='{row['deed_uid']}']")
     page_row.wait_for(timeout=15_000)
     page_row.click()
@@ -338,8 +339,8 @@ def _expand_row(page: Page, base_url: str, row: dict):
 
 def _open_dialog_via_tile_chip(page: Page, base_url: str, row: dict, worker: dict) -> None:
     """Opens the real combine dialog through the real `.tile-combine-chip` --
- the only opener that sets `COMBINE_DIALOG.tileContext` (app.js :6714), which
- is what gates door 2's post-combine stake prompt."""
+    the only opener that sets `COMBINE_DIALOG.tileContext` (app.js :6714), which
+    is what gates door 2's post-combine stake prompt."""
     expanded = _expand_row(page, base_url, row)
     chip = expanded.locator(
         f".slot-group[data-group-id='worker'] .slot-tile-cell:has(.slot-tile[data-slot-index='{worker['slot'] - 1}']) .tile-combine-chip"
@@ -357,14 +358,14 @@ def _open_dialog_via_tile_chip(page: Page, base_url: str, row: dict, worker: dic
 
 def test_door1_worker_table_combine_button_stays_absent_via_real_browser() -> None:
     """Real browser, real running app. A genuine idle duplicate of a staked
- worker is installed via a route-mocked /api/idle-cards, and the Combines
- filter (`#combines-filter`) is left ON (its default) -- the single
- condition most likely to show a plot-level Combine button under the OLD
- (overturned) contract. Asserts the expanded worker group renders NO element
- carrying `data-slot-action="combine-plot"` -- the per-tile chip
- (door 2, see `test_combine_sign_verify.py`) is the only combine affordance
- the product renders today. Injection this would catch: reintroducing the
- old plot-level button markup (see the mutation test below)."""
+    worker is installed via a route-mocked /api/idle-cards, and the Combines
+    filter (`#combines-filter`) is left ON (its default) -- the single
+    condition most likely to show a plot-level Combine button under the OLD
+    (overturned) contract. Asserts the expanded worker group renders NO element
+    carrying `data-slot-action="combine-plot"` -- the per-tile chip
+    (door 2, see `test_combine_sign_verify.py`) is the only combine affordance
+    the product renders today. Injection this would catch: reintroducing the
+    old plot-level button markup (see the mutation test below)."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -382,17 +383,17 @@ def test_door1_worker_table_combine_button_stays_absent_via_real_browser() -> No
 
 def test_door1_worker_table_combine_button_mutation_is_red() -> None:
     """Injected defect: reintroduce the plot-level combine-plot button
- unconditionally into renderEditorGroup's own button row (app.js ~3915, the
- exact site the removed feature used to render from) -- served through
- `page.route` so the checked-in file is never touched. Proves the
- absence-guard above is genuinely sensitive to this control coming back, not
- a tautology that would pass regardless of what the code renders."""
+    unconditionally into renderEditorGroup's own button row (app.js ~3915, the
+    exact site the removed feature used to render from) -- served through
+    `page.route` so the checked-in file is never touched. Proves the
+    absence-guard above is genuinely sensitive to this control coming back, not
+    a tautology that would pass regardless of what the code renders."""
     source = read_entry_source()
-    anchor = "  }).join('');\n // Combine door 1 (reachability pass)"
+    anchor = "  }).join('');\n  // Combine door 1 (reachability pass)"
     assert source.count(anchor) == 1, "anchor drifted -- update this injection"
     mutated = source.replace(
         anchor,
-        "  }).join('') + '<button type=\"button\" data-slot-action=\"combine-plot\">Combine</button>';\n // Combine door 1 (reachability pass)",
+        "  }).join('') + '<button type=\"button\" data-slot-action=\"combine-plot\">Combine</button>';\n  // Combine door 1 (reachability pass)",
         1,
     )
     assert mutated != source
@@ -427,13 +428,13 @@ def test_door1_worker_table_combine_button_mutation_is_red() -> None:
 
 def test_door2_verify_never_autostakes_via_real_browser() -> None:
     """Real browser, real running app. Signs a real (route-mocked) combine
- through the tile chip; /api/op-verify reports domain-confirmed. Asserts the
- stake-prompt overlay (`#combine-stake-prompt-overlay`) appears and that
- nothing was staged yet (`#checkout-btn` stays hidden -- CERES_STAGE is
- empty) -- the shared verification path only ever OFFERS the choice, it must
- never stage the survivor itself. Injection this would catch: dropping the
- `if (tileContext) openCombineStakePrompt(...)` gate (app.js :7923) in favour
- of staking directly on domain-confirmed."""
+    through the tile chip; /api/op-verify reports domain-confirmed. Asserts the
+    stake-prompt overlay (`#combine-stake-prompt-overlay`) appears and that
+    nothing was staged yet (`#checkout-btn` stays hidden -- CERES_STAGE is
+    empty) -- the shared verification path only ever OFFERS the choice, it must
+    never stage the survivor itself. Injection this would catch: dropping the
+    `if (tileContext) openCombineStakePrompt(...)` gate (app.js :7923) in favour
+    of staking directly on domain-confirmed."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -458,14 +459,14 @@ def test_door2_verify_never_autostakes_via_real_browser() -> None:
 
 def test_door2_prompt_choice_is_exclusive_via_real_browser() -> None:
     """Real browser, real running app, two independent dialog opens (fresh page
- each time -- the prompt closes on either choice, so a single flow can't
- exercise both). 'skip' (`[data-combine-stake-action="skip"]`) must never
- stage; 'stake' (`[data-combine-stake-action="stake"]`) must stage exactly
- once -- read from the real checkout dock (`#checkout-btn`/`#checkout-count`),
- never a call count. Injection this would catch: dropping the explicit-choice
- gate in `handleCombineStakePromptAction` (app.js ~7521) so a 'skip' click
- stages the survivor exactly like 'stake' would, which the maintainer's ruling
- ('ASK -- never act automatically... exactly two choices') forbids."""
+    each time -- the prompt closes on either choice, so a single flow can't
+    exercise both). 'skip' (`[data-combine-stake-action="skip"]`) must never
+    stage; 'stake' (`[data-combine-stake-action="stake"]`) must stage exactly
+    once -- read from the real checkout dock (`#checkout-btn`/`#checkout-count`),
+    never a call count. Injection this would catch: dropping the explicit-choice
+    gate in `handleCombineStakePromptAction` (app.js ~7521) so a 'skip' click
+    stages the survivor exactly like 'stake' would, which the maintainer's ruling
+    ('ASK -- never act automatically... exactly two choices') forbids."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -517,11 +518,11 @@ def test_door2_prompt_choice_is_exclusive_via_real_browser() -> None:
 
 _DOOR3_BODY = r"""
 S.IDLE_CARDS_CACHE = [
- {uid: 'A1', card_detail_id: 100, edition: 1, foil: false, bcx: 1, bcx_max: 10, available: true, name: 'Card A'},
- {uid: 'A2', card_detail_id: 100, edition: 1, foil: false, bcx: 1, bcx_max: 10, available: true, name: 'Card A'},
- {uid: 'B1', card_detail_id: 200, edition: 1, foil: false, bcx: 1, bcx_max: 10, available: true, name: 'Card B'},
- {uid: 'C1', card_detail_id: 300, edition: 1, foil: false, bcx: 10, bcx_max: 10, available: true, name: 'Card C'},
- {uid: 'C2', card_detail_id: 300, edition: 1, foil: false, bcx: 10, bcx_max: 10, available: true, name: 'Card C'},
+  {uid: 'A1', card_detail_id: 100, edition: 1, foil: false, bcx: 1, bcx_max: 10, available: true, name: 'Card A'},
+  {uid: 'A2', card_detail_id: 100, edition: 1, foil: false, bcx: 1, bcx_max: 10, available: true, name: 'Card A'},
+  {uid: 'B1', card_detail_id: 200, edition: 1, foil: false, bcx: 1, bcx_max: 10, available: true, name: 'Card B'},
+  {uid: 'C1', card_detail_id: 300, edition: 1, foil: false, bcx: 10, bcx_max: 10, available: true, name: 'Card C'},
+  {uid: 'C2', card_detail_id: 300, edition: 1, foil: false, bcx: 10, bcx_max: 10, available: true, name: 'Card C'},
 ];
 const candA = {uid: 'A1', card_detail_id: 100, edition: 1, foil: false, name: 'Card A'}; // 2 eligible copies
 const candB = {uid: 'B1', card_detail_id: 200, edition: 1, foil: false, name: 'Card B'}; // only 1 copy owned
@@ -561,20 +562,20 @@ if (!tileOn.includes('aria-label="Combine up to 2 idle copies"')) process.exit(1
 
 def test_door3_and_filter_contract_via_real_functions() -> None:
     """Calls the REAL candidateCombineActionHtml/combineTileActionHtml (whole
- module, vm_context) against synthetic data (a genuinely-combinable pair, a
- lone copy, and a maxed pair) and asserts on their actual returned HTML --
- not on source text. PRODUCT CONTRADICTION (ruling b, see module docstring):
- the tile chip's visible label is `'Combine'`, not `'Combine 2'` -- the
- adjacent source comment says count should be in the label; the code puts it
- in the tooltip/aria-label only. Asserted as rendered today; reported, not
- silently resolved."""
+    module, vm_context) against synthetic data (a genuinely-combinable pair, a
+    lone copy, and a maxed pair) and asserts on their actual returned HTML --
+    not on source text. PRODUCT CONTRADICTION (ruling b, see module docstring):
+    the tile chip's visible label is `'Combine'`, not `'Combine 2'` -- the
+    adjacent source comment says count should be in the label; the code puts it
+    in the tooltip/aria-label only. Asserted as rendered today; reported, not
+    silently resolved."""
     run_in_module_context(_DOOR3_BODY)
 
 
 def test_door3_gate_mutation_is_red() -> None:
     """Injected defect: candidateCombineInfo() drops its rowCanCombine() check, so
- a maxed pair or a lone copy would wrongly show a Combine button instead of the
- dash -- the internal rules's "absent, not disabled" rule for exactly this case."""
+    a maxed pair or a lone copy would wrongly show a Combine button instead of the
+    dash -- the internal rules's "absent, not disabled" rule for exactly this case."""
     source = read_entry_source()
     mutated = source.replace(
         "if (!self || !rowCanCombine(self, copies)) return null;",
@@ -588,11 +589,11 @@ def test_door3_gate_mutation_is_red() -> None:
 
 def test_combines_filter_mutation_is_red() -> None:
     """Injected defect: candidateCombineActionHtml() ignores COMBINES_FILTER_ENABLED
- entirely (as if one render path forgot the flag) -- the maintainer's ruling that OFF
- means every combine affordance is absent, not merely disabled, must catch it."""
+    entirely (as if one render path forgot the flag) -- the maintainer's ruling that OFF
+    means every combine affordance is absent, not merely disabled, must catch it."""
     source = read_entry_source()
     mutated = source.replace(
-        "function candidateCombineActionHtml(candidate, index) {\n if (!S.COMBINES_FILTER_ENABLED) return '';\n",
+        "function candidateCombineActionHtml(candidate, index) {\n  if (!S.COMBINES_FILTER_ENABLED) return '';\n",
         "function candidateCombineActionHtml(candidate, index) {\n",
         1,
     )
@@ -618,14 +619,14 @@ stageToast = (message, error) => { toasts.push({ message, error: !!error }); };
 let boardRow = 'PRE-COMBINE bcx 14 level 7 PP 32941'; // the exact stale state the maintainer reported live
 let capturePolls = 0;
 fetch = async (url) => {
- capturePolls += 1;
- if (capturePolls === 1) {
- // First poll: the background recapture is still running -- the board must
- // NOT be touched yet, so boardRow stays at its pre-combine value here.
- return { json: async () => ({ state: 'running', fetched_deeds: 1, total_deeds: 2 }) };
- }
- // Second poll: the recapture landed.
- return { json: async () => ({ state: 'idle' }) };
+  capturePolls += 1;
+  if (capturePolls === 1) {
+    // First poll: the background recapture is still running -- the board must
+    // NOT be touched yet, so boardRow stays at its pre-combine value here.
+    return { json: async () => ({ state: 'running', fetched_deeds: 1, total_deeds: 2 }) };
+  }
+  // Second poll: the recapture landed.
+  return { json: async () => ({ state: 'idle' }) };
 };
 // Stands in for the real loadBoard()/render() chain -- the actual assertion
 // below is on the RENDERED ROW TEXT this produces, not on whether loadBoard
@@ -633,42 +634,42 @@ fetch = async (url) => {
 loadBoard = async () => { boardRow = 'combined bcx 17 level 8 PP 40000'; };
 
 (async () => {
- settleCombineRefresh({ triggered: true });
- // Flush enough microtask turns for the running -> idle -> loadBoard chain
- // (settleCombineRefresh() never returns a promise its caller awaits, by
- // design -- it must not block the dialog-close/toast that already ran).
- for (let i = 0; i < 30; i += 1) { await Promise.resolve(); }
- if (capturePolls < 2) process.exit(40); // never actually polled capture status
- if (boardRow !== 'combined bcx 17 level 8 PP 40000') process.exit(41); // rendered row still stale
- if (!toasts.some((t) => /updating/i.test(t.message))) process.exit(42); // no honest in-progress state shown
+  settleCombineRefresh({ triggered: true });
+  // Flush enough microtask turns for the running -> idle -> loadBoard chain
+  // (settleCombineRefresh() never returns a promise its caller awaits, by
+  // design -- it must not block the dialog-close/toast that already ran).
+  for (let i = 0; i < 30; i += 1) { await Promise.resolve(); }
+  if (capturePolls < 2) process.exit(40); // never actually polled capture status
+  if (boardRow !== 'combined bcx 17 level 8 PP 40000') process.exit(41); // rendered row still stale
+  if (!toasts.some((t) => /updating/i.test(t.message))) process.exit(42); // no honest in-progress state shown
 })().catch((error) => { console.error(error); process.exit(1); });
 """
 
 
 def test_settle_combine_refresh_updates_rendered_row_via_real_function() -> None:
     """Calls the REAL settleCombineRefresh() (whole module, vm_context) against a
- fake capture-status sequence (running once, then idle) and asserts on the
- RENDERED ROW TEXT it produces -- not on a call count -- confirming the board
- only shows the new bcx/level/PP once the server's recapture has actually
- landed."""
+    fake capture-status sequence (running once, then idle) and asserts on the
+    RENDERED ROW TEXT it produces -- not on a call count -- confirming the board
+    only shows the new bcx/level/PP once the server's recapture has actually
+    landed."""
     run_in_module_context(_settle_body_js())
 
 
 def test_settle_combine_refresh_skips_status_check_mutation_is_red() -> None:
     """Injected defect: settleCombineRefresh() calls loadBoard() immediately
- instead of polling capture status first -- this is exactly the original bug
- (, then the board
- stayed on pre-combine values indefinitely). The real function must poll at
- least once before ever reaching loadBoard(); this mutation makes it reach
- loadBoard() on the very first tick, which the poll-count assertion above
- catches."""
+    instead of polling capture status first -- this is exactly the original bug
+    (, then the board
+    stayed on pre-combine values indefinitely). The real function must poll at
+    least once before ever reaching loadBoard(); this mutation makes it reach
+    loadBoard() on the very first tick, which the poll-count assertion above
+    catches."""
     source = read_entry_source()
     settle_fn_start = "async function settleCombineRefresh("
     settle_fn_end = "\n// Background prefetch"
     settle_fn = source[source.index(settle_fn_start): source.index(settle_fn_end, source.index(settle_fn_start))]
     mutated_fn = settle_fn.replace(
         "  if (combineRefresh && combineRefresh.triggered === false) {",
-        "  await loadBoard(); return;\n if (combineRefresh && combineRefresh.triggered === false) {",
+        "  await loadBoard(); return;\n  if (combineRefresh && combineRefresh.triggered === false) {",
         1,
     )
     assert mutated_fn != settle_fn

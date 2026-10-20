@@ -1,4 +1,4 @@
-"""positive offline regressions converted from the Astra defect probes."""
+""": positive offline regressions converted from the Astra defect probes."""
 import pytest
 from tests.ceres.test_sign_order import SETUP, STATIC
 from tests.ceres.vm_context import run_in_module_context

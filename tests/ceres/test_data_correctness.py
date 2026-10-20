@@ -61,7 +61,7 @@ def test_l3_02_fill_counts_workers_already_staged_against_the_cap():
     assert fill_plot._incoming_base({"group_id": "totem", "action": "stake", "base_pp": 80000}) == 0.0
     source = open(fill_plot.__file__, encoding="utf-8").read()
     assert "total += sum(_incoming_base(move, report) for move in planned)" in source
-    assert "for move in planned + chosen" in source
+    assert "for move in planned + chosen:" in source
 
 
 # S10 / L3-01 completeness: partially missing cost data is unknown too
@@ -92,7 +92,7 @@ def test_l3_07_absurd_hours_and_malformed_recipe_entries_are_reported_not_raised
 
 def test_l3_03_a_failed_live_read_never_makes_a_plot_eligible():
     source = open(harvest.__file__.replace("harvest.py", "routes_harvest.py"), encoding="utf-8").read()
-    assert 'elif issue and fresh' in source and "Live plot data unavailable" in source
+    assert 'elif issue and fresh:' in source and "Live plot data unavailable" in source
 
 
 def test_l3_02_a_staged_worker_without_pp_is_resolved_from_the_servers_card_data():

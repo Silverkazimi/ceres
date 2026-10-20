@@ -19,10 +19,10 @@ def test_mobile_card_uses_the_table_badges_numbers_and_field_order_in_vm() -> No
 function assert(ok, message) { if (!ok) throw new Error(message); }
 BOARD = {badge_meta: {attention: {label: 'Attention', tooltip: 'Needs attention', kind: 'problem'}}};
 const row = {
- deed_uid: 'deed-a', plot: '65-7-8', region: 'PR-BRL-65', rarity: 'Rare', terrain: 'Forest',
- resource: 'grain', worksite_type: 'Grain Farm', work_per_hour: 1234.4, harvest_pp: 98765.4,
- capacity: {display: '2/5', worker_count: 2, open_slots: 3, runi_staked: false},
- badges: ['attention'], notices: [], workers: [], ability_holders: [], bonus: {},
+  deed_uid: 'deed-a', plot: '65-7-8', region: 'PR-BRL-65', rarity: 'Rare', terrain: 'Forest',
+  resource: 'grain', worksite_type: 'Grain Farm', work_per_hour: 1234.4, harvest_pp: 98765.4,
+  capacity: {display: '2/5', worker_count: 2, open_slots: 3, runi_staked: false},
+  badges: ['attention'], notices: [], workers: [], ability_holders: [], bonus: {},
 };
 const card = plotCardHtml(row, 0);
 const badges = badgeHtml(row);
@@ -30,7 +30,7 @@ assert(card.includes(badges), 'mobile card must embed badgeHtml(row) unchanged')
 assert(card.includes(fmtWorkPerHour(row)), 'Harvest/hr must use the desktop formatter');
 assert(!card.includes('<dt>Workers</dt>'), 'Mobile board omits worker count');
 assert(card.includes('Rare') && card.includes('plot-card-classification'), 'rarity is visible');
-// a production building's card zooms ~2.5x into its full-size scene (thumbnails blur); others keep thumbnails.
+// : a production building's card zooms ~2.5x into its full-size scene (thumbnails blur); others keep thumbnails.
 assert(/\/(thumbs|web)\/land\/terrain-backgrounds\/[^'"]+\.webp/.test(card), 'mobile card uses webp terrain art');
 assert(card.includes(`<dd>${num(row.harvest_pp, 0)}</dd>`), 'Total PP must use num(row.harvest_pp, 0)');
 assert(card.includes(formatPlotLabel(row.plot)), 'plot label must use the desktop formatter');
@@ -46,16 +46,16 @@ def test_mobile_renderer_mounts_current_rows_in_their_existing_order_in_vm() -> 
 function assert(ok, message) { if (!ok) throw new Error(message); }
 document.documentElement.classList = {contains(name) { return name === 'ceres-lw-le-1279'; }};
 const host = {
- html: '', replaceChildren() { this.html = ''; },
- insertAdjacentHTML(_where, value) { this.html += value; },
- setAttribute() {}, removeAttribute() {},
+  html: '', replaceChildren() { this.html = ''; },
+  insertAdjacentHTML(_where, value) { this.html += value; },
+  setAttribute() {}, removeAttribute() {},
 };
 document.getElementById = (id) => id === 'plot-card-list' ? host : null;
 BOARD = {badge_meta: {}};
 const row = (uid, plot) => ({
- deed_uid: uid, plot, region: 'PR-BRL-1', terrain: null, resource: null,
- work_per_hour: null, harvest_pp: 0, capacity: {display: '0/5', worker_count: 0, open_slots: 5},
- badges: [], notices: [], workers: [], ability_holders: [], bonus: {},
+  deed_uid: uid, plot, region: 'PR-BRL-1', terrain: null, resource: null,
+  work_per_hour: null, harvest_pp: 0, capacity: {display: '0/5', worker_count: 0, open_slots: 5},
+  badges: [], notices: [], workers: [], ability_holders: [], bonus: {},
 });
 CURRENT_ROWS = [row('third', '1-1-3'), row('first', '1-1-1'), row('second', '1-1-2')];
 renderMobileCards();
@@ -96,13 +96,17 @@ def test_mobile_shell_reuses_the_one_filter_control_row() -> None:
 
 
 def test_phase_d_css_cannot_change_desktop_tiers_or_add_width_queries() -> None:
-    block = CSS.split("* PHASE D MOBILE BOARD START *", 1)[1].split(
-        "* PHASE D MOBILE BOARD END *", 1
+    block = CSS.split("/*  PHASE D MOBILE BOARD START */", 1)[1].split(
+        "/*  PHASE D MOBILE BOARD END */", 1
     )[0]
-    selectors = re.findall(r"([^{}]+)\{", re.sub(r"/\*.*?\*/", "", block, flags=re.S))
-    assert selectors
-    for selector_group in selectors:
-        for selector in selector_group.split(","):
+    rules = re.findall(r"([^{}]+)\{([^{}]*)\}", re.sub(r"/\*.*?\*/", "", block, flags=re.S))
+    assert rules
+    # This base rule hides a mobile-only header break and is a desktop no-op.
+    unscoped_base_hides = {".board-header-break": "display: none;"}
+    for selector_group, declarations in rules:
+        if unscoped_base_hides.get(selector_group.strip()) == declarations.strip():
+            continue
+        for selector in re.split(r",(?![^()]*\))", selector_group):
             assert selector.strip().startswith((
                 "html.ceres-lw-le-1919.ceres-lw-le-1279",
                 "html.ceres-lw-le-1279",
@@ -117,34 +121,34 @@ def test_mobile_filters_click_opens_the_visible_sheet_and_close_restores_it_in_v
         r"""
 function assert(ok, message) { if (!ok) throw new Error(message); }
 function classList(initial = []) {
- const values = new Set(initial);
- return {
- add(...names) { names.forEach((name) => values.add(name)); },
- remove(...names) { names.forEach((name) => values.delete(name)); },
- toggle(name, force) { force ? values.add(name) : values.delete(name); },
- contains(name) { return values.has(name); },
- };
+  const values = new Set(initial);
+  return {
+    add(...names) { names.forEach((name) => values.add(name)); },
+    remove(...names) { names.forEach((name) => values.delete(name)); },
+    toggle(name, force) { force ? values.add(name) : values.delete(name); },
+    contains(name) { return values.has(name); },
+  };
 }
 function element(id, initial = []) {
- const listeners = {};
- return {
- id, hidden: id === 'mobile-filter-backdrop', classList: classList(initial), attributes: {}, focused: false,
- addEventListener(type, fn) { listeners[type] = fn; },
- click() { listeners.click?.({target: this}); },
- setAttribute(name, value) { this.attributes[name] = value; },
- removeAttribute(name) { delete this.attributes[name]; },
- focus() { this.focused = true; },
- };
+  const listeners = {};
+  return {
+    id, hidden: id === 'mobile-filter-backdrop', classList: classList(initial), attributes: {}, focused: false,
+    addEventListener(type, fn) { listeners[type] = fn; },
+    click() { listeners.click?.({target: this}); },
+    setAttribute(name, value) { this.attributes[name] = value; },
+    removeAttribute(name) { delete this.attributes[name]; },
+    focus() { this.focused = true; },
+  };
 }
 const controls = element('board-controls');
 const elements = {
- 'board-controls': controls,
- 'mobile-search-btn': element('mobile-search-btn'),
- 'mobile-filters-btn': element('mobile-filters-btn'),
- 'mobile-filters-close': element('mobile-filters-close'),
- 'mobile-filter-backdrop': element('mobile-filter-backdrop'),
- 'mobile-filter-sheet-title': element('mobile-filter-sheet-title'),
- 'sort-select': element('sort-select'),
+  'board-controls': controls,
+  'mobile-search-btn': element('mobile-search-btn'),
+  'mobile-filters-btn': element('mobile-filters-btn'),
+  'mobile-filters-close': element('mobile-filters-close'),
+  'mobile-filter-backdrop': element('mobile-filter-backdrop'),
+  'mobile-filter-sheet-title': element('mobile-filter-sheet-title'),
+  'sort-select': element('sort-select'),
 };
 document.documentElement.classList = classList(['ceres-lw-le-1279']);
 document.querySelector = (selector) => selector === '.controls-row' ? controls : null;

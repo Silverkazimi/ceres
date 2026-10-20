@@ -21,5 +21,5 @@ def test_asset_tiles_keep_resting_icons_opaque_and_states_distinct() -> None:
 
 def test_power_satellite_offset_is_derived_from_its_size() -> None:
     source = CSS.read_text(encoding="utf-8")
-    assert "power-satellite-size: 2.3rem" in source
+    assert "--power-satellite-size: 2.3rem" in source
     assert "top: calc(var(--power-satellite-size) / -2)" in source

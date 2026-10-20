@@ -30,16 +30,16 @@ def test_lane_icons_use_explain_tooltips():
     context, page = _loaded_page()
     try:
         attributes = page.locator(
-            "img.rarity-gem, img.terrain-emblem, img.resource-icon "
+            "img.rarity-gem, img.terrain-emblem, img.resource-icon, "
             "img.type-mark, img.splinter-icon, img.set-icon"
         ).evaluate_all(
             """elements => elements.map(element => ({
- hasTip: element.hasAttribute('data-tip'),
- tip: element.getAttribute('data-tip'),
- kind: element.getAttribute('data-tip-kind'),
- body: element.getAttribute('data-tip-body'),
- key: element.getAttribute('data-tip-key'),
- }))"""
+                hasTip: element.hasAttribute('data-tip'),
+                tip: element.getAttribute('data-tip'),
+                kind: element.getAttribute('data-tip-kind'),
+                body: element.getAttribute('data-tip-body'),
+                key: element.getAttribute('data-tip-key'),
+            }))"""
         )
         tipped = [item for item in attributes if item["hasTip"]]
         assert attributes
@@ -93,8 +93,8 @@ def test_lane_icon_tooltips_do_not_say_magical():
     try:
         tips = page.locator("img.type-mark-element").evaluate_all(
             """elements => elements
- .map(element => element.getAttribute('data-tip'))
- .filter(tip => tip !== null)"""
+            .map(element => element.getAttribute('data-tip'))
+            .filter(tip => tip !== null)"""
         )
         assert tips
         assert all("Magical" not in tip for tip in tips)
@@ -108,16 +108,16 @@ def test_lane_icon_aria_labels_match_tooltips():
     context, page = _loaded_page()
     try:
         attributes = page.locator(
-            "img.rarity-gem, img.terrain-emblem, img.resource-icon "
+            "img.rarity-gem, img.terrain-emblem, img.resource-icon, "
             "img.type-mark, img.splinter-icon, img.set-icon"
         ).evaluate_all(
             """elements => elements
- .filter(element => element.hasAttribute('data-tip'))
- .map(element => ({
- tip: element.getAttribute('data-tip'),
- aria: element.getAttribute('aria-label'),
- body: element.getAttribute('data-tip-body'),
- }))"""
+            .filter(element => element.hasAttribute('data-tip'))
+            .map(element => ({
+                tip: element.getAttribute('data-tip'),
+                aria: element.getAttribute('aria-label'),
+                body: element.getAttribute('data-tip-body'),
+            }))"""
         )
         assert attributes
         resource_attributes = [item for item in attributes if item["body"] is not None]
@@ -136,10 +136,10 @@ def test_plot_tooltip_includes_region_and_deed_uid():
     try:
         attributes = page.locator("td.plot-cell[data-tip]").evaluate_all(
             """elements => elements.map(element => ({
- tip: element.getAttribute('data-tip'),
- body: element.getAttribute('data-tip-body'),
- aria: element.getAttribute('aria-label'),
- }))"""
+                tip: element.getAttribute('data-tip'),
+                body: element.getAttribute('data-tip-body'),
+                aria: element.getAttribute('aria-label'),
+            }))"""
         )
         assert attributes
         for item in attributes:
@@ -159,11 +159,11 @@ def test_harvest_per_hour_resources_keep_icons_without_worksite_tooltip_input():
         cells = _column_cells(page, "Harvest/hr")
         values = cells.evaluate_all(
             """elements => elements
- .filter(element => element.textContent.trim() && element.textContent.trim() !== '—')
- .map(element => ({
- value: element.textContent.trim(),
- icons: element.querySelectorAll('img.resource-icon').length,
- }))"""
+            .filter(element => element.textContent.trim() && element.textContent.trim() !== '—')
+            .map(element => ({
+                value: element.textContent.trim(),
+                icons: element.querySelectorAll('img.resource-icon').length,
+            }))"""
         )
         assert values
         assert all(item["icons"] >= 1 for item in values)
@@ -198,9 +198,9 @@ def test_worksite_column_keeps_icons_and_genuine_missing_worksites_as_dashes():
         cells = _column_cells(page, "Worksite")
         values = cells.evaluate_all(
             """elements => elements.map(element => ({
- text: element.textContent.trim(),
- icons: element.querySelectorAll('img').length,
- }))"""
+                text: element.textContent.trim(),
+                icons: element.querySelectorAll('img').length,
+            }))"""
         )
         assert values
         missing = [item for item in values if item["text"] == "—"]

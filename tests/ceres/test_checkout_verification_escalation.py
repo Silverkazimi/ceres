@@ -12,7 +12,7 @@ import json
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres, wait_for_board
+from .conftest import settle, spawn_live_ceres, wait_for_board
 
 
 @pytest.fixture(scope="module")
@@ -47,9 +47,9 @@ def _runi_plot(page: Page) -> tuple[int, str, dict]:
         assert deed_uid
         detail = page.evaluate(
             """async uid => {
- const response = await fetch(`/api/plots/${encodeURIComponent(uid)}`);
- return response.json();
- }""",
+              const response = await fetch(`/api/plots/${encodeURIComponent(uid)}`);
+              return response.json();
+            }""",
             deed_uid,
         )
         return index, deed_uid, detail
@@ -106,7 +106,7 @@ def test_checkout_verification_escalates_after_repeated_check_again_clicks(
         code = "verification_pending_escalated" if escalated else "verification_pending"
         message = (
             "Still not confirmed after several checks — this did not resolve in the "
-            "expected window. It may still be propagating, or it may need attention "
+            "expected window. It may still be propagating, or it may need attention — "
             "check the game directly, or try again."
         ) if escalated else "Not confirmed yet — the game may still be catching up."
         notice = {
@@ -121,9 +121,9 @@ def test_checkout_verification_escalates_after_repeated_check_again_clicks(
     page.route("**/api/op-verify*", _verify)
     page.evaluate(
         """window.__escKeychain = {requestBroadcast: (account, operations, key, callback) => {
- setTimeout(() => callback({success: true, result: {id: 'FAKE-ESC-TX'}}), 25);
- }};
- window.hive_keychain = window.__escKeychain;"""
+          setTimeout(() => callback({success: true, result: {id: 'FAKE-ESC-TX'}}), 25);
+        }};
+        window.hive_keychain = window.__escKeychain;"""
     )
 
     _stage_runi_unstake(page, index)
@@ -143,7 +143,7 @@ def test_checkout_verification_escalates_after_repeated_check_again_clicks(
     # is the escalated notice.
     for _ in range(4):
         retry_button.click()
-        page.locator("#ceres-confirmation-banner.phase-pending "
+        page.locator("#ceres-confirmation-banner.phase-pending, "
                      "#ceres-confirmation-banner.phase-pending-escalated").first.wait_for(timeout=30_000)
 
     page.locator("#ceres-confirmation-banner.phase-pending-escalated").wait_for(timeout=30_000)
@@ -161,9 +161,9 @@ def test_escalation_schedule_is_stake_only_for_the_settle_floor(
     live_browser: tuple[Browser, str], operation_id: str,
 ) -> None:
     """Guard 5. Mutation evidence: restore the unconditional escalation stop, or widen the
- carve-out to every family; the stake row then misses attempt 6, or the worksite row polls
- past escalation. The check uses observed poll requests and the exposed poller map, not a
- source position or a state-only assertion."""
+    carve-out to every family; the stake row then misses attempt 6, or the worksite row polls
+    past escalation. The check uses observed poll requests and the exposed poller map, not a
+    source position or a state-only assertion."""
     page = _page(live_browser, compressed_schedule=True)
     index, deed_uid, detail = _runi_plot(page)
     runi_uid = next(worker["asset_ref"] for worker in detail.get("workers", []) if int(worker.get("slot", -1)) == 0)
@@ -203,10 +203,10 @@ def test_escalation_schedule_is_stake_only_for_the_settle_floor(
     page.route("**/api/op-verify*", _verify)
     page.evaluate(
         """window.__floorBroadcastCount = 0;
- window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
- window.__floorBroadcastCount += 1;
- callback({success: true, result: {id: 'FAKE-FLOOR-TX'}});
- }};"""
+        window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
+          window.__floorBroadcastCount += 1;
+          callback({success: true, result: {id: 'FAKE-FLOOR-TX'}});
+        }};"""
     )
     _stage_runi_unstake(page, index)
     page.locator("#checkout-btn").click()
@@ -223,7 +223,7 @@ def test_escalation_schedule_is_stake_only_for_the_settle_floor(
         page.locator("tr.expand-row").nth(index).locator(".slot-power[data-power-state='core-only']").wait_for(timeout=30_000)
     else:
         page.locator("#ceres-confirmation-banner.phase-pending-escalated").wait_for(timeout=30_000)
-        page.wait_for_timeout(200)
+        settle(page)
         assert attempts == [1, 2, 3, 4, 5]
         assert page.evaluate("window.__floorBroadcastCount") == 1
         assert page.locator("#ceres-confirmation-banner [data-confirmation-action='retry-verification']").count() == 1

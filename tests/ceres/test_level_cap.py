@@ -16,8 +16,8 @@ from ceres.level_cap import level_for_bcx, resolve_level_thresholds
 
 def test_alpha_beta_max_thresholds_match_bcx_cap_exactly() -> None:
     """The last entry of resolve_level_thresholds() for every alpha/beta rarity x
- foil cell must equal ceres/data/max_bcx.json's own max_bcx figure -- the two
- modules must never disagree about the same printing's ceiling."""
+    foil cell must equal ceres/data/max_bcx.json's own max_bcx figure -- the two
+    modules must never disagree about the same printing's ceiling."""
     max_bcx = json.load(open("ceres/data/max_bcx.json"))
     for card_set, edition in (("alpha", 0), ("beta", 3)):
         for rarity in ("common", "rare", "epic", "legendary"):
@@ -31,12 +31,12 @@ def test_alpha_beta_max_thresholds_match_bcx_cap_exactly() -> None:
 
 def test_alpha_beta_max_threshold_mutation_is_red() -> None:
     """Injected defect: drop the regular-BCX '+1' offset ceres/level_cap.py's
- provenance block documents (ceil(xp/xp_per_card) instead of
- ceil(xp/xp_per_card) + 1). Reproducing the injected (wrong) formula directly
- against the same live-sourced tables level_cap.py reads shows it undershoots
- max_bcx.json's alpha-common-regular figure by exactly 1 -- proving
- test_alpha_beta_max_thresholds_match_bcx_cap_exactly() above would go red
- were that offset ever dropped from the real module."""
+    provenance block documents (ceil(xp/xp_per_card) instead of
+    ceil(xp/xp_per_card) + 1). Reproducing the injected (wrong) formula directly
+    against the same live-sourced tables level_cap.py reads shows it undershoots
+    max_bcx.json's alpha-common-regular figure by exactly 1 -- proving
+    test_alpha_beta_max_thresholds_match_bcx_cap_exactly() above would go red
+    were that offset ever dropped from the real module."""
     import math
 
     import ceres.level_cap as level_cap
@@ -53,7 +53,7 @@ def test_alpha_beta_max_threshold_mutation_is_red() -> None:
 
 def test_modern_thresholds_are_the_raw_combine_rates_table() -> None:
     """A modern-regime card_set (e.g. 'chaos') must resolve to exactly the raw
- settings-sourced combine_rates array, unmodified."""
+    settings-sourced combine_rates array, unmodified."""
     data = json.load(open("ceres/data/level_thresholds.json"))
     for idx, rarity in enumerate(("common", "rare", "epic", "legendary")):
         thresholds = resolve_level_thresholds(1, 6, rarity, False, "chaos")
@@ -62,7 +62,7 @@ def test_modern_thresholds_are_the_raw_combine_rates_table() -> None:
 
 def test_level_for_bcx_never_extrapolates_past_the_ladder() -> None:
     """A BCX far beyond the last threshold must still cap at the ladder's own
- max level -- never a level index off the end of the array."""
+    max level -- never a level index off the end of the array."""
     thresholds = [1, 5, 14, 30, 60, 100, 150, 220, 300, 400]
     assert level_for_bcx(thresholds, 400) == 10
     assert level_for_bcx(thresholds, 100_000) == 10  # no level 11 exists
@@ -74,9 +74,9 @@ def test_level_for_bcx_never_extrapolates_past_the_ladder() -> None:
 
 def test_level_for_bcx_ceiling_mutation_is_red() -> None:
     """Injected defect: read the level as `bcx // 10` instead of walking the
- ladder -- an unbounded projection that would report level 10,000 at
- bcx=100,000 instead of capping at 10. The guard above must go red on this
- specific injected function."""
+    ladder -- an unbounded projection that would report level 10,000 at
+    bcx=100,000 instead of capping at 10. The guard above must go red on this
+    specific injected function."""
 
     def broken_level_for_bcx(thresholds, bcx):
         return int(bcx // 10) if bcx else None

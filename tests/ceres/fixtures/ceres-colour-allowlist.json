@@ -557,7 +557,7 @@
     },
     {
       "file": "ceres/static/ceres.css",
-      "match_key": "webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+      "match_key": "-webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
       "value": "#000",
       "reason": "pre- legacy",
       "expiry_phase": 1,
@@ -565,7 +565,7 @@
     },
     {
       "file": "ceres/static/ceres.css",
-      "match_key": "webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+      "match_key": "-webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
       "value": "#000",
       "reason": "pre- legacy",
       "expiry_phase": 1,

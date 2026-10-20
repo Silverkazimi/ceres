@@ -1,4 +1,4 @@
-"""a 100% LP route takes what is spendable and says what stayed; it never fails on the region's cost reserve."""
+""": a 100% LP route takes what is spendable and says what stayed; it never fails on the region's cost reserve."""
 from ceres import harvest_routing as routing
 
 REGION = "PR-LOP-46"

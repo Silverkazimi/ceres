@@ -19,7 +19,8 @@ def rows():
 
 
 def roundtrip(copies, expected, envelope=None):
-    script = SETUP + '\nconst copies=' + json.dumps(copies) + 'const expected=' + json.dumps(expected) + 'const envelope=' + json.dumps(envelope) + r"""(async()=>{
+    script = SETUP + '\nconst copies=' + json.dumps(copies) + ';const expected=' + json.dumps(expected) + ';const envelope=' + json.dumps(envelope) + r""";
+(async()=>{
 const real=createChain({id:'cc-shape',origin:{kind:'picker',slot_index:null},card:{name:'Invented',rarity:'common',edition:4,foil:0},copies,expected});
 if(envelope) real.combine={nonce:envelope.payload.nonce,operation:makeBuild(real).operation,recovery:envelope};
 if(!validChainPlan(real)) throw Error('created model invalid');
@@ -147,7 +148,8 @@ def test_b02_string_result_cached_once(monkeypatch,tmp_path):
 
 @pytest.mark.parametrize('raw', [None, 'NaN', 'Infinity', '1e999', '<img>', '', -1, 10**20])
 def test_b02_malformed_result_remains_held(raw):
-    script = SETUP + "const raw=" + json.dumps(raw) + r"""(async()=>{
+    script = SETUP + "const raw=" + json.dumps(raw) + r""";
+(async()=>{
 await saveChain(p.id,{...p,state:'combine_signed',combine:{tx_id:'known',nonce:'nonce',operation:makeBuild(p).operation}});
 fetch=async()=>({ok:true,json:async()=>({state:'domain-confirmed',combine_result:{uid:p.inputs[0].uid,bcx:3,level:2,land_base_pp:raw}})});
 settleCombineRefresh=async()=>{};await verifyPlanCombine(p.id);await resolvePlanMismatch(p.id,true);

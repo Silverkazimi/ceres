@@ -65,7 +65,7 @@ function walletSign(account, message) {   // the selected wallet signs the text;
 }
 
 // Sign in: challenge -> wallet signs the exact text -> verify. Returns { ok } or { ok: false, reason }.
-export async function player0013(account, { sign = walletSign, shouldContinue = () => true, wallet = '' } = {}) {
+export async function player0014(account, { sign = walletSign, shouldContinue = () => true, wallet = '' } = {}) {
   account = String(account).toLowerCase();
   try {
     const verifier = hex(crypto.getRandomValues(new Uint8Array(32)));
@@ -322,7 +322,7 @@ function readRootLocal(account) {
 // local record is never overwritten. Announces `ceres:space-changed` so an open routing screen adopts the merged routes.
 export async function connect(account, { shouldContinue = () => true, wallet = '' } = {}) {
   account = String(account).toLowerCase();
-  const signed = hasSession(account) ? { ok: true } : await player0013(account, { shouldContinue, wallet });
+  const signed = hasSession(account) ? { ok: true } : await player0014(account, { shouldContinue, wallet });
   if (!signed.ok) return signed;
   if (!shouldContinue()) return { ok: false, reason: 'declined' };   // avoid syncing after Cancel
   const local = readRootLocal(account);

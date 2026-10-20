@@ -1,4 +1,4 @@
-"""stream-parsed collection keeps the rows the old path kept; an equal ETag skips the parse."""
+""": stream-parsed collection keeps the rows the old path kept; an equal ETag skips the parse."""
 from __future__ import annotations
 
 import gzip

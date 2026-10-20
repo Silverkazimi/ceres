@@ -32,77 +32,77 @@ TERMINAL = "ready|degraded"
 ART = b'<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240"><rect width="320" height="240" fill="#296d45"/><path d="M0 190L90 45L210 180L320 80V240H0Z" fill="#d79a35"/><circle cx="240" cy="45" r="24" fill="#fff1b0"/></svg>'
 
 PROBE = r"""(() => {
- const p = window.eosProbe = {writes: [], animations: [], reads: [], frames: [],
- decodes: [], pending: [], blockDecode: false, rejectDecode: false, stopped: false,longTasks:[],virtualRenders:[],wholesale:0};
- const replaceChildren=Element.prototype.replaceChildren;
- Element.prototype.replaceChildren=function(...nodes){if(this.id==='plot-tbody')p.wholesale++;return replaceChildren.apply(this,nodes)};
- if(PerformanceObserver.supportedEntryTypes.includes('longtask')) {
- new PerformanceObserver(list=>p.longTasks.push(...list.getEntries().map(e=>({start:e.startTime,duration:e.duration}))))
- .observe({type:'longtask',buffered:true});
- }
- const originalDecode = HTMLImageElement.prototype.decode;
- HTMLImageElement.prototype.decode = async function() {
- const entry = {node:this, src:this.currentSrc || this.src, connected:this.isConnected,
- managed:this.hasAttribute('data-eos-managed'), started:performance.now(), done:null};
- p.decodes.push(entry);
- await originalDecode.call(this);
- if (p.rejectDecode && entry.managed) throw new DOMException('Controlled decode rejection');
- if (p.blockDecode && entry.managed) await new Promise(resolve => p.pending.push(resolve));
- entry.done = performance.now();
- };
- p.releaseDecode = () => {p.blockDecode=false; p.pending.splice(0).forEach(done=>done());};
- const animate = Element.prototype.animate;
- Element.prototype.animate = function(frames, options) {
- const animation = animate.call(this, frames, options);
- p.animations.push({node:this, frames, options, start:performance.now(), animation});
- return animation;
- };
- for (const name of ['scrollTo','scrollBy']) {
- const fn = window[name].bind(window);
- window[name] = (...args) => {
- const stack = new Error().stack;
- p.writes.push({name,args,stack,t:performance.now(),before:scrollY});
- return fn(...args);
- };
- }
- const rect = Element.prototype.getBoundingClientRect;
- Element.prototype.getBoundingClientRect = function() {
- const stack = new Error().stack;
- if (stack.includes('/eos.js')) p.reads.push({kind:'rect',stack,t:performance.now()});
- return rect.call(this);
- };
- const computedStyle = window.getComputedStyle;
- window.getComputedStyle = (...args) => {
- const stack = new Error().stack;
- if (stack.includes('/eos.js')) p.reads.push({kind:'style',stack,t:performance.now()});
- return computedStyle(...args);
- };
- const extent = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollHeight');
- if (extent?.get) Object.defineProperty(Element.prototype, 'scrollHeight', {...extent,
- get() { const stack = new Error().stack;
- if (stack.includes('/eos.js')) p.reads.push({kind:'extent',stack,t:performance.now()});
- return extent.get.call(this);
- }});
- const sample = () => {
- if (p.stopped) return;
- if (p.uid) {
- const row = document.querySelector(`tr.expand-row[data-deed-uid="${CSS.escape(p.uid)}"]`);
- const band = row?.querySelector('.editor-band');
- if (band && row.style.display !== 'none') {
- const b=rect.call(band), td=rect.call(row.firstElementChild);
- const next=row.nextElementSibling, nr=next ? rect.call(next) : null;
- const veil=band.querySelector('.eos-scenic-veil'), cover=band.querySelector('.eos-worker-cover');
- p.frames.push({t:performance.now(),y:scrollY,x:scrollX,state:band.dataset.plotState,
- bandTop:b.top+scrollY,bandHeight:b.height,tdHeight:td.height,
- nextTop:nr ? nr.top+scrollY : null,
- veil:veil ? computedStyle(veil).opacity : '0',
- cover:cover ? computedStyle(cover).opacity : '0',
- mounted:[...document.querySelectorAll('tr.plot-row')].map(r=>r.dataset.deedUid)});
- }
- }
- requestAnimationFrame(sample);
- };
- requestAnimationFrame(sample);
+  const p = window.eosProbe = {writes: [], animations: [], reads: [], frames: [],
+    decodes: [], pending: [], blockDecode: false, rejectDecode: false, stopped: false,longTasks:[],virtualRenders:[],wholesale:0};
+  const replaceChildren=Element.prototype.replaceChildren;
+  Element.prototype.replaceChildren=function(...nodes){if(this.id==='plot-tbody')p.wholesale++;return replaceChildren.apply(this,nodes)};
+  if(PerformanceObserver.supportedEntryTypes.includes('longtask')) {
+    new PerformanceObserver(list=>p.longTasks.push(...list.getEntries().map(e=>({start:e.startTime,duration:e.duration}))))
+      .observe({type:'longtask',buffered:true});
+  }
+  const originalDecode = HTMLImageElement.prototype.decode;
+  HTMLImageElement.prototype.decode = async function() {
+    const entry = {node:this, src:this.currentSrc || this.src, connected:this.isConnected,
+      managed:this.hasAttribute('data-eos-managed'), started:performance.now(), done:null};
+    p.decodes.push(entry);
+    await originalDecode.call(this);
+    if (p.rejectDecode && entry.managed) throw new DOMException('Controlled decode rejection');
+    if (p.blockDecode && entry.managed) await new Promise(resolve => p.pending.push(resolve));
+    entry.done = performance.now();
+  };
+  p.releaseDecode = () => {p.blockDecode=false; p.pending.splice(0).forEach(done=>done());};
+  const animate = Element.prototype.animate;
+  Element.prototype.animate = function(frames, options) {
+    const animation = animate.call(this, frames, options);
+    p.animations.push({node:this, frames, options, start:performance.now(), animation});
+    return animation;
+  };
+  for (const name of ['scrollTo','scrollBy']) {
+    const fn = window[name].bind(window);
+    window[name] = (...args) => {
+      const stack = new Error().stack;
+      p.writes.push({name,args,stack,t:performance.now(),before:scrollY});
+      return fn(...args);
+    };
+  }
+  const rect = Element.prototype.getBoundingClientRect;
+  Element.prototype.getBoundingClientRect = function() {
+    const stack = new Error().stack;
+    if (stack.includes('/eos.js')) p.reads.push({kind:'rect',stack,t:performance.now()});
+    return rect.call(this);
+  };
+  const computedStyle = window.getComputedStyle;
+  window.getComputedStyle = (...args) => {
+    const stack = new Error().stack;
+    if (stack.includes('/eos.js')) p.reads.push({kind:'style',stack,t:performance.now()});
+    return computedStyle(...args);
+  };
+  const extent = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollHeight');
+  if (extent?.get) Object.defineProperty(Element.prototype, 'scrollHeight', {...extent,
+    get() { const stack = new Error().stack;
+      if (stack.includes('/eos.js')) p.reads.push({kind:'extent',stack,t:performance.now()});
+      return extent.get.call(this);
+    }});
+  const sample = () => {
+    if (p.stopped) return;
+    if (p.uid) {
+      const row = document.querySelector(`tr.expand-row[data-deed-uid="${CSS.escape(p.uid)}"]`);
+      const band = row?.querySelector('.editor-band');
+      if (band && row.style.display !== 'none') {
+        const b=rect.call(band), td=rect.call(row.firstElementChild);
+        const next=row.nextElementSibling, nr=next ? rect.call(next) : null;
+        const veil=band.querySelector('.eos-scenic-veil'), cover=band.querySelector('.eos-worker-cover');
+        p.frames.push({t:performance.now(),y:scrollY,x:scrollX,state:band.dataset.plotState,
+          bandTop:b.top+scrollY,bandHeight:b.height,tdHeight:td.height,
+          nextTop:nr ? nr.top+scrollY : null,
+          veil:veil ? computedStyle(veil).opacity : '0',
+          cover:cover ? computedStyle(cover).opacity : '0',
+          mounted:[...document.querySelectorAll('tr.plot-row')].map(r=>r.dataset.deedUid)});
+      }
+    }
+    requestAnimationFrame(sample);
+  };
+  requestAnimationFrame(sample);
 })();"""
 
 
@@ -139,7 +139,7 @@ def _payload(report, details_by_id, *, count=80, capacity=5, no_art=False, long=
         if long:
             row["notices"] = [
                 {"code":f"eos_notice_{i}", "severity":"caution", "blocking":"none", "kind":"warning",
-                 "message":f"Notice {i} " + "A long but complete actionable warning. " * 12,
+                 "message":f"Notice {i}: " + "A long but complete actionable warning. " * 12,
                  "action":{"id":"open_bloodline_pairs", "label":f"Inspect companion {i}", "sub_type":"Eos"}}
                 for i in range(3)
             ]
@@ -240,18 +240,19 @@ class EosBrowser:
         await self.page.add_init_script(PROBE)
         await self.page.add_init_script(f"document.addEventListener('DOMContentLoaded',()=>document.documentElement.style.setProperty('font-size','{font}px','important'))")
         await self.page.route("**/*", self.route)
-        await self.page.goto(ORIGIN, wait_until="domcontentloaded")
+        # A bare address opens the start page; the board needs its account in the URL.
+        await self.page.goto(f"{ORIGIN}/?player={self.board['player']}", wait_until="domcontentloaded")
         await self.page.wait_for_selector("tr.plot-row", timeout=15000)
         assert await self.page.evaluate("getComputedStyle(document.documentElement).fontSize") == f"{font}px"
 
     async def module(self, name, expression, arg=None):
         return await self.page.evaluate("""async ({name, expression, arg}) => {
- const entries=performance.getEntriesByType('resource').map(e=>e.name);
- const loaded=entries.find(url=>new URL(url).pathname===`/static/${name}.js`);
- if (!loaded) throw new Error(`Required actually-loaded module missing: ${name}`);
- const module=await import(loaded);
- return await (new Function('module','arg',`return (${expression})(module,arg)`))(module,arg);
- }""", {"name":name,"expression":expression,"arg":arg})
+          const entries=performance.getEntriesByType('resource').map(e=>e.name);
+          const loaded=entries.find(url=>new URL(url).pathname===`/static/${name}.js`);
+          if (!loaded) throw new Error(`Required actually-loaded module missing: ${name}`);
+          const module=await import(loaded);
+          return await (new Function('module','arg',`return (${expression})(module,arg)`))(module,arg);
+        }""", {"name":name,"expression":expression,"arg":arg})
 
     async def open(self, uid="eos-0008"):
         selector = f'tr.plot-row[data-deed-uid="{uid}"]'
@@ -270,15 +271,15 @@ class EosBrowser:
         # which makes harness repair the Dark Factory's rather than the blocked session's.
         await self.page.locator(f'{selector} > td:nth-child(6)').click()
         snapshot = await self.page.evaluate("""uid=>{
- const band=document.querySelector(`tr.expand-row[data-deed-uid="${uid}"] .editor-band`);
- if(!band) throw new Error('Reservation must exist synchronously after explicit click');
- const rect=band.getBoundingClientRect(), root=parseFloat(getComputedStyle(document.documentElement).fontSize);
- const width=Math.min(band.closest('td').getBoundingClientRect().width,document.querySelector('#plot-table-scroll').clientWidth,1920);
- const height=(width/root<62?22.5:17.5)*root, extent=Math.max(0,document.scrollingElement.scrollHeight-innerHeight);
- return {height, actual:rect.height, top:rect.top+scrollY, x:scrollX,
- target:Math.max(0,Math.min(extent,scrollY+rect.top+height/2-innerHeight/2)),extent,
- focusUnchanged:document.activeElement===eosProbe.focus};
- }""", uid)
+          const band=document.querySelector(`tr.expand-row[data-deed-uid="${uid}"] .editor-band`);
+          if(!band) throw new Error('Reservation must exist synchronously after explicit click');
+          const rect=band.getBoundingClientRect(), root=parseFloat(getComputedStyle(document.documentElement).fontSize);
+          const width=Math.min(band.closest('td').getBoundingClientRect().width,document.querySelector('#plot-table-scroll').clientWidth,1920);
+          const height=(width/root<62?22.5:17.5)*root, extent=Math.max(0,document.scrollingElement.scrollHeight-innerHeight);
+          return {height, actual:rect.height, top:rect.top+scrollY, x:scrollX,
+            target:Math.max(0,Math.min(extent,scrollY+rect.top+height/2-innerHeight/2)),extent,
+            focusUnchanged:document.activeElement===eosProbe.focus};
+        }""", uid)
         assert abs(snapshot["actual"] - snapshot["height"]) <= 0.5, snapshot
         assert snapshot["focusUnchanged"]
         return snapshot
@@ -292,29 +293,29 @@ class EosBrowser:
     async def screenshot(self, name):
         """Capture without waiting on fonts while the art gates are deliberately held.
 
- . `page.screenshot()` waits for `document.fonts.ready`, and that promise does
- not settle while the document is held at `readyState=interactive` — which is exactly
- the state these guards exist to create. Every guard that screenshots under a held
- gate died at `Timeout 30000ms exceeded — waiting for fonts to load`, so R-138's
- nineteen guards have never executed a single assertion since `68341bb9`.
+        . `page.screenshot()` waits for `document.fonts.ready`, and that promise does
+        not settle while the document is held at `readyState=interactive` — which is exactly
+        the state these guards exist to create. Every guard that screenshots under a held
+        gate died at `Timeout 30000ms exceeded — waiting for fonts to load`, so R-138's
+        nineteen guards have never executed a single assertion since `68341bb9`.
 
- This is NOT a control whose input surface is too narrow. It is a control that is
- correct in general and wrong for the one condition the fixture exists to create: a
- wait whose correctness assumes a settled document, deliberately broken by the gates
- under test.
+        This is NOT a control whose input surface is too narrow. It is a control that is
+        correct in general and wrong for the one condition the fixture exists to create: a
+        wait whose correctness assumes a settled document, deliberately broken by the gates
+        under test.
 
- THE FIX MUST NOT BE TO OPEN THE GATES. That would make nineteen guards pass by
- removing the condition they test — verification theatre by construction.
+        THE FIX MUST NOT BE TO OPEN THE GATES. That would make nineteen guards pass by
+        removing the condition they test — verification theatre by construction.
 
- Ceres ships NO web fonts: no `@font-face`, no remote font stylesheet, no `.woff`
- anywhere under `ceres/`, and the page reports `document.fonts.size == 0`. So the
- wait can never have anything to settle here, and skipping it costs no fidelity.
+        Ceres ships NO web fonts: no `@font-face`, no remote font stylesheet, no `.woff`
+        anywhere under `ceres/`, and the page reports `document.fonts.size == 0`. So the
+        wait can never have anything to settle here, and skipping it costs no fidelity.
 
- That assumption is CHECKED rather than asserted in a comment: if a web font is ever
- added, `document.fonts.size` becomes non-zero and this falls back to the normal
- screenshot, which waits. The bypass is self-limiting instead of permanent, and the
- day a font arrives the guards go back to waiting for it rather than silently
- capturing unstyled text.
+        That assumption is CHECKED rather than asserted in a comment: if a web font is ever
+        added, `document.fonts.size` becomes non-zero and this falls back to the normal
+        screenshot, which waits. The bypass is self-limiting instead of permanent, and the
+        day a font arrives the guards go back to waiting for it rather than silently
+        capturing unstyled text.
         """
         path = self.artifact / f"{name}.png"
         if not await self.page.evaluate("() => document.fonts.size === 0"):
@@ -335,10 +336,10 @@ class EosBrowser:
 
     async def trace(self):
         return await self.page.evaluate("""() => ({
- opened:eosProbe.opened,writes:eosProbe.writes, reads:eosProbe.reads, frames:eosProbe.frames,longTasks:eosProbe.longTasks,virtualRenders:eosProbe.virtualRenders,wholesale:eosProbe.wholesale,
- animations:eosProbe.animations.map(a=>({start:a.start,frames:a.frames,options:a.options,connected:a.node.isConnected,state:a.animation.playState,cls:a.node.className,group:a.node.dataset.revealGroup})),
- decodes:eosProbe.decodes.map(d=>({src:d.src,connected:d.connected,managed:d.managed,started:d.started,done:d.done}))
- })""")
+          opened:eosProbe.opened,writes:eosProbe.writes, reads:eosProbe.reads, frames:eosProbe.frames,longTasks:eosProbe.longTasks,virtualRenders:eosProbe.virtualRenders,wholesale:eosProbe.wholesale,
+          animations:eosProbe.animations.map(a=>({start:a.start,frames:a.frames,options:a.options,connected:a.node.isConnected,state:a.animation.playState,cls:a.node.className,group:a.node.dataset.revealGroup})),
+          decodes:eosProbe.decodes.map(d=>({src:d.src,connected:d.connected,managed:d.managed,started:d.started,done:d.done}))
+        })""")
 
 
 @asynccontextmanager
@@ -389,21 +390,21 @@ async def _no_new_gesture(fixture, action):
 
 async def _fit(fixture, *, strict=True, baseline=None):
     audit = await fixture.page.evaluate("""() => {
- const width=document.documentElement.clientWidth;
- const bands=[...document.querySelectorAll('tr.expand-row:not([style*="none"]) .editor-band')];
- const overs=[];
- for(const band of bands) for(const node of [band,...band.querySelectorAll('*')]) {
- const r=node.getBoundingClientRect(),s=getComputedStyle(node);
- if(!r.width||!r.height||s.display==='none'||s.visibility==='hidden') continue;
- if(r.right>width+.5 || r.left<-.5) overs.push({cls:node.className,right:r.right,left:r.left});
- if((s.overflowX==='auto'||s.overflowX==='scroll')&&node.scrollWidth>node.clientWidth+.5)
- overs.push({cls:node.className,scroll:node.scrollWidth});
- }
- const scroller=document.querySelector('#plot-table-scroll');
- // the table scroller clips on x; anything wider than it would be hidden.
- return {width,scrollWidth:document.documentElement.scrollWidth,overs,
- tableFits:!scroller||getComputedStyle(scroller).display==='none'||scroller.scrollWidth<=scroller.clientWidth+.5};
- }""")
+      const width=document.documentElement.clientWidth;
+      const bands=[...document.querySelectorAll('tr.expand-row:not([style*="none"]) .editor-band')];
+      const overs=[];
+      for(const band of bands) for(const node of [band,...band.querySelectorAll('*')]) {
+        const r=node.getBoundingClientRect(),s=getComputedStyle(node);
+        if(!r.width||!r.height||s.display==='none'||s.visibility==='hidden') continue;
+        if(r.right>width+.5 || r.left<-.5) overs.push({cls:node.className,right:r.right,left:r.left});
+        if((s.overflowX==='auto'||s.overflowX==='scroll')&&node.scrollWidth>node.clientWidth+.5)
+          overs.push({cls:node.className,scroll:node.scrollWidth});
+      }
+      const scroller=document.querySelector('#plot-table-scroll');
+      // : the table scroller clips on x; anything wider than it would be hidden.
+      return {width,scrollWidth:document.documentElement.scrollWidth,overs,
+        tableFits:!scroller||getComputedStyle(scroller).display==='none'||scroller.scrollWidth<=scroller.clientWidth+.5};
+    }""")
     assert not audit["overs"], audit
     if strict:
         assert audit["scrollWidth"] <= audit["width"] and audit["tableFits"], audit
@@ -423,13 +424,13 @@ async def _g1(f):
     await f.filmstrip("ready")
     _stable(await f.trace())
     measurements = await f.band().evaluate("""band=>{
- const r=band.getBoundingClientRect();
- const regions=['.editor-facts','.slot-group-controls','.slot-grid','.slot-editor-footer'];
- return {band:r.height,td:band.closest('td').getBoundingClientRect().height,
- tdBorder:getComputedStyle(band.closest('td')).borderBottomWidth,
- regions:regions.map(selector=>{const n=band.querySelector(selector);return {selector,height:n?.getBoundingClientRect().height??null}}),
- satellites:[...band.querySelectorAll('.power-satellite')].map(n=>{const b=n.getBoundingClientRect();return {top:b.top-r.top,bottom:b.bottom-r.top}})};
- }""")
+      const r=band.getBoundingClientRect();
+      const regions=['.editor-facts','.slot-group-controls','.slot-grid','.slot-editor-footer'];
+      return {band:r.height,td:band.closest('td').getBoundingClientRect().height,
+        tdBorder:getComputedStyle(band.closest('td')).borderBottomWidth,
+        regions:regions.map(selector=>{const n=band.querySelector(selector);return {selector,height:n?.getBoundingClientRect().height??null}}),
+        satellites:[...band.querySelectorAll('.power-satellite')].map(n=>{const b=n.getBoundingClientRect();return {top:b.top-r.top,bottom:b.bottom-r.top}})};
+    }""")
     assert measurements["band"] == 280, measurements
     assert all(region["height"] is not None for region in measurements["regions"]), measurements
     assert abs(sum(region["height"] for region in measurements["regions"]) - 280) <= 0.5, measurements
@@ -489,11 +490,11 @@ async def _g4(f):
     f.release("scene")
     await asyncio.sleep(0.4)
     state = await f.band().evaluate("""band=>{
- const scene=band.querySelector('.editor-scene'),veil=band.querySelector('.eos-scenic-veil'),cover=band.querySelector('.eos-worker-cover');
- const s=getComputedStyle(scene),v=veil&&getComputedStyle(veil),c=cover&&getComputedStyle(cover);
- return {background:s.backgroundImage,terrain:s.getPropertyValue('--scene-terrain'),veil:veil?.hidden?'0':v?.opacity??'0',
- cover:c?.opacity,backgroundColor:c?.backgroundColor,slotCount:band.querySelectorAll('.slot-tile').length};
- }""")
+      const scene=band.querySelector('.editor-scene'),veil=band.querySelector('.eos-scenic-veil'),cover=band.querySelector('.eos-worker-cover');
+      const s=getComputedStyle(scene),v=veil&&getComputedStyle(veil),c=cover&&getComputedStyle(cover);
+      return {background:s.backgroundImage,terrain:s.getPropertyValue('--scene-terrain'),veil:veil?.hidden?'0':v?.opacity??'0',
+        cover:c?.opacity,backgroundColor:c?.backgroundColor,slotCount:band.querySelectorAll('.slot-tile').length};
+    }""")
     assert state["veil"] == "0", state
     assert "url(" in state["background"] or "url(" in state["terrain"], state
     assert state["cover"] == "1", state
@@ -691,9 +692,9 @@ async def _g14(f, mutation=None):
     remove = f.band().locator('[data-slot-action="remove"][data-group-id="worker"]').first
     await remove.click()
     await f.module("staging", """(m,notices)=>{
- if(m.CERES_STAGE.length!==1)throw new Error('Expected one genuinely staged removal');
- m.CERES_STAGE[0]._notices=notices;
- }""", f.details["eos-0008"]["notices"])
+      if(m.CERES_STAGE.length!==1)throw new Error('Expected one genuinely staged removal');
+      m.CERES_STAGE[0]._notices=notices;
+    }""", f.details["eos-0008"]["notices"])
     await f.module("rows", "m=>m.updateMountedRow('eos-0008')")
     if mutation:
         assert await f.page.evaluate(mutation), "G14 named disclosure mutation landed"
@@ -706,7 +707,7 @@ async def _g14(f, mutation=None):
         await action.wait_for(state="visible")
         await action.focus()
         assert await action.evaluate("n=>document.activeElement===n")
-        assert f"Notice {i}" in await f.page.locator("body").inner_text()
+        assert f"Notice {i}:" in await f.page.locator("body").inner_text()
     assert await f.band().evaluate("b=>b.getBoundingClientRect().height") == before
     assert await f.band().evaluate("b=>!b.contains(document.querySelector('[data-notice-action]'))")
     await f.screenshot("notice-actions-without-disclosure")
@@ -843,14 +844,14 @@ async def _g17(f):
 
 async def _g18(f):
     await f.page.evaluate("""() => {
- const first=document.querySelector('tr.plot-row');
- const height=first.getBoundingClientRect().height,top=first.getBoundingClientRect().top+scrollY;
- window.scrollTo({top:top+height*60,behavior:'instant'});
- }""")
+      const first=document.querySelector('tr.plot-row');
+      const height=first.getBoundingClientRect().height,top=first.getBoundingClientRect().top+scrollY;
+      window.scrollTo({top:top+height*60,behavior:'instant'});
+    }""")
     await asyncio.sleep(0.1)
     uid = await f.page.evaluate("""()=>[...document.querySelectorAll('tr.plot-row')].filter(r=>{
- const b=r.getBoundingClientRect();return b.top>innerHeight*.65 && b.bottom<innerHeight;
- }).at(-1)?.dataset.deedUid""")
+      const b=r.getBoundingClientRect();return b.top>innerHeight*.65 && b.bottom<innerHeight;
+    }).at(-1)?.dataset.deedUid""")
     assert uid, "Virtual fixture needs a target near the viewport bottom"
     old = await f.module("table", "m=>m.captureTableAnchor()")
     assert old and "viewportEpoch" in old
@@ -899,15 +900,15 @@ async def _g19(f, expect_cover_mutation=False, after_scene_mutation=None):
     f.release("detail")
     await f.band().locator('.slot-editor-footer > .worksite-change-btn').wait_for(state="attached")
     early = await f.band().evaluate("""band=>{
- const run=band.querySelector('.editor-splinter-affinity [data-terrain-affinity="editor-row"]'),veil=band.querySelector('.eos-scenic-veil'),cover=band.querySelector('.eos-worker-cover');
- if(!run||!veil||!cover) throw new Error('Missing footer affinity run, scenic veil, or worker cover');
- const r=run.getBoundingClientRect(), main=run.closest('.editor-main'),cr=cover.getBoundingClientRect();
- const overlap=Math.min(cr.right,r.right)-Math.max(cr.left,r.left), vertical=Math.min(cr.bottom,r.bottom)-Math.max(cr.top,r.top);
- return {veilParent:veil.parentElement===band,veilZ:Number(getComputedStyle(veil).zIndex),
- mainZ:Number(getComputedStyle(main).zIndex),height:band.getBoundingClientRect().height,
- hiddenByAria:!!run.parentElement.closest('[aria-hidden="true"]'),controlsGated:!!band.querySelector('.slot-editor-footer > .worksite-change-btn')?.closest('[inert]'),coverOverlap:overlap>0&&vertical>0,
- runTop:r.top,runBottom:r.bottom,coverTop:cr.top,coverBottom:cr.bottom};
- }""")
+      const run=band.querySelector('.editor-splinter-affinity [data-terrain-affinity="editor-row"]'),veil=band.querySelector('.eos-scenic-veil'),cover=band.querySelector('.eos-worker-cover');
+      if(!run||!veil||!cover) throw new Error('Missing footer affinity run, scenic veil, or worker cover');
+      const r=run.getBoundingClientRect(), main=run.closest('.editor-main'),cr=cover.getBoundingClientRect();
+      const overlap=Math.min(cr.right,r.right)-Math.max(cr.left,r.left), vertical=Math.min(cr.bottom,r.bottom)-Math.max(cr.top,r.top);
+      return {veilParent:veil.parentElement===band,veilZ:Number(getComputedStyle(veil).zIndex),
+        mainZ:Number(getComputedStyle(main).zIndex),height:band.getBoundingClientRect().height,
+        hiddenByAria:!!run.parentElement.closest('[aria-hidden="true"]'),controlsGated:!!band.querySelector('.slot-editor-footer > .worksite-change-btn')?.closest('[inert]'),coverOverlap:overlap>0&&vertical>0,
+        runTop:r.top,runBottom:r.bottom,coverTop:cr.top,coverBottom:cr.bottom};
+    }""")
     assert early["veilParent"] and early["veilZ"] > early["mainZ"], "G19 scenic veil remains above the affinity stacking context"
     assert early["height"] == 280 and not early["hiddenByAria"]
     assert early["controlsGated"], "G19 worker controls remain gated during scenic release"
@@ -923,10 +924,10 @@ async def _g19(f, expect_cover_mutation=False, after_scene_mutation=None):
     if after_scene_mutation:
         assert await f.band().evaluate(after_scene_mutation), "G19 inherited footer gate mutation actually landed after scene release"
     assert await run.evaluate("""n=>{
- for(let node=n;node;node=node.parentElement){const s=getComputedStyle(node);
- if(node.inert||node.getAttribute('aria-hidden')==='true'||s.visibility!=='visible'||s.display==='none'||Number(s.opacity)<1)return false;
- }return true;
- }"""), "G19 scene-released badges are exposed before delayed portraits through every footer ancestor"
+      for(let node=n;node;node=node.parentElement){const s=getComputedStyle(node);
+        if(node.inert||node.getAttribute('aria-hidden')==='true'||s.visibility!=='visible'||s.display==='none'||Number(s.opacity)<1)return false;
+      }return true;
+    }"""), "G19 scene-released badges are exposed before delayed portraits through every footer ancestor"
     assert await f.band().locator(".slot-editor-footer > .worksite-change-btn").evaluate("n=>!!n.closest('[inert]')"), "G19 worker controls remain gated after scenic release"
     labels = await run.locator('[aria-label]').evaluate_all("nodes=>nodes.map(n=>n.getAttribute('aria-label'))")
     assert len(labels) >= 7 and all(labels), labels
@@ -1010,24 +1011,24 @@ def test_g18_pending_write_cancellation_matrix(intent, count, report, details_by
                 # require the scene, final tile frames, and controls row to survive the handoff.
                 async def permanent_geometry():
                     return await f.band().evaluate("""band => {
- const permanent = [...band.querySelectorAll('[data-eos-permanent-frame]')];
- const workers = permanent.filter(node => node.matches('.slot-tile-cell'));
- const power = permanent.find(node => node.querySelector('.slot-power'));
- const assets = permanent.filter(node => node.matches('.asset-slot'));
- const workerNames = new Map(workers.map((node, index) => [node, `worker[${index + 1}]`]));
- const assetNames = new Map(assets.map((node, index) => [node, index === 0 ? 'totem' : index === 1 ? 'title' : `asset[${index}]`]));
- const named = permanent.map((node, index) => [
- workerNames.get(node) || (node === power ? 'power' : assetNames.get(node) || `permanent[${index}]`),
- node,
- ]);
- const controls = band.querySelector('.slot-group-controls');
- if (controls) named.push(['controls', controls]);
- const boxes = named.map(([name, node]) => {
- const rect = node.getBoundingClientRect();
- return {name, x: rect.x, y: rect.y, width: rect.width, height: rect.height};
- });
- return {permanentCount: permanent.length, boxes};
- }""")
+                      const permanent = [...band.querySelectorAll('[data-eos-permanent-frame]')];
+                      const workers = permanent.filter(node => node.matches('.slot-tile-cell'));
+                      const power = permanent.find(node => node.querySelector('.slot-power'));
+                      const assets = permanent.filter(node => node.matches('.asset-slot'));
+                      const workerNames = new Map(workers.map((node, index) => [node, `worker[${index + 1}]`]));
+                      const assetNames = new Map(assets.map((node, index) => [node, index === 0 ? 'totem' : index === 1 ? 'title' : `asset[${index}]`]));
+                      const named = permanent.map((node, index) => [
+                        workerNames.get(node) || (node === power ? 'power' : assetNames.get(node) || `permanent[${index}]`),
+                        node,
+                      ]);
+                      const controls = band.querySelector('.slot-group-controls');
+                      if (controls) named.push(['controls', controls]);
+                      const boxes = named.map(([name, node]) => {
+                        const rect = node.getBoundingClientRect();
+                        return {name, x: rect.x, y: rect.y, width: rect.width, height: rect.height};
+                      });
+                      return {permanentCount: permanent.length, boxes};
+                    }""")
 
                 before = await permanent_geometry()
                 required = {"power", "totem", "title", "controls"}
@@ -1041,16 +1042,16 @@ def test_g18_pending_write_cancellation_matrix(intent, count, report, details_by
                 names = {box["name"] for box in after["boxes"]}
                 assert required <= names, f"R-161 missing permanent geometry frame(s): {sorted(required - names)}"
                 assert after["permanentCount"] == before["permanentCount"], (
-                    "R-161 permanent frame count changed: \"\n f\"before={before['permanentCount']} after={after['permanentCount']}"
+                    "R-161 permanent frame count changed: " f"before={before['permanentCount']} after={after['permanentCount']}"
                 )
                 assert [box["name"] for box in after["boxes"]] == [box["name"] for box in before["boxes"]], (
-                    "R-161 permanent frame set changed: \"\n f\"before={[box['name'] for box in before['boxes']]} \"\n f\"after={[box['name'] for box in after['boxes']]}"
+                    "R-161 permanent frame set changed: " f"before={[box['name'] for box in before['boxes']]} " f"after={[box['name'] for box in after['boxes']]}"
                 )
                 for old, new in zip(before["boxes"], after["boxes"]):
                     for dimension in ("x", "y", "width", "height"):
                         delta = new[dimension] - old[dimension]
                         assert abs(delta) <= 1, (
-                            f"R-161 frame {old['name']} {dimension} delta={delta:.3f}px \"\n f\"(before={old[dimension]:.3f}px after={new[dimension]:.3f}px)"
+                            f"R-161 frame {old['name']} {dimension} delta={delta:.3f}px " f"(before={old[dimension]:.3f}px after={new[dimension]:.3f}px)"
                         )
                 remove = f.band().locator('[data-slot-action="remove"][data-group-id="worker"]').first
                 await remove.click(force=True)

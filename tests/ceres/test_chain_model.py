@@ -1,4 +1,4 @@
-""" independently timed inputs and kept-plan transitions."""
+""" : independently timed inputs and kept-plan transitions."""
 from pathlib import Path
 from tests.ceres.vm_context import run_in_module_context
 

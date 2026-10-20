@@ -31,22 +31,22 @@ def test_cap_total_and_continuation(report, details_by_id):
 
 def test_default_construction_pp_is_the_active_preset(report, details_by_id):
     """Guards that the default preset really orders `rank_candidates`'s real API output by
- descending magnitude ( / v0.5.80's `construction_sort_key` fix), not by estimate
- status alone. The previous version of this test asserted the opposite of the fix: that
- every `point`-status row precedes every `unknown`-status row regardless of magnitude --
- which is exactly the defect v0.5.80 removed (a high-base-PP unknown-status card
- used to sink behind every point-status row; measured live, the 6 highest-base-PP cards on a
- plot were buried at positions 2503-2508 of 4,060). Corrected per the internal rules's mutation-
- standard corollary ("assert on the observable, not the spelling") to assert the real
- invariant on the actual response fields: each row's own magnitude -- its construction_pp
- value/low when known, else its terrain-adjusted (or raw) base_pp, exactly as
- `construction_sort_key` computes it -- is non-increasing across the returned candidates.
- Injection: reverted `ceres/candidates.py::construction_sort_key` to lead its tuple with
- `rank` (`return (rank, primary, impact_tie, ...)`, the pre-fix ordering) and re-ran this
- test against the real `assets_active_above_cap.json` fixture -- went red with a magnitude
- inversion (a lower-magnitude row sorted ahead of a higher-magnitude one) at the point where
- the fixture's above-cap unknown-status cards were pushed behind lower-PP rows; restored and
- confirmed green.
+    descending magnitude ( / v0.5.80's `construction_sort_key` fix), not by estimate
+    status alone. The previous version of this test asserted the opposite of the fix: that
+    every `point`-status row precedes every `unknown`-status row regardless of magnitude --
+    which is exactly the defect v0.5.80 removed (a high-base-PP unknown-status card
+    used to sink behind every point-status row; measured live, the 6 highest-base-PP cards on a
+    plot were buried at positions 2503-2508 of 4,060). Corrected per the internal rules's mutation-
+    standard corollary ("assert on the observable, not the spelling") to assert the real
+    invariant on the actual response fields: each row's own magnitude -- its construction_pp
+    value/low when known, else its terrain-adjusted (or raw) base_pp, exactly as
+    `construction_sort_key` computes it -- is non-increasing across the returned candidates.
+    Injection: reverted `ceres/candidates.py::construction_sort_key` to lead its tuple with
+    `rank` (`return (rank, primary, impact_tie, ...)`, the pre-fix ordering) and re-ran this
+    test against the real `assets_active_above_cap.json` fixture -- went red with a magnitude
+    inversion (a lower-magnitude row sorted ahead of a higher-magnitude one) at the point where
+    the fixture's above-cap unknown-status cards were pushed behind lower-PP rows; restored and
+    confirmed green.
     """
     deed = report["plots"][0]["deed_uid"]
     body = rank_candidates(report, deed, "worker", player="player0005", now=NOW, include_cooling=True, limit=100, details_by_id=details_by_id)
@@ -175,7 +175,7 @@ def test_rented_in_requires_flag_and_surfaces_expiry(report, details_by_id):
 def test_get_candidates_uses_snapshot_without_capture(tmp_path, monkeypatch, report):
     """GET candidates reads the latest snapshot without starting a refresh.
 
- Mutation check: injected ``capture_mod.start_refresh(config, player)`` in the route; the forbidden-refresh assertion went red.
+    Mutation check: injected ``capture_mod.start_refresh(config, player)`` in the route; the forbidden-refresh assertion went red.
     """
     calls = {"snapshot": 0, "refresh": 0}
 

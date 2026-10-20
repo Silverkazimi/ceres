@@ -77,7 +77,9 @@ def test_real_kinbound_i294_uses_observed_capped_pp_and_whole_plot_delta():
     assert result["own_harvest_pp_delta"] == pytest.approx(-8185.299)
     assert result["plot_residual_delta"] == pytest.approx(-108220.588)
     assert result["harvest_pp_delta"] == pytest.approx(-116405.887)
-    assert result["cap_relief"]["status"] == "unmodeled"
+    # the plot is over its cap; the survivors' relief is not derivable here and stays unknown, never 0
+    assert result["cap_relief"]["status"] == "unknown"
+    assert result["cap_relief"]["reason"] == "cap_derivation_failed" and result["cap_relief"]["value"] is None
 
 
 def test_clear_plot_prices_workers_and_bonus_items_as_one_final_roster():
@@ -129,11 +131,11 @@ def test_power_core_removal_projects_full_five_to_runi_only_four():
 def test_own_construction_pp_delta_stays_exact_even_when_harvest_side_is_uncertain():
     # item 40 -- construction has no plot-wide broadcast (unlike harvest), so a
     # removal's own Base-PP-stage cost is always an exact point value, even while
-    # `cap_relief` correctly reports the harvest-stage relief as unmodeled/unsolved.
+    # `cap_relief` correctly reports the harvest-stage relief as unknown (not derivable).
     report, details = _kinbound_fixture()
     result = plot_removal_delta(report, DEED, [KINBOUND_REF], details_by_id=details)
 
-    assert result["cap_relief"]["status"] == "unmodeled"
+    assert result["cap_relief"]["status"] == "unknown"
     assert result["own_construction_pp_delta"]["status"] == "point"
     assert result["own_construction_pp_delta"]["value"] == pytest.approx(-1779.413)
     removed = next(row for row in result["removed"] if row["asset_ref"] == KINBOUND_REF)

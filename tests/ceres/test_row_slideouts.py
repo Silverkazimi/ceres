@@ -1,4 +1,4 @@
-"""per-row badge slide-outs. Owner (verbatim): "give each row an individual
+""": per-row badge slide-outs. Owner (verbatim): "give each row an individual
 slideout with, based on its badges. They each slide out individually on click or
 behave as a group when triggerd via the flag." The old shared #badge-overlay panel --
 one wide sliding surface every mounted row was stretched to match -- is replaced by an
@@ -35,14 +35,14 @@ def live_badge_browser() -> tuple[Browser, str]:
 def _badge_hit_target(control: Locator) -> dict[str, object]:
     return control.evaluate(
         """node => {
- const rect = node.getBoundingClientRect();
- const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
- return {
- rect: {x: rect.x, y: rect.y, width: rect.width, height: rect.height},
- reachesControl: !!hit && (hit === node || node.contains(hit)),
- pointerEvents: getComputedStyle(node).pointerEvents,
- };
- }"""
+          const rect = node.getBoundingClientRect();
+          const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+          return {
+            rect: {x: rect.x, y: rect.y, width: rect.width, height: rect.height},
+            reachesControl: !!hit && (hit === node || node.contains(hit)),
+            pointerEvents: getComputedStyle(node).pointerEvents,
+          };
+        }"""
     )
 
 
@@ -62,7 +62,7 @@ def test_live_badge_controls_receive_real_clicks_without_a_flag_delay(
     try:
         page: Page = context.new_page()
         page.add_init_script("localStorage.removeItem('ceres:badge-overlay:open');")
-        page.goto(f"{base_url}/?player=player0005", wait_until="domcontentloaded")
+        page.goto(f"{base_url}/?player=sample01", wait_until="domcontentloaded")
         page.wait_for_selector("tr.plot-row", timeout=30_000)
         page.wait_for_selector("#badge-flag.badge-flag-revealed", timeout=30_000)
 
@@ -86,8 +86,8 @@ def test_live_badge_controls_receive_real_clicks_without_a_flag_delay(
         # 1.5 s, before asking whether the flag is reachable.
         page.wait_for_function(
             """() => { const f = document.getElementById('badge-flag'); const r = f.getBoundingClientRect();
- const h = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
- return !!h && (h === f || f.contains(h)); }""",
+                       const h = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                       return !!h && (h === f || f.contains(h)); }""",
             timeout=1_500,
         )
         _assert_click_target(flag)
@@ -184,9 +184,9 @@ def test_badge_overlay_row_carries_its_own_fill_and_transform():
 
 def test_reduced_motion_covers_both_the_base_and_open_row_selectors():
     """Pre-landing review fix: the open state's own compound selector
- (`.badge-overlay-row.is-open`) has higher specificity than the bare
- `.badge-overlay-row` -- without naming it explicitly inside the media query, its own
- `transition` value would still win even under reduced motion."""
+    (`.badge-overlay-row.is-open`) has higher specificity than the bare
+    `.badge-overlay-row` -- without naming it explicitly inside the media query, its own
+    `transition` value would still win even under reduced motion."""
     css = CERES_CSS.read_text(encoding="utf-8")
     match = re.search(
         r"@media \(prefers-reduced-motion: reduce\) \{\s*\.badge-overlay-row, \.badge-overlay-row\.is-open \{ transition: none; \}\s*\}",
@@ -233,8 +233,8 @@ def test_scroll_skip_condition_reads_the_new_state():
 
 
 def test_no_scroll_width_measurement_left_anywhere():
-    """the shared-panel width measurement pass is gone -- each row now
- sizes itself via plain CSS (max-content), nothing to measure any more."""
+    """: the  shared-panel width measurement pass is gone -- each row now
+    sizes itself via plain CSS (max-content), nothing to measure any more."""
     js = BADGE_OVERLAY_JS.read_text(encoding="utf-8")
     assert "scrollWidth" not in js
     assert "panel.style.inlineSize" not in js
@@ -257,10 +257,10 @@ def test_row_element_only_created_or_kept_for_an_open_or_previously_open_row():
 
 def test_first_open_forces_a_reflow_before_adding_is_open():
     """A freshly created (or re-created after a virtualization remount) row element has
- no prior rendered frame to transition from, so it must be laid out closed before
- `.is-open` is added or the slide never plays. : that layout is forced ONCE for
- all new rows after the write loop -- a per-row forced layout inside the loop cost
- 10.9 s for 129 rows on the first flag click."""
+    no prior rendered frame to transition from, so it must be laid out closed before
+    `.is-open` is added or the slide never plays. : that layout is forced ONCE for
+    all new rows after the write loop -- a per-row forced layout inside the loop cost
+    10.9 s for 129 rows on the first flag click."""
     js = BADGE_OVERLAY_JS.read_text(encoding="utf-8")
     assert "void overlayRow.offsetWidth" not in js, "no per-row forced layout inside the write loop"
     push_idx = js.index("if (overlayRowJustCreated && open) pendingOpen.push(overlayRow);")
@@ -290,9 +290,9 @@ def test_badge_lane_uses_svg_flag_and_shared_open_golden_style():
     js = BADGE_OVERLAY_JS.read_text(encoding="utf-8")
     assert 'id="badge-flag"' in html and 'class="hdr-ic badge-flag-icon"' in html
     assert '<path class="f"' in html and '<path class="d"' in html and '<path class="a h"' in html
-    assert "is(.badge-bar-head, .badge-filter-opt) .hdr-ic .f" in css  # the tray flag shares the colours
-    assert "is(.badge-bar-head, .badge-filter-opt) .hdr-ic .d" in css
-    assert "is(.badge-bar-head, .badge-filter-opt) .hdr-ic .a.h" in css
+    assert ":is(.badge-bar-head, .badge-filter-opt) .hdr-ic .f" in css  # the tray flag shares the colours
+    assert ":is(.badge-bar-head, .badge-filter-opt) .hdr-ic .d" in css
+    assert ":is(.badge-bar-head, .badge-filter-opt) .hdr-ic .a.h" in css
     assert "@keyframes badge-golden-pulse" not in css
     assert "badge-clock-pulse" in css
     assert 'data-state="unused"' in html
@@ -304,7 +304,7 @@ def test_row_joins_open_rows_on_first_mount_while_group_preference_is_open():
     js = BADGE_OVERLAY_JS.read_text(encoding="utf-8")
     assert "const isFirstMountThisSession = !barRow;" in js
     mount_match = re.search(
-        r"if \(isFirstMountThisSession\) \{(.*?)\n \}\n", js, re.S,
+        r"if \(isFirstMountThisSession\) \{(.*?)\n    \}\n", js, re.S,
     )
     assert mount_match, "first-mount block not found in its expected shape"
     assert "if (groupOpen)" not in js

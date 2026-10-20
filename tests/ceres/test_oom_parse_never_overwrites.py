@@ -1,7 +1,7 @@
-""" (2026-09-14, found by the player0016 measurement): under the worker's RLIMIT_DATA cap
+""" (2026-09-14, found by the player0017 measurement): under the worker's RLIMIT_DATA cap
 (1100 MB) orjson could not allocate its parse buffer for a 98.7 MB snapshot and raised a
 JSONDecodeError("Not enough memory to allocate buffer for parsing"); `load_snapshot` called that
-"invalid Land snapshot", `_save_merged`'s recovery treated the good board as absent and
+"invalid Land snapshot", `_save_merged`'s  recovery treated the good board as absent and
 the fresh quick read OVERWROTE a 6303-plot board with a 0-of-6303 one.
 
 Guards: (a) an orjson allocation failure is a `MemoryError`, not a decode error; (b) a snapshot
@@ -126,10 +126,10 @@ def test_cap_default_is_2048(monkeypatch):
 
 def test_cap_grows_with_the_stored_board(monkeypatch):
     monkeypatch.delenv("CERES_CAPTURE_MEMORY_MB", raising=False)
-    player0016 = int(98.7 * 1024 * 1024)
-    cap = capture_mod.capture_memory_mb(player0016)
+    player0017 = int(98.7 * 1024 * 1024)
+    cap = capture_mod.capture_memory_mb(player0017)
     assert cap >= 1300
-    assert cap == 2048  # 98.7 MB * 14 + 256 = 1637 MB; the 2048 default already covers player0016
+    assert cap == 2048  # 98.7 MB * 14 + 256 = 1637 MB; the 2048 default already covers player0017
     assert capture_mod.capture_memory_mb(200 * 1024 * 1024) == 200 * 14 + 256  # 3056: sized up past the default
     assert capture_mod.capture_memory_mb(400 * 1024 * 1024) == capture_mod.CAPTURE_MEMORY_MB_MAX  # 3072 ceiling
 
@@ -155,25 +155,25 @@ def test_supervisor_sizes_the_cap_from_the_snapshot_file(tmp_path, monkeypatch, 
 _REPRO = textwrap.dedent(
     """
     import resource, sys
- from pathlib import Path
- cap = int(sys.argv[1]) * 1024 * 1024
- resource.setrlimit(resource.RLIMIT_DATA, (cap, cap))
- sys.path.insert(0, sys.argv[3])
- from praetoria.land_analysis import load_snapshot
- from praetoria.errors import CacheError
- try:
- load_snapshot(Path(sys.argv[2]))
- print("parsed")
- except MemoryError as exc:
- print("MemoryError", exc)
- except CacheError as exc:
- print("CacheError", exc)
+    from pathlib import Path
+    cap = int(sys.argv[1]) * 1024 * 1024
+    resource.setrlimit(resource.RLIMIT_DATA, (cap, cap))
+    sys.path.insert(0, sys.argv[3])
+    from praetoria.land_analysis import load_snapshot
+    from praetoria.errors import CacheError
+    try:
+        load_snapshot(Path(sys.argv[2]))
+        print("parsed")
+    except MemoryError as exc:
+        print("MemoryError", exc)
+    except CacheError as exc:
+        print("CacheError", exc)
     """
 )
 
 
 @pytest.mark.slow
-@pytest.mark.skipif(os.getenv("CERES_RUN_SLOW") != "1", reason="reproduction: ~90 MB JSON under RLIMIT_DATA 1100 MB; CERES_RUN_SLOW=1 selects it")
+@pytest.mark.skipif(os.getenv("CERES_RUN_SLOW") != "1", reason=" reproduction: ~90 MB JSON under RLIMIT_DATA 1100 MB; CERES_RUN_SLOW=1 selects it")
 def test_reproduction_cap_1100_on_a_90mb_snapshot_is_memory_error_not_cache_error(tmp_path):
     pytest.importorskip("orjson")
     target = tmp_path / "land-big-latest.json"

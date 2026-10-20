@@ -135,6 +135,6 @@
       "merged_sale_members": []
     },
     "exact_lp_split": false,
-    "exact_lp_split_note": "(Master decision, option b): the historical pool reserves behind run B's sell-half split were never captured, and the guard previews with synthetic pools, so B checks count, members and total conservation of each lp_sell_half route instead of the exact historical split."
+    "exact_lp_split_note": "  (Master decision, option b): the historical pool reserves behind run B's sell-half split were never captured, and the guard previews with synthetic pools, so B checks count, members and total conservation of each lp_sell_half route instead of the exact historical split."
   }
 }

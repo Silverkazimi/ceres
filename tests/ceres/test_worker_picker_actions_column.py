@@ -8,7 +8,7 @@ the actions hung off to the side. `renderCandidateRow` now emits worker rows as
 `<div role="button" tabindex="0">` with the actions living INSIDE the row as a
 real trailing `.candidate-actions` grid column.
 
-Retired the Node-extraction half of this file per (campaign §3.1 batch C
+Retired the Node-extraction half of this file per  (campaign §3.1 batch C
 row 41, census row 41): `test_worker_row_actions_render_inside_the_rows_own_container`
 used to `_between()`-slice the real `renderCandidateRow` + `candidateCombineActionHtml`
 out of `app.js` and run them in a bare Node sandbox with hand-stubbed helpers --
@@ -130,7 +130,7 @@ def test_worker_row_actions_render_inside_the_rows_own_container(live_browser: t
 
     def actions_nested_inside_row(row_locator) -> bool:
         """Real DOM ancestor-chain check via the browser's own layout engine --
- strictly stronger than the offline `html.parser` walk this replaces."""
+        strictly stronger than the offline `html.parser` walk this replaces."""
         return row_locator.evaluate(
             "(rowEl) => { const actions = rowEl.querySelector('.candidate-actions'); "
             "return !!actions && rowEl.contains(actions) && actions !== rowEl; }"
@@ -154,12 +154,12 @@ def test_worker_row_actions_render_inside_the_rows_own_container(live_browser: t
 
 def test_injection_the_old_sibling_shape_is_caught_by_the_nesting_parser() -> None:
     """Literal reproduction of the pre-2026-08-30 shape (pickerRegionHtml used to
- wrap `renderCandidateRow`'s <button class="candidate-row"> output and a
- sibling actions span in one `.candidate-action-row` div, since a <button>
- cannot contain another <button>). Confirms the parser used above actually
- tells 'inside the row' apart from 'next to it', rather than passing on any
- HTML that merely contains both class names somewhere. Reads no source file --
- not a text-reader in 's sense, unchanged by this migration."""
+    wrap `renderCandidateRow`'s <button class="candidate-row"> output and a
+    sibling actions span in one `.candidate-action-row` div, since a <button>
+    cannot contain another <button>). Confirms the parser used above actually
+    tells 'inside the row' apart from 'next to it', rather than passing on any
+    HTML that merely contains both class names somewhere. Reads no source file --
+    not a text-reader in 's sense, unchanged by this migration."""
     from html.parser import HTMLParser
 
     class _NestingParser(HTMLParser):

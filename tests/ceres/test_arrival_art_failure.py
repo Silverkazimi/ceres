@@ -32,11 +32,11 @@ SCREEN_DIR.mkdir(parents=True, exist_ok=True)
 
 def _render_failed_consumed_tile(css_source: str) -> dict:
     """Build a minimal real page -- the app's OWN markup for one destroyed card
- (combineArrivalConsumedCardHtml's actual output shape, hand-reproduced here
- only insofar as static HTML always has to be to host a `<style>` block --
- against a given ceres.css source string, force the `<img>` to fail via a
- route, and return the tile's rendered classList + computed border style
- after the onerror handler has had a chance to run."""
+    (combineArrivalConsumedCardHtml's actual output shape, hand-reproduced here
+    only insofar as static HTML always has to be to host a `<style>` block --
+    against a given ceres.css source string, force the `<img>` to fail via a
+    route, and return the tile's rendered classList + computed border style
+    after the onerror handler has had a chance to run."""
     with spawn_live_ceres() as (browser, base_url):
         page = browser.new_page(viewport={"width": 400, "height": 300})
         # Intercept the real ceres.css REQUEST itself, before navigation, so the
@@ -63,16 +63,16 @@ def _render_failed_consumed_tile(css_source: str) -> dict:
         page.route("**/cards_v2.2/Nonexistent%20Ghost%20Card.jpg", lambda route: route.fulfill(status=404, body=""))
         page.evaluate(
             """() => {
- document.body.insertAdjacentHTML('beforeend',
- '<div class="combine-arrival-consumed-card">' +
- '<div class="combine-arrival-consumed-tile">' +
- '<img class="combine-arrival-consumed-art" ' +
- 'src="https://d36mxiodymuqjm.cloudfront.net/cards_v2.2/Nonexistent%20Ghost%20Card.jpg" ' +
- 'onerror="this.closest(\\'.combine-arrival-consumed-card\\')?.classList.add(\\'is-none\\')">' +
- '<span class="combine-arrival-consumed-strike" aria-hidden="true"></span>' +
- '<span class="combine-arrival-consumed-name" aria-hidden="true">Ghost Card</span>' +
- '</div><code class="combine-arrival-consumed-uid">C2-999-FAKE</code></div>');
- }"""
+              document.body.insertAdjacentHTML('beforeend',
+                '<div class="combine-arrival-consumed-card">' +
+                '<div class="combine-arrival-consumed-tile">' +
+                '<img class="combine-arrival-consumed-art" ' +
+                'src="https://d36mxiodymuqjm.cloudfront.net/cards_v2.2/Nonexistent%20Ghost%20Card.jpg" ' +
+                'onerror="this.closest(\\'.combine-arrival-consumed-card\\')?.classList.add(\\'is-none\\')">' +
+                '<span class="combine-arrival-consumed-strike" aria-hidden="true"></span>' +
+                '<span class="combine-arrival-consumed-name" aria-hidden="true">Ghost Card</span>' +
+                '</div><code class="combine-arrival-consumed-uid">C2-999-FAKE</code></div>');
+            }"""
         )
         page.wait_for_selector(".combine-arrival-consumed-card.is-none", timeout=10_000)
         border = page.eval_on_selector(
@@ -90,7 +90,7 @@ def _render_failed_consumed_tile(css_source: str) -> dict:
 
 def _assert_dashed_placeholder(result: dict) -> None:
     assert result["border"] == "dashed", (
-        f"expected the tile's own computed border-style to be 'dashed' once the outer \"\n f\"card carries `is-none`, got {result['border']!r} -- the selector mismatch is back"
+        f"expected the tile's own computed border-style to be 'dashed' once the outer " f"card carries `is-none`, got {result['border']!r} -- the selector mismatch is back"
     )
     assert result["name_visible"] is True, "the destroyed card's name must be visible once art fails to load"
 
@@ -101,11 +101,11 @@ def test_failed_art_load_gets_the_dashed_placeholder_and_name() -> None:
 
 def test_selector_mismatch_regression_is_red() -> None:
     """Injected defect: restore the ORIGINAL mismatched selector
- (`.combine-arrival-consumed-tile.is-none` instead of `.combine-arrival-
- consumed-card.is-none .combine-arrival-consumed-tile`) -- the guard above
- must fail because `is-none` never lands on the tile itself, only on its
- parent, so the dashed border never applies. Confirmed red before this test
- was accepted."""
+    (`.combine-arrival-consumed-tile.is-none` instead of `.combine-arrival-
+    consumed-card.is-none .combine-arrival-consumed-tile`) -- the guard above
+    must fail because `is-none` never lands on the tile itself, only on its
+    parent, so the dashed border never applies. Confirmed red before this test
+    was accepted."""
     source = CSS.read_text(encoding="utf-8")
     marker = ".combine-arrival-consumed-card.is-none .combine-arrival-consumed-tile { border: 1px dashed var(--border); }"
     assert marker in source  # sanity: the fix is actually present pre-mutation

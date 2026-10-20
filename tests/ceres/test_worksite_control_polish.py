@@ -16,11 +16,12 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import spawn_live_ceres
+from . import board_basic_recording as recording
 
 CSS = Path(__file__).parents[2] / "ceres" / "static" / "ceres.css"
 # A live plot with a rendered worksite building, from player0005's cached snapshot
 # same deed used throughout this polish pass's own manual verification.
-DEED = "I-290-d05b84f1965811"
+DEED = recording.RUNI_SLOT5.uid
 
 
 @pytest.fixture(scope="module")
@@ -76,12 +77,12 @@ def test_worksite_change_button_keyboard_path_still_works(live_browser: tuple[Br
 
 def test_review_sign_verify_button_is_gone(live_browser: tuple[Browser, str]) -> None:
     """Superseded by the portfolio Checkout panel (renderCheckoutSurface() /
- requestOperationPreview({scope: 'portfolio'})), which is not gated on having 2+
- plots staged -- it covers a single staged plot just as well.
+    requestOperationPreview({scope: 'portfolio'})), which is not gated on having 2+
+    plots staged -- it covers a single staged plot just as well.
 
- MUTATION-TESTED: re-inserting a `<button class="slot-review">` into the footer
- template in `renderSlotEditor()` and rerunning this test turns it red (count 1,
- not 0). Verified by hand: injected, watched red, reverted, watched green."""
+    MUTATION-TESTED: re-inserting a `<button class="slot-review">` into the footer
+    template in `renderSlotEditor()` and rerunning this test turns it red (count 1,
+    not 0). Verified by hand: injected, watched red, reverted, watched green."""
     page = _band_page(live_browser)
     footer = page.locator(f'tr.expand-row[data-deed-uid="{DEED}"] .slot-editor-footer')
     footer.wait_for(timeout=5_000)
@@ -91,11 +92,11 @@ def test_review_sign_verify_button_is_gone(live_browser: tuple[Browser, str]) ->
 
 def test_band_height_is_unaffected_by_an_empty_footer(live_browser: tuple[Browser, str]) -> None:
     """MUTATION-TESTED: removing `.slot-editor-footer`'s `min-height: 1.7625rem;` and
- rerunning this test turns it red -- an empty footer (no staged moves, no notices,
- the common case on a cold page load) then collapses to just its border+padding
- (~2.6px), shrinking `.editor-band` by ~28px and re-cropping the registered
- worksite art. Verified by hand: injected, watched red (footer_height ~2.6,
- assertion >= 28 failed), reverted, watched green."""
+    rerunning this test turns it red -- an empty footer (no staged moves, no notices,
+    the common case on a cold page load) then collapses to just its border+padding
+    (~2.6px), shrinking `.editor-band` by ~28px and re-cropping the registered
+    worksite art. Verified by hand: injected, watched red (footer_height ~2.6,
+    assertion >= 28 failed), reverted, watched green."""
     page = _band_page(live_browser)
     band = page.locator(f'tr.expand-row[data-deed-uid="{DEED}"] .editor-band')
     height = band.evaluate("el => el.getBoundingClientRect().height")
@@ -110,8 +111,8 @@ def test_band_height_is_unaffected_by_an_empty_footer(live_browser: tuple[Browse
 
 def test_horizontal_scrim_removed_vertical_scrim_kept() -> None:
     """MUTATION-TESTED: re-adding the `linear-gradient(90deg, ...)` layer to
- `.editor-scene::after` and rerunning this test turns it red on the `not in`
- assertion. Verified by hand: injected, watched red, reverted, watched green."""
+    `.editor-scene::after` and rerunning this test turns it red on the `not in`
+    assertion. Verified by hand: injected, watched red, reverted, watched green."""
     source = CSS.read_text(encoding="utf-8")
     # Two rules share the `.editor-scene::after` selector (one compound with `::before`
     # for shared resets, one standalone for the actual background) -- match the

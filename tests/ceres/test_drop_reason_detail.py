@@ -1,4 +1,4 @@
-"""a dropped saved change names the one live cause, not 'listed, delegated, or rented'."""
+""": a dropped saved change names the one live cause, not 'listed, delegated, or rented'."""
 from pathlib import Path
 from tests.ceres.vm_context import run_in_module_context
 STATIC = Path(__file__).parents[2] / 'ceres' / 'static'

@@ -68,7 +68,7 @@ def test_row_cells_render_seventeen_td_with_material_cells():
     assert "materialCostCell(row, 'STONE')" in body
     assert "materialCostCell(row, 'IRON')" in body
     assert 'col-w-wood"' in body and 'col-w-stone"' in body and 'col-w-iron"' in body
-    assert '<td class="lock-cell col-w-lock">${plotLockIconHtml(row)}</td>\n <td class="count-cell col-w-count">${Number.isInteger(rowIndex) ? rowIndex + 1 : \'\'}</td>`;' in body
+    assert '<td class="lock-cell col-w-lock">${plotLockIconHtml(row)}</td>\n    <td class="count-cell col-w-count">${Number.isInteger(rowIndex) ? rowIndex + 1 : \'\'}</td>`;' in body
 
 
 def test_colspan_uses_the_shared_column_count_constant():
@@ -121,26 +121,28 @@ def test_material_cell_icon_uses_the_shared_clamp_not_the_14px_dec_icon():
     assert 'class="material-cost-icon"' in body
     assert 'class="dec-stake-icon"' not in body
     clamp_rule = re.search(
-        r"table\.plot-table td\.col-w-wood \.material-cost-icon,\s*\n\"\n r\"table\.plot-table td\.col-w-stone \.material-cost-icon,\s*\n\"\n r\"table\.plot-table td\.col-w-iron \.material-cost-icon",
+        r"table\.plot-table td\.col-w-wood \.material-cost-icon,\s*\n"
+        r"table\.plot-table td\.col-w-stone \.material-cost-icon,\s*\n"
+        r"table\.plot-table td\.col-w-iron \.material-cost-icon",
         CSS,
     )
-    assert clamp_rule, "expected .material-cost-icon in the shared table icon clamp"
+    assert clamp_rule, "expected .material-cost-icon in the  shared table icon clamp"
 
 
 def test_a_measured_zero_renders_as_0_00_not_a_dash():
     _JS = r"""
-    `applicable` is the ordinary case -- a real recipe entry with a genuine
- // nonzero measured cost -- kept distinct from `zeroPp`, the zero-EFFECTIVE-PP case
- // (a real recipe entry whose measured cost happens to be exactly 0.0, e.g. base_pp == 0).
- // Both render "0.00"-shaped output (fixed 2 decimals), but they are not the same input.
- const applicable = materialCostCell({wood_cost_per_hour: 12.34}, 'WOOD');
- const zeroPp = materialCostCell({wood_cost_per_hour: 0.0}, 'WOOD');
- const missing = materialCostCell({wood_cost_per_hour: null}, 'WOOD');
- const absent = materialCostCell({}, 'WOOD');
- console.log('__CELL__' + JSON.stringify({
- applicableHtml: applicable.html, zeroPpHtml: zeroPp.html,
- missingHtml: missing.html, absentHtml: absent.html,
- }));
+    // : `applicable` is the ordinary case -- a real recipe entry with a genuine
+    // nonzero measured cost -- kept distinct from `zeroPp`, the zero-EFFECTIVE-PP case
+    // (a real recipe entry whose measured cost happens to be exactly 0.0, e.g. base_pp == 0).
+    // Both render "0.00"-shaped output (fixed 2 decimals), but they are not the same input.
+    const applicable = materialCostCell({wood_cost_per_hour: 12.34}, 'WOOD');
+    const zeroPp = materialCostCell({wood_cost_per_hour: 0.0}, 'WOOD');
+    const missing = materialCostCell({wood_cost_per_hour: null}, 'WOOD');
+    const absent = materialCostCell({}, 'WOOD');
+    console.log('__CELL__' + JSON.stringify({
+      applicableHtml: applicable.html, zeroPpHtml: zeroPp.html,
+      missingHtml: missing.html, absentHtml: absent.html,
+    }));
     """
     result = run_in_module_context(_JS)
     out = result.stdout.split('__CELL__', 1)
@@ -158,17 +160,17 @@ def test_material_columns_sort_nulls_last_in_both_directions():
     # every other numeric column, null sorts last in BOTH ascending and descending.
     _JS = r"""
     S.SORT_KEY = 'wood_cost_per_hour';
- const rows = [
- {deed_uid: 'a', wood_cost_per_hour: null},
- {deed_uid: 'b', wood_cost_per_hour: 5.0},
- {deed_uid: 'c', wood_cost_per_hour: null},
- {deed_uid: 'd', wood_cost_per_hour: 1.0},
- ];
- S.SORT_DIR = 1;
- const asc = sortRows(rows).map(r => r.deed_uid);
- S.SORT_DIR = -1;
- const desc = sortRows(rows).map(r => r.deed_uid);
- console.log('__SORT__' + JSON.stringify({asc, desc}));
+    const rows = [
+      {deed_uid: 'a', wood_cost_per_hour: null},
+      {deed_uid: 'b', wood_cost_per_hour: 5.0},
+      {deed_uid: 'c', wood_cost_per_hour: null},
+      {deed_uid: 'd', wood_cost_per_hour: 1.0},
+    ];
+    S.SORT_DIR = 1;
+    const asc = sortRows(rows).map(r => r.deed_uid);
+    S.SORT_DIR = -1;
+    const desc = sortRows(rows).map(r => r.deed_uid);
+    console.log('__SORT__' + JSON.stringify({asc, desc}));
     """
     result = run_in_module_context(_JS)
     out = result.stdout.split('__SORT__', 1)

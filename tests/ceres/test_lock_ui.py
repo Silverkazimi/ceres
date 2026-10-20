@@ -1,4 +1,4 @@
-"""Static guards for the lock checkout and visual contract."""
+"""Static guards for the  lock checkout and visual contract."""
 
 from pathlib import Path
 import re
@@ -54,7 +54,7 @@ def test_pp_total_is_absent_without_a_pp_stage() -> None:
 
 
 def test_plot_pipe_uses_one_symmetric_gap_token() -> None:
-    assert "plot-control-pipe-gap: .7rem" in CSS
+    assert "--plot-control-pipe-gap: .7rem" in CSS
     pipe = re.search(r"\.slot-group-controls > \.editor-splinter-affinity-sep\s*\{([^}]*)\}", CSS)
     assert pipe
     assert "margin-inline: calc(var(--plot-control-pipe-gap) - .25rem)" in pipe.group(1)
@@ -88,7 +88,7 @@ def test_plot_lock_helper_emits_owner_pair_b_paths() -> None:
     keyhole = "M12 15v2"
     svg = LOCK.split("export function plotLockSvg(locked)", 1)[1].split("\n}", 1)[0]
     assert f"? '{closed}'" in svg
-    assert f"'{opened}'" in svg
+    assert f": '{opened}'" in svg
     assert f'<path d="{body}"/>' in svg
     assert '<path d="${shackle}"/>' in svg
     assert f'<path d="{keyhole}"/>' in svg

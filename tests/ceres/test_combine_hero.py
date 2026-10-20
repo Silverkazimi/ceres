@@ -32,7 +32,7 @@ def live_browser() -> tuple[Browser, str]:
 
 def _real_occupied_worker(base_url: str) -> tuple[str, dict, int]:
     """A real plot with a real, combinable (unmaxed, resolved-ceiling, non-Runi)
- worker occupant. Returns (deed_uid, occupant, slot_index)."""
+    worker occupant. Returns (deed_uid, occupant, slot_index)."""
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=10) as response:
         board = json.loads(response.read().decode("utf-8"))
     for plot in board["plots"]:
@@ -55,8 +55,8 @@ def _real_occupied_worker(base_url: str) -> tuple[str, dict, int]:
 
 def _open_combine_dialog(page, base_url: str) -> tuple[str, dict]:
     """Route-mocks a combinable idle duplicate for a real staked worker, clicks
- the real per-tile Combine chip, and returns (deed_uid, occupant) once the
- real `#combine-dialog-overlay` (`renderCombineDialogEditor`) is visible."""
+    the real per-tile Combine chip, and returns (deed_uid, occupant) once the
+    real `#combine-dialog-overlay` (`renderCombineDialogEditor`) is visible."""
     deed_uid, occupant, slot_index = _real_occupied_worker(base_url)
     # combinePartners()/rowCanCombine() only offer the chip when a copy has an
     # ELIGIBLE PARTNER *within the idle group itself* -- the staged occupant is
@@ -114,18 +114,18 @@ def test_rendered_combine_hero_editor_keeps_hero_art_ledger_and_freshness_drops_
     live_browser: tuple[Browser, str],
 ) -> None:
     """Census row 12: replaces `_modal_contract()`'s source-string scan of
- `renderCombineDialogEditor()` (hero art once, no arrow/level/hazard-line/
- subtitle/survivor-line copy, copy rows present, freshness note present,
- destroyed count on the sign button) with a single rendered read of the real
- dialog opened via the real per-tile Combine chip against a route-mocked
- idle duplicate + `/api/combine/preview` response.
+    `renderCombineDialogEditor()` (hero art once, no arrow/level/hazard-line/
+    subtitle/survivor-line copy, copy rows present, freshness note present,
+    destroyed count on the sign button) with a single rendered read of the real
+    dialog opened via the real per-tile Combine chip against a route-mocked
+    idle duplicate + `/api/combine/preview` response.
 
- Named injection (not applied here; independently watched red/green per
- ): `renderCombineDialogEditor()`'s
- `<div class="combine-editor-left">${heroHtml}${amountHtml}</div>` changed to
- `<div class="combine-editor-left">${amountHtml}</div>` (drops the hero art
- entirely). Expected red: `overlay.locator(".combine-hero-art").count() == 0`
- where this test asserts `== 1`."""
+    Named injection (not applied here; independently watched red/green per
+    ): `renderCombineDialogEditor()`'s
+    `<div class="combine-editor-left">${heroHtml}${amountHtml}</div>` changed to
+    `<div class="combine-editor-left">${amountHtml}</div>` (drops the hero art
+    entirely). Expected red: `overlay.locator(".combine-hero-art").count() == 0`
+    where this test asserts `== 1`."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     deed_uid, occupant = _open_combine_dialog(page, base_url)
@@ -155,7 +155,7 @@ def test_rendered_combine_hero_editor_keeps_hero_art_ledger_and_freshness_drops_
 
 def test_retired_combine_copy_is_removed_from_notice_catalog() -> None:
     """Reads `ceres/notices.py`, not `ceres/static/*.js` -- outside this census's
- scope (Python source, legitimately the subject under test), left unchanged."""
+    scope (Python source, legitimately the subject under test), left unchanged."""
     source = NOTICES.read_text(encoding="utf-8")
     assert '"combine_summary"' not in source
     assert '"combine_irreversible"' not in source

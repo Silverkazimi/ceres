@@ -1,4 +1,4 @@
-"""the "N Changes" badge uses the standard badge design: coloured text and border on a clear background, normal weight.
+""": the "N Changes" badge uses the standard badge design: coloured text and border on a clear background, normal weight.
 It used to be a solid gold fill with dark text and extra-heavy weight, the reverse of every other badge."""
 from pathlib import Path
 

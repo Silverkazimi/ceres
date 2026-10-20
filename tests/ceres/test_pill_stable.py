@@ -1,4 +1,4 @@
-"""the shared confirmation pill keeps fixed text and row geometry."""
+""": the shared confirmation pill keeps fixed text and row geometry."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ def test_pending_worksite_verification_keeps_shared_pill_stable(live_browser: tu
         "const title = node?.innerText || ''; const prior = window.__ir8322TitleHistory.at(-1)?.title; "
         "if (title && title !== prior) { const pill = document.querySelector('#ceres-confirmation-banner'); "
         "const rect = el => { const r = el.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height}; }; "
-        "window.__ir8322TitleHistory.push({title, outer: rect(pill), titleBox: rect(pill.querySelector('.worksite-banner-title')) "
+        "window.__ir8322TitleHistory.push({title, outer: rect(pill), titleBox: rect(pill.querySelector('.worksite-banner-title')), "
         "detailBox: rect(pill.querySelector('.worksite-banner-detail'))}); } })"
         ".observe(document, {subtree: true, childList: true, characterData: true}); "
         "window.hive_keychain = {requestBroadcast(_account, _ops, _key, callback) { "
@@ -93,7 +93,7 @@ def test_pending_worksite_verification_keeps_shared_pill_stable(live_browser: tu
     page.route("**/worksite-preview*", preview_route)
     page.route("**/api/op-inclusion*", lambda route: route.fulfill(status=200, content_type="application/json", body='{"included":true,"block_num":123}'))
     page.route("**/api/op-verify*", verify_route)
-    page.goto(f"{base_url}/?player=player0005", timeout=8_000)
+    page.goto(f"{base_url}/?player=sample01", timeout=8_000)
     try:
         page.wait_for_function("document.querySelector('#plot-tbody > tr.plot-row') !== null", timeout=15_000)
     except PlaywrightTimeoutError:
@@ -121,10 +121,10 @@ def test_pending_worksite_verification_keeps_shared_pill_stable(live_browser: tu
         pytest.fail("mocked pending → pending → confirmed worksite verification did not complete", pytrace=False)
 
     final_snapshot = page.evaluate("""() => {
- const pill = document.querySelector('#ceres-confirmation-banner');
- return {text: pill.querySelector('.worksite-banner-title > span:last-child').innerText,
- width: pill.getBoundingClientRect().width, height: pill.getBoundingClientRect().height};
- }""")
+      const pill = document.querySelector('#ceres-confirmation-banner');
+      return {text: pill.querySelector('.worksite-banner-title > span:last-child').innerText,
+        width: pill.getBoundingClientRect().width, height: pill.getBoundingClientRect().height};
+    }""")
     assert final_snapshot["text"] == "Transaction confirmed", final_snapshot
     assert page.locator("#ceres-confirmation-banner").evaluate("el => el.classList.contains('is-confirmed-partial')"), "confirmed-with-refresh-error did not advance to confirmed-partial"
     history = page.evaluate("window.__ir8322TitleHistory")
@@ -145,67 +145,67 @@ def test_pending_worksite_verification_keeps_shared_pill_stable(live_browser: tu
     for viewport_width in (1920, 1536):
         page.set_viewport_size({"width": viewport_width, "height": 1080})
         samples_by_viewport[str(viewport_width)] = page.evaluate("""async () => {
- const {setConfirmationBannerState} = await import('/static/operations.js');
- const phases = [
- ['accepted', 'Transaction sent', 'Waiting for confirmation.', 'info', 'is-sent', 'ir8322-main'],
- ['pending', 'Awaiting confirmation', 'The game has not shown this change yet.', 'info', 'is-pending', 'ir8322-main', true],
- ['pending-before-refresh-error', 'Awaiting confirmation', 'The game has not shown this change yet.', 'info', 'is-pending', 'ir8322-refresh-pending', true],
- ['confirmed-partial', 'Transaction confirmed', 'The transaction is confirmed, but the latest game refresh failed.', 'caution', 'is-confirmed-partial', 'ir8322-refresh-pending'],
- ['confirmed', 'Transaction confirmed', 'The 24-hour build has started.', 'success', 'is-confirmed', 'ir8322-main'],
- ['refused', 'Game refused', 'The game reported: account is not authorized to change this plot because it is currently leased to another player.', 'danger', 'is-failed', 'ir8322-refused'],
- ['mismatch', 'Game state mismatch', 'The game does not reflect this change.', 'danger', 'is-failed', 'ir8322-mismatch', true],
- ['pending-before-could-not-verify', 'Awaiting confirmation', 'The game has not shown this change yet.', 'info', 'is-pending', 'ir8322-unverified', true],
- ['could-not-verify', 'Could not verify', 'The game result could not be checked.', 'caution', 'is-unresolved', 'ir8322-unverified', true]
- ];
- const read = () => {
- const pill = document.querySelector('#ceres-confirmation-banner');
- const title = pill.querySelector('.worksite-banner-title');
- const titleText = title.querySelector(':scope > span:last-child').innerText;
- const detail = pill.querySelector('.worksite-banner-detail');
- const facts = pill.querySelector('.ceres-pill-facts');
- const transaction = pill.querySelector('.ceres-pill-transaction');
- const action = pill.querySelector('.ceres-pill-action-row');
- const mainAction = action.querySelector('.ceres-pill-action-slot.is-main');
- const secondaryAction = action.querySelector('.ceres-pill-action-slot:not(.is-main) .ceres-pill-action');
- const retryButton = action.querySelector('[data-confirmation-action="retry-verification"]');
- const rect = element => { const r = element.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height}; };
- const lineCount = element => { const range = document.createRange(); range.selectNodeContents(element); return range.getClientRects().length; };
- const tokenColor = token => {
- const probe = document.createElement('span');
- probe.style.cssText = `position:fixed;visibility:hidden;color:var(${token})`;
- document.body.append(probe);
- const color = getComputedStyle(probe).color;
- probe.remove();
- return color;
- };
- const rowRects = [pill.querySelector('.ceres-pill-title-row'), detail, facts, transaction, action].map(rect);
- return {title: titleText, detail: detail.innerText, detailTitle: detail.title, outer: rect(pill), titleBox: rect(title), detailBox: rect(detail), rowRects,
- factsBox: rect(facts), transactionBox: rect(transaction), actionBox: rect(action), secondaryActionBox: secondaryAction && !secondaryAction.hidden ? rect(secondaryAction) : null, mainActionBox: rect(mainAction),
- mainActionLabel: mainAction.innerText.trim(), colors: [getComputedStyle(pill).backgroundColor, getComputedStyle(pill).borderTopColor,
- getComputedStyle(pill).borderRightColor, getComputedStyle(pill).borderBottomColor, getComputedStyle(pill).borderLeftColor,
- getComputedStyle(title).color, tokenColor('--danger'), tokenColor('--warn'), tokenColor('--ok')],
- lines: [lineCount(title.querySelector(':scope > span:last-child')), lineCount(detail)],
- copy: [titleText, detail.innerText, ...[...facts.querySelectorAll('.ceres-pill-value')].map(el => el.innerText),
- transaction.innerText, transaction.querySelector('a')?.getAttribute('href') || '', action.innerText,
- retryButton ? retryButton.hidden : true, retryButton ? retryButton.disabled : true, retryButton ? retryButton.tabIndex : -1],
- actionVisible: !!retryButton && !retryButton.hidden,
- overflow: [pill, pill.querySelector('.ceres-pill-content'), title, detail, facts, transaction, action]
- .map(el => el.scrollHeight <= el.clientHeight)};
- };
- const samples = [];
- for (const [phase,title,detail,tone,state,txId,hasAction] of phases) {
- const options = {txId, phase, state};
- if (hasAction) options.action = {id:'retry_verification', label:'Check again'};
- setConfirmationBannerState(title, detail, tone, options);
- samples.push({phase, ...read()});
- if (phase === 'pending') {
- setConfirmationBannerState('A changed pending title', 'A changed pending detail.', tone,
- {txId, phase, state, action:{id:'retry_verification', label:'Check again'}});
- samples.push({phase:'same-phase-repeat', ...read()});
- }
- }
- return samples;
- }""")
+          const {setConfirmationBannerState} = await import('/static/operations.js');
+          const phases = [
+            ['accepted', 'Transaction sent', 'Waiting for confirmation.', 'info', 'is-sent', 'ir8322-main'],
+            ['pending', 'Awaiting confirmation', 'The game has not shown this change yet.', 'info', 'is-pending', 'ir8322-main', true],
+            ['pending-before-refresh-error', 'Awaiting confirmation', 'The game has not shown this change yet.', 'info', 'is-pending', 'ir8322-refresh-pending', true],
+            ['confirmed-partial', 'Transaction confirmed', 'The transaction is confirmed, but the latest game refresh failed.', 'caution', 'is-confirmed-partial', 'ir8322-refresh-pending'],
+            ['confirmed', 'Transaction confirmed', 'The 24-hour build has started.', 'success', 'is-confirmed', 'ir8322-main'],
+            ['refused', 'Game refused', 'The game reported: account is not authorized to change this plot because it is currently leased to another player.', 'danger', 'is-failed', 'ir8322-refused'],
+            ['mismatch', 'Game state mismatch', 'The game does not reflect this change.', 'danger', 'is-failed', 'ir8322-mismatch', true],
+            ['pending-before-could-not-verify', 'Awaiting confirmation', 'The game has not shown this change yet.', 'info', 'is-pending', 'ir8322-unverified', true],
+            ['could-not-verify', 'Could not verify', 'The game result could not be checked.', 'caution', 'is-unresolved', 'ir8322-unverified', true]
+          ];
+          const read = () => {
+            const pill = document.querySelector('#ceres-confirmation-banner');
+            const title = pill.querySelector('.worksite-banner-title');
+            const titleText = title.querySelector(':scope > span:last-child').innerText;
+            const detail = pill.querySelector('.worksite-banner-detail');
+            const facts = pill.querySelector('.ceres-pill-facts');
+            const transaction = pill.querySelector('.ceres-pill-transaction');
+            const action = pill.querySelector('.ceres-pill-action-row');
+            const mainAction = action.querySelector('.ceres-pill-action-slot.is-main');
+            const secondaryAction = action.querySelector('.ceres-pill-action-slot:not(.is-main) .ceres-pill-action');
+            const retryButton = action.querySelector('[data-confirmation-action="retry-verification"]');
+            const rect = element => { const r = element.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height}; };
+            const lineCount = element => { const range = document.createRange(); range.selectNodeContents(element); return range.getClientRects().length; };
+            const tokenColor = token => {
+              const probe = document.createElement('span');
+              probe.style.cssText = `position:fixed;visibility:hidden;color:var(${token})`;
+              document.body.append(probe);
+              const color = getComputedStyle(probe).color;
+              probe.remove();
+              return color;
+            };
+            const rowRects = [pill.querySelector('.ceres-pill-title-row'), detail, facts, transaction, action].map(rect);
+            return {title: titleText, detail: detail.innerText, detailTitle: detail.title, outer: rect(pill), titleBox: rect(title), detailBox: rect(detail), rowRects,
+              factsBox: rect(facts), transactionBox: rect(transaction), actionBox: rect(action), secondaryActionBox: secondaryAction && !secondaryAction.hidden ? rect(secondaryAction) : null, mainActionBox: rect(mainAction),
+              mainActionLabel: mainAction.innerText.trim(), colors: [getComputedStyle(pill).backgroundColor, getComputedStyle(pill).borderTopColor,
+                getComputedStyle(pill).borderRightColor, getComputedStyle(pill).borderBottomColor, getComputedStyle(pill).borderLeftColor,
+                getComputedStyle(title).color, tokenColor('--danger'), tokenColor('--warn'), tokenColor('--ok')],
+              lines: [lineCount(title.querySelector(':scope > span:last-child')), lineCount(detail)],
+              copy: [titleText, detail.innerText, ...[...facts.querySelectorAll('.ceres-pill-value')].map(el => el.innerText),
+                transaction.innerText, transaction.querySelector('a')?.getAttribute('href') || '', action.innerText,
+                retryButton ? retryButton.hidden : true, retryButton ? retryButton.disabled : true, retryButton ? retryButton.tabIndex : -1],
+              actionVisible: !!retryButton && !retryButton.hidden,
+              overflow: [pill, pill.querySelector('.ceres-pill-content'), title, detail, facts, transaction, action]
+                .map(el => el.scrollHeight <= el.clientHeight)};
+          };
+          const samples = [];
+          for (const [phase,title,detail,tone,state,txId,hasAction] of phases) {
+            const options = {txId, phase, state};
+            if (hasAction) options.action = {id:'retry_verification', label:'Check again'};
+            setConfirmationBannerState(title, detail, tone, options);
+            samples.push({phase, ...read()});
+            if (phase === 'pending') {
+              setConfirmationBannerState('A changed pending title', 'A changed pending detail.', tone,
+                {txId, phase, state, action:{id:'retry_verification', label:'Check again'}});
+              samples.push({phase:'same-phase-repeat', ...read()});
+            }
+          }
+          return samples;
+        }""")
 
     expected_phases = ["accepted", "pending", "same-phase-repeat", "pending-before-refresh-error", "confirmed-partial", "confirmed", "refused", "mismatch", "pending-before-could-not-verify", "could-not-verify"]
     for width, samples in samples_by_viewport.items():

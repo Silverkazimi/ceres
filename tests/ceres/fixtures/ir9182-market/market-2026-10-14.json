@@ -1,5 +1,5 @@
 {
-  "_provenance": "recorded 2026-10-14 from api.splinterlands.com (for_sale_grouped, settings.dec_price, market_query_grouped), trimmed to 8 prints; sellers, uids and market ids pseudonymised; one listing re-assigned to the maintainer to test the own-listing badge.",
+  "_provenance": ": recorded 2026-10-14 from api.splinterlands.com (for_sale_grouped, settings.dec_price, market_query_grouped), trimmed to 8 prints; sellers, uids and market ids pseudonymised; one listing re-assigned to the maintainer to test the own-listing badge.",
   "for_sale_grouped": [
     {
       "card_detail_id": 456,

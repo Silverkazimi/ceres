@@ -26,21 +26,21 @@ FIGURES = {
     "wood": "6d2210",
 }
 PLATE_SELECTOR = (
-    ".editor-base-pp-cell.is-filled.is-cap-clipped "
+    ".editor-base-pp-cell.is-filled.is-cap-clipped, "
     ".editor-base-pp-cell.is-filled.is-terrain-penalised"
 )
 FIGURE_SELECTOR = (
-    ".slot-editor-footer .editor-base-pp-cell.is-cap-clipped b "
+    ".slot-editor-footer .editor-base-pp-cell.is-cap-clipped b, "
     ".slot-editor-footer .editor-base-pp-cell.is-terrain-penalised b"
 )
 POLARITY_SELECTOR = (
-    '[data-theme="light"] .slot-editor-footer .editor-base-pp-cell.is-cap-clipped b '
-    '[data-theme="light"] .slot-editor-footer .editor-base-pp-cell.is-terrain-penalised b '
-    '[data-theme="wood"] .slot-editor-footer .editor-base-pp-cell.is-cap-clipped b '
+    '[data-theme="light"] .slot-editor-footer .editor-base-pp-cell.is-cap-clipped b, '
+    '[data-theme="light"] .slot-editor-footer .editor-base-pp-cell.is-terrain-penalised b, '
+    '[data-theme="wood"] .slot-editor-footer .editor-base-pp-cell.is-cap-clipped b, '
     '[data-theme="wood"] .slot-editor-footer .editor-base-pp-cell.is-terrain-penalised b'
 )
 GLYPH_SELECTOR = (
-    ".slot-editor-footer .editor-base-pp-cell.is-cap-clipped b::before "
+    ".slot-editor-footer .editor-base-pp-cell.is-cap-clipped b::before, "
     ".slot-editor-footer .editor-base-pp-cell.is-terrain-penalised b::before"
 )
 
@@ -158,31 +158,31 @@ def _contrast(left, right):
 def _paint(page):
     return page.evaluate(
         """() => {
- const values = id => {
- const cell = document.querySelector(id), figure = cell.querySelector('b');
- const plate = getComputedStyle(cell), text = getComputedStyle(figure);
- const glyph = getComputedStyle(figure, '::before');
- return {background: plate.backgroundColor, border: plate.borderTopColor,
- figure: text.color, glyph: glyph.color, content: glyph.content};
- };
- return {plain: values('#plain'), terrain: values('#terrain'), cap: values('#cap'),
- terrainMatches: document.querySelector('#terrain').matches('.editor-base-pp-cell.is-filled.is-terrain-penalised'),
- capMatches: document.querySelector('#cap').matches('.editor-base-pp-cell.is-filled.is-cap-clipped')};
- }"""
+          const values = id => {
+            const cell = document.querySelector(id), figure = cell.querySelector('b');
+            const plate = getComputedStyle(cell), text = getComputedStyle(figure);
+            const glyph = getComputedStyle(figure, '::before');
+            return {background: plate.backgroundColor, border: plate.borderTopColor,
+              figure: text.color, glyph: glyph.color, content: glyph.content};
+          };
+          return {plain: values('#plain'), terrain: values('#terrain'), cap: values('#cap'),
+            terrainMatches: document.querySelector('#terrain').matches('.editor-base-pp-cell.is-filled.is-terrain-penalised'),
+            capMatches: document.querySelector('#cap').matches('.editor-base-pp-cell.is-filled.is-cap-clipped')};
+        }"""
     )
 
 
 def test_g1_penalty_rules_are_balanced_top_level_cssom_rules_that_match(paint_browser):
     """RED MUTATION: move the shared plate rule's closing brace after the figure/glyph rules,
- reproducing v0.9.14's displaced brace. The source remains brace-balanced, but one or more
- required rules becomes nested instead of top-level, so this structural guard turns red."""
+    reproducing v0.9.14's displaced brace. The source remains brace-balanced, but one or more
+    required rules becomes nested instead of top-level, so this structural guard turns red."""
     assert _brace_depth(CSS) == (0, 0), "ceres.css braces must balance without closing below zero"
     with closing(_page(paint_browser)) as page:
         top_level = page.evaluate(
             """() => {
- const sheet = [...document.styleSheets].find(item => item.href?.endsWith('/static/ceres.css'));
- return [...sheet.cssRules].filter(rule => rule.selectorText).map(rule => rule.selectorText);
- }"""
+              const sheet = [...document.styleSheets].find(item => item.href?.endsWith('/static/ceres.css'));
+              return [...sheet.cssRules].filter(rule => rule.selectorText).map(rule => rule.selectorText);
+            }"""
         )
         required = {PLATE_SELECTOR, FIGURE_SELECTOR, POLARITY_SELECTOR, GLYPH_SELECTOR}
         assert required.issubset(top_level), "every penalty treatment selector must be a top-level CSSOM rule"
@@ -192,8 +192,8 @@ def test_g1_penalty_rules_are_balanced_top_level_cssom_rules_that_match(paint_br
 @pytest.mark.parametrize("theme", THEMES)
 def test_g2_penalty_plate_applies_opaquely_and_both_states_match(paint_browser, theme):
     """RED MUTATIONS: move the closing brace as in v0.9.14 and computed styles collapse to
- the plain state; restore `14%, transparent` and plate alpha drops below one. Either
- executable paint change turns this computed-style guard red in the affected theme."""
+    the plain state; restore `14%, transparent` and plate alpha drops below one. Either
+    executable paint change turns this computed-style guard red in the affected theme."""
     with closing(_page(paint_browser, theme)) as page:
         paint = _paint(page)
     assert paint["terrainMatches"] and paint["capMatches"]
@@ -209,8 +209,8 @@ def test_g2_penalty_plate_applies_opaquely_and_both_states_match(paint_browser, 
 @pytest.mark.parametrize("theme", THEMES)
 def test_g3_computed_contrast_clears_text_border_and_glyph_floors(paint_browser, theme):
     """RED MUTATION: set the figure back to raw `var(--danger)`. Its computed contrast over
- the opaque plate falls to 3.15 in alchemical, below the 4.5 normal-text floor, so this
- guard turns red rather than accepting a declaration or comment that merely claims AA."""
+    the opaque plate falls to 3.15 in alchemical, below the 4.5 normal-text floor, so this
+    guard turns red rather than accepting a declaration or comment that merely claims AA."""
     with closing(_page(paint_browser, theme)) as page:
         penalised = _paint(page)["terrain"]
     assert _contrast(penalised["figure"], penalised["background"]) >= 4.5
@@ -221,7 +221,7 @@ def test_g3_computed_contrast_clears_text_border_and_glyph_floors(paint_browser,
 @pytest.mark.parametrize("theme", THEMES)
 def test_g4_penalty_has_a_non_colour_glyph(paint_browser, theme):
     """RED MUTATION: delete the `b::before` rule. Computed content becomes `none`, removing
- the shape channel, and this browser assertion turns red in every theme."""
+    the shape channel, and this browser assertion turns red in every theme."""
     with closing(_page(paint_browser, theme)) as page:
         content = _paint(page)["terrain"]["content"]
     assert content not in ("none", "normal", '""', "''")
@@ -229,19 +229,19 @@ def test_g4_penalty_has_a_non_colour_glyph(paint_browser, theme):
 
 def test_g5_worst_case_figure_and_glyph_fit_at_1920(paint_browser):
     """RED MUTATION: enlarge the glyph to 1em and the figure to 1.5rem. The `100,000`
- fixture plus prefix then exceeds its pinned cell and makes the row's scroll width larger
- than its client width, turning this 1920px ceiling guard red."""
+    fixture plus prefix then exceeds its pinned cell and makes the row's scroll width larger
+    than its client width, turning this 1920px ceiling guard red."""
     with closing(_page(paint_browser)) as page:
         dimensions = page.evaluate(
             """() => {
- const row = document.querySelector('.editor-base-pp-row');
- document.querySelector('#plain').remove();
- document.querySelector('#cap').remove();
- row.style.width = '6.7rem';
- const cell = document.querySelector('#terrain');
- return {viewport: [innerWidth, innerHeight], row: [row.scrollWidth, row.clientWidth],
- cell: [cell.scrollWidth, cell.clientWidth]};
- }"""
+              const row = document.querySelector('.editor-base-pp-row');
+              document.querySelector('#plain').remove();
+              document.querySelector('#cap').remove();
+              row.style.width = '6.7rem';
+              const cell = document.querySelector('#terrain');
+              return {viewport: [innerWidth, innerHeight], row: [row.scrollWidth, row.clientWidth],
+                cell: [cell.scrollWidth, cell.clientWidth]};
+            }"""
         )
     assert dimensions["viewport"] == [1920, 1080]
     assert dimensions["row"][0] <= dimensions["row"][1], dimensions
@@ -260,7 +260,8 @@ def _splinter_row_page(browser):
         path = urlparse(route.request.url).path
         if path == "/":
             badges = "".join(
-                f'<span class="terrain-affinity-badge" data-splinter="fire" data-affinity-state="{state}">\'\n f\'<img class="splinter-icon" src="/static/assets/splinter/fire.svg" alt="" aria-hidden="true"></span>'
+                f'<span class="terrain-affinity-badge" data-splinter="fire" data-affinity-state="{state}">'
+                f'<img class="splinter-icon" src="/static/assets/splinter/fire.svg" alt="" aria-hidden="true"></span>'
                 for state in _SPLINTER_ROW_STATES
             )
             route.fulfill(
@@ -298,27 +299,27 @@ def _splinter_row_page(browser):
 
 def test_splinter_row_matches_fill_plot_button_geometry(paint_browser):
     """RED MUTATION: restore the retired `--eos-affinity-size`-scaled badge sizing (1.5rem)
- or the old `align-self: center` on a shrunk container, and this fails -- the badge row
- must be the same height as the Fill plot button beside it, vertically centred on it
- within 0.5px, with its first badge flush against (not bleeding past) the controls box."""
+    or the old `align-self: center` on a shrunk container, and this fails -- the badge row
+    must be the same height as the Fill plot button beside it, vertically centred on it
+    within 0.5px, with its first badge flush against (not bleeding past) the controls box."""
     with closing(_splinter_row_page(paint_browser)) as page:
         geometry = page.evaluate(
             """() => {
- const controls = document.querySelector('.slot-group-controls');
- const row = document.querySelector('.editor-splinter-affinity');
- const firstBadge = document.querySelector('.terrain-affinity-badge');
- const sep = document.querySelector('.editor-splinter-affinity-sep');
- const button = document.getElementById('fillplot');
- const rect = (el) => el.getBoundingClientRect();
- const cRect = rect(controls), rRect = rect(row), fRect = rect(firstBadge),
- sRect = rect(sep), bRect = rect(button);
- const centre = (r) => r.top + r.height / 2;
- return {
- controlsLeft: cRect.left, firstBadgeLeft: fRect.left,
- rowHeight: rRect.height, buttonHeight: bRect.height,
- rowCentre: centre(rRect), sepCentre: centre(sRect), buttonCentre: centre(bRect),
- };
- }"""
+              const controls = document.querySelector('.slot-group-controls');
+              const row = document.querySelector('.editor-splinter-affinity');
+              const firstBadge = document.querySelector('.terrain-affinity-badge');
+              const sep = document.querySelector('.editor-splinter-affinity-sep');
+              const button = document.getElementById('fillplot');
+              const rect = (el) => el.getBoundingClientRect();
+              const cRect = rect(controls), rRect = rect(row), fRect = rect(firstBadge),
+                sRect = rect(sep), bRect = rect(button);
+              const centre = (r) => r.top + r.height / 2;
+              return {
+                controlsLeft: cRect.left, firstBadgeLeft: fRect.left,
+                rowHeight: rRect.height, buttonHeight: bRect.height,
+                rowCentre: centre(rRect), sepCentre: centre(sRect), buttonCentre: centre(bRect),
+              };
+            }"""
         )
     assert geometry["firstBadgeLeft"] >= geometry["controlsLeft"] - 0.5, geometry
     assert abs(geometry["rowHeight"] - geometry["buttonHeight"]) <= 1, geometry

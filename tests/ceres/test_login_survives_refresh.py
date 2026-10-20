@@ -1,4 +1,4 @@
-"""a page refresh keeps the optional login (tab-only sessionStorage, capped by the server's maximum, checked once, a 401 ends it)."""
+""": a page refresh keeps the optional login (tab-only sessionStorage, capped by the server's maximum, checked once, a 401 ends it)."""
 from pathlib import Path
 
 from tests.ceres.vm_context import run_in_module_context
@@ -8,14 +8,14 @@ ACCOUNT_SPACE = Path(__file__).parents[2] / "ceres" / "static" / "account-space.
 PRESET = r"""
 const __store = new Map();
 context.sessionStorage = { get length() { return __store.size; }, key: i => [...__store.keys()][i] ?? null,
- getItem: k => (__store.has(k) ? __store.get(k) : null), setItem: (k, v) => __store.set(k, String(v)), removeItem: k => __store.delete(k) };
+  getItem: k => (__store.has(k) ? __store.get(k) : null), setItem: (k, v) => __store.set(k, String(v)), removeItem: k => __store.delete(k) };
 context.__store = __store;
 context.__calls = [];
 context.__valid = true;
 context.fetch = async (url, init = {}) => {
- context.__calls.push({ url: String(url), auth: (init.headers || {}).Authorization });
- const status = String(url) === '/api/auth/session' && !context.__valid ? 401 : 200;
- return { status, ok: status < 400, json: async () => ({ account: 'alice' }), headers: { get: () => null } };
+  context.__calls.push({ url: String(url), auth: (init.headers || {}).Authorization });
+  const status = String(url) === '/api/auth/session' && !context.__valid ? 401 : 200;
+  return { status, ok: status < 400, json: async () => ({ account: 'alice' }), headers: { get: () => null } };
 };
 globalThis.fetch = context.fetch;
 """

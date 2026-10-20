@@ -1,4 +1,4 @@
-"""three defects on the confirmation surface, all sharing the same verdict
+""": three defects on the confirmation surface, all sharing the same verdict
 vocabulary (`ceres/notices.py::verification_notice`, `ceres/static/app.js`'s checkout
 `verifyBroadcast`).
 
@@ -57,12 +57,12 @@ def test_pending_past_escalation_threshold_becomes_the_distinct_escalated_notice
 
 def test_escalation_consumer_mutation_is_red() -> None:
     """Injected defect: `verification_notice()`'s `domain-pending` branch stops
- reading `pending_metadata.requires_escalation` and always returns the ordinary
- notice -- the exact pre-fix state, where the metadata was computed and nothing
- consumed it. Simulates the pre-fix call site directly (always
- `verification_pending`, metadata never read) and confirms it disagrees with the
- fixed `verification_notice()` -- proving this test actually depends on the
- escalation-reading branch, not merely on the registry entry existing."""
+    reading `pending_metadata.requires_escalation` and always returns the ordinary
+    notice -- the exact pre-fix state, where the metadata was computed and nothing
+    consumed it. Simulates the pre-fix call site directly (always
+    `verification_pending`, metadata never read) and confirms it disagrees with the
+    fixed `verification_notice()` -- proving this test actually depends on the
+    escalation-reading branch, not merely on the registry entry existing."""
     from ceres.notices import format_notice, RETRY_VERIFICATION_ACTION
 
     domain = {"evidence": {"pending": [], "pending_metadata": {
@@ -83,8 +83,8 @@ def test_could_not_verify_copy_does_not_promise_a_retry() -> None:
 
 def test_not_applied_is_a_terminal_failure_with_re_stake_copy() -> None:
     """Mutation evidence: map `domain-not-applied` to `verification_pending`; expected red:
- a chain-landed game refusal is shown as an indefinite wait instead of a terminal failure that
- tells the maintainer the item was not changed and can be prepared again."""
+    a chain-landed game refusal is shown as an indefinite wait instead of a terminal failure that
+    tells the maintainer the item was not changed and can be prepared again."""
     notice = verification_notice("domain-not-applied", domain={"evidence": {"pending": ["Runi missing"]}})
     assert notice["code"] == "verification_not_applied"
     assert notice["severity"] == "danger"
@@ -118,8 +118,8 @@ def _expand(page: Page, index: int) -> None:
 
 def _stage_worker(page: Page, index: int, used_name: str | None = None) -> str:
     """Stages a worker on plot `index`'s first empty worker slot; returns its deed_uid.
- Raises AssertionError (caller should try the next plot) if this plot has no worker
- capacity or slot."""
+    Raises AssertionError (caller should try the next plot) if this plot has no worker
+    capacity or slot."""
     _expand(page, index)
     row = page.locator("#plot-tbody > tr.plot-row").nth(index)
     deed_uid = row.get_attribute("data-deed-uid")
@@ -196,21 +196,21 @@ def _keychain_stub() -> str:
 
 def test_unrecognised_verdict_does_not_abort_the_batch(live_browser: tuple[Browser, str]) -> None:
     """A `/api/op-verify` state this client does not otherwise special-case (e.g. a
- future chain-status fallback the endpoint's own contract explicitly permits --
- ceres/static/app.js `verifyBroadcast`'s comment quotes routes_op_preview.py's
- `op_verify` docstring verbatim) must NOT throw, and must NOT abort a
- partially-broadcast batch's remaining chunks. Proved on a real two-chunk broadcast
- of two genuinely staged plots: both chunks must sign and both verify requests must
- resolve.
+    future chain-status fallback the endpoint's own contract explicitly permits --
+    ceres/static/app.js `verifyBroadcast`'s comment quotes routes_op_preview.py's
+    `op_verify` docstring verbatim) must NOT throw, and must NOT abort a
+    partially-broadcast batch's remaining chunks. Proved on a real two-chunk broadcast
+    of two genuinely staged plots: both chunks must sign and both verify requests must
+    resolve.
 
- Injection watch: restoring the pre-fix unconditional
- `throw new Error('Unexpected verification verdict: ...')` for any state that is not
- domain-confirmed/domain-pending/domain-could-not-verify/domain-mismatch is the exact
- defect this test catches. Expected red: only 1 broadcast/verify pair completes
- (`window.__ceresBroadcastCount === 1`, not 2), and the second chunk's `.op-state`
- reads "not broadcast — aborted after chunk 1 failed" (the same text
- test_rejected_first_chunk_aborts_remaining_broadcasts in test_live_checkout.py
- asserts for the Keychain-rejection case)."""
+    Injection watch: restoring the pre-fix unconditional
+    `throw new Error('Unexpected verification verdict: ...')` for any state that is not
+    domain-confirmed/domain-pending/domain-could-not-verify/domain-mismatch is the exact
+    defect this test catches. Expected red: only 1 broadcast/verify pair completes
+    (`window.__ceresBroadcastCount === 1`, not 2), and the second chunk's `.op-state`
+    reads "not broadcast — aborted after chunk 1 failed" (the same text
+    test_rejected_first_chunk_aborts_remaining_broadcasts in test_live_checkout.py
+    asserts for the Keychain-rejection case)."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(_keychain_stub())
@@ -255,19 +255,19 @@ def test_unrecognised_verdict_does_not_abort_the_batch(live_browser: tuple[Brows
 
 def test_domain_mismatch_clears_only_the_matching_entry(live_browser: tuple[Browser, str]) -> None:
     """`clearFailedChunkMarkers()` (ceres/static/app.js) scopes its cleanup to the
- ONE chunk that came back `domain-mismatch` -- an unrelated staged entry that is
- also in-flight (broadcast, still verifying) must keep its txId/broadcast_at, and
- the stale portfolio preview must be invalidated so a stale review is never re-used.
- Proved on a real two-chunk broadcast of two genuinely staged plots: chunk 1 verifies
- `domain-pending` (stays in-flight, untouched), chunk 2 verifies `domain-mismatch`
- (cleared).
+    ONE chunk that came back `domain-mismatch` -- an unrelated staged entry that is
+    also in-flight (broadcast, still verifying) must keep its txId/broadcast_at, and
+    the stale portfolio preview must be invalidated so a stale review is never re-used.
+    Proved on a real two-chunk broadcast of two genuinely staged plots: chunk 1 verifies
+    `domain-pending` (stays in-flight, untouched), chunk 2 verifies `domain-mismatch`
+    (cleared).
 
- Injection watch: restoring the pre-fix no-cleanup `domain-mismatch` branch (skip
- the `clearFailedChunkMarkers()` call, throw directly) is the exact defect this test
- catches. Expected red: the mismatched entry's txId/broadcast_at remain set
- (`CERES_STAGE` still shows it in-flight, read through the same `?ir1882-guard=1`
- debug exposure test_live_reload_guard.py's G7 guard already relies on for this
- exact binding)."""
+    Injection watch: restoring the pre-fix no-cleanup `domain-mismatch` branch (skip
+    the `clearFailedChunkMarkers()` call, throw directly) is the exact defect this test
+    catches. Expected red: the mismatched entry's txId/broadcast_at remain set
+    (`CERES_STAGE` still shows it in-flight, read through the same `?ir1882-guard=1`
+    debug exposure test_live_reload_guard.py's G7 guard already relies on for this
+    exact binding)."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(_keychain_stub())
@@ -307,9 +307,9 @@ def test_domain_mismatch_clears_only_the_matching_entry(live_browser: tuple[Brow
     # wait for the entry-scoped clearing to actually land.
     page.wait_for_function(
         f"""() => {{
- const failed = CERES_STAGE.find(e => e.deed_uid === '{deed_b}');
- return failed && !failed.txId && !failed.broadcast_at;
- }}""",
+          const failed = CERES_STAGE.find(e => e.deed_uid === '{deed_b}');
+          return failed && !failed.txId && !failed.broadcast_at;
+        }}""",
         timeout=30_000,
     )
 

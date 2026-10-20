@@ -1,4 +1,4 @@
-""""all storage of current board data is strictly forbidden. 100% fresh data for anything ceres
+""": "all storage of current board data is strictly forbidden. 100% fresh data for anything ceres
 wide. Always" -- guards for the steps that have landed (plan
 work/notes/PLAN-S16880-no-stored-board-data-2026-09-27.md, maintainer answers )."""
 from __future__ import annotations
@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_step1a_plot_open_writes_no_asset_cache(tmp_path, monkeypatch):
-    """a plot open no longer leaves land_assets_<ref>.json behind (only static tables may be written)."""
+    """: a plot open no longer leaves land_assets_<ref>.json behind (only static tables may be written)."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     config.ensure_dirs()
     save_snapshot(analyze_bundle("player0005", _bundle(_deed(DEED_A, 101)), {}), capture_mod._latest_path(config, "player0005"))
@@ -54,9 +54,12 @@ def test_step1a_full_capture_route_is_gone(tmp_path, monkeypatch):
     """ Q9: the hidden Full capture (six-hour resume cache) is removed; the plot-count estimate
  stays (the rate-limit guards use it) and reads the count live without writing it."""
     app = create_app(CeresConfig(root=tmp_path / ".ceres", player="player0005"))
-    paths = {getattr(route, "path", None) for route in app.routes}
+    # FastAPI 0.141 keeps included routers as wrappers in app.routes, so read the registered API paths from
+    # the schema, and confirm the removed route really answers 404.
+    paths = set(app.openapi()["paths"])
     assert "/api/capture/refresh_full" not in paths
     assert "/api/capture/refresh" in paths
+    assert TestClient(app).post("/api/capture/refresh_full").status_code == 404
     for name in ("start_refresh_full", "_capture_full_body", "_run_capture_full"):
         assert not hasattr(capture_mod, name), name
     made: list[object] = []
@@ -93,8 +96,8 @@ def test_step1a_cleanup_removes_only_files_this_version_no_longer_uses(tmp_path,
     cache = tmp_path / "cache"
     cache.mkdir()
     removed = ["land_assets_1f883c7850126c843ec3ca11.json", "land_owned_counts_player0005.json",
-               "land_project_history_I-290-abc.json", "collection_player0005.json", "collection_player0016.etag",
-               "collection_player0016.etag.json"]
+               "land_project_history_I-290-abc.json", "collection_player0005.json", "collection_player0017.etag",
+               "collection_player0017.etag.json"]
     kept = ["card_details.json", "item_details.json", "land_deeds_player0005.json",
             "land_available_STK-LND-TOT_player0005_0.json", "collection_unbinding_v2_player0005.etag",
             "collection_unbinding_v2_player0005.etag.json", "some_other_tool.json"]

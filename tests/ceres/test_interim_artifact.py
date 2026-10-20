@@ -1,4 +1,4 @@
-"""interim board = compact artifact right after the bulk read (no snapshot); the final
+""": interim board = compact artifact right after the bulk read (no snapshot); the final
 publish supersedes it by token; in the window the plot routes answer 409 board_finishing ()."""
 
 from __future__ import annotations

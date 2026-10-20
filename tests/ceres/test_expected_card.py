@@ -1,4 +1,4 @@
-"""exact multi-copy CC, level and capped base PP projection."""
+""": exact multi-copy CC, level and capped base PP projection."""
 from ceres.combine_chain import expected_card
 from ceres.level_cap import level_for_bcx, resolve_level_thresholds
 

@@ -1,4 +1,4 @@
-"""dropping a plot's outdated worker detail after the maintainer's own change is normal — no bar,
+""": dropping a plot's outdated worker detail after the maintainer's own change is normal — no bar,
 and the worker-detail advisory fires only on a failed read, never counting plots "not read yet"."""
 from __future__ import annotations
 

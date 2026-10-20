@@ -27,7 +27,8 @@ class ChangesLayoutGuard(unittest.TestCase):
         self.assertIn("notice.reason === notice.message ? { ...notice, reason: null } : notice", CHECKOUT)
 
     def test_operation_and_lock_counts_share_one_phrase(self):
-        self.assertIn("const signingSummary = !review?.payload && !onlyStandalone", CHECKOUT)
+        summary_line = next(line for line in CHECKOUT.splitlines() if line.lstrip().startswith("const signingSummary ="))
+        self.assertIn(": !review?.payload && !onlyStandalone", summary_line)  # after the upgrade-plan-only branch
         self.assertIn("plural(signatureCount, 'signature')", CHECKOUT)
         summary_at = CHECKOUT.index("${summary}")
         header_start = CHECKOUT.rfind("<header", 0, summary_at)

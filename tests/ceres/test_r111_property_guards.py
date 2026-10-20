@@ -44,11 +44,11 @@ _RETIRED_CONTROL_EXEMPTIONS = {
     # avatar-click "read now" affordance -- a different, deliberately named control from
     # the old #refresh-btn/#capture-btn pair R-111 retired, not a regression of that ruling.
     "avatar_refresh_index": {"origin": "index.html", "value": _ANY_VALUE, "word": "refresh",
-                              "reason": "avatar refresh control"},
+                              "reason": "/ avatar refresh control"},
     "avatar_refresh_board_js": {"origin": "board.js", "value": _ANY_VALUE, "word": "refresh",
-                                 "reason": "avatar refresh control"},
+                                 "reason": "/ avatar refresh control"},
     "avatar_refresh_board_js_reload": {"origin": "board.js", "value": _ANY_VALUE, "word": "reload",
-                                        "reason": "avatar refresh error copy"},
+                                        "reason": "/ avatar refresh error copy"},
     # These origins are each their own subsystem that happens to use everyday English
     # words (refresh/reload/stale/ago) the retired-control regex also matches; none of
     # them names the deleted board Refresh/Full-capture buttons or freshness indicator.
@@ -59,22 +59,22 @@ _RETIRED_CONTROL_EXEMPTIONS = {
     "regional_dec_refresh": {"origin": "regional-dec.js", "value": _ANY_VALUE, "word": "refresh",
                               "reason": "Regional DEC panel's own refresh button, unrelated to board capture"},
     "transaction_queue_stale": {"origin": "transaction-queue.js", "value": _ANY_VALUE, "word": "stale",
-                                 "reason": "live Hive head freshness for signing, not board capture"},
+                                 "reason": "/ live Hive head freshness for signing, not board capture"},
     "transaction_queue_refresh": {"origin": "transaction-queue.js", "value": _ANY_VALUE, "word": "refresh",
-                                   "reason": "live Hive head freshness for signing, not board capture"},
+                                   "reason": "/ live Hive head freshness for signing, not board capture"},
     "wallet_resources_refresh": {"origin": "wallet-resources.js", "value": _ANY_VALUE, "word": "refresh",
                                   "reason": "Wallet balances' own refresh copy, unrelated to board capture"},
     # () deed-lock signing copy, the same live-check-before-signing pattern as
     # checkout_reload and transaction_queue_refresh above; it never named the retired board controls.
     "plot_lock_refresh": {"origin": "plot-lock.js", "value": "The live deed lock state changed. Refresh before signing.",
-                           "word": "refresh", "reason": "live deed-lock re-check before signing, not board capture"},
+                           "word": "refresh", "reason": " live deed-lock re-check before signing, not board capture"},
     "picker_actions_lock_reload": {"origin": "picker-actions.js",
                                     "value": "This plot is absent from the live board. Reload before changing its lock.",
-                                    "word": "reload", "reason": "lock action on a plot missing from the live board"},
+                                    "word": "reload", "reason": " lock action on a plot missing from the live board"},
     "broadcast_gate_refresh": {"origin": "broadcast-gate.js", "value": _ANY_VALUE, "word": "refresh",
                                 "reason": "Per-block Hive limit guidance for harvest signing, unrelated to board capture"},
     "checkout_reload": {"origin": "checkout.js", "value": _ANY_VALUE, "word": "reload",
-                         "reason": "kept-plan live-check failure copy, not the retired board control"},
+                         "reason": " kept-plan live-check failure copy, not the retired board control"},
     "combine_dialog_reload": {"origin": "combine-dialog.js", "value": _ANY_VALUE, "word": "reload",
                                "reason": "Combine flow guidance, not the retired board control"},
     "editor_reload": {"origin": "editor.js", "value": _ANY_VALUE, "word": "reload",
@@ -90,7 +90,9 @@ _RETIRED_CONTROL_EXEMPTIONS = {
                            "reason": "R-111: board-freshness error-state copy, not the retired board control"},
 }
 REMOVED_CONTROL_LISTENER = re.compile(
-    r"(?:getElementById\(\s*['\"](?:refresh-btn|capture-btn|full-capture-btn|capture-age|capture-progress)['\"]\s*\)\"\n r\"|querySelector\(\s*['\"]#(?:refresh-btn|capture-btn|full-capture-btn|capture-age|capture-progress)['\"]\s*\))\"\n r\"\s*\.addEventListener\s*\(",
+    r"(?:getElementById\(\s*['\"](?:refresh-btn|capture-btn|full-capture-btn|capture-age|capture-progress)['\"]\s*\)"
+    r"|querySelector\(\s*['\"]#(?:refresh-btn|capture-btn|full-capture-btn|capture-age|capture-progress)['\"]\s*\))"
+    r"\s*\.addEventListener\s*\(",
 )
 
 
@@ -193,7 +195,8 @@ def _js_literal_is_visible(body: str, before: str) -> bool:
     ):
         return False
     if re.search(
-        r"(?:textContent|innerHTML|aria-label|data-tip(?:-body)?|title|message|label|placeholder)\s*[:=]\"\n r\"|(?:stageToast|noticeMessage|toast|alert|confirm)\s*\(",
+        r"(?:textContent|innerHTML|aria-label|data-tip(?:-body)?|title|message|label|placeholder)\s*[:=]"
+        r"|(?:stageToast|noticeMessage|toast|alert|confirm)\s*\(",
         before,
         re.IGNORECASE,
     ):
@@ -296,14 +299,22 @@ def _retired_control_findings() -> list[str]:
 
 def _scheduled_board_rereads(source: str) -> list[str]:
     callback_reads = re.compile(
-        r"\bset(?:Interval|Timeout)\s*\(\s*(?:\"\n r\"(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>\s*(?:\{[^}]*?|[^,)]*?)\"\n r\"(?:loadBoard|readBoard|/api/(?:board|capture/refresh)\b)\"\n r\"|function\s*(?:[A-Za-z_$][\w$]*)?\s*\([^)]*\)\s*\{[^}]*?\"\n r\"(?:loadBoard|readBoard|/api/(?:board|capture/refresh)\b)\"\n r\"|(?:loadBoard|readBoard)\s*,\"\n r\")",
+        r"\bset(?:Interval|Timeout)\s*\(\s*(?:"
+        r"(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>\s*(?:\{[^}]*?|[^,)]*?)"
+        r"(?:loadBoard|readBoard|/api/(?:board|capture/refresh)\b)"
+        r"|function\s*(?:[A-Za-z_$][\w$]*)?\s*\([^)]*\)\s*\{[^}]*?"
+        r"(?:loadBoard|readBoard|/api/(?:board|capture/refresh)\b)"
+        r"|(?:loadBoard|readBoard)\s*,"
+        r")",
         re.DOTALL,
     )
     findings = [match.group(0) for match in callback_reads.finditer(source)]
     named_callbacks = {
         match.group(1)
         for match in re.finditer(
-            r"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*\"\n r\"(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>\s*[^;]*?\"\n r\"(?:loadBoard|readBoard|/api/(?:board|capture/refresh)\b)",
+            r"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*"
+            r"(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>\s*[^;]*?"
+            r"(?:loadBoard|readBoard|/api/(?:board|capture/refresh)\b)",
             source,
             re.DOTALL,
         )
@@ -342,7 +353,7 @@ def test_header_reload_removed_without_leaving_startup_listener() -> None:
 def test_user_visible_copy_does_not_name_an_absent_control() -> None:
     """Injection: reintroduce `Refresh board` in a rendered client string.
 
- Silent failure: a player is directed to a removed refresh/capture/staleness control.
+    Silent failure: a player is directed to a removed refresh/capture/staleness control.
     """
     assert not _retired_control_findings()
     source = (STATIC / "index.html").read_text(encoding="utf-8")
@@ -366,8 +377,8 @@ def test_user_visible_copy_does_not_name_an_absent_control() -> None:
 def test_removed_control_ids_have_no_bound_event_listeners() -> None:
     """Injection: bind a click listener directly to a retired control id.
 
- Silent failure: a reverted listener still targets an element that R-111 removed,
- so the handler can never be reached by the live page.
+    Silent failure: a reverted listener still targets an element that R-111 removed,
+    so the handler can never be reached by the live page.
     """
     assert not _removed_control_listener_findings()
     source = read_entry_source()
@@ -384,9 +395,9 @@ def test_removed_control_ids_have_no_bound_event_listeners() -> None:
 def test_board_client_has_no_automatic_board_reread_scheduler() -> None:
     """Injection: schedule `loadBoard()` or a board/capture endpoint from a timer.
 
- Silent failure: the board silently re-reads itself on a timer and violates the explicit-refresh model.
- This scope deliberately permits spinner timers, capture-status polling, tooltip timers, and header/UI ticks;
- only a timer that schedules a board read or capture refresh is a forbidden scheduler.
+    Silent failure: the board silently re-reads itself on a timer and violates the explicit-refresh model.
+    This scope deliberately permits spinner timers, capture-status polling, tooltip timers, and header/UI ticks;
+    only a timer that schedules a board read or capture refresh is a forbidden scheduler.
     """
     source = (STATIC / "board.js").read_text(encoding="utf-8")
     assert not _scheduled_board_rereads(source)
@@ -405,49 +416,49 @@ def test_board_client_has_no_automatic_board_reread_scheduler() -> None:
 def test_age_and_staleness_never_reach_the_screen_even_when_supplied() -> None:
     """Injection: render `BOARD.age_seconds` or `BOARD.stale` into the age element.
 
- Silent failure: an age, STALE marker, or age-driven class appears despite the simplified board contract.
+    Silent failure: an age, STALE marker, or age-driven class appears despite the simplified board contract.
 
- Uses `entry=STATIC / "table.js"` rather than the default `ENTRY` (app.js): commit
- 42404f32 (v0.9.552) added regional-dec.js's own local, non-exported `function
- render(force = false)` (a Regional DEC drawer), and vm_context.py's flattener hoists
- same-named function declarations from every module into one shared scope (Annex B),
- so app.js's whole graph silently resolves the bare global `render` to that DIFFERENT
- function -- this guard's `render(false)` call was calling the wrong function entirely
- and could never catch anything. Scoping to table.js's own (smaller) import graph keeps
- the one `render` this guard needs -- table.js's board render pipeline -- reachable
- without the name collision.
+    Uses `entry=STATIC / "table.js"` rather than the default `ENTRY` (app.js): commit
+    42404f32 (v0.9.552) added regional-dec.js's own local, non-exported `function
+    render(force = false)` (a Regional DEC drawer), and vm_context.py's flattener hoists
+    same-named function declarations from every module into one shared scope (Annex B),
+    so app.js's whole graph silently resolves the bare global `render` to that DIFFERENT
+    function -- this guard's `render(false)` call was calling the wrong function entirely
+    and could never catch anything. Scoping to table.js's own (smaller) import graph keeps
+    the one `render` this guard needs -- table.js's board render pipeline -- reachable
+    without the name collision.
     """
     body = r"""
 document.documentElement.classList = { contains: () => false };
 const rendered = [];
 const tracked = () => {
- let text = '', html = '', className = '';
- return {
- get textContent() { return text; }, set textContent(value) { text = String(value); rendered.push(text); },
- get innerHTML() { return html; }, set innerHTML(value) { html = String(value); rendered.push(html); },
- get className() { return className; }, set className(value) { className = String(value); rendered.push(className); },
- hidden: false, setAttribute() {}, removeAttribute() {}, getAttribute() { return null; },
- };
+  let text = '', html = '', className = '';
+  return {
+    get textContent() { return text; }, set textContent(value) { text = String(value); rendered.push(text); },
+    get innerHTML() { return html; }, set innerHTML(value) { html = String(value); rendered.push(html); },
+    get className() { return className; }, set className(value) { className = String(value); rendered.push(className); },
+    hidden: false, setAttribute() {}, removeAttribute() {}, getAttribute() { return null; },
+  };
 };
 const age = tracked();
 const makeElement = () => {
- const element = tracked();
- return Object.assign(element, {value: '', checked: false, hidden: false, scrollLeft: 0,
- style: {}, options: [], firstChild: null,
- classList: {add() {}, remove() {}, toggle() {}, contains() { return false; }},
- appendChild() {}, insertBefore() {}, removeChild() {}, replaceChildren() {}, remove() {},
- querySelector() { return null; }, querySelectorAll() { return []; },
- getBoundingClientRect() { return {top: 0, bottom: 0, height: 0}; }});
+  const element = tracked();
+  return Object.assign(element, {value: '', checked: false, hidden: false, scrollLeft: 0,
+    style: {}, options: [], firstChild: null,
+    classList: {add() {}, remove() {}, toggle() {}, contains() { return false; }},
+    appendChild() {}, insertBefore() {}, removeChild() {}, replaceChildren() {}, remove() {},
+    querySelector() { return null; }, querySelectorAll() { return []; },
+    getBoundingClientRect() { return {top: 0, bottom: 0, height: 0}; }});
 };
 document.getElementById = (id) => id === 'capture-age' ? age : makeElement();
 fetch = async () => ({ok: true, json: async () => ({cards: []})});
 BOARD = {
- age_seconds: 7200,
- stale: true,
- coverage: {retrieved: 5, expected: 5},
- plots: [],
- notices: [],
- totals: {base_pp: 10, harvest_pp: 20, dec_needed: 1, plots_idle: 0, plots: 1},
+  age_seconds: 7200,
+  stale: true,
+  coverage: {retrieved: 5, expected: 5},
+  plots: [],
+  notices: [],
+  totals: {base_pp: 10, harvest_pp: 20, dec_needed: 1, plots_idle: 0, plots: 1},
 };
 render(false);
 if (rendered.some((value) => /\bage\b|capture:|\bstale\b|STALE/i.test(value))) throw new Error('age/staleness reached a rendered element');
@@ -517,7 +528,7 @@ def _synthetic_report(
 def test_unpowered_worker_badge_follows_bulk_power_pair(worker_count: int, powered_worker_count: int, runi: bool, expected: bool) -> None:
     """Injection: subtract the Runi or invert the bulk-pair comparison.
 
- Silent failure: a filled worker deficit is hidden, or a fully powered plot is falsely marked unpowered.
+    Silent failure: a filled worker deficit is hidden, or a fully powered plot is falsely marked unpowered.
     """
     row = project_board(
         _synthetic_report(worker_count, powered_worker_count, runi=runi),
@@ -527,19 +538,19 @@ def test_unpowered_worker_badge_follows_bulk_power_pair(worker_count: int, power
 
 
 def test_unpowered_worker_badge_counts_a_staked_runi_in_both_bulk_halves() -> None:
-    """(maintainer ruling 2026-09-15, gate): a worksite's powered-slot
- count is no longer read off the bulk `powered_worker_count` pair at all -- it is
- derived structurally from `is_power_core_staked`/`is_energized`/`is_runi_staked`
- (a power core staked always powers all 5 regular slots; per his words "a Runi
- without a Power Core deactivates the 5th slot"). A power-core-staked 5/4 pair is
- therefore genuinely fully powered now (this guard's old 5/4-with-power-core
- fixture no longer represents a deficit), so the guard moved to the scenario 
- actually describes: a Runi WITHOUT a Power Core only powers 4 of 5 regular slots.
+    """/ (maintainer ruling 2026-09-15,  gate): a worksite's powered-slot
+    count is no longer read off the bulk `powered_worker_count` pair at all -- it is
+    derived structurally from `is_power_core_staked`/`is_energized`/`is_runi_staked`
+    (a power core staked always powers all 5 regular slots; per his words "a Runi
+    without a Power Core deactivates the 5th slot"). A power-core-staked 5/4 pair is
+    therefore genuinely fully powered now (this guard's old 5/4-with-power-core
+    fixture no longer represents a deficit), so the guard moved to the scenario 
+    actually describes: a Runi WITHOUT a Power Core only powers 4 of 5 regular slots.
 
- Injection: make `powered_worker_slots()` treat a Runi-only plot as fully powered.
+    Injection: make `powered_worker_slots()` treat a Runi-only plot as fully powered.
 
- Silent failure: a Runi-only-powered worksite with all 5 regular slots staked is
- misread as fully powered and loses its 5th-slot warning.
+    Silent failure: a Runi-only-powered worksite with all 5 regular slots staked is
+    misread as fully powered and loses its 5th-slot warning.
     """
     report = _synthetic_report(6, 4, runi=True, power_core=False, include_worker_rows=False)
     row = project_board(report, build_details_by_id())["plots"][0]
@@ -553,7 +564,7 @@ def test_unpowered_worker_badge_counts_a_staked_runi_in_both_bulk_halves() -> No
 def test_i296_all_powered_workers_do_not_become_unpowered_from_zero_capacity() -> None:
     """Injection: compare worker capacity or plot `is_powered` instead of the bulk worker pair.
 
- Silent failure: the I-296 counter-example gets a false warning even though all five workers are powered and harvesting.
+    Silent failure: the I-296 counter-example gets a false warning even though all five workers are powered and harvesting.
     """
     report = _synthetic_report(5, 5, deed_uid="I-296-b0dbc1ebc5ef75")
     plot = report["plots"][0]
@@ -591,7 +602,7 @@ def _request(config: CeresConfig) -> SimpleNamespace:
 def test_pre_sign_combine_staleness_gate_still_refuses_old_board(tmp_path, monkeypatch) -> None:
     """Injection: remove the `combine_verified_at` freshness gate from `_preview`.
 
- Silent failure: a survivor can be staged from a board read older than its combine, creating a stale transaction preview.
+    Silent failure: a survivor can be staged from a board read older than its combine, creating a stale transaction preview.
     """
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     stale = _combine_report("2026-08-29T00:59:59Z")
@@ -610,7 +621,7 @@ def test_pre_sign_combine_staleness_gate_still_refuses_old_board(tmp_path, monke
 def test_combine_verification_performs_the_post_combine_collection_read(tmp_path, monkeypatch) -> None:
     """Injection: remove the live collection fetch supplied to `CardVerificationSpec`.
 
- Silent failure: a successful combine cannot verify against post-combine collection state and restaking remains blocked until manual reload.
+    Silent failure: a successful combine cannot verify against post-combine collection state and restaking remains blocked until manual reload.
     """
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     reads: list[str] = []
@@ -656,21 +667,21 @@ def test_combine_verification_performs_the_post_combine_collection_read(tmp_path
 def test_no_age_renderer_or_stale_marker_is_left_in_visible_client_copy() -> None:
     """Injection: restore an age/STALE rendering literal in any client module.
 
- Silent failure: source review misses a user-visible age or staleness marker because only a checklist was updated.
+    Silent failure: source review misses a user-visible age or staleness marker because only a checklist was updated.
 
- Scans each real `ceres/static/*.js` file's own source rather than
- `read_entry_source()`'s flattened whole-graph text: that flattener concatenates every
- module's scoped source plus its own generated `Object.defineProperties(globalThis,
- {...})` glue (see vm_context.py), and `_iter_js_literals`'s single-pass quote-matching
- loses sync across a module boundary in that generated text -- it was captured
- mid-descriptor (`"stagedWorkersForPlot"`'s own closing quote misread as an opening
- one) and swallowed hundreds of unrelated lines, including table.js's own `// ... a
- stale\n// hardcoded constant ...` comment, as one giant fake "visible string". That
- comment was never client copy to begin with. Per-file scanning is both correct (no
- generated glue in the input) and simpler, and still catches a genuine reintroduced
- literal in any one module (`transaction-queue.js`'s own unrelated "stale" use, per
- /, is the one real match and is exempted the same way the sibling
- retired-control guard exempts it).
+    Scans each real `ceres/static/*.js` file's own source rather than
+    `read_entry_source()`'s flattened whole-graph text: that flattener concatenates every
+    module's scoped source plus its own generated `Object.defineProperties(globalThis,
+    {...})` glue (see vm_context.py), and `_iter_js_literals`'s single-pass quote-matching
+    loses sync across a module boundary in that generated text -- it was captured
+    mid-descriptor (`"stagedWorkersForPlot"`'s own closing quote misread as an opening
+    one) and swallowed hundreds of unrelated lines, including table.js's own `// ... a
+    stale\n// hardcoded constant ...` comment, as one giant fake "visible string". That
+    comment was never client copy to begin with. Per-file scanning is both correct (no
+    generated glue in the input) and simpler, and still catches a genuine reintroduced
+    literal in any one module (`transaction-queue.js`'s own unrelated "stale" use, per
+    /, is the one real match and is exempted the same way the sibling
+    retired-control guard exempts it).
     """
     findings = []
     for path in sorted(STATIC.glob("*.js")):

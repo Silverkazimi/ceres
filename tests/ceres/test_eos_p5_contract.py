@@ -97,7 +97,7 @@ def test_eos_p5_first_paint_scene_and_empty_frame_guard() -> None:
     assert "function renderEmptyEditorFrame" in EDITOR_SOURCE
     assert "data-eos-detail-scaffold" in EDITOR_SOURCE
     assert "editor-band[data-eos-detail-scaffold]" in (STATIC / "picker-actions.js").read_text(encoding="utf-8")
-    empty_frame = _function_body(EDITOR_SOURCE, "function renderEmptyEditorFrame", "Renders the `.editor-facts`")
+    empty_frame = _function_body(EDITOR_SOURCE, "function renderEmptyEditorFrame", "// Renders the `.editor-facts`")
     assert "data-reveal-group" not in empty_frame and "data-slot-action" not in empty_frame
     assert "data-eos-permanent-frame" in EDITOR_SOURCE
     assert "requestAnimationFrame(() => requestAnimationFrame(() => {" in EOS_SOURCE
@@ -190,11 +190,11 @@ def test_eos_p5_mutation_guards() -> None:
 def test_eos_p5_vm_reveal_selector_excludes_permanent_frames() -> None:
     run_in_module_context(r"""
       const semantic = {};
- const permanent = {};
- const frame = { querySelectorAll(selector) {
- if (selector !== '[data-reveal-group]:not([data-eos-permanent-frame])') throw new Error(selector);
- return [semantic];
- }};
- const nodes = revealNodes(frame);
- if (nodes.length !== 1 || nodes[0] !== semantic || nodes.includes(permanent)) throw new Error('R-161 reveal scope');
+      const permanent = {};
+      const frame = { querySelectorAll(selector) {
+        if (selector !== '[data-reveal-group]:not([data-eos-permanent-frame])') throw new Error(selector);
+        return [semantic];
+      }};
+      const nodes = revealNodes(frame);
+      if (nodes.length !== 1 || nodes[0] !== semantic || nodes.includes(permanent)) throw new Error('R-161 reveal scope');
     """, entry=STATIC / "eos.js")

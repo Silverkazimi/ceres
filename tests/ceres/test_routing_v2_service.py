@@ -1,4 +1,4 @@
-"""Offline run-service guards. No wallet, broadcast or live endpoint is used."""
+"""Offline  run-service guards. No wallet, broadcast or live endpoint is used."""
 
 import json
 import time
@@ -172,7 +172,7 @@ def test_a_huge_plan_packs_without_recursion_or_delay():
 
 
 def test_an_earlier_run_never_blocks_a_new_preview_and_is_deleted(tmp_path):
-    """any earlier run (unsent, claimed, checking) is retired when the account creates another; it never blocks."""
+    """: any earlier run (unsent, claimed, checking) is retired when the account creates another; it never blocks."""
     player = "fixtureowner"
     with runs.locked(tmp_path, player) as folder:
         first = _preview(player)

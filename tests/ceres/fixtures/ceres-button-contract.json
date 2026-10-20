@@ -58,7 +58,7 @@
       "treatment": "P",
       "density": "header",
       "status": "legacy",
-      "approval": "A1; / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "approval": "A1;  /  D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
       "variant": "glass"
     },
     {
@@ -71,7 +71,7 @@
       "treatment": "P",
       "density": "header",
       "status": "legacy",
-      "approval": "A1; / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "approval": "A1;  /  D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
       "variant": "glass"
     },
     {
@@ -84,7 +84,7 @@
       "treatment": "P",
       "density": "header",
       "status": "legacy",
-      "approval": "A1; / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "approval": "A1;  /  D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
       "variant": "glass"
     },
     {
@@ -97,7 +97,7 @@
       "treatment": "P",
       "density": "header",
       "status": "legacy",
-      "approval": "A1; / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "approval": "A1;  /  D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
       "variant": "glass"
     },
     {
@@ -1321,7 +1321,7 @@
       "treatment": "P",
       "density": "comfortable",
       "status": "approved",
-      "approval": "v0.11.14 (maintainer: answered yes to a clear Continue to harvest button on the pre-harvest routing screen)"
+      "approval": "v0.11.14  (maintainer: answered yes to a clear Continue to harvest button on the pre-harvest routing screen)"
     },
     {
       "id": "header-account-menu",
@@ -1333,20 +1333,20 @@
       "treatment": "P",
       "density": "header",
       "status": "approved",
-      "approval": "v0.13.4 (maintainer: the login menu in the glass wallet design, our button styling, the selected wallet logo, both buttons side by side); / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "approval": "v0.13.4  (maintainer: the login menu in the glass wallet design, our button styling, the selected wallet logo, both buttons side by side);  /  D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
       "variant": "glass"
     },
     {
-      "id": "account-menu-player0013",
-      "selector": "#account-menu [data-account=\"player0013\"]",
-      "action": "data-account=player0013",
+      "id": "account-menu-player0014",
+      "selector": "#account-menu [data-account=\"player0014\"]",
+      "action": "data-account=player0014",
       "renderer": "account-menu.js",
       "surface": "account-menu",
       "group": "account-menu-actions",
       "treatment": "P",
       "density": "comfortable",
       "status": "approved",
-      "approval": "v0.13.4 (maintainer: the login menu in the glass wallet design, our button styling, the selected wallet logo, both buttons side by side)"
+      "approval": "v0.13.4  (maintainer: the login menu in the glass wallet design, our button styling, the selected wallet logo, both buttons side by side)"
     },
     {
       "id": "account-menu-signout",
@@ -1358,7 +1358,7 @@
       "treatment": "S",
       "density": "comfortable",
       "status": "approved",
-      "approval": "v0.13.4 (maintainer: the login menu in the glass wallet design, our button styling, the selected wallet logo, both buttons side by side)"
+      "approval": "v0.13.4  (maintainer: the login menu in the glass wallet design, our button styling, the selected wallet logo, both buttons side by side)"
     },
     {
       "id": "account-menu-delete-space",
@@ -1371,7 +1371,7 @@
       "case": "destructive",
       "density": "comfortable",
       "status": "approved",
-      "approval": "v0.16.0 (maintainer: delete-my-data with a wallet check; exact placement awaits the maintainer's review)"
+      "approval": "v0.16.0  (maintainer: delete-my-data with a wallet check; exact placement awaits the maintainer's review)"
     },
     {
       "id": "account-menu-delete-cache",
@@ -1384,7 +1384,7 @@
       "case": "destructive",
       "density": "comfortable",
       "status": "approved",
-      "approval": "v0.16.0 (maintainer: delete-my-data with a wallet check; exact placement awaits the maintainer's review)"
+      "approval": "v0.16.0  (maintainer: delete-my-data with a wallet check; exact placement awaits the maintainer's review)"
     },
     {
       "id": "account-menu-delete-confirm",
@@ -1397,7 +1397,7 @@
       "case": "destructive",
       "density": "comfortable",
       "status": "approved",
-      "approval": "v0.16.0 (maintainer: delete-my-data with a wallet check; exact placement awaits the maintainer's review)"
+      "approval": "v0.16.0  (maintainer: delete-my-data with a wallet check; exact placement awaits the maintainer's review)"
     },
     {
       "id": "account-menu-delete-cancel",
@@ -1409,7 +1409,7 @@
       "treatment": "S",
       "density": "comfortable",
       "status": "approved",
-      "approval": "v0.16.0 (maintainer: delete-my-data with a wallet check; exact placement awaits the maintainer's review)"
+      "approval": "v0.16.0  (maintainer: delete-my-data with a wallet check; exact placement awaits the maintainer's review)"
     },
     {
       "id": "upgrade-open",
@@ -1421,7 +1421,7 @@
       "treatment": "S",
       "density": "compact",
       "status": "approved",
-      "approval": "maintainer-approved mock-ups s1/s2/s8/s9"
+      "approval": " maintainer-approved  mock-ups s1/s2/s8/s9"
     },
     {
       "id": "upgrade-level",
@@ -1433,7 +1433,7 @@
       "treatment": "C",
       "density": "compact",
       "status": "approved",
-      "approval": "maintainer-approved mock-ups s1/s2/s8/s9"
+      "approval": " maintainer-approved  mock-ups s1/s2/s8/s9"
     },
     {
       "id": "upgrade-check",
@@ -1445,7 +1445,7 @@
       "treatment": "C",
       "density": "compact",
       "status": "approved",
-      "approval": "maintainer-approved mock-ups s1/s2/s8/s9"
+      "approval": " maintainer-approved  mock-ups s1/s2/s8/s9"
     },
     {
       "id": "upgrade-stage-back",
@@ -1469,7 +1469,7 @@
       "treatment": "P",
       "density": "comfortable",
       "status": "approved",
-      "approval": "maintainer-approved mock-ups s1/s2/s8/s9"
+      "approval": " maintainer-approved  mock-ups s1/s2/s8/s9"
     },
     {
       "id": "upgrade-close",
@@ -1481,7 +1481,7 @@
       "treatment": "S",
       "density": "comfortable",
       "status": "approved",
-      "approval": "maintainer-approved mock-ups s1/s2/s8/s9"
+      "approval": " maintainer-approved  mock-ups s1/s2/s8/s9"
     },
     {
       "id": "upgrade-plan-actions",
@@ -1493,7 +1493,7 @@
       "treatment": "S",
       "density": "compact",
       "status": "approved",
-      "approval": "maintainer-approved mock-ups s1/s2/s8/s9; approved s6/s10 and mismatch/Finish rules"
+      "approval": " maintainer-approved  mock-ups s1/s2/s8/s9;  approved s6/s10 and mismatch/Finish rules"
     },
     {
       "id": "upgrade-cancel-choice",
@@ -1505,19 +1505,19 @@
       "treatment": "S",
       "density": "comfortable",
       "status": "approved",
-      "approval": "maintainer-approved mock-ups s1/s2/s8/s9"
+      "approval": " maintainer-approved  mock-ups s1/s2/s8/s9"
     },
     {
       "id": "account-wallet-choice",
       "selector": "[data-account-wallet]",
-      "action": "choose-player0013-wallet",
+      "action": "choose-player0014-wallet",
       "renderer": "account-menu.js",
       "surface": "account-menu",
       "group": "account-menu-actions",
       "treatment": "C",
       "density": "comfortable",
       "status": "approved",
-      "approval": "existing master control; baseline reconciliation during"
+      "approval": " existing master control; baseline reconciliation during "
     },
     {
       "id": "upgrade-sign-warning",
@@ -1529,7 +1529,7 @@
       "treatment": "S",
       "density": "comfortable",
       "status": "approved",
-      "approval": "maintainer-approved s10 warning"
+      "approval": "  maintainer-approved s10 warning"
     },
     {
       "id": "header-page-switch",
@@ -1542,7 +1542,7 @@
       "density": "header",
       "variant": "glass",
       "status": "migrated",
-      "approval": "(maintainer: switcher, last on both views, glass, SVG icons); D-2 glass = tint + light edge, D-3 accent not gold"
+      "approval": " (maintainer: switcher, last on both views, glass, SVG icons);  D-2 glass = tint + light edge, D-3 accent not gold"
     },
     {
       "id": "cards-player-go",
@@ -1554,7 +1554,7 @@
       "treatment": "P",
       "density": "header",
       "status": "migrated",
-      "approval": "card browser MVP (new; awaiting the maintainer's review); / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "approval": " card browser MVP (new; awaiting the maintainer's review);  /  D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
       "variant": "glass"
     },
     {
@@ -1567,7 +1567,7 @@
       "treatment": "C",
       "density": "compact",
       "status": "migrated",
-      "approval": "card browser MVP (new; awaiting the maintainer's review)"
+      "approval": " card browser MVP (new; awaiting the maintainer's review)"
     },
     {
       "id": "cards-clear-filters",
@@ -1579,7 +1579,7 @@
       "treatment": "S",
       "density": "compact",
       "status": "migrated",
-      "approval": "card browser MVP (new; awaiting the maintainer's review)"
+      "approval": " card browser MVP (new; awaiting the maintainer's review)"
     },
     {
       "id": "cards-mode-switch",
@@ -1591,7 +1591,7 @@
       "treatment": "C",
       "density": "header",
       "status": "migrated",
-      "approval": "card market (new; awaiting the maintainer's review); Find combinables moved to the filter row; / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "approval": " card market (new; awaiting the maintainer's review);  Find combinables moved to the filter row;  /  D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
       "variant": "glass"
     },
     {
@@ -1604,7 +1604,7 @@
       "treatment": "P",
       "density": "header",
       "status": "migrated",
-      "approval": "card menu and cart (new; awaiting the maintainer's review); / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "approval": " card menu and cart (new; awaiting the maintainer's review);  /  D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
       "variant": "glass"
     },
     {
@@ -1617,7 +1617,7 @@
       "treatment": "P",
       "density": "compact",
       "status": "migrated",
-      "approval": "Find combinables (new; awaiting the maintainer's review)"
+      "approval": " Find combinables (new; awaiting the maintainer's review)"
     },
     {
       "id": "cards-combinables-secondary",
@@ -1629,7 +1629,7 @@
       "treatment": "S",
       "density": "compact",
       "status": "migrated",
-      "approval": "Find combinables (new; awaiting the maintainer's review); Remove from cart in the destructive treatment",
+      "approval": " Find combinables (new; awaiting the maintainer's review); Remove from cart in the destructive treatment",
       "case_by_action": {
         "uncart": "destructive"
       }
@@ -1644,7 +1644,7 @@
       "treatment": "C",
       "density": "compact",
       "status": "migrated",
-      "approval": "Find combinables (new; awaiting the maintainer's review)"
+      "approval": " Find combinables (new; awaiting the maintainer's review)"
     },
     {
       "id": "cards-wallet-open",
@@ -1656,7 +1656,7 @@
       "treatment": "P",
       "density": "header",
       "status": "migrated",
-      "approval": "phone-only icon header button; the desktop opens the board's edge slide-out (new; awaiting the maintainer's review); / D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
+      "approval": " -- phone-only icon header button; the desktop opens the board's edge slide-out (new; awaiting the maintainer's review);  /  D-2: header buttons are glass (buttons.css .ceres-btn--glass, by header context)",
       "variant": "glass"
     },
     {
@@ -1669,7 +1669,7 @@
       "treatment": "S",
       "density": "compact",
       "status": "migrated",
-      "approval": "one-click maxed card (new; awaiting the maintainer's review); primary comfortable in the card menu; : \"Remove from cart\" in the destructive treatment once added",
+      "approval": " one-click maxed card (new; awaiting the maintainer's review); primary comfortable in the card menu; : \"Remove from cart\" in the destructive treatment once added",
       "case_by_action": {
         "remove-max": "destructive"
       }
@@ -1689,7 +1689,7 @@
         "remove-item": "destructive"
       },
       "status": "migrated",
-      "approval": "card menu and cart (new; awaiting the maintainer's review)"
+      "approval": " card menu and cart (new; awaiting the maintainer's review)"
     },
     {
       "id": "market-dialog-close",
@@ -1701,7 +1701,7 @@
       "treatment": "S",
       "density": "comfortable",
       "status": "migrated",
-      "approval": "card menu and cart (new; awaiting the maintainer's review)"
+      "approval": " card menu and cart (new; awaiting the maintainer's review)"
     },
     {
       "id": "market-cart-footer",
@@ -1716,7 +1716,7 @@
         "clear-cart": "destructive"
       },
       "status": "migrated",
-      "approval": "card menu and cart (new; awaiting the maintainer's review)"
+      "approval": " card menu and cart (new; awaiting the maintainer's review)"
     },
     {
       "id": "market-checkout",
@@ -1728,7 +1728,7 @@
       "treatment": "P",
       "density": "comfortable",
       "status": "migrated",
-      "approval": "maintainer decision \"Buy from Ceres\": enabled while the cart has listings (new; awaiting the maintainer's review)"
+      "approval": " maintainer decision \"Buy from Ceres\": enabled while the cart has listings (new; awaiting the maintainer's review)"
     },
     {
       "id": "checkout-currency",
@@ -1740,7 +1740,7 @@
       "treatment": "C",
       "density": "comfortable",
       "status": "migrated",
-      "approval": "maintainer: currency asked at checkout, none preselected (new; awaiting the maintainer's review)"
+      "approval": " /  maintainer: currency asked at checkout, none preselected (new; awaiting the maintainer's review)"
     },
     {
       "id": "checkout-footer",
@@ -1752,7 +1752,7 @@
       "treatment": "P",
       "density": "comfortable",
       "status": "migrated",
-      "approval": "checkout: primary Continue / Buy now / Done / Try again bottom-right, secondary Close / Back / Check again (new; awaiting the maintainer's review)"
+      "approval": " checkout: primary Continue / Buy now / Done / Try again bottom-right, secondary Close / Back / Check again (new; awaiting the maintainer's review)"
     },
     {
       "id": "checkout-dialog-close",
@@ -1764,7 +1764,7 @@
       "treatment": "S",
       "density": "comfortable",
       "status": "migrated",
-      "approval": "checkout dialog, the cart dialog's close (new; awaiting the maintainer's review)"
+      "approval": " checkout dialog, the cart dialog's close (new; awaiting the maintainer's review)"
     },
     {
       "id": "checkout-test-buy",
@@ -1776,7 +1776,7 @@
       "treatment": "S",
       "density": "compact",
       "status": "migrated",
-      "approval": "maintainer test buy: maintainer account on the local build only (new; awaiting the maintainer's review)"
+      "approval": " maintainer test buy: maintainer account on the local build only (new; awaiting the maintainer's review)"
     },
     {
       "id": "cart-buy-max",
@@ -1788,7 +1788,7 @@
       "treatment": "P",
       "density": "compact",
       "status": "migrated",
-      "approval": "(new; awaiting the maintainer's review)"
+      "approval": " (new; awaiting the maintainer's review)"
     },
     {
       "id": "checkout-combine",
@@ -1800,7 +1800,7 @@
       "treatment": "P",
       "density": "comfortable",
       "status": "migrated",
-      "approval": "Buy & max: primary \"Sign the combine\", secondary Not now / Try again / Check again / Find combinables (new; awaiting the maintainer's review)"
+      "approval": " Buy & max: primary \"Sign the combine\", secondary Not now / Try again / Check again / Find combinables (new; awaiting the maintainer's review)"
     },
     {
       "id": "market-load-more",
@@ -1812,7 +1812,7 @@
       "treatment": "S",
       "density": "comfortable",
       "status": "migrated",
-      "approval": "(new; awaiting the maintainer's review)"
+      "approval": " (new; awaiting the maintainer's review)"
     },
     {
       "id": "market-bundle-buttons",
@@ -1827,7 +1827,7 @@
         "remove-group": "destructive"
       },
       "status": "migrated",
-      "approval": "(new; awaiting the maintainer's review); -- shared choice treatment, in cart = pressed in the ok colour"
+      "approval": " (new; awaiting the maintainer's review);  -- shared choice treatment, in cart = pressed in the ok colour"
     },
     {
       "id": "cards-maxed-filter",
@@ -1839,7 +1839,7 @@
       "treatment": "C",
       "density": "compact",
       "status": "migrated",
-      "approval": "Maxed filter (new; awaiting the maintainer's review)"
+      "approval": " Maxed filter (new; awaiting the maintainer's review)"
     },
     {
       "id": "cards-combinables-mode",
@@ -1851,7 +1851,7 @@
       "treatment": "C",
       "density": "compact",
       "status": "migrated",
-      "approval": "the Maxed pill's treatment, a view of My cards (new; awaiting the maintainer's review)"
+      "approval": " -- the Maxed pill's treatment, a view of My cards (new; awaiting the maintainer's review)"
     },
     {
       "id": "cards-purchases-mode",
@@ -1863,7 +1863,7 @@
       "treatment": "C",
       "density": "compact",
       "status": "migrated",
-      "approval": "My purchases, same entry treatment as Find combinables"
+      "approval": " My purchases, same entry treatment as Find combinables"
     },
     {
       "id": "cards-purchases-load",
@@ -1875,7 +1875,7 @@
       "treatment": "P",
       "density": "compact",
       "status": "migrated",
-      "approval": "maintainer pressed history read"
+      "approval": " maintainer pressed history read"
     },
     {
       "id": "cards-purchases-window",
@@ -1887,7 +1887,7 @@
       "treatment": "C",
       "density": "compact",
       "status": "migrated",
-      "approval": "purchase window choices"
+      "approval": " purchase window choices"
     },
     {
       "id": "cards-purchases-sort",
@@ -1899,7 +1899,7 @@
       "treatment": "C",
       "density": "dense",
       "status": "migrated",
-      "approval": "purchase sorting choices"
+      "approval": " purchase sorting choices"
     },
     {
       "id": "changes-plan-disclosures",
@@ -1911,7 +1911,7 @@
       "treatment": "C",
       "density": "dense",
       "status": "approved",
-      "approval": "DQ-11 maintainer verdict: Improve as proposed"
+      "approval": "  DQ-11 maintainer verdict: Improve as proposed"
     }
   ],
   "legacy_allowlist": [
@@ -1992,7 +1992,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 wallet/flag chip sizes — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  wallet/flag chip sizes — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": "html:not(.ceres-lw-le-1279) #wallet-picker :is(.edge-toggle, .edge-opt) img",
@@ -2004,7 +2004,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 wallet/flag chip sizes — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  wallet/flag chip sizes — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".start-form .start-input, .start-form .start-go",
@@ -2017,10 +2017,10 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 shared input on the start page — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  shared input on the start page — maintainer-requested, shipped and checked on the rig"
     },
     {
-      "selector": "is(.checkout-panel, [role=\"dialog\"]) button:not(.ceres-btn):not(:disabled):not(.ch-link, .ch-plot-badge)",
+      "selector": ":is(.checkout-panel, [role=\"dialog\"]) button:not(.ceres-btn):not(:disabled):not(.ch-link, .ch-plot-badge)",
       "properties": [
         "transition"
       ],
@@ -2031,7 +2031,7 @@
       "placeholder": true
     },
     {
-      "selector": "is(.checkout-panel, [role=\"dialog\"]) button:not(.ceres-btn):not(.candidate-grid-select):not(:disabled):not(.ch-link, .ch-plot-badge):hover",
+      "selector": ":is(.checkout-panel, [role=\"dialog\"]) button:not(.ceres-btn):not(.candidate-grid-select):not(:disabled):not(.ch-link, .ch-plot-badge):hover",
       "properties": [
         "box-shadow",
         "filter",
@@ -2044,7 +2044,7 @@
       "placeholder": true
     },
     {
-      "selector": "is(.checkout-panel, [role=\"dialog\"]) button:not(.ceres-btn):not(:disabled):not(.ch-link, .ch-plot-badge):active",
+      "selector": ":is(.checkout-panel, [role=\"dialog\"]) button:not(.ceres-btn):not(:disabled):not(.ch-link, .ch-plot-badge):active",
       "properties": [
         "box-shadow",
         "filter",
@@ -2189,7 +2189,7 @@
       "expiry_phase": 5
     },
     {
-      "selector": "is(.fill-panel, .changes-panel) .fp-tiles .slot-tile.is-empty:hover",
+      "selector": ":is(.fill-panel, .changes-panel) .fp-tiles .slot-tile.is-empty:hover",
       "properties": [
         "border-color"
       ],
@@ -2199,7 +2199,7 @@
       "expiry_phase": "E2"
     },
     {
-      "selector": "is(.fill-panel, .changes-panel) .fp-slot > .slot-tile, :is(.fill-panel, .changes-panel) .fp-slot > .slot-power-satellite .power-satellite",
+      "selector": ":is(.fill-panel, .changes-panel) .fp-slot > .slot-tile, :is(.fill-panel, .changes-panel) .fp-slot > .slot-power-satellite .power-satellite",
       "properties": [
         "cursor"
       ],
@@ -2209,7 +2209,7 @@
       "expiry_phase": "E2"
     },
     {
-      "selector": "is(.fill-panel, .changes-panel) .fp-slot.is-fp-excluded > .slot-tile",
+      "selector": ":is(.fill-panel, .changes-panel) .fp-slot.is-fp-excluded > .slot-tile",
       "properties": [
         "border-style",
         "filter",
@@ -2221,7 +2221,7 @@
       "expiry_phase": "E2"
     },
     {
-      "selector": "is(.fill-panel, .changes-panel) .fp-slot.is-fp-excluded > .slot-power-satellite .power-satellite",
+      "selector": ":is(.fill-panel, .changes-panel) .fp-slot.is-fp-excluded > .slot-power-satellite .power-satellite",
       "properties": [
         "filter",
         "opacity"
@@ -2301,7 +2301,7 @@
       "expiry_phase": 3
     },
     {
-      "selector": "is(.checkout-panel, [role=\"dialog\"]) button:not(.ceres-btn):not(:disabled)",
+      "selector": ":is(.checkout-panel, [role=\"dialog\"]) button:not(.ceres-btn):not(:disabled)",
       "properties": [
         "transition"
       ],
@@ -2314,7 +2314,7 @@
       "placeholder": true
     },
     {
-      "selector": "is(.checkout-panel, [role=\"dialog\"]) button:not(.ceres-btn):not(:disabled):is(:hover, :active)",
+      "selector": ":is(.checkout-panel, [role=\"dialog\"]) button:not(.ceres-btn):not(:disabled):is(:hover, :active)",
       "properties": [
         "transform"
       ],
@@ -2348,7 +2348,7 @@
       "kind": "temporary",
       "expiry_phase": 6,
       "placeholder": true,
-      "reference": "(4b8b5c03)"
+      "reference": " /  (4b8b5c03)"
     },
     {
       "selector": ".badge-filter-opt",
@@ -2366,7 +2366,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 badge status filter tray — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  badge status filter tray — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".badge-filter-opt:hover, .badge-filter-opt:focus-visible, .badge-filter-opt.is-active",
@@ -2377,10 +2377,10 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 badge status filter tray — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  badge status filter tray — maintainer-requested, shipped and checked on the rig"
     },
     {
-      "selector": "is(.badge-bar-head, .badge-filter-opt) .hdr-ic .f",
+      "selector": ":is(.badge-bar-head, .badge-filter-opt) .hdr-ic .f",
       "properties": [
         "fill"
       ],
@@ -2388,10 +2388,10 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 badge status filter tray — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  badge status filter tray — maintainer-requested, shipped and checked on the rig"
     },
     {
-      "selector": "is(.badge-bar-head, .badge-filter-opt) .hdr-ic .d",
+      "selector": ":is(.badge-bar-head, .badge-filter-opt) .hdr-ic .d",
       "properties": [
         "fill",
         "stroke"
@@ -2400,10 +2400,10 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 badge status filter tray — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  badge status filter tray — maintainer-requested, shipped and checked on the rig"
     },
     {
-      "selector": "is(.badge-bar-head, .badge-filter-opt) .hdr-ic .a.h",
+      "selector": ":is(.badge-bar-head, .badge-filter-opt) .hdr-ic .a.h",
       "properties": [
         "fill",
         "stroke"
@@ -2412,10 +2412,10 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 badge status filter tray — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  badge status filter tray — maintainer-requested, shipped and checked on the rig"
     },
     {
-      "selector": "root:not([data-theme]) :is(.badge-bar-head, .badge-filter-opt) .hdr-ic .a.h, [data-theme=\"alchemical\"] :is(.badge-bar-head, .badge-filter-opt) .hdr-ic .a.h",
+      "selector": ":root:not([data-theme]) :is(.badge-bar-head, .badge-filter-opt) .hdr-ic .a.h, [data-theme=\"alchemical\"] :is(.badge-bar-head, .badge-filter-opt) .hdr-ic .a.h",
       "properties": [
         "stroke"
       ],
@@ -2423,7 +2423,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 badge status filter tray — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  badge status filter tray — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".expand-retry-link",
@@ -2453,7 +2453,7 @@
     {
       "kind": "exception",
       "expiry_phase": "E1",
-      "approval": "maintainer chose one column on phones for the combine dialog ()",
+      "approval": " maintainer chose one column on phones for the combine dialog ()",
       "selector": ".slot-hazard-panel.combine-dialog-panel",
       "properties": [
         "max-height",
@@ -4054,7 +4054,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E2",
-      "reference": "v0.9.732"
+      "reference": " / v0.9.732"
     },
     {
       "selector": ".worksite-modal-panel .hm-btn.worksite-modal-stage",
@@ -4142,7 +4142,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 harvest tax row picture — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  harvest tax row picture — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".hm-region.is-tax .hm-rhead",
@@ -4212,7 +4212,7 @@
       "expiry_phase": 3
     },
     {
-      "selector": "root:not([data-theme]) .fill-action .hdr-ic .a.h, [data-theme=\"alchemical\"] .fill-action .hdr-ic .a.h",
+      "selector": ":root:not([data-theme]) .fill-action .hdr-ic .a.h, [data-theme=\"alchemical\"] .fill-action .hdr-ic .a.h",
       "properties": [
         "stroke"
       ],
@@ -4356,7 +4356,7 @@
       "placeholder": true
     },
     {
-      "selector": "is(.editor-band, .mobile-plot-affinity) .terrain-affinity-badge",
+      "selector": ":is(.editor-band, .mobile-plot-affinity) .terrain-affinity-badge",
       "properties": [
         "block-size",
         "inline-size"
@@ -4368,7 +4368,7 @@
       "placeholder": true
     },
     {
-      "selector": "is(.editor-band, .mobile-plot-affinity) .terrain-affinity-badge[data-affinity-state=\"favoured\"]::before",
+      "selector": ":is(.editor-band, .mobile-plot-affinity) .terrain-affinity-badge[data-affinity-state=\"favoured\"]::before",
       "properties": [
         "border-width"
       ],
@@ -4379,7 +4379,7 @@
       "placeholder": true
     },
     {
-      "selector": "is(.editor-band, .mobile-plot-affinity) .terrain-affinity-badge[data-affinity-state=\"penalised\"]::before",
+      "selector": ":is(.editor-band, .mobile-plot-affinity) .terrain-affinity-badge[data-affinity-state=\"penalised\"]::before",
       "properties": [
         "padding"
       ],
@@ -4390,7 +4390,7 @@
       "placeholder": true
     },
     {
-      "selector": "is(.editor-band, .mobile-plot-affinity) .terrain-affinity-badge:is([data-affinity-state=\"unchanged\"], [data-affinity-state=\"unknown\"])::before",
+      "selector": ":is(.editor-band, .mobile-plot-affinity) .terrain-affinity-badge:is([data-affinity-state=\"unchanged\"], [data-affinity-state=\"unknown\"])::before",
       "properties": [
         "border-width"
       ],
@@ -4416,7 +4416,7 @@
       "kind": "temporary",
       "expiry_phase": 6,
       "placeholder": true,
-      "reference": "(f27e217c)"
+      "reference": " /  (f27e217c)"
     },
     {
       "selector": ".editor-band .editor-splinter-affinity .terrain-affinity-badge",
@@ -4428,7 +4428,7 @@
       "kind": "temporary",
       "expiry_phase": 6,
       "placeholder": true,
-      "reference": "(f27e217c)"
+      "reference": " /  (f27e217c)"
     },
     {
       "selector": ".editor-band .editor-splinter-affinity .terrain-affinity-badge[data-affinity-state=\"favoured\"]::before",
@@ -4585,7 +4585,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "approval": "Existing master rule; clean-master guard failure reproduced during"
+      "approval": "Existing master rule; clean-master guard failure reproduced during "
     },
     {
       "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279 .mobile-plot-sheet .slot-tile",
@@ -4627,7 +4627,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "approval": "Existing master rule; clean-master guard failure reproduced during"
+      "approval": "Existing master rule; clean-master guard failure reproduced during "
     },
     {
       "selector": "html.ceres-lw-le-1919.ceres-lw-le-1279.ceres-lw-le-767 #changes-overlay .hm-foot .wallet-sign-pair > .hm-btn",
@@ -4638,7 +4638,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "approval": "Existing master rule; clean-master guard failure reproduced during"
+      "approval": "Existing master rule; clean-master guard failure reproduced during "
     },
     {
       "selector": ".wallet-tab--icon",
@@ -4718,7 +4718,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "approval": "Existing master rule; clean-master guard failure reproduced during"
+      "approval": "Existing master rule; clean-master guard failure reproduced during "
     },
     {
       "selector": ".dec-drawer-content :is(.wallet-card, .dec-region, .dec-review):not(.is-confirmed):not(.is-failed)",
@@ -4729,7 +4729,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "approval": "Existing master rule; clean-master guard failure reproduced during"
+      "approval": "Existing master rule; clean-master guard failure reproduced during "
     },
     {
       "selector": ".wallet-zero-regions > summary",
@@ -4741,7 +4741,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 wallet zero-region disclosure — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  wallet zero-region disclosure — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".hr-field .csel-trigger",
@@ -4958,7 +4958,7 @@
       "kind": "temporary",
       "expiry_phase": 6,
       "placeholder": true,
-      "reference": "v0.9.732"
+      "reference": " / v0.9.732"
     },
     {
       "selector": ".harvest-routing .hr-remove",
@@ -4995,7 +4995,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 disabled duplicate route options — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  disabled duplicate route options — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": "#harvest-modal-overlay .hm-ops",
@@ -5118,7 +5118,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 harvest receipt close control — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  harvest receipt close control — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": "button.r3-route-chip",
@@ -5156,7 +5156,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 routing run flow plaques — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  routing run flow plaques — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".r3-member .ch-plot-badge",
@@ -5168,7 +5168,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 routing run member plaques — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  routing run member plaques — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".r3-window .r3-flow-source .ch-plot-badge",
@@ -5180,7 +5180,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 routing run flow plaques — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  routing run flow plaques — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".r3-edit .csel-trigger, .r3-edit input, .r3-edit strong, .r3-edit > button",
@@ -5192,7 +5192,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".r3-edit .csel-trigger",
@@ -5203,7 +5203,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".r3-edit .csel-value .ch-plot-badge",
@@ -5216,7 +5216,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".r3-edit .csel-value",
@@ -5227,7 +5227,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".r3-edit--lp .csel-wrap, .r3-edit--lp .csel-trigger",
@@ -5240,7 +5240,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".r3-flow-source .ch-plot-badge, .r3-window .r3-flow-source .ch-plot-badge",
@@ -5252,7 +5252,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 routing run flow plaques — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  routing run flow plaques — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".r3-edit .csel-trigger, .r3-edit .ceres-wide-input, .r3-edit > button, .r3-protected-setting .ceres-wide-input",
@@ -5265,7 +5265,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".r3-edit .board-filter-field .ceres-btn.csel-trigger",
@@ -5277,7 +5277,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".r3-edit .board-filter-field .csel-value",
@@ -5288,7 +5288,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".r3-edit .board-filter-field .csel-trigger",
@@ -5300,7 +5300,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".r3-edit .board-filter-field .csel-value-text",
@@ -5311,7 +5311,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".ceres-pill-action-row",
@@ -5323,7 +5323,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 plot warning pill actions — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  plot warning pill actions — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".ceres-pill-action-slot",
@@ -5335,7 +5335,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 plot warning pill actions — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  plot warning pill actions — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".ceres-pill-action-slot .ceres-pill-action",
@@ -5346,7 +5346,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 plot warning pill actions — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  plot warning pill actions — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".ceres-pill-action-row .ceres-pill-action",
@@ -5357,10 +5357,10 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 plot warning pill actions — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  plot warning pill actions — maintainer-requested, shipped and checked on the rig"
     },
     {
-      "selector": "is(td.plot-cell, .csel-option-territory, .csel-trigger.region-filled).territory-land-of-prosperity",
+      "selector": ":is(td.plot-cell, .csel-option-territory, .csel-trigger.region-filled).territory-land-of-prosperity",
       "properties": [
         "font-weight"
       ],
@@ -5380,7 +5380,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  routing setup controls on the shared control height — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".plot-warning-find-icon",
@@ -5392,7 +5392,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "reviewed": "2026-09-28 plot warning find icon — maintainer-requested, shipped and checked on the rig"
+      "reviewed": "2026-09-28  plot warning find icon — maintainer-requested, shipped and checked on the rig"
     },
     {
       "selector": ".r3-pre-harvest",
@@ -5407,12 +5407,12 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E1",
-      "approval": "Existing master rule; clean-master guard failure reproduced during"
+      "approval": "Existing master rule; clean-master guard failure reproduced during "
     },
     {
       "kind": "exception",
       "expiry_phase": "E1",
-      "approval": "approved per-card tick and plan step icons",
+      "approval": " approved per-card tick and plan step icons",
       "selector": ".chain-step-details > summary",
       "properties": [
         "color",
@@ -5426,7 +5426,7 @@
     {
       "kind": "exception",
       "expiry_phase": "E1",
-      "approval": "approved per-card tick and plan step icons",
+      "approval": " approved per-card tick and plan step icons",
       "selector": ".is-plan-mode .combine-dialog-panel",
       "properties": [
         "max-height",
@@ -5439,7 +5439,7 @@
     {
       "kind": "exception",
       "expiry_phase": "E1",
-      "approval": "approved plan-mode layout and Upgrade beside Combine in the picker",
+      "approval": " approved plan-mode layout and Upgrade beside Combine in the picker",
       "selector": ".candidate-grid-tools:has([data-upgrade-action]) .picker-combine",
       "properties": [
         "width"
@@ -5458,7 +5458,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E3",
-      "reason": "Owner-approved planned-card gold glow reuses staged tile geometry."
+      "reason": "Owner-approved  planned-card gold glow reuses staged tile geometry."
     },
     {
       "selector": ".slot-tile.is-stage-planned::after",
@@ -5471,7 +5471,7 @@
       "source": "ceres.css",
       "kind": "exception",
       "expiry_phase": "E3",
-      "reason": "existing reduced-motion static staged glow."
+      "reason": ": existing reduced-motion static staged glow."
     },
     {
       "selector": ".theme-picker",
@@ -5586,5 +5586,5 @@
       "expiry_phase": "E1"
     }
   ],
-  "placeholder_note": "71 legacy_allowlist entries (2026-09-20 regen, //) carry \"placeholder\": true and kind=\"temporary\"/expiry_phase=6 because no prior manifest entry shared their selector; the and additions cite reviewed landing references, with the editor reset and worksite wallet-pair rule recorded as reviewed exceptions."
+  "placeholder_note": "71 legacy_allowlist entries (2026-09-20 regen, //) carry \"placeholder\": true and kind=\"temporary\"/expiry_phase=6 because no prior manifest entry shared their selector; the  and  additions cite reviewed landing references, with the editor reset and worksite wallet-pair rule recorded as reviewed exceptions."
 }

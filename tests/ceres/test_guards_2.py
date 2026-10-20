@@ -49,22 +49,22 @@ if (stageForSlot('b', 'worker', 0, 'stake', 'uid-2') !== false) throw Error('pen
 def test_avatar_retries_and_keeps_last_good_image():
     run_in_module_context(r"""
 (async () => {
- const timers = [];
- setTimeout = fn => { timers.push(fn); return timers.length; };
- const box = { hidden: false, dataset: {}, children: [], querySelector(tag) { return tag === 'img' ? this.children.find(x => x.tag === 'img') : null; },
- replaceChildren(...children) { this.children = children; }, removeAttribute() {} };
- const status = { hidden: false, textContent: '', dataset: {} };
- document.getElementById = id => id === 'player-avatar' ? box : id === 'player-refresh-status' ? status : null;
- document.createElement = tag => ({ tag, className: '', setAttribute() {} });
- let reads = 0;
- playerAvatarLayers = async () => { reads++; if (reads < 3) throw Error('transient'); return ['ok', 'broken']; };
- Image = class { constructor() { this.tag = 'img'; } decode() { return this.src === 'ok' ? Promise.resolve() : Promise.reject(Error('layer')); } };
- syncPlayerAvatar('alice');
- for (let i = 0; i < 12; i++) { await Promise.resolve(); if (timers.length) timers.shift()(); }
- if (reads !== 3 || box.hidden || box.children.filter(x => x.tag === 'img').length !== 1) throw Error('avatar retry/partial failure');
- playerAvatarLayers = async () => { throw Error('failure'); };
- syncPlayerAvatar('bob');
- for (let i = 0; i < 12; i++) { await Promise.resolve(); if (timers.length) timers.shift()(); }
- if (box.hidden || !box.querySelector('img')) throw Error('last good avatar hidden');
+  const timers = [];
+  setTimeout = fn => { timers.push(fn); return timers.length; };
+  const box = { hidden: false, dataset: {}, children: [], querySelector(tag) { return tag === 'img' ? this.children.find(x => x.tag === 'img') : null; },
+    replaceChildren(...children) { this.children = children; }, removeAttribute() {} };
+  const status = { hidden: false, textContent: '', dataset: {} };
+  document.getElementById = id => id === 'player-avatar' ? box : id === 'player-refresh-status' ? status : null;
+  document.createElement = tag => ({ tag, className: '', setAttribute() {} });
+  let reads = 0;
+  playerAvatarLayers = async () => { reads++; if (reads < 3) throw Error('transient'); return ['ok', 'broken']; };
+  Image = class { constructor() { this.tag = 'img'; } decode() { return this.src === 'ok' ? Promise.resolve() : Promise.reject(Error('layer')); } };
+  syncPlayerAvatar('alice');
+  for (let i = 0; i < 12; i++) { await Promise.resolve(); if (timers.length) timers.shift()(); }
+  if (reads !== 3 || box.hidden || box.children.filter(x => x.tag === 'img').length !== 1) throw Error('avatar retry/partial failure');
+  playerAvatarLayers = async () => { throw Error('failure'); };
+  syncPlayerAvatar('bob');
+  for (let i = 0; i < 12; i++) { await Promise.resolve(); if (timers.length) timers.shift()(); }
+  if (box.hidden || !box.querySelector('img')) throw Error('last good avatar hidden');
 })().catch(e => { console.error(e); process.exit(1); });
 """, entry=STATIC / "app.js")

@@ -1,4 +1,4 @@
-""" a terrain-penalised worker shows its reduced value, in red.
+""" — a terrain-penalised worker shows its reduced value, in red.
 
 His report: "Tireless Farmhand on plot 065-09-083 shows 2000 BasePP, although it has -50%
 terrain penalty. This is a double bug: The basePP must show the correct 1000 PP value and
@@ -77,11 +77,11 @@ def _without_js_comments(source: str) -> str:
 
 def test_the_penalised_figure_replaces_the_unpenalised_one():
     """ (v0.9.299) retitled the badge Base PP -> Boostable PP and folded the terrain
- factor directly into the figure formula instead of switching between two precomputed
- values, so the guard now targets that formula.
+    factor directly into the figure formula instead of switching between two precomputed
+    values, so the guard now targets that formula.
 
- RED MUTATION: change `displayed * (1 + (terrain || 0))` back to `displayed`. This must
- turn red."""
+    RED MUTATION: change `displayed * (1 + (terrain || 0))` back to `displayed`. This must
+    turn red."""
     body = _base_pp_column()
     assert re.search(r"displayed\s*\*\s*\(1\s*\+\s*\(terrain\s*\|\|\s*0\)\)", body), (
         "the cell no longer applies the terrain factor to the after-cap value"
@@ -93,11 +93,11 @@ def test_the_penalised_figure_replaces_the_unpenalised_one():
 
 def test_the_penalty_flag_is_gated_on_a_negative_boost_not_on_falsiness():
     """R-50: a null `terrain_boost` means the plot modifier is missing and must NEVER render
- as 0. `terrainValue()` returns null for that case, and `!terrain` would swallow it.
+    as 0. `terrainValue()` returns null for that case, and `!terrain` would swallow it.
 
- RED MUTATION: insert a decoy comment containing the correct assignment, then replace the
- executable guard with `const penalised = !terrain;`. Comments are removed before matching,
- so the executable falsiness expression is captured and this must turn red."""
+    RED MUTATION: insert a decoy comment containing the correct assignment, then replace the
+    executable guard with `const penalised = !terrain;`. Comments are removed before matching,
+    so the executable falsiness expression is captured and this must turn red."""
     body = _without_js_comments(_base_pp_column())
     match = re.search(r"\bconst\s+penalised\s*=\s*(?P<rhs>[^;]+);", body)
     assert match, "the executable `const penalised = ...;` expression must remain present"
@@ -110,22 +110,22 @@ def test_the_penalty_flag_is_gated_on_a_negative_boost_not_on_falsiness():
 
 
 def test_a_penalty_never_marks_a_worker_whose_value_did_not_drop():
-    """the old `construction < displayed` conjunct is gone -- the fallback formula's
- `(terrain || 0)` multiplier is now what guarantees a non-negative/absent terrain leaves the
- figure unscaled, so a worker without an actual penalty is never reduced by this path.
+    """: the old `construction < displayed` conjunct is gone -- the fallback formula's
+    `(terrain || 0)` multiplier is now what guarantees a non-negative/absent terrain leaves the
+    figure unscaled, so a worker without an actual penalty is never reduced by this path.
 
- RED MUTATION: change the multiplier to unconditional `terrain` (dropping the `|| 0`
- fallback), which would corrupt the figure whenever terrain is null instead of leaving it
- unscaled. This must turn red."""
+    RED MUTATION: change the multiplier to unconditional `terrain` (dropping the `|| 0`
+    fallback), which would corrupt the figure whenever terrain is null instead of leaving it
+    unscaled. This must turn red."""
     body = _base_pp_column()
     assert "(terrain || 0)" in body
 
 
 def test_the_screen_reader_is_told_why_the_number_shrank():
     """A colour alone is not a signal for everyone. The aria label must name the penalty and
- the value it replaced.
+    the value it replaced.
 
- RED MUTATION: revert `ariaLabel` to the unconditional `Base PP ${figure}`."""
+    RED MUTATION: revert `ariaLabel` to the unconditional `Base PP ${figure}`."""
     body = _base_pp_column()
     assert "terrain penalty on this plot" in body
     assert "reduced from" in body
@@ -133,13 +133,13 @@ def test_the_screen_reader_is_told_why_the_number_shrank():
 
 def test_there_is_no_dismissal_path_that_could_clear_the_mark():
     """His requirement: "in that case it is delberate and the penalty accepted but nevertheless
- it must be marked loudly." The flag is derived per render from the occupant's own
- terrain_boost, so nothing can acknowledge it away.
+    it must be marked loudly." The flag is derived per render from the occupant's own
+    terrain_boost, so nothing can acknowledge it away.
 
- RED MUTATION: introduce any acknowledged/dismissed state into this path. This test is a
- guard against a FUTURE change, not against the current code -- it is the weakest test in
- this file and is included because the requirement is about persistence, which no snapshot
- of correct code can demonstrate on its own."""
+    RED MUTATION: introduce any acknowledged/dismissed state into this path. This test is a
+    guard against a FUTURE change, not against the current code -- it is the weakest test in
+    this file and is included because the requirement is about persistence, which no snapshot
+    of correct code can demonstrate on its own."""
     body = _base_pp_column()
     for token in ("acknowledged", "dismissed", "suppress", "confirmedPlacement"):
         assert token not in body, f"a dismissal path ({token}) would defeat the 'nevertheless' in his ruling"

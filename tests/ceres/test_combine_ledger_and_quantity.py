@@ -44,9 +44,9 @@ const dialog = { copies: [survivor, copyA, copyB], blocked: new Map() };
 """
 
 _LEDGER_RECOMPUTE_JS = _LEDGER_FIXTURE + r"""
-combineApplyQuantity(dialog, 2); // survivor + largest (A, bcx 6) = 16
+combineApplyQuantity(dialog, 2);   // survivor + largest (A, bcx 6) = 16
 const afterAtTwo = combineLedgerData(dialog).afterBcx;
-combineApplyQuantity(dialog, 3); // survivor + A + B = 20
+combineApplyQuantity(dialog, 3);   // survivor + A + B = 20
 const afterAtThree = combineLedgerData(dialog).afterBcx;
 if (afterAtTwo === afterAtThree) throw new Error('afterBcx did not change with quantity (exit 60)');
 if (afterAtTwo !== 16) throw new Error(`afterAtTwo expected 16, got ${afterAtTwo} (exit 61)`);
@@ -60,11 +60,11 @@ def test_ledger_after_figures_track_the_selected_quantity() -> None:
 
 def test_ledger_after_figures_mutation_is_red() -> None:
     """Injected defect: freeze afterBcx at the survivor's own current BCX,
- ignoring COMBINE_SELECTION entirely -- the two quantities would then report
- the identical afterBcx, and the guard above must go red."""
+    ignoring COMBINE_SELECTION entirely -- the two quantities would then report
+    the identical afterBcx, and the guard above must go red."""
     source = read_entry_source(ENTRY)
     mutated = source.replace(
-        "const afterBcx = selected.length\n ? selected.reduce((sum, c) => sum + (Number(c.bcx) || 0), 0)\n : beforeBcx;",
+        "const afterBcx = selected.length\n    ? selected.reduce((sum, c) => sum + (Number(c.bcx) || 0), 0)\n    : beforeBcx;",
         "const afterBcx = beforeBcx;",
         1,
     )
@@ -76,7 +76,7 @@ def test_ledger_after_figures_mutation_is_red() -> None:
 # 2. PP never extrapolates past the printing's max-BCX ceiling (the internal rules).
 
 _PP_CEILING_JS = r"""
-survivor must stay the HIGHEST-bcx copy (combineCurrentSurvivor's own rule)
+// survivor must stay the HIGHEST-bcx copy (combineCurrentSurvivor's own rule),
 // so it is bcx 10 here and copyA is bcx 8 -- their sum (18) still clears the
 // bcx_max ceiling of 15.
 const survivor = { uid: 'S', bcx: 10, base_pp: 1000, level: 3, bcx_max: 15, level_bcx_thresholds: [1, 5, 10, 15] };
@@ -95,9 +95,9 @@ def test_pp_never_extrapolates_past_bcx_max() -> None:
 
 def test_pp_ceiling_mutation_is_red() -> None:
     """Injected defect: drop combinePpAtBcx's ceiling clamp (use the raw bcx
- directly instead of Math.min(bcx, bcxMax)) -- an overlevelling quantity
- then projects PP straight through the ceiling (rate x 30 = 3000 instead of
- the clamped rate x 15 = 1500), and the guard above must go red."""
+    directly instead of Math.min(bcx, bcxMax)) -- an overlevelling quantity
+    then projects PP straight through the ceiling (rate x 30 = 3000 instead of
+    the clamped rate x 15 = 1500), and the guard above must go red."""
     source = read_entry_source(ENTRY)
     mutated = source.replace(
         "const effective = bcxMax != null ? Math.min(bcx, bcxMax) : bcx;",
@@ -116,8 +116,8 @@ _CONSUMPTION_ORDER_JS = r"""
 const survivor = { uid: 'S', bcx: 50 };
 const big = { uid: 'BIG', bcx: 20 };
 const single = { uid: 'SINGLE', bcx: 1 };
-const dialog = { copies: [survivor, single, big], blocked: new Map() }; // deliberately NOT pre-sorted
-combineApplyQuantity(dialog, 2); // survivor + exactly one more -- must be the largest, not the single
+const dialog = { copies: [survivor, single, big], blocked: new Map() };  // deliberately NOT pre-sorted
+combineApplyQuantity(dialog, 2);  // survivor + exactly one more -- must be the largest, not the single
 if (!COMBINE_SELECTION.has('BIG')) throw new Error('largest copy was not selected (exit 80)');
 if (COMBINE_SELECTION.has('SINGLE')) throw new Error('single-CC copy was selected before the largest (exit 81)');
 """
@@ -129,9 +129,9 @@ def test_consumption_picks_largest_copy_before_the_single() -> None:
 
 def test_consumption_order_mutation_is_red() -> None:
     """Injected defect: reverse the sort direction in combineConsumptionOrder
- (ascending instead of descending BCX) -- the single-CC copy would then be
- consumed before the large one, exactly the liquidity mistake the maintainer's
- ruling forbids, and the guard above must go red."""
+    (ascending instead of descending BCX) -- the single-CC copy would then be
+    consumed before the large one, exactly the liquidity mistake the maintainer's
+    ruling forbids, and the guard above must go red."""
     source = read_entry_source(ENTRY)
     mutated = source.replace(
         ".sort((a, b) => (Number(b.bcx) || 0) - (Number(a.bcx) || 0)",
@@ -157,10 +157,10 @@ const survivor = { uid: 'SURV', bcx: 1000 };
 const copies = [survivor];
 for (let i = 0; i < 400; i += 1) copies.push({ uid: `C-${i}`, bcx: 1 });
 const dialog = { copies, blocked: new Map() };
-combineApplyQuantity(dialog, 401); // "Everything" -- every one of the 400 duplicates
+combineApplyQuantity(dialog, 401);  // "Everything" -- every one of the 400 duplicates
 if (COMBINE_SELECTION.size !== 401) throw new Error(`expected 401 selected uids, got ${COMBINE_SELECTION.size} (exit 90)`);
 for (let i = 0; i < 400; i += 1) {
- if (!COMBINE_SELECTION.has(`C-${i}`)) throw new Error(`C-${i} missing from selection (exit 91)`);
+  if (!COMBINE_SELECTION.has(`C-${i}`)) throw new Error(`C-${i} missing from selection (exit 91)`);
 }
 if (!COMBINE_SELECTION.has('SURV')) throw new Error('survivor missing from selection (exit 92)');
 """
@@ -172,9 +172,9 @@ def test_large_selection_carries_every_destroyed_uid() -> None:
 
 def test_large_selection_mutation_is_red() -> None:
     """Injected defect: cap the consumed slice at 50 copies regardless of the
- requested quantity (`.slice(0, clamped - 1)` -> `.slice(0, Math.min(clamped - 1, 50))`)
- -- a 401-copy combine would then silently drop 350 Card IDs from the op
- payload, and the guard above must go red."""
+    requested quantity (`.slice(0, clamped - 1)` -> `.slice(0, Math.min(clamped - 1, 50))`)
+    -- a 401-copy combine would then silently drop 350 Card IDs from the op
+    payload, and the guard above must go red."""
     source = read_entry_source(ENTRY)
     mutated = source.replace(
         "combineConsumptionOrder(available, String(survivor.uid || survivor.asset_ref)).slice(0, clamped - 1);",

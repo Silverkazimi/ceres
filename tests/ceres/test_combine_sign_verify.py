@@ -10,7 +10,7 @@ pending-surface contract HERE (census row 16).
  (campaign plan rev 3 Batch D, method
 `ceres-ir1854-retire-app-js-slice-harness.md`). The prior version of this file
 called `combineProgressStepsHtml`/`combineVerdictHtml` directly against 2
-`_slice()`d dependency chains in `node -e`. retires that technique.
+`_slice()`d dependency chains in `node -e`.  retires that technique.
 This replaces it with `spawn_live_ceres` + Playwright (model:
 `tests/ceres/test_live_checkout.py`): a real duplicate worker is staged, the
 real `.tile-combine-chip` opens the real dialog, and `/api/combine/preview` /
@@ -33,7 +33,7 @@ import urllib.request
 
 from playwright.sync_api import Page
 
-from .conftest import LIVE_PLAYER, spawn_live_ceres, wait_for_board
+from .conftest import LIVE_PLAYER, settle, spawn_live_ceres, wait_for_board, wait_ready
 
 
 def _get(base_url: str, path: str) -> dict:
@@ -43,16 +43,16 @@ def _get(base_url: str, path: str) -> dict:
 
 def _first_combinable_worker(base_url: str) -> tuple[dict, dict]:
     """A worker the real `combineTileActionHtml()` will actually offer a chip
- for: besides `card_detail_id`/`edition`, it also requires
- `hasResolvedCombineCeiling()` (both `bcx` and `bcx_max` present, app.js
- :6891) and NOT `isCardMaxed()` (`bcx < bcx_max`, app.js :6887) -- a worker
- with an unresolved or already-maxed ceiling never renders the chip, no
- matter what idle-cards mock is installed."""
+    for: besides `card_detail_id`/`edition`, it also requires
+    `hasResolvedCombineCeiling()` (both `bcx` and `bcx_max` present, app.js
+    :6891) and NOT `isCardMaxed()` (`bcx < bcx_max`, app.js :6887) -- a worker
+    with an unresolved or already-maxed ceiling never renders the chip, no
+    matter what idle-cards mock is installed."""
     board = _get(base_url, "/api/board")
     for row in board["plots"]:
         if not row.get("assets_loaded"):
             continue
-        detail = _get(base_url, f"api/plots/{urllib.parse.quote(row['deed_uid'], safe='')}")
+        detail = _get(base_url, f"/api/plots/{urllib.parse.quote(row['deed_uid'], safe='')}")
         for worker in detail.get("workers") or []:
             if worker.get("asset_ref") and isinstance(worker.get("slot"), int) and worker["slot"] >= 1 \
                     and worker.get("card_detail_id") is not None and worker.get("edition") is not None \
@@ -105,14 +105,14 @@ def _mock_combine_build(page: Page) -> None:
 
 def _install_keychain_stub(page: Page, *, tx_id: str = "FAKE-COMBINE-TX", delay_ms: int = 10) -> None:
     """Tracks `window.__ceresBroadcastCount` (guard 4: one broadcast per confirm)
- and delays the callback by `delay_ms` -- large enough on the 'keychain'-step
- test to observe the step while the promise is still pending."""
+    and delays the callback by `delay_ms` -- large enough on the 'keychain'-step
+    test to observe the step while the promise is still pending."""
     page.add_init_script(
         f"""window.__ceresBroadcastCount = 0;
- window.hive_keychain = {{requestBroadcast: (account, operations, key, callback) => {{
- window.__ceresBroadcastCount += 1;
- setTimeout(() => callback({{success: true, result: {{id: '{tx_id}'}}}}), {delay_ms});
- }}}};"""
+        window.hive_keychain = {{requestBroadcast: (account, operations, key, callback) => {{
+          window.__ceresBroadcastCount += 1;
+          setTimeout(() => callback({{success: true, result: {{id: '{tx_id}'}}}}), {delay_ms});
+        }}}};"""
     )
 
 
@@ -135,7 +135,8 @@ def _mock_op_verify(page: Page, responses: list[dict], *, delay_ms: int = 0) -> 
 def _open_dialog(page: Page, base_url: str, row: dict, worker: dict) -> None:
     page.goto(f"{base_url}/?player={LIVE_PLAYER}")
     wait_for_board(page)
-    page.wait_for_timeout(1200)
+    wait_ready(page)
+    settle(page)
     page_row = page.locator(f"tr.plot-row[data-deed-uid='{row['deed_uid']}']")
     page_row.wait_for(timeout=15_000)
     page_row.click()
@@ -153,8 +154,8 @@ def _open_dialog(page: Page, base_url: str, row: dict, worker: dict) -> None:
 
 def test_sign_disabled_until_preview_reports_buildable() -> None:
     """Injection this would catch: the `canSign` gate dropping its
- `!!preview?.buildable` term -- expected red: the sign button would render
- enabled even while the mocked preview below says `buildable: false`."""
+    `!!preview?.buildable` term -- expected red: the sign button would render
+    enabled even while the mocked preview below says `buildable: false`."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -172,8 +173,8 @@ def test_sign_disabled_until_preview_reports_buildable() -> None:
 
 def test_sign_enables_once_preview_reports_buildable() -> None:
     """Positive half of guard 1, on a fresh dialog open (never toggled mid-flow,
- which would ALSO exercise the quantity-stepper's own re-preview path -- kept
- out of scope here to isolate the buildable gate itself)."""
+    which would ALSO exercise the quantity-stepper's own re-preview path -- kept
+    out of scope here to isolate the buildable gate itself)."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -194,9 +195,9 @@ def test_sign_enables_once_preview_reports_buildable() -> None:
 
 def test_keychain_step_renders_while_awaiting_the_extension() -> None:
     """Injection this would catch: `COMBINE_SIGN_STEP` never set before the
- `requestBroadcastPromise` await -- expected red: no
- `[data-combine-step="keychain"].is-active` element ever appears; the dialog
- would look frozen during the wait, the exact defect this state exists to fix."""
+    `requestBroadcastPromise` await -- expected red: no
+    `[data-combine-step="keychain"].is-active` element ever appears; the dialog
+    would look frozen during the wait, the exact defect this state exists to fix."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -245,10 +246,10 @@ def test_keychain_step_renders_while_awaiting_the_extension() -> None:
 
 def test_one_broadcast_per_confirm() -> None:
     """Injection this would catch: `confirmCombineBroadcast()` losing its
- disable-on-click guard (`signButton.disabled = true`), so a second click
- (or a re-render triggering another handler bind) fires a second
- `requestBroadcast` -- expected red: `window.__ceresBroadcastCount` reads 2
- instead of 1."""
+    disable-on-click guard (`signButton.disabled = true`), so a second click
+    (or a re-render triggering another handler bind) fires a second
+    `requestBroadcast` -- expected red: `window.__ceresBroadcastCount` reads 2
+    instead of 1."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -274,9 +275,9 @@ def test_one_broadcast_per_confirm() -> None:
 
 def test_pending_surface_offers_retry_labelled_check_again() -> None:
     """Injection this would catch: `combineRetryButtonHtml()` reading the
- pending notice's own message instead of its action's label -- expected red:
- the button text would read the long "Not confirmed yet..." sentence
- instead of "Check again"."""
+    pending notice's own message instead of its action's label -- expected red:
+    the button text would read the long "Not confirmed yet..." sentence
+    instead of "Check again"."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -296,7 +297,7 @@ def test_pending_surface_offers_retry_labelled_check_again() -> None:
 
             before = len(requests)
             retry.click()
-            page.wait_for_timeout(500)
+            settle(page)
             assert len(requests) > before, "clicking retry must fire another /api/op-verify request"
         finally:
             page.close()
@@ -307,9 +308,9 @@ def test_pending_surface_offers_retry_labelled_check_again() -> None:
 
 def test_mismatch_verdict_renders_its_own_surface() -> None:
     """Injection this would catch: `domain-mismatch` falling into the
- `domain-could-not-verify` branch -- expected red: the mismatch panel would
- read "Could not check game state" instead of "The game did not accept
- this" / "Nothing was combined"."""
+    `domain-could-not-verify` branch -- expected red: the mismatch panel would
+    read "Could not check game state" instead of "The game did not accept
+    this" / "Nothing was combined"."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -336,9 +337,9 @@ def test_mismatch_verdict_renders_its_own_surface() -> None:
 
 def test_could_not_verify_verdict_renders_its_own_surface() -> None:
     """Injection this would catch: `domain-could-not-verify` collapsed into the
- `domain-mismatch` branch -- expected red: the panel would wrongly claim
- "Nothing was combined" about a transaction whose game-state check merely
- failed, not one the server actively rejected."""
+    `domain-mismatch` branch -- expected red: the panel would wrongly claim
+    "Nothing was combined" about a transaction whose game-state check merely
+    failed, not one the server actively rejected."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -364,11 +365,11 @@ def test_could_not_verify_verdict_renders_its_own_surface() -> None:
 
 def test_escalated_pending_renders_its_own_surface() -> None:
     """Injection this would catch: the `escalated` flag hardcoded false,
- ignoring `domain.evidence.pending_metadata.requires_escalation` -- expected
- red: a genuinely escalated pending verdict would keep rendering the
- ordinary `.is-pending` surface ("The game may still be catching up.")
- forever, instead of `.is-pending-escalated` ("Still not confirmed... it may
- need attention")."""
+    ignoring `domain.evidence.pending_metadata.requires_escalation` -- expected
+    red: a genuinely escalated pending verdict would keep rendering the
+    ordinary `.is-pending` surface ("The game may still be catching up.")
+    forever, instead of `.is-pending-escalated` ("Still not confirmed... it may
+    need attention")."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)

@@ -10,6 +10,8 @@ from __future__ import annotations
 import asyncio
 from collections import Counter
 
+import pytest
+
 from .test_live_plot_reveal import _browser, _payload
 from .vm_context import STATIC, read_entry_source
 
@@ -51,27 +53,28 @@ def test_eos_p3_recovery_contract() -> None:
 
 def _decoded_snapshot(fixture):
     return fixture.page.evaluate("""uid => {
- const band = document.querySelector(`tr.expand-row[data-deed-uid="${uid}"] .editor-band`);
- return [...band.querySelectorAll('img[data-eos-managed][data-eos-outcome="decoded"]')].map(image => {
- const style = getComputedStyle(image);
- const rect = image.getBoundingClientRect();
- return {src: image.currentSrc || image.src, visible: style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0};
- });
- }""", "eos-0008")
+      const band = document.querySelector(`tr.expand-row[data-deed-uid="${uid}"] .editor-band`);
+      return [...band.querySelectorAll('img[data-eos-managed][data-eos-outcome="decoded"]')].map(image => {
+        const style = getComputedStyle(image);
+        const rect = image.getBoundingClientRect();
+        return {src: image.currentSrc || image.src, visible: style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0};
+      });
+    }""", "eos-0008")
 
 
 async def _open_decoded(fixture):
     await fixture.open()
     fixture.release("detail", "scene", "portrait", "upgrade")
     await fixture.page.wait_for_function("""uid =>
- (() => {
- const row = document.querySelector(`tr.expand-row[data-deed-uid="${uid}"]`);
- return !!row && row.querySelectorAll('img[data-eos-managed]').length >= 9 &&
- row.querySelectorAll('img[data-eos-managed]:not([data-eos-outcome="decoded"])').length === 0;
- })()
+      (() => {
+        const row = document.querySelector(`tr.expand-row[data-deed-uid="${uid}"]`);
+        return !!row && row.querySelectorAll('img[data-eos-managed]').length >= 9 &&
+          row.querySelectorAll('img[data-eos-managed]:not([data-eos-outcome="decoded"])').length === 0;
+      })()
     """, arg="eos-0008", timeout=10000)
 
 
+@pytest.mark.browser  # drives Chromium through test_live_plot_reveal._browser
 def test_live_art_continuity_m2(report, details_by_id, tmp_path):
     board, details = _payload(report, details_by_id, count=12, capacity=9)
 
@@ -83,10 +86,10 @@ def test_live_art_continuity_m2(report, details_by_id, tmp_path):
                 'tr.expand-row[data-deed-uid="eos-0008"] img[data-eos-managed]'
             ).count()
             await fixture.page.evaluate("""uid => {
- const band = document.querySelector(`tr.expand-row[data-deed-uid="${uid}"] .editor-band`);
- [...band.querySelectorAll('img[data-eos-managed][data-eos-outcome="decoded"]')]
- .forEach((image, index) => { image.dataset.artContinuityProbe = String(index); });
- }""", "eos-0008")
+              const band = document.querySelector(`tr.expand-row[data-deed-uid="${uid}"] .editor-band`);
+              [...band.querySelectorAll('img[data-eos-managed][data-eos-outcome="decoded"]')]
+                .forEach((image, index) => { image.dataset.artContinuityProbe = String(index); });
+            }""", "eos-0008")
             await fixture.module("table", "m => m.render(false)")
             await fixture.module("rows", "m => m.updateMountedRow('eos-0008')")
             await fixture.module("rows", "m => m.updateMountedRow('eos-0008', {readiness: true})")
@@ -112,6 +115,7 @@ def test_live_art_continuity_m2(report, details_by_id, tmp_path):
     raise AssertionError("the dropped decoded-node splice did not invalidate M2")
 
 
+@pytest.mark.browser  # drives Chromium through test_live_plot_reveal._browser
 def test_live_art_slot_order_and_fixed_frames(report, details_by_id, tmp_path):
     board, details = _payload(report, details_by_id, count=12, capacity=9)
     delayed = ("eos.js", "() => decodeImage(image, source, valid, session.artCleanups, CARD_SERVICE_BUDGET_MS)", "async () => { await new Promise(resolve => setTimeout(resolve, 250)); return decodeImage(image, source, valid, session.artCleanups, CARD_SERVICE_BUDGET_MS); }")
@@ -120,46 +124,46 @@ def test_live_art_slot_order_and_fixed_frames(report, details_by_id, tmp_path):
         async with _browser(board, details, tmp_path / ("slot-order-red" if red else "slot-order"), mutation=delayed) as fixture:
             await fixture.open()
             await fixture.page.evaluate("""() => {
- let release;
- const held = new Promise(resolve => { release = resolve; });
- window.releaseSlotFive = release;
- const decode = HTMLImageElement.prototype.decode;
- HTMLImageElement.prototype.decode = async function() {
- if (this.closest('[data-group-id="worker"][data-slot-index="4"]')) await held;
- return decode.call(this);
- };
- }""")
+              let release;
+              const held = new Promise(resolve => { release = resolve; });
+              window.releaseSlotFive = release;
+              const decode = HTMLImageElement.prototype.decode;
+              HTMLImageElement.prototype.decode = async function() {
+                if (this.closest('[data-group-id="worker"][data-slot-index="4"]')) await held;
+                return decode.call(this);
+              };
+            }""")
             fixture.release("detail", "scene", "portrait", "upgrade")
             await fixture.page.wait_for_function("""uid =>
- document.querySelectorAll(`tr.expand-row[data-deed-uid="${uid}"] img[data-eos-managed]`).length > 1
+              document.querySelectorAll(`tr.expand-row[data-deed-uid="${uid}"] img[data-eos-managed]`).length > 1
             """, arg="eos-0008", timeout=10000)
             managed = await fixture.page.locator(
                 'tr.expand-row[data-deed-uid="eos-0008"] img[data-eos-managed]'
             ).count()
             assert managed > 1
             await fixture.page.wait_for_function("""({uid, managed}) =>
- document.querySelectorAll(`tr.expand-row[data-deed-uid="${uid}"] img[data-eos-managed][data-eos-outcome="decoded"]`).length === managed - 1
+              document.querySelectorAll(`tr.expand-row[data-deed-uid="${uid}"] img[data-eos-managed][data-eos-outcome="decoded"]`).length === managed - 1
             """, arg={"uid": "eos-0008", "managed": managed}, timeout=10000)
             before = await fixture.page.evaluate("""uid => [...document.querySelectorAll(`tr.expand-row[data-deed-uid="${uid}"] .slot-tile-cell`)].map(n => {
- const r=n.getBoundingClientRect(); return [r.left,r.top,r.width,r.height];
- })""", "eos-0008")
+              const r=n.getBoundingClientRect(); return [r.left,r.top,r.width,r.height];
+            })""", "eos-0008")
             if red:
                 await fixture.page.evaluate("""uid => {
- const band = document.querySelector(`tr.expand-row[data-deed-uid="${uid}"] .editor-band`);
- const observer = new MutationObserver(() => {
- const cell = band?.querySelectorAll('.slot-tile-cell')[4];
- if (!cell) return;
- observer.disconnect();
- cell.style.transform = 'translateX(4px)';
- });
- observer.observe(band, {attributes: true, childList: true, subtree: true});
- }""", "eos-0008")
+                  const band = document.querySelector(`tr.expand-row[data-deed-uid="${uid}"] .editor-band`);
+                  const observer = new MutationObserver(() => {
+                    const cell = band?.querySelectorAll('.slot-tile-cell')[4];
+                    if (!cell) return;
+                    observer.disconnect();
+                    cell.style.transform = 'translateX(4px)';
+                  });
+                  observer.observe(band, {attributes: true, childList: true, subtree: true});
+                }""", "eos-0008")
             await fixture.page.evaluate("window.releaseSlotFive()")
             await fixture.page.wait_for_function("""uid =>
- (() => {
- const images = [...document.querySelectorAll(`tr.expand-row[data-deed-uid="${uid}"] img[data-eos-managed]`)];
- return images.length > 0 && images.every(image => image.dataset.eosOutcome);
- })()
+              (() => {
+                const images = [...document.querySelectorAll(`tr.expand-row[data-deed-uid="${uid}"] img[data-eos-managed]`)];
+                return images.length > 0 && images.every(image => image.dataset.eosOutcome);
+              })()
             """, arg="eos-0008", timeout=10000)
             expected = await fixture.page.locator(
                 'tr.expand-row[data-deed-uid="eos-0008"] img[data-eos-managed]'
@@ -168,8 +172,8 @@ def test_live_art_slot_order_and_fixed_frames(report, details_by_id, tmp_path):
                 'tr.expand-row[data-deed-uid="eos-0008"] img[data-eos-managed][data-eos-outcome="decoded"]'
             ).count() == expected
             after = await fixture.page.evaluate("""uid => [...document.querySelectorAll(`tr.expand-row[data-deed-uid="${uid}"] .slot-tile-cell`)].map(n => {
- const r=n.getBoundingClientRect(); return [r.left,r.top,r.width,r.height];
- })""", "eos-0008")
+              const r=n.getBoundingClientRect(); return [r.left,r.top,r.width,r.height];
+            })""", "eos-0008")
             assert after == before
 
     asyncio.run(run())
@@ -180,46 +184,47 @@ def test_live_art_slot_order_and_fixed_frames(report, details_by_id, tmp_path):
     raise AssertionError("the translated slot-frame mutation did not invalidate fixed frames")
 
 
+@pytest.mark.browser  # drives Chromium through test_live_plot_reveal._browser
 def test_live_art_bounded_retry(report, details_by_id, tmp_path):
     board, details = _payload(report, details_by_id, count=9, capacity=9)
     short_budget = ("eos.js", "const CARD_SERVICE_BUDGET_MS = 10000;", "const CARD_SERVICE_BUDGET_MS = 20;")
     unbounded_retry = (
         "eos.js",
         """function scheduleArtRecovery(session, key, record) {
- if (record.retryScheduled || record.recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) return;
- const delay = RECOVERY_DELAYS_MS[record.recoveryAttempts];
- record.recoveryAttempts++;
- record.nextRetryAt = performance.now() + delay;
- record.retryScheduled = true;
- timer(session, () => {
- record.retryScheduled = false;
- record.nextRetryAt = 0;
- if (session.mountedFrame) { session.cardsSettled = false; prepareWorkers(session); }
- }, delay);
+  if (record.retryScheduled || record.recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) return;
+  const delay = RECOVERY_DELAYS_MS[record.recoveryAttempts];
+  record.recoveryAttempts++;
+  record.nextRetryAt = performance.now() + delay;
+  record.retryScheduled = true;
+  timer(session, () => {
+    record.retryScheduled = false;
+    record.nextRetryAt = 0;
+    if (session.mountedFrame) { session.cardsSettled = false; prepareWorkers(session); }
+  }, delay);
 }
 
 function rememberArtFailure(session, key, outcome, record) {
- record.lastOutcome = outcome.kind;
- if (outcome.permanent || record.recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) freezeArt(session, key, record);
- else scheduleArtRecovery(session, key, record);
+  record.lastOutcome = outcome.kind;
+  if (outcome.permanent || record.recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) freezeArt(session, key, record);
+  else scheduleArtRecovery(session, key, record);
 }""",
         """function scheduleArtRecovery(session, key, record) {
- if (record.retryScheduled) return;
- const delay = RECOVERY_DELAYS_MS[record.recoveryAttempts] ?? 0;
- record.recoveryAttempts++;
- record.nextRetryAt = performance.now() + delay;
- record.retryScheduled = true;
- timer(session, () => {
- record.retryScheduled = false;
- record.nextRetryAt = 0;
- if (session.mountedFrame) { session.cardsSettled = false; prepareWorkers(session); }
- }, delay);
+  if (record.retryScheduled) return;
+  const delay = RECOVERY_DELAYS_MS[record.recoveryAttempts] ?? 0;
+  record.recoveryAttempts++;
+  record.nextRetryAt = performance.now() + delay;
+  record.retryScheduled = true;
+  timer(session, () => {
+    record.retryScheduled = false;
+    record.nextRetryAt = 0;
+    if (session.mountedFrame) { session.cardsSettled = false; prepareWorkers(session); }
+  }, delay);
 }
 
 function rememberArtFailure(session, key, outcome, record) {
- record.lastOutcome = outcome.kind;
- if (outcome.permanent) freezeArt(session, key, record);
- else scheduleArtRecovery(session, key, record);
+  record.lastOutcome = outcome.kind;
+  if (outcome.permanent) freezeArt(session, key, record);
+  else scheduleArtRecovery(session, key, record);
 }""",
     )
 
@@ -243,10 +248,10 @@ function rememberArtFailure(session, key, outcome, record) {
             baseline = len(fixture.requests)
             if red:
                 await fixture.page.evaluate("""() => {
- const nativeSetTimeout = window.setTimeout;
- window.setTimeout = (callback, delay, ...args) => nativeSetTimeout(callback, delay >= 10000 ? 20 : delay, ...args);
- eosProbe.blockDecode = true;
- }""")
+                  const nativeSetTimeout = window.setTimeout;
+                  window.setTimeout = (callback, delay, ...args) => nativeSetTimeout(callback, delay >= 10000 ? 20 : delay, ...args);
+                  eosProbe.blockDecode = true;
+                }""")
             else:
                 await fixture.page.evaluate("eosProbe.blockDecode = true")
             fixture.release("detail", "scene", "portrait", "upgrade")
@@ -282,6 +287,7 @@ function rememberArtFailure(session, key, outcome, record) {
     raise AssertionError("the unbounded timed-out-art mutation did not outlive the bounded recovery")
 
 
+@pytest.mark.browser  # drives Chromium through test_live_plot_reveal._browser
 def test_live_art_queue_fairness_across_plots(report, details_by_id, tmp_path):
     # Asclepius diagnosis 3. With capacity == the pump's concurrency (4) each plot owns
     # exactly one pump window, so plot B's whole batch fills the pump and plot A's whole
@@ -314,13 +320,13 @@ def test_live_art_queue_fairness_across_plots(report, details_by_id, tmp_path):
             await fixture.open("eos-0008")
             fixture.release("detail", "scene", "upgrade")
             await fixture.page.wait_for_function("""uids => uids.every(uid =>
- document.querySelectorAll(`tr.expand-row[data-deed-uid="${uid}"] img[data-eos-managed][data-card-image-candidates*="PlotAWorker"], tr.expand-row[data-deed-uid="${uid}"] img[data-eos-managed][data-card-image-candidates*="PlotBWorker"]`).length >= 8
- )""", arg=["eos-0008", "eos-0009"], timeout=10000)
+              document.querySelectorAll(`tr.expand-row[data-deed-uid="${uid}"] img[data-eos-managed][data-card-image-candidates*="PlotAWorker"], tr.expand-row[data-deed-uid="${uid}"] img[data-eos-managed][data-card-image-candidates*="PlotBWorker"]`).length >= 8
+            )""", arg=["eos-0008", "eos-0009"], timeout=10000)
             await asyncio.sleep(0.6)
             totals = await fixture.page.evaluate("""() => ({
- A: document.querySelectorAll('img[data-eos-managed][data-card-image-candidates*="PlotAWorker"]').length,
- B: document.querySelectorAll('img[data-eos-managed][data-card-image-candidates*="PlotBWorker"]').length,
- })""")
+              A: document.querySelectorAll('img[data-eos-managed][data-card-image-candidates*="PlotAWorker"]').length,
+              B: document.querySelectorAll('img[data-eos-managed][data-card-image-candidates*="PlotBWorker"]').length,
+            })""")
             assert min(totals.values()) > 2 * concurrency
             dispatched = Counter(plot_of(request) for request in fixture.requests if is_worker_art(request))
             mark = len(fixture.requests)
@@ -353,6 +359,7 @@ def test_live_art_queue_fairness_across_plots(report, details_by_id, tmp_path):
     raise AssertionError("the removed plot-turn rotation did not invalidate queue fairness")
 
 
+@pytest.mark.browser  # drives Chromium through test_live_plot_reveal._browser
 def test_live_art_duplicate_candidates_share_queue_slot(report, details_by_id, tmp_path):
     # Asclepius diagnosis 3. Counting network requests cannot decide this: Chromium
     # collapses simultaneous identical image loads into a single fetch, so the two arms
@@ -376,17 +383,17 @@ def test_live_art_duplicate_candidates_share_queue_slot(report, details_by_id, t
     async def run(mutation=None):
         async with _browser(board, details, tmp_path / ("candidate-dedup-red" if mutation else "candidate-dedup"), mutation=mutation) as fixture:
             await fixture.page.evaluate("""uid => {
- window.eosDedupRevisions = [];
- const decode = HTMLImageElement.prototype.decode;
- HTMLImageElement.prototype.decode = function() {
- const source = this.currentSrc || this.src;
- if (source.includes('DedupWorker')) {
- const band = document.querySelector(`tr.expand-row[data-deed-uid="${uid}"] .editor-band`);
- window.eosDedupRevisions.push(Number(band?.dataset.artRevision ?? -1));
- }
- return decode.apply(this, arguments);
- };
- }""", "eos-0008")
+              window.eosDedupRevisions = [];
+              const decode = HTMLImageElement.prototype.decode;
+              HTMLImageElement.prototype.decode = function() {
+                const source = this.currentSrc || this.src;
+                if (source.includes('DedupWorker')) {
+                  const band = document.querySelector(`tr.expand-row[data-deed-uid="${uid}"] .editor-band`);
+                  window.eosDedupRevisions.push(Number(band?.dataset.artRevision ?? -1));
+                }
+                return decode.apply(this, arguments);
+              };
+            }""", "eos-0008")
             await fixture.open()
             fixture.release("detail", "scene", "portrait", "upgrade")
             await fixture.terminal()
@@ -407,6 +414,7 @@ def test_live_art_duplicate_candidates_share_queue_slot(report, details_by_id, t
     raise AssertionError("the disabled candidate deduplication did not invalidate the one-request guard")
 
 
+@pytest.mark.browser  # drives Chromium through test_live_plot_reveal._browser
 def test_edition_13_candidate_order(report, details_by_id, tmp_path):
     board, details = _payload(report, details_by_id, count=1, capacity=1)
 
@@ -428,6 +436,7 @@ def test_edition_13_candidate_order(report, details_by_id, tmp_path):
     raise AssertionError("the edition-13 candidate-folder swap did not invalidate candidate order")
 
 
+@pytest.mark.browser  # drives Chromium through test_live_plot_reveal._browser
 def test_live_art_scene_soft_release_preserves_late_decode(report, details_by_id, tmp_path):
     board, details = _payload(report, details_by_id, count=9, capacity=1)
     soft_ceiling_removed = (
@@ -476,6 +485,7 @@ def test_live_art_scene_soft_release_preserves_late_decode(report, details_by_id
     raise AssertionError("the removed scene soft ceiling did not keep badges gated")
 
 
+@pytest.mark.browser  # drives Chromium through test_live_plot_reveal._browser
 def test_live_art_scene_remount_preserves_inflight_decode(report, details_by_id, tmp_path):
     board, details = _payload(report, details_by_id, count=9, capacity=1)
     same_key_return_removed = (
@@ -497,17 +507,17 @@ def test_live_art_scene_remount_preserves_inflight_decode(report, details_by_id,
             # background-image fetches as well. This page-level Image() probe is the instrument
             # two is the count.
             await fixture.page.evaluate("""() => {
- window.eosSceneStarts = 0;
- const descriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
- Object.defineProperty(HTMLImageElement.prototype, 'src', {
- configurable: true,
- get: descriptor.get,
- set(value) {
- if (/terrain-backgrounds|productionBuildingUniform/.test(String(value))) window.eosSceneStarts++;
- return descriptor.set.call(this, value);
- },
- });
- }""")
+              window.eosSceneStarts = 0;
+              const descriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+              Object.defineProperty(HTMLImageElement.prototype, 'src', {
+                configurable: true,
+                get: descriptor.get,
+                set(value) {
+                  if (/terrain-backgrounds|productionBuildingUniform/.test(String(value))) window.eosSceneStarts++;
+                  return descriptor.set.call(this, value);
+                },
+              });
+            }""")
             await fixture.open()
             await fixture.page.wait_for_function(
                 "() => window.eosSceneStarts === 2"
@@ -528,6 +538,7 @@ def test_live_art_scene_remount_preserves_inflight_decode(report, details_by_id,
     raise AssertionError("the removed same-scene-key return did not invalidate in-flight scene continuity")
 
 
+@pytest.mark.browser  # drives Chromium through test_live_plot_reveal._browser
 def test_live_art_scene_retry_recovers_stale_unavailable_record(report, details_by_id, tmp_path):
     board, details = _payload(report, details_by_id, count=9, capacity=1)
     retry_cleanup_removed = (

@@ -1,4 +1,4 @@
-"""an uncleared plot (is_construction with no worksite and no start) is `no_project`, never
+""": an uncleared plot (is_construction with no worksite and no start) is `no_project`, never
 `construction`; a real build (start date / target) keeps its construction facts."""
 from __future__ import annotations
 

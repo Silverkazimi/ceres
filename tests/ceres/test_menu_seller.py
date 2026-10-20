@@ -1,4 +1,4 @@
-"""the card menu of one print
+""": the card menu of one print
 names each listing's seller (escaped; "You" for the maintainer's own listing, which keeps "Your listing"); the Market grid / tile
 listings never carry it. No network."""
 from __future__ import annotations
@@ -29,10 +29,10 @@ def test_menu_row_shows_the_seller_escaped_and_you_for_the_owner():
     out = run_in_module_context(r"""
 const base = { name: 'Gargoya Lion', card_detail_id: 349, edition: 3, foil: 0, level: 1, bcx: 1, price_usd: 0.01, price_dec: 20, lkey: 'aaaaaaaaaaaaaaa1' };
 console.log(JSON.stringify({
- other: listingRow({ ...base, seller: 'player_<b>0001' }),
- own: listingRow({ ...base, lkey: 'aaaaaaaaaaaaaaa2', seller: 'player0005', own: true }),
- none: listingRow({ ...base, lkey: 'aaaaaaaaaaaaaaa3' }),
- head: CM_COPY_HEAD,
+  other: listingRow({ ...base, seller: 'player_<b>0001' }),
+  own: listingRow({ ...base, lkey: 'aaaaaaaaaaaaaaa2', seller: 'player0005', own: true }),
+  none: listingRow({ ...base, lkey: 'aaaaaaaaaaaaaaa3' }),
+  head: CM_COPY_HEAD,
 }));
 """, entry=STATIC / "card-cart.js").stdout
     got = json.loads(out.strip().splitlines()[-1])
@@ -41,7 +41,7 @@ console.log(JSON.stringify({
     assert '<span class="cm-cell cm-c-seller" role="cell" title="—">—</span>' in got["none"]
     assert '<span class="cm-cell cm-c-seller" role="columnheader">Seller</span>' in got["head"]
     # one column per cell, in the shared subgrid (): the head and every row carry the same cells in the same order
-    order = lambda html: [c.split('"')[0] for c in html.split('class="cm-cell cm-c')[1:]]
+    order = lambda html: [c.split('"')[0] for c in html.split('class="cm-cell cm-c-')[1:]]
     assert order(got["head"]) == order(got["other"]) == order(got["own"])
     css = (STATIC / "card-browser.css").read_text(encoding="utf-8")
     assert "[rate] max-content [seller] minmax(0, max-content) [tags]" in css
@@ -51,7 +51,7 @@ console.log(JSON.stringify({
 def test_the_market_tile_has_no_seller():
     tile = run_in_module_context(r"""
 const row = { name: 'Gargoya Lion', card_detail_id: 349, edition: 3, card_set: 'chaos', rarity: 'common', foil: 0, level: 9, max_level: 10, bcx: 300,
- bcx_max: 400, land_base_pp: 750, max_level_pp: 1000, price_usd: 0.1, price_dec: 200, splinters: ['Neutral'], lkey: 'aaaaaaaaaaaaaaa6', seller: 'player_0001' };
+  bcx_max: 400, land_base_pp: 750, max_level_pp: 1000, price_usd: 0.1, price_dec: 200, splinters: ['Neutral'], lkey: 'aaaaaaaaaaaaaaa6', seller: 'player_0001' };
 console.log(JSON.stringify(cmTileHtml(cmTiles([row])[0], tileHtml)));
 """, entry=STATIC / "card-browser.js").stdout
     assert "player_0001" not in json.loads(tile.strip().splitlines()[-1])

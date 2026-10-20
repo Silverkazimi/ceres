@@ -23,9 +23,9 @@ def test_plot_cards_are_accessible_sheet_openers() -> None:
 function assert(ok, message) { if (!ok) throw new Error(message); }
 BOARD = {badge_meta: {}};
 const row = {
- deed_uid: 'deed-a', plot: '65-7-8', region: 'PR-BRL-65', terrain: 'Forest',
- resource: 'grain', worksite_type: 'Grain Farm', work_per_hour: 1234.4,
- harvest_pp: 98765.4, capacity: {display: '2/5'}, badges: [], notices: [],
+  deed_uid: 'deed-a', plot: '65-7-8', region: 'PR-BRL-65', terrain: 'Forest',
+  resource: 'grain', worksite_type: 'Grain Farm', work_per_hour: 1234.4,
+  harvest_pp: 98765.4, capacity: {display: '2/5'}, badges: [], notices: [],
 };
 const card = plotCardHtml(row, 0);
 assert(card.includes('role="button"'), 'plot card must be keyboard-operable');
@@ -78,19 +78,19 @@ const worksite = { prepend(node) { if (node === scene) calls.sceneMoved++; }, ap
 const status = { textContent: '' };
 const retry = { hidden: false };
 const band = {
- dataset: {}, classList, setAttribute() {}, querySelectorAll() { return []; },
- querySelector(selector) {
- return {'.eos-status-text': status, '.expand-retry-link': retry, '.editor-scene': scene, '.slot-editor-footer': actions}[selector] || null;
- },
+  dataset: {}, classList, setAttribute() {}, querySelectorAll() { return []; },
+  querySelector(selector) {
+    return {'.eos-status-text': status, '.expand-retry-link': retry, '.editor-scene': scene, '.slot-editor-footer': actions}[selector] || null;
+  },
 };
 const body = {
- html: '', appended: null,
- set innerHTML(value) { this.html = value; }, get innerHTML() { return this.html; },
- querySelectorAll() { return []; },
- querySelector(selector) { return selector === '.editor-band' ? band : selector === '.mobile-plot-worksite' ? worksite : selector === '.slot-editor-footer' ? actions : null; },
- appendChild(node) { this.appended = node; }, replaceChildren() { this.html = ''; },
+  html: '', appended: null,
+  set innerHTML(value) { this.html = value; }, get innerHTML() { return this.html; },
+  querySelectorAll() { return []; },
+  querySelector(selector) { return selector === '.editor-band' ? band : selector === '.mobile-plot-worksite' ? worksite : selector === '.slot-editor-footer' ? actions : null; },
+  appendChild(node) { this.appended = node; }, replaceChildren() { this.html = ''; },
 };
-// style.setProperty added for (v0.9.530) mobile picker header terrain overlay.
+// style.setProperty added for  (v0.9.530) mobile picker header terrain overlay.
 const sheet = { dataset: {}, hidden: true, classList, removeAttribute() {}, style: { setProperty() {} } };
 const title = { textContent: '' }; const subtitle = { textContent: '' };
 const close = { classList, setAttribute() {}, focus() { calls.focus++; } };
@@ -168,8 +168,8 @@ assert(plotCloses === 2 && harvestCloses === 2 && pushes === 3, 'Back cannot dis
 
 
 def test_phase_e_stays_mobile_only_and_leaves_combine_desktop_only() -> None:
-    block = CSS.split("* PHASE E MOBILE PLOT SHEET START *", 1)[1].split(
-        "* PHASE E MOBILE PLOT SHEET END *", 1
+    block = CSS.split("/*  PHASE E MOBILE PLOT SHEET START */", 1)[1].split(
+        "/*  PHASE E MOBILE PLOT SHEET END */", 1
     )[0]
     selectors = re.findall(r"([^{}]+)\{", re.sub(r"/\*.*?\*/", "", block, flags=re.S))
     assert selectors

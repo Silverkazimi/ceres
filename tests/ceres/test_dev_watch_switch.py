@@ -1,4 +1,4 @@
-""" `CERES_DEV_WATCH=0` silences the dev loop; the default keeps it exactly as before."""
+""" -- `CERES_DEV_WATCH=0` silences the dev loop; the default keeps it exactly as before."""
 
 from __future__ import annotations
 

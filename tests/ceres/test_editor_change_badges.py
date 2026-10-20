@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 
 
 @pytest.fixture(scope="module")
@@ -33,9 +33,9 @@ def _expanded_editor(live_browser: tuple[Browser, str]) -> Page:
     )
     page.evaluate(
         """() => {
- const rows = [...document.querySelectorAll('#plot-tbody > tr.plot-row')];
- (rows.find(r => r.textContent.includes('/5')) || rows[0]).click();
- }"""
+            const rows = [...document.querySelectorAll('#plot-tbody > tr.plot-row')];
+            (rows.find(r => r.textContent.includes('/5')) || rows[0]).click();
+        }"""
     )
     page.wait_for_selector(".editor-facts", timeout=15_000)
     return page
@@ -44,14 +44,14 @@ def _expanded_editor(live_browser: tuple[Browser, str]) -> Page:
 def _stage_a_removal(page: Page) -> bool:
     staged = page.evaluate(
         """() => {
- const t = document.querySelector('.slot-editor-body .slot-tile:not(.is-empty) [data-slot-action]');
- if (!t) return false;
- t.click();
- return true;
- }"""
+            const t = document.querySelector('.slot-editor-body .slot-tile:not(.is-empty) [data-slot-action]');
+            if (!t) return false;
+            t.click();
+            return true;
+        }"""
     )
     if staged:
-        page.wait_for_timeout(1500)
+        settle(page)
     return bool(staged)
 
 

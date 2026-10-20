@@ -111,20 +111,20 @@ _FAKE_DOM = r"""
 function assert(ok, message) { if (!ok) throw new Error(message); }
 
 function makeInput(id, kind) {
- const el = {
- id, listeners: {}, hidden: false,
- value: '', checked: false,
- dataset: {},
- classList: { add() {}, remove() {}, contains() { return false; } },
- addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); },
- dispatchEvent(evt) { (this.listeners[evt.type] || []).forEach((fn) => fn({ target: this })); },
- };
- return el;
+  const el = {
+    id, listeners: {}, hidden: false,
+    value: '', checked: false,
+    dataset: {},
+    classList: { add() {}, remove() {}, contains() { return false; } },
+    addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); },
+    dispatchEvent(evt) { (this.listeners[evt.type] || []).forEach((fn) => fn({ target: this })); },
+  };
+  return el;
 }
 
 const ids = [
- 'text-filter', 'region-filter', 'rarity-filter', 'terrain-filter', 'resource-filter',
- 'status-filter', 'badge-filter', 'staged-only', 'clear-board-filters',
+  'text-filter', 'region-filter', 'rarity-filter', 'terrain-filter', 'resource-filter',
+  'status-filter', 'badge-filter', 'staged-only', 'clear-board-filters',
 ];
 const elements = new Map(ids.map((id) => [id, makeInput(id)]));
 document.getElementById = (id) => elements.get(id) || null;
@@ -144,22 +144,22 @@ assert(boardFiltersActive() === false, 'no filter set must read as inactive');
 syncBoardFilterChrome();
 assert(clearBtn.hidden === true, 'Clear must start hidden with nothing active');
 
-// Any one of the eight dimensions flips it active -- confirm all eight are checked
+// Any one of the eight dimensions flips it active -- confirm all eight are checked,
 // not just a couple.
 const cases = [
- () => { textFilter.value = 'plot'; },
- () => { regionFilter.value = '65'; },
- () => { rarityFilter.value = 'legendary'; },
- () => { terrainFilter.value = 'forest'; },
- () => { resourceFilter.value = 'grain'; },
- () => { statusFilter.value = 'natural'; },
- () => { badgeFilter.value = 'underfilled'; },
- () => { stagedOnly.checked = true; },
+  () => { textFilter.value = 'plot'; },
+  () => { regionFilter.value = '65'; },
+  () => { rarityFilter.value = 'legendary'; },
+  () => { terrainFilter.value = 'forest'; },
+  () => { resourceFilter.value = 'grain'; },
+  () => { statusFilter.value = 'natural'; },
+  () => { badgeFilter.value = 'underfilled'; },
+  () => { stagedOnly.checked = true; },
 ];
 for (const [i, setOne] of cases.entries()) {
- for (const el of elements.values()) { el.value = ''; el.checked = false; }
- setOne();
- assert(boardFiltersActive() === true, `dimension ${i} must count as active`);
+  for (const el of elements.values()) { el.value = ''; el.checked = false; }
+  setOne();
+  assert(boardFiltersActive() === true, `dimension ${i} must count as active`);
 }
 
 // clearBoardFilters(): every dimension back to neutral, through each control's OWN
@@ -189,11 +189,11 @@ stagedOnly.addEventListener('change', () => { fired.staged += 1; });
 clearBoardFilters();
 
 assert(textFilter.value === '' && regionFilter.value === '' && rarityFilter.value === ''
- && terrainFilter.value === '' && resourceFilter.value === '' && statusFilter.value === '' && badgeFilter.value === ''
- && !stagedOnly.checked,
- 'clearBoardFilters must reset every one of the eight dimensions to neutral');
+  && terrainFilter.value === '' && resourceFilter.value === '' && statusFilter.value === '' && badgeFilter.value === ''
+  && !stagedOnly.checked,
+  'clearBoardFilters must reset every one of the eight dimensions to neutral');
 for (const [key, count] of Object.entries(fired)) {
- assert(count === 1, `expected exactly one normal event dispatch for ${key}, got ${count}`);
+  assert(count === 1, `expected exactly one normal event dispatch for ${key}, got ${count}`);
 }
 assert(boardFiltersActive() === false, 'Clear must leave the row fully neutral');
 assert(clearBtn.hidden === true, 'Clear must hide itself again once nothing is active');
@@ -249,7 +249,7 @@ def test_computed_options_use_column_labels() -> None:
         ("underfilled", "Open slots"), ("over_cap", "Over Cap"),
         ("region_dec", "Region DEC"), ("runi", "RUNI"),
     ):
-        assert f"['{key}', {{ kind: '{'problem' if key in ('over_cap', 'region_dec', 'underfilled', 'bloodline_solo') else 'property'}', label: '{label}'" in BADGES_SOURCE
+        assert f"['{key}', {{ kind: '{'problem' if key in ('over_cap', 'region_dec', 'underfilled', 'bloodline_solo') else 'property'}', label: '{label}'," in BADGES_SOURCE
 
 
 def test_staged_truth_renders_independently_and_reuses_editor_projection() -> None:
@@ -274,5 +274,5 @@ def test_detail_replacement_refilters_an_active_badge_view() -> None:
     # commit 8d787322 ("fix(ceres): refresh mobile idle plots with
     # active badge filters", v0.9.528) inserted a mobile-sheet redraw between the two
     # calls this guard originally checked as adjacent lines.
-    assert "renderTable();\n // The filtered board rebuild does not redraw the separate mobile sheet.\n if (MOBILE_PLOT_UID === deedUid) updateMountedRow(deedUid, { readiness: true });\n queueMicrotask(syncCloseAll);" in ROWS_SOURCE
+    assert "renderTable();\n      // The filtered board rebuild does not redraw the separate mobile sheet.\n      if (MOBILE_PLOT_UID === deedUid) updateMountedRow(deedUid, { readiness: true });\n      queueMicrotask(syncCloseAll);" in ROWS_SOURCE
     assert "else if (BOARD) updateMountedRow(deedUid, { readiness: true });" in ROWS_SOURCE

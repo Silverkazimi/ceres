@@ -16,12 +16,12 @@ from .vm_context import run_in_module_context
 
 _JS = r"""
 const records = {
- combine: tipAttrs(combineTipModel(3, 'tile_chip_rail')),
- mixed: tipAttrs({title: 'T', items: [{name: '', effect: 'plain line'}, {name: 'Label', effect: 'value'}, {name: 'Empty', effect: ''}], peer: 'tile_chip_rail'}),
- editor: tipAttrs(editorRuniTip({base_pp: null}, {}, 0, {multiplier_parts: {runi_boost: 1}})),
- add: renderPowerSatellite({deed_uid: 'add-runi'}, {id: 'runi'}, null),
- runi: runiBadgeChip(),
- terrain: tipAttrs({title: 'Earth splinter', body: `${tipIcon('land/terrain-emblem-forest.svg')}Forest terrain bonus +10%`, peer: 'icons_identity'}),
+  combine: tipAttrs(combineTipModel(3, 'tile_chip_rail')),
+  mixed: tipAttrs({title: 'T', items: [{name: '', effect: 'plain line'}, {name: 'Label', effect: 'value'}, {name: 'Empty', effect: ''}], peer: 'tile_chip_rail'}),
+  editor: tipAttrs(editorRuniTip({base_pp: null}, {}, 0, {multiplier_parts: {runi_boost: 1}})),
+  add: renderPowerSatellite({deed_uid: 'add-runi'}, {id: 'runi'}, null),
+  runi: runiBadgeChip(),
+  terrain: tipAttrs({title: 'Earth splinter', body: `${tipIcon('land/terrain-emblem-forest.svg')}Forest terrain bonus +10%`, peer: 'icons_identity'}),
 };
 console.log('__GATE__' + JSON.stringify(records));
 """

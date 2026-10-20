@@ -45,15 +45,15 @@ APP_JS = ENTRY
 
 _DISTINCT_GROUP_KEYS_JS = r"""
 const cards = [
- {uid: 'gold', card_detail_id: 7, edition: 14, foil: 1, bcx: 1, bcx_max: 10},
- {uid: 'gold-arcane', card_detail_id: 7, edition: 14, foil: 2, bcx: 1, bcx_max: 10},
- {uid: 'regular', card_detail_id: 7, edition: 14, foil: 0, bcx: 1, bcx_max: 10},
+  {uid: 'gold', card_detail_id: 7, edition: 14, foil: 1, bcx: 1, bcx_max: 10},
+  {uid: 'gold-arcane', card_detail_id: 7, edition: 14, foil: 2, bcx: 1, bcx_max: 10},
+  {uid: 'regular', card_detail_id: 7, edition: 14, foil: 0, bcx: 1, bcx_max: 10},
 ];
 const groups = combineGroupsFrom(cards);
 if (groups.size !== 3) throw new Error(`foil groups collapsed: ${[...groups.keys()]} (exit 1)`);
 for (const foil of [0, 1, 2]) {
- const group = groups.get(`7|14|${foil}`);
- if (!group || group.length !== 1 || group[0].foil !== foil) throw new Error(`group for foil ${foil} malformed (exit 2)`);
+  const group = groups.get(`7|14|${foil}`);
+  if (!group || group.length !== 1 || group[0].foil !== foil) throw new Error(`group for foil ${foil} malformed (exit 2)`);
 }
 """
 
@@ -73,11 +73,11 @@ def test_distinct_foil_group_guard_mutation_is_red() -> None:
     assert mutated != source, "combineGroupKey foil-truthiness mutation target is missing"
     check_js = r"""
 const groups = combineGroupsFrom([
- {uid: 'one', card_detail_id: 7, edition: 14, foil: 1, bcx: 1, bcx_max: 10},
- {uid: 'two', card_detail_id: 7, edition: 14, foil: 2, bcx: 1, bcx_max: 10},
+  {uid: 'one', card_detail_id: 7, edition: 14, foil: 1, bcx: 1, bcx_max: 10},
+  {uid: 'two', card_detail_id: 7, edition: 14, foil: 2, bcx: 1, bcx_max: 10},
 ]);
 if (groups.size !== 2 || groups.get('7|14|1')?.length !== 1 || groups.get('7|14|2')?.length !== 1) {
- throw new Error(`foil groups collapsed: ${[...groups.entries()]} (exit 1)`);
+  throw new Error(`foil groups collapsed: ${[...groups.entries()]} (exit 1)`);
 }
 """
     with pytest.raises(subprocess.CalledProcessError):
@@ -86,13 +86,13 @@ if (groups.size !== 2 || groups.get('7|14|1')?.length !== 1 || groups.get('7|14|
 
 _CDN_MAPPING_JS = r"""
 const expected = {
- 12: 'cards_rebellion', 13: 'cards_soulbound', 15: 'cards_v2.2', 18: 'cards_v2.2',
+  12: 'cards_rebellion', 13: 'cards_soulbound', 15: 'cards_v2.2', 18: 'cards_v2.2',
 };
 for (const [edition, folder] of Object.entries(expected)) {
- const url = editorCardImage({card_name: 'Synthetic Card', edition: Number(edition), foil: 0});
- if (url !== `https://d36mxiodymuqjm.cloudfront.net/${folder}/Synthetic%20Card.jpg`) {
- throw new Error(`edition ${edition} resolved to ${url} (exit 20)`);
- }
+  const url = editorCardImage({card_name: 'Synthetic Card', edition: Number(edition), foil: 0});
+  if (url !== `https://d36mxiodymuqjm.cloudfront.net/${folder}/Synthetic%20Card.jpg`) {
+    throw new Error(`edition ${edition} resolved to ${url} (exit 20)`);
+  }
 }
 """
 
@@ -109,7 +109,7 @@ def test_known_cdn_mapping_mutation_is_red() -> None:
     check_js = r"""
 const url = editorCardImage({card_name: 'Synthetic Card', edition: 13, foil: 0});
 if (url !== 'https://d36mxiodymuqjm.cloudfront.net/cards_soulbound/Synthetic%20Card.jpg') {
- throw new Error(`known edition mapping returned no card-art URL: ${url} (exit 1)`);
+  throw new Error(`known edition mapping returned no card-art URL: ${url} (exit 1)`);
 }
 """
     with pytest.raises(subprocess.CalledProcessError):
@@ -119,7 +119,7 @@ if (url !== 'https://d36mxiodymuqjm.cloudfront.net/cards_soulbound/Synthetic%20C
 _FOIL_NAMES_JS = r"""
 const expected = ['Regular', 'Gold', 'Gold Arcane', 'Black Foil', 'Black Foil Arcane'];
 for (let foil = 0; foil < expected.length; foil += 1) {
- if (fmtFoil({foil}) !== expected[foil]) throw new Error(`foil ${foil} formatted as ${fmtFoil({foil})} (exit 30)`);
+  if (fmtFoil({foil}) !== expected[foil]) throw new Error(`foil ${foil} formatted as ${fmtFoil({foil})} (exit 30)`);
 }
 """
 
@@ -138,13 +138,13 @@ def _get(base_url: str, path: str) -> dict:
 
 def _staked_worker(base_url: str) -> tuple[dict, dict]:
     """A real plot detail payload plus one of its staked worker occupants
- (card_detail_id/edition present, so combineGroupKey can group it)."""
+    (card_detail_id/edition present, so combineGroupKey can group it)."""
     board = _get(base_url, "/api/board")
     for plot in board["plots"]:
         if not plot.get("assets_loaded"):
             continue
         deed_uid = plot["deed_uid"]
-        detail = _get(base_url, f"api/plots/{urllib.parse.quote(deed_uid, safe='')}")
+        detail = _get(base_url, f"/api/plots/{urllib.parse.quote(deed_uid, safe='')}")
         for worker in detail.get("workers") or []:
             if worker.get("card_detail_id") is not None and worker.get("edition") is not None and isinstance(worker.get("slot"), int) and worker["slot"] >= 1:
                 return detail, worker
@@ -153,14 +153,14 @@ def _staked_worker(base_url: str) -> tuple[dict, dict]:
 
 def _open_slot_candidate_template(base_url: str) -> tuple[str, dict]:
     """A real candidate row payload from a plot with an open worker slot, plus
- that plot's deed_uid -- the exact shape `renderCandidateRow` expects,
- mutated below rather than hand-built."""
+    that plot's deed_uid -- the exact shape `renderCandidateRow` expects,
+    mutated below rather than hand-built."""
     board = _get(base_url, "/api/board")
     for plot in board["plots"]:
         if (plot.get("capacity") or {}).get("open_slots", 0) > 0:
             deed_uid = plot["deed_uid"]
             params = urllib.parse.urlencode({"group_id": "worker", "limit": 5, "offset": 0, "sort": "construction_pp", "bucket": "all", "preset": "net_gain_default"})
-            payload = _get(base_url, f"api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates?{params}")
+            payload = _get(base_url, f"/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates?{params}")
             if payload.get("candidates"):
                 return deed_uid, copy.deepcopy(payload["candidates"][0])
     raise AssertionError("no live plot with an open worker slot returned a candidate to build a fixture from")
@@ -225,7 +225,7 @@ def _assert_no_candidate_combine_affordance(page: Page, base_url: str, deed_uid:
 
 def _black_arcane_fixture(base_url: str, foil: int) -> tuple[dict, dict, str, dict]:
     """(worker_detail with occupant.foil forced to `foil`, idle duplicate list of
- two matching copies, open-slot deed_uid, candidate matching one duplicate's uid)."""
+    two matching copies, open-slot deed_uid, candidate matching one duplicate's uid)."""
     detail, worker = _staked_worker(base_url)
     worker = dict(worker, foil=foil, bcx=1, bcx_max=10)
     detail = copy.deepcopy(detail)
@@ -265,8 +265,8 @@ def test_black_and_arcane_are_absent_from_all_combine_surfaces() -> None:
 
 def test_black_and_arcane_exclusion_mutation_is_red() -> None:
     """Injected defect: drop the shared Black/Arcane exclusion (`isNonCombinableFoil`
- always returns false); the rendered worker-table chip must then appear where
- the guard above requires it absent."""
+    always returns false); the rendered worker-table chip must then appear where
+    the guard above requires it absent."""
     with spawn_live_ceres() as (browser, base_url):
         detail, duplicates, _candidate_deed, _candidate = _black_arcane_fixture(base_url, 3)
         real_source = read_entry_source()

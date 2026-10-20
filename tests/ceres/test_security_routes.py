@@ -37,8 +37,8 @@ def request_for(config: CeresConfig, *, origin: str | None = None) -> Request:
 ])
 def test_cross_origin_post_to_bodyless_route_is_refused(tmp_path, monkeypatch, handler, args):
     """Injection run: removing the _require_same_origin() call from this route made it
- return the route's normal 409/202 instead of refusing the cross-origin POST -- verified
- live on routes_board.capture_refresh, restored after confirming the RED->GREEN flip."""
+    return the route's normal 409/202 instead of refusing the cross-origin POST -- verified
+    live on routes_board.capture_refresh, restored after confirming the RED->GREEN flip."""
     config = CeresConfig(root=tmp_path, player="player0005")
     monkeypatch.setattr(capture, "is_running", lambda player: True)
     with pytest.raises(HTTPException) as raised:

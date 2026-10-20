@@ -31,7 +31,10 @@ OWNED_PROPERTIES = {
 }
 
 CONTROL_CONSTRUCTOR = re.compile(
-    r"<button\b[^>]*>|<summary\b[^>]*>|\"\n r\"<(?:div|article|label|li|tr|th)\b[^>]*\brole=[\"'](?:button|combobox|option)[\"'][^>]*>|\"\n r\"<input\b[^>]*\btype=[\"'](?:submit|checkbox)[\"'][^>]*>|\"\n r\"createElement\([\"']button[\"']\)",
+    r"<button\b[^>]*>|<summary\b[^>]*>|"
+    r"<(?:div|article|label|li|tr|th)\b[^>]*\brole=[\"'](?:button|combobox|option)[\"'][^>]*>|"
+    r"<input\b[^>]*\btype=[\"'](?:submit|checkbox)[\"'][^>]*>|"
+    r"createElement\([\"']button[\"']\)",
     re.IGNORECASE | re.DOTALL,
 )
 
@@ -154,7 +157,8 @@ def _assert_style_ownership(css: str, manifest: dict) -> None:
     observed += _legacy_snapshot(CANONICAL_CSS.read_text(encoding="utf-8"), manifest, "canonical.css")
     allowed = _allowed_legacy_snapshot(manifest)
     assert observed == allowed, (
-        "legacy button style ownership changed; remove/migrate an entry or record a reviewed case \"\n f\"instead of growing the allowlist silently\nobserved={observed!r}\nallowed={allowed!r}"
+        "legacy button style ownership changed; remove/migrate an entry or record a reviewed case "
+        f"instead of growing the allowlist silently\nobserved={observed!r}\nallowed={allowed!r}"
     )
 
 
@@ -202,7 +206,7 @@ def _assert_no_inline_control_style(sources: dict[str, str]) -> None:
             style = re.search(r"\bstyle=[\"'][^\"']*(?:border-radius|padding|background|color|font|box-shadow|filter|transform)[^\"']*[\"']", tag, re.IGNORECASE)
             if style:
                 violations.append(f"{renderer}:{style.group(0)}")
-    assert not violations, "inline control styling is legacy ownership " + ", ".join(violations)
+    assert not violations, "inline control styling is legacy ownership: " + ", ".join(violations)
 
 
 def _assert_contract_cases(css: str, manifest: dict) -> None:
@@ -439,16 +443,16 @@ def test_vm_aria_disabled_worksite_control_does_not_dispatch():
     body = r"""
 let calls = 0;
 const blocked = {
- dataset: { worksiteAction: 'stage' },
- getAttribute(name) { return name === 'aria-disabled' ? 'true' : null; },
+  dataset: { worksiteAction: 'stage' },
+  getAttribute(name) { return name === 'aria-disabled' ? 'true' : null; },
 };
 const event = {
- target: { closest(selector) { return selector === '[data-worksite-action]' ? blocked : null; } },
- preventDefault() {}, stopPropagation() {},
+  target: { closest(selector) { return selector === '[data-worksite-action]' ? blocked : null; } },
+  preventDefault() {}, stopPropagation() {},
 };
 stageThisWorksiteBuild = () => { calls += 1; };
 Promise.resolve(handleSlotEditorClick(event)).then(() => {
- if (calls !== 0) throw new Error('aria-disabled worksite action dispatched');
+  if (calls !== 0) throw new Error('aria-disabled worksite action dispatched');
 });
 """
     run_in_module_context(body)

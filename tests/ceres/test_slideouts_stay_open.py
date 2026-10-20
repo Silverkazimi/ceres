@@ -1,4 +1,4 @@
-"""slid-out plot badges stay out until the flag or a plot's badge button is pressed again (or Escape)."""
+""": slid-out plot badges stay out until the flag or a plot's badge button is pressed again (or Escape)."""
 import re
 from pathlib import Path
 
@@ -7,7 +7,7 @@ JS = (Path(__file__).parents[2] / "ceres" / "static" / "badge-overlay.js").read_
 
 def _handler(event):
     start = JS.index(f"document.addEventListener('{event}'")
-    return JS[start:JS.index("\n });", start)]
+    return JS[start:JS.index("\n  });", start)]
 
 
 def test_a_click_elsewhere_does_not_close_the_slide_outs():

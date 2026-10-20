@@ -16,7 +16,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Browser
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres, wait_ready
 
 
 @pytest.fixture(scope="module")
@@ -29,25 +29,25 @@ def browser() -> tuple[Browser, str]:
 # overflows, on the table's ancestor chain, plus the page itself.
 _HSCROLL_JS = """
 () => {
- const table = document.getElementById('plot-table');
- if (!table) return null;
- const candidates = [];
- for (let el = table; el; el = el.parentElement) candidates.push(el);
- let boxes = 0;
- for (const node of candidates) {
- const cs = getComputedStyle(node);
- if ((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && node.scrollWidth > node.clientWidth + 1) boxes++;
- }
- const scroller = document.getElementById('plot-table-scroll');
- const doc = document.documentElement;
- return {
- boxes,
- proxy: !!document.getElementById('table-hscroll-proxy'),
- scrollerOverflowX: getComputedStyle(scroller).overflowX,
- tableHidden: scroller.scrollWidth > scroller.clientWidth + 1,
- pageSW: doc.scrollWidth, pageCW: doc.clientWidth,
- tableVisible: getComputedStyle(scroller).display !== 'none',
- };
+  const table = document.getElementById('plot-table');
+  if (!table) return null;
+  const candidates = [];
+  for (let el = table; el; el = el.parentElement) candidates.push(el);
+  let boxes = 0;
+  for (const node of candidates) {
+    const cs = getComputedStyle(node);
+    if ((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && node.scrollWidth > node.clientWidth + 1) boxes++;
+  }
+  const scroller = document.getElementById('plot-table-scroll');
+  const doc = document.documentElement;
+  return {
+    boxes,
+    proxy: !!document.getElementById('table-hscroll-proxy'),
+    scrollerOverflowX: getComputedStyle(scroller).overflowX,
+    tableHidden: scroller.scrollWidth > scroller.clientWidth + 1,
+    pageSW: doc.scrollWidth, pageCW: doc.clientWidth,
+    tableVisible: getComputedStyle(scroller).display !== 'none',
+  };
 }
 """
 
@@ -56,13 +56,14 @@ _HSCROLL_JS = """
 def test_no_horizontal_scrollbar_at_any_width(browser: tuple[Browser, str], width: int) -> None:
     instance, base_url = browser
     page = instance.new_page(viewport={"width": width, "height": 800})
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     page.wait_for_function(
         "document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0"
         " || document.querySelectorAll('#plot-card-list .plot-card').length > 0",
         timeout=60_000,
     )
-    page.wait_for_timeout(500)
+    wait_ready(page)
+    settle(page)
     got = page.evaluate(_HSCROLL_JS)
     page.close()
     assert got is not None
@@ -76,27 +77,28 @@ def test_no_horizontal_scrollbar_at_any_width(browser: tuple[Browser, str], widt
 
 
 def test_desktop_table_header_reaches_both_document_edges(browser: tuple[Browser, str]) -> None:
-    """the sticky table header must not stop inside either board gutter."""
+    """: the sticky table header must not stop inside either board gutter."""
     instance, base_url = browser
     page = instance.new_page(viewport={"width": 1440, "height": 800})
     try:
-        page.goto(f"{base_url}/?player=player0005")
+        page.goto(f"{base_url}/?player=sample01")
         page.wait_for_function(
             "document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0",
             timeout=60_000,
         )
-        page.wait_for_timeout(500)
+        wait_ready(page)
+        settle(page)
         got = page.evaluate(
             """() => {
- const viewport = document.documentElement.getBoundingClientRect();
- const scroller = document.getElementById('plot-table-scroll').getBoundingClientRect();
- const head = document.getElementById('table-head-sticky').getBoundingClientRect();
- return {
- viewportLeft: viewport.left, viewportRight: viewport.right,
- scrollerLeft: scroller.left, scrollerRight: scroller.right,
- headLeft: head.left, headRight: head.right,
- };
- }"""
+              const viewport = document.documentElement.getBoundingClientRect();
+              const scroller = document.getElementById('plot-table-scroll').getBoundingClientRect();
+              const head = document.getElementById('table-head-sticky').getBoundingClientRect();
+              return {
+                viewportLeft: viewport.left, viewportRight: viewport.right,
+                scrollerLeft: scroller.left, scrollerRight: scroller.right,
+                headLeft: head.left, headRight: head.right,
+              };
+            }"""
         )
     finally:
         page.close()

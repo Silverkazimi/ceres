@@ -1,4 +1,4 @@
-""" expected cards use real plot pricing and survive picker filters."""
+""" : expected cards use real plot pricing and survive picker filters."""
 from pathlib import Path
 from copy import deepcopy
 from ceres.candidates import planned_card

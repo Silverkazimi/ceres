@@ -1,4 +1,4 @@
-"""the optional Posting-key login -- signature checks against a Posting authority, single-use challenges, memory-only sessions.
+""": the optional Posting-key login -- signature checks against a Posting authority, single-use challenges, memory-only sessions.
 Synthetic secp256k1 keys only; no wallet, no network."""
 import hashlib
 
@@ -88,7 +88,7 @@ def test_a_challenge_is_used_once_is_bound_to_its_browser_and_expires():
     item = store.issue(account="alice", purpose="login", audience="http://127.0.0.1:27390", binding=binding, now=1000.0)
     assert "\n" not in item.message and "\r" not in item.message and "\\" not in item.message     # one line, the Keychain phone app cannot sign a text with line breaks
     lines = item.message.split(" | ")
-    assert lines[0] == "Ceres sign-in" and lines[1] == "Account: alice" and lines[2] == "Site: http"
+    assert lines[0] == "Ceres sign-in" and lines[1] == "Account: alice" and lines[2] == "Site: http://127.0.0.1:27390"
     assert lines[3] == "Valid until: 1970-01-01 00:21 UTC"                                  # one normalised, readable time (1000 s + 300 s)
     assert lines[4] == f"Ref: {item.challenge_id} / {binding[:8]}" and "It sends no transaction and costs nothing." in lines[-1]
     assert len(item.message) < 330 and item.message.isascii()                            # compact and plain

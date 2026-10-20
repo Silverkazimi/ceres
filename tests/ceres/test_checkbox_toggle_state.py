@@ -71,19 +71,19 @@ def test_rendered_combine_dialog_has_no_checkbox_control_only_the_quantity_contr
     live_browser: tuple[Browser, str],
 ) -> None:
     """Census row 8: replaces the placement guard that scanned
- `handleCombineAction()`'s source text for the absence of
- `kind === 'toggle-copy'`/`kind === 'toggle-upgradeable'` and the presence of
- the `data-combine-action="preset"`/`"qty"` markup strings. Opens the real
- combine dialog and reads the real DOM instead: zero `input[type=checkbox]`
- anywhere inside it, and the real preset/qty buttons present.
+    `handleCombineAction()`'s source text for the absence of
+    `kind === 'toggle-copy'`/`kind === 'toggle-upgradeable'` and the presence of
+    the `data-combine-action="preset"`/`"qty"` markup strings. Opens the real
+    combine dialog and reads the real DOM instead: zero `input[type=checkbox]`
+    anywhere inside it, and the real preset/qty buttons present.
 
- Named injection (not applied here; independently watched red/green per
- ): `renderCombineDialogEditor()`'s amount control markup changed from
- the preset/stepper buttons to
- `<input type=\"checkbox\" class=\"combine-copy-checkbox\">` per copy row
- (reintroducing the retired toggle-copy checkbox UI). Expected red: the
- rendered dialog now contains an `input[type=checkbox]`, where this test
- asserts a count of 0."""
+    Named injection (not applied here; independently watched red/green per
+    ): `renderCombineDialogEditor()`'s amount control markup changed from
+    the preset/stepper buttons to
+    `<input type=\"checkbox\" class=\"combine-copy-checkbox\">` per copy row
+    (reintroducing the retired toggle-copy checkbox UI). Expected red: the
+    rendered dialog now contains an `input[type=checkbox]`, where this test
+    asserts a count of 0."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     deed_uid, occupant = _real_occupied_worker(base_url)

@@ -80,10 +80,10 @@ def _plot(uid: str, *, powered: bool = True, workers: int = 0) -> dict:
 
 def _idle_worker_card_report(deed: str, *, asset_ref: str, stake_end_date: str | None, bucket: str) -> dict:
     """Minimal fixture -- an idle STK-LND-WKR card in the named classification bucket, plus
- an empty powered target deed. No real snapshot carries a card still mid-cooldown at
- capture time (a point-in-time snapshot rarely catches that window), so this shape is
- synthetic; only `asset_ref`/`stake_end_date` below are copied verbatim from the real
- player0005 snapshot to anchor the cooldown math in an observed value."""
+    an empty powered target deed. No real snapshot carries a card still mid-cooldown at
+    capture time (a point-in-time snapshot rarely catches that window), so this shape is
+    synthetic; only `asset_ref`/`stake_end_date` below are copied verbatim from the real
+    player0005 snapshot to anchor the cooldown math in an observed value."""
     return {
         "plots": [_plot(deed)],
         "workers": [],
@@ -102,7 +102,7 @@ def _idle_worker_card_report(deed: str, *, asset_ref: str, stake_end_date: str |
 
 def test_worker_within_cooldown_window_is_refused():
     """Real card, real stake_end_date; `now` set 10h before it -- still cooling. Must
- refuse, not silently drop."""
+    refuse, not silently drop."""
     report = _idle_worker_card_report(
         "deed-1", asset_ref=REAL_WORKER_ASSET_REF, stake_end_date=REAL_WORKER_STAKE_END,
         bucket="stake_expired_or_historical",
@@ -120,7 +120,7 @@ def test_worker_within_cooldown_window_is_refused():
 
 def test_worker_past_cooldown_window_is_allowed():
     """Same real card and stake_end_date; `now` set 80h after it -- past the end boundary.
- Must be accepted and produce a stake op."""
+    Must be accepted and produce a stake op."""
     report = _idle_worker_card_report(
         "deed-1", asset_ref=REAL_WORKER_ASSET_REF, stake_end_date=REAL_WORKER_STAKE_END,
         bucket="stake_expired_or_historical",
@@ -136,9 +136,9 @@ def test_worker_past_cooldown_window_is_allowed():
 
 def test_totem_unstake_then_restake_elsewhere_in_one_batch_is_allowed():
     """Totem (STK-LND-TOT) is an `items[]` class -- independently CONFIRMED zero cooldown
- (same-item unstake->restake observed 69s apart, the internal rules). Fixture: a totem staked on
- deed-1, staged to move to deed-2 in the SAME batch (the exact cross-plot round trip that
- is refused for a worker). Must be allowed."""
+    (same-item unstake->restake observed 69s apart, the internal rules). Fixture: a totem staked on
+    deed-1, staged to move to deed-2 in the SAME batch (the exact cross-plot round trip that
+    is refused for a worker). Must be allowed."""
     report = {
         "plots": [_plot("deed-1"), _plot("deed-2")],
         "workers": [],
@@ -158,8 +158,8 @@ def test_totem_unstake_then_restake_elsewhere_in_one_batch_is_allowed():
 
 def test_power_core_unstake_then_restake_elsewhere_in_one_batch_is_allowed():
     """Power Core (STK-LND-PCR) -- same zero-cooldown class as Totem. Deed-2 must stay
- unpowered by anything else so the power gate itself doesn't also fire; the point of this
- test is the cooldown gate specifically."""
+    unpowered by anything else so the power gate itself doesn't also fire; the point of this
+    test is the cooldown gate specifically."""
     deed_one = _plot("deed-1")
     deed_one["staking_facts"]["is_energized"] = True  # keeps deed-1 powered after the core leaves
     # this test targets the cooldown gate, not the (separately-tested) power gate.
@@ -192,24 +192,24 @@ def test_power_core_unstake_then_restake_elsewhere_in_one_batch_is_allowed():
 ])
 def test_all_five_known_stake_classes_classify_correctly(stake_type, expect_cooling):
     """`fides_land.waves.stake_type_is_cooling` (and its `cooldown_class` verdict) for
- every stake type the corrected 2026-08-26 cooldown model names explicitly. This closes
- the gap found while building the cooldown gate: `_ITEM_STAKE_TYPES` in
- `fides_land/ops.py` (verified op PAYLOAD shape) omits Title, which would have made
- `stake_type_is_cooling` wrongly classify Title as cooling the day Title op support
- lands for the wrong reason. `waves.py` now carries its own cooldown-only classification
- set, independent of that payload-shape constant."""
+    every stake type the corrected 2026-08-26 cooldown model names explicitly. This closes
+    the gap found while building the cooldown gate: `_ITEM_STAKE_TYPES` in
+    `fides_land/ops.py` (verified op PAYLOAD shape) omits Title, which would have made
+    `stake_type_is_cooling` wrongly classify Title as cooling the day Title op support
+    lands for the wrong reason. `waves.py` now carries its own cooldown-only classification
+    set, independent of that payload-shape constant."""
     assert stake_type_is_cooling(stake_type) is expect_cooling
     assert cooldown_class(stake_type) == ("cards" if expect_cooling else "items")
 
 
 def test_unrecognised_stake_class_fails_closed():
     """The single most important assertion in this file: an unparseable/unrecognised stake
- class must be treated as cooling, never as available. Exercised directly against the two
- reused helpers (`waves.stake_type_is_cooling`, `candidates.cooldown_state`) and against
- `op_preview._cooldown_refusal`, since `build_preview`'s own move validation rejects an
- asset/group stake-type mismatch before the cooldown gate would ever see a genuinely
- unrecognised class end-to-end -- the fail-closed behaviour still has to hold at the gate
- itself, not just be unreachable in practice."""
+    class must be treated as cooling, never as available. Exercised directly against the two
+    reused helpers (`waves.stake_type_is_cooling`, `candidates.cooldown_state`) and against
+    `op_preview._cooldown_refusal`, since `build_preview`'s own move validation rejects an
+    asset/group stake-type mismatch before the cooldown gate would ever see a genuinely
+    unrecognised class end-to-end -- the fail-closed behaviour still has to hold at the gate
+    itself, not just be unreachable in practice."""
     unknown_type = "STK-LND-DOES-NOT-EXIST"
     assert stake_type_is_cooling(unknown_type) is True
     assert cooldown_class(unknown_type) == "cards"
@@ -229,12 +229,12 @@ def test_unrecognised_stake_class_fails_closed():
 
 def test_cross_plot_same_batch_round_trip_is_refused_naming_the_card():
     """The core hazard W3 exists to close: unstake a worker from plot A + stake it to plot B
- in ONE batch. `op_preview.py:245-247` emits both intents together; the source-deed
- unstake means there is no `stake_end_date` evidence yet for a same-batch round trip, so
- this refuses with `ready_at: None` (evidence genuinely not derivable) rather than
- fabricating an expiry -- per the the internal rules rule this task also applies to
- `upstream_efficiency`. Fixture mirrors `test_op_preview.py::_report()`'s real shape
- (a worker staked on deed-1 via `workers[]`)."""
+    in ONE batch. `op_preview.py:245-247` emits both intents together; the source-deed
+    unstake means there is no `stake_end_date` evidence yet for a same-batch round trip, so
+    this refuses with `ready_at: None` (evidence genuinely not derivable) rather than
+    fabricating an expiry -- per the the internal rules rule this task also applies to
+    `upstream_efficiency`. Fixture mirrors `test_op_preview.py::_report()`'s real shape
+    (a worker staked on deed-1 via `workers[]`)."""
     report = {
         "plots": [_plot("deed-1", workers=1), _plot("deed-2")],
         "workers": [{
@@ -262,10 +262,10 @@ def test_cross_plot_same_batch_round_trip_is_refused_naming_the_card():
 
 def test_sole_power_source_removal_with_workers_present_is_allowed_and_warns():
     """Case 1 of the power-hazard brief: a plot WITH seated workers/PP. Staging must be
- ALLOWED (op builds) and the hazard must be surfaced. Fixture data -- the real
- zero-state deed below has nothing at risk by construction, so a real "has something to
- lose" case needs a synthetic worker; this mirrors `test_op_preview.py`'s own real
- fixture shape, which independently covers the same assertion end to end."""
+    ALLOWED (op builds) and the hazard must be surfaced. Fixture data -- the real
+    zero-state deed below has nothing at risk by construction, so a real "has something to
+    lose" case needs a synthetic worker; this mirrors `test_op_preview.py`'s own real
+    fixture shape, which independently covers the same assertion end to end."""
     report = {
         "plots": [_plot("deed-1", workers=1)],
         "workers": [{
@@ -292,11 +292,11 @@ def test_sole_power_source_removal_with_workers_present_is_allowed_and_warns():
 
 def test_sole_power_source_removal_on_an_empty_plot_is_allowed_with_no_warning():
     """The EXACT reported live case (2026-08-24): unstaking a power core was refused
- even though the plot already had zero PP and no workers whatsoever, so the
- block made no sense. REAL player0005-snapshot deed and REAL staked
- Power Core (`REAL_ZERO_STATE_DEED_UID` / `REAL_POWER_CORE_ASSET_REF`, both copied
- verbatim from the snapshot, staking_facts worker_count: 0, total_harvest_pp: 0). Must
- be allowed AND produce no hazard at all -- nothing is at risk."""
+    even though the plot already had zero PP and no workers whatsoever, so the
+    block made no sense. REAL player0005-snapshot deed and REAL staked
+    Power Core (`REAL_ZERO_STATE_DEED_UID` / `REAL_POWER_CORE_ASSET_REF`, both copied
+    verbatim from the snapshot, staking_facts worker_count: 0, total_harvest_pp: 0). Must
+    be allowed AND produce no hazard at all -- nothing is at risk."""
     report = {
         "plots": [{
             "deed_uid": REAL_ZERO_STATE_DEED_UID,
@@ -325,10 +325,10 @@ def test_sole_power_source_removal_on_an_empty_plot_is_allowed_with_no_warning()
 
 def test_removing_core_when_energized_or_runi_also_powers_the_plot_is_not_sole_source():
     """A plot with a Power Core AND (Energized or a staked Runi) is not losing its ONLY
- power source when the core leaves -- no hazard, per `is_powered = is_power_core_staked
- OR is_energized OR is_runi_staked` (measured, 0 exceptions across 6,903 plots).
- Fixture data (no single real plot in the snapshot combines a core with Energized/Runi
- while also carrying seated workers, which would make this assertion unambiguous)."""
+    power source when the core leaves -- no hazard, per `is_powered = is_power_core_staked
+    OR is_energized OR is_runi_staked` (measured, 0 exceptions across 6,903 plots).
+    Fixture data (no single real plot in the snapshot combines a core with Energized/Runi
+    while also carrying seated workers, which would make this assertion unambiguous)."""
     report = {
         "plots": [_plot("deed-1", workers=3)],
         "workers": [],
@@ -358,20 +358,20 @@ def test_title_is_immediately_reusable_as_an_item():
 
 def test_title_move_is_never_refused_by_the_staging_gate():
     """Positive guard, item 2 of the 2026-08-27 dispatch brief: `_cooldown_refusal` --
- `build_preview`'s actual staging-time gate -- must return `None` (no refusal) for a
- Title move, in every bucket a real Title asset can arrive in, even though
- `stake_type_is_cooling(STAKE_TYPE_TITLE)` is `True` (a wave-scheduling fact, not a
- refusal one). This was previously untested directly against `_cooldown_refusal` itself
- -- every other Title test in this file exercised `cooldown_state`/`stake_type_is_
- cooling` in isolation, not the gate function that actually consumes them inside
- `build_preview`.
+    `build_preview`'s actual staging-time gate -- must return `None` (no refusal) for a
+    Title move, in every bucket a real Title asset can arrive in, even though
+    `stake_type_is_cooling(STAKE_TYPE_TITLE)` is `True` (a wave-scheduling fact, not a
+    refusal one). This was previously untested directly against `_cooldown_refusal` itself
+    -- every other Title test in this file exercised `cooldown_state`/`stake_type_is_
+    cooling` in isolation, not the gate function that actually consumes them inside
+    `build_preview`.
 
- MUTATION: reverting `ceres/candidates.py`'s `kind == "unverified"` branch to
- `ready: False` (the same injection as `test_title_is_ready_with_a_warning_not_refused`
- above) turns this red: `_cooldown_refusal` starts returning a non-`None` string naming
- the asset ref and "unstake cooldown ... cooldown evidence unavailable" for every bucket
- below, because `cd.get("ready")` becomes `False` and the gate falls through to its
- refusal branch. Confirmed live, see dispatch report."""
+    MUTATION: reverting `ceres/candidates.py`'s `kind == "unverified"` branch to
+    `ready: False` (the same injection as `test_title_is_ready_with_a_warning_not_refused`
+    above) turns this red: `_cooldown_refusal` starts returning a non-`None` string naming
+    the asset ref and "unstake cooldown ... cooldown evidence unavailable" for every bucket
+    below, because `cd.get("ready")` becomes `False` and the gate falls through to its
+    refusal branch. Confirmed live, see dispatch report."""
     now = datetime(2026, 8, 26, tzinfo=timezone.utc)
     for bucket in ("staked", "unstaked_apparent", "stake_expired_or_historical"):
         record = {"asset_ref": "title-ref", "staked": bucket == "staked", "bucket": bucket, "facts": {"name": "The Proven"}}
@@ -381,11 +381,11 @@ def test_title_move_is_never_refused_by_the_staging_gate():
 
 def test_runi_is_not_treated_as_cooling():
     """Regression for the over-conservative defect this fix closes: Runi
- (`STK-LND-RUNI`) is now PRIMARY-sourced (support.splinterlands.com, verbatim across
- three articles) as never subject to the unstake cooldown. Before the fix
- `COOLDOWN_CLASS` mapped Runi to "cards", forcing a needless wait despite the evidence.
- A Runi that was previously staked and has since unstaked must read ready immediately,
- with no `stake_end_date` evidence required."""
+    (`STK-LND-RUNI`) is now PRIMARY-sourced (support.splinterlands.com, verbatim across
+    three articles) as never subject to the unstake cooldown. Before the fix
+    `COOLDOWN_CLASS` mapped Runi to "cards", forcing a needless wait despite the evidence.
+    A Runi that was previously staked and has since unstaked must read ready immediately,
+    with no `stake_end_date` evidence required."""
     now = datetime(2026, 8, 26, tzinfo=timezone.utc)
     cd = cooldown_state("stake_expired_or_historical", None, STAKE_TYPE_RUNI, now)
     assert cd["ready"] is True
@@ -488,9 +488,9 @@ def test_missing_survival_date_preserves_preview_staging():
 
 def test_unrecognised_stake_type_is_treated_as_cooling():
     """An unrecognised stake class must fail closed as cooling in both modules -- the
- fail-safe rule this whole cooldown model rests on, exercised directly (separate from
- `test_unrecognised_stake_class_fails_closed` above, which also covers the
- `_cooldown_refusal` gate end to end)."""
+    fail-safe rule this whole cooldown model rests on, exercised directly (separate from
+    `test_unrecognised_stake_class_fails_closed` above, which also covers the
+    `_cooldown_refusal` gate end to end)."""
     unknown_type = "STK-LND-DOES-NOT-EXIST-EITHER"
     assert stake_type_is_cooling(unknown_type) is True
     assert cooldown_class(unknown_type) == "cards"
@@ -502,15 +502,15 @@ def test_unrecognised_stake_type_is_treated_as_cooling():
 
 def test_ceres_and_fides_land_cooldown_tables_agree_on_every_known_stake_type():
     """Cross-module consistency check: `ceres.candidates.COOLDOWN_CLASS` and
- `fides_land.waves`'s cooling set have drifted before (this task's own dispatch brief
- cites it as a recorded prior finding) -- one asserted Runi cools while the other
- doesn't even carry an entry for it. This test enumerates every stake type either
- module classifies at all, and fails if the two modules ever disagree on whether that
- type cools. `ceres`'s three-way split ("cards" / "items" / "unverified") collapses to
- a boolean for this comparison, since `fides_land.waves` only distinguishes cooling
- from non-cooling -- both "items" and "unverified" resolve through their own module
- to `ready`/fail-closed independently, but "does this type cool" must be a single
- consistent answer everywhere."""
+    `fides_land.waves`'s cooling set have drifted before (this task's own dispatch brief
+    cites it as a recorded prior finding) -- one asserted Runi cools while the other
+    doesn't even carry an entry for it. This test enumerates every stake type either
+    module classifies at all, and fails if the two modules ever disagree on whether that
+    type cools. `ceres`'s three-way split ("cards" / "items" / "unverified") collapses to
+    a boolean for this comparison, since `fides_land.waves` only distinguishes cooling
+    from non-cooling -- both "items" and "unverified" resolve through their own module
+    to `ready`/fail-closed independently, but "does this type cool" must be a single
+    consistent answer everywhere."""
     from ceres.candidates import COOLDOWN_CLASS
 
     checked = 0
@@ -518,7 +518,10 @@ def test_ceres_and_fides_land_cooldown_tables_agree_on_every_known_stake_type():
         ceres_cools = ceres_kind in {"cards", "unverified"}
         fides_cools = stake_type_is_cooling(stake_type)
         assert ceres_cools == fides_cools, (
-            f"{stake_type!r} disagrees: ceres.candidates.COOLDOWN_CLASS says \"\n f\"{'cooling' if ceres_cools else 'non-cooling'} ({ceres_kind!r}), \"\n f\"fides_land.waves.stake_type_is_cooling says \"\n f\"{'cooling' if fides_cools else 'non-cooling'}"
+            f"{stake_type!r} disagrees: ceres.candidates.COOLDOWN_CLASS says "
+            f"{'cooling' if ceres_cools else 'non-cooling'} ({ceres_kind!r}), "
+            f"fides_land.waves.stake_type_is_cooling says "
+            f"{'cooling' if fides_cools else 'non-cooling'}"
         )
         checked += 1
     assert checked == len(COOLDOWN_CLASS) == 5
@@ -526,9 +529,9 @@ def test_ceres_and_fides_land_cooldown_tables_agree_on_every_known_stake_type():
 
 def test_regression_cooldown_still_refuses_after_power_gate_became_a_warning():
     """Guard against the exact failure mode the dispatch brief warned about: converting the
- power gate to a warning must NOT have loosened the cooldown gate too. Reuses the same
- real-card-and-timestamp anchor as `test_worker_within_cooldown_window_is_refused` --
- still refused, not just warned."""
+    power gate to a warning must NOT have loosened the cooldown gate too. Reuses the same
+    real-card-and-timestamp anchor as `test_worker_within_cooldown_window_is_refused` --
+    still refused, not just warned."""
     report = _idle_worker_card_report(
         "deed-1", asset_ref=REAL_WORKER_ASSET_REF, stake_end_date=REAL_WORKER_STAKE_END,
         bucket="stake_expired_or_historical",

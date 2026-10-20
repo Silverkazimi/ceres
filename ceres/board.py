@@ -907,7 +907,7 @@ def _plot_row(plot: dict[str, Any], workers: list[dict[str, Any]], bonus_by_deed
         # `workers`/`idle_cards` above -- `biome` and `diagnostics` (below) are the
         # only two with ZERO references anywhere in the frontend, list or expanded
         # view alike (confirmed 2026-08-21, not merely "unused in the list"). Measured
-        # against player0016's current bulk-only board: together they're 17.7% of the
+        # against player0017's current bulk-only board: together they're 17.7% of the
         # already-lean per-plot payload (biome 8.1%, diagnostics 9.6%) -- real weight
         # for genuinely dead data. Both stay in the full (non-lean) contract
         # unchanged -- `tests/ceres/test_board_projection.py` still requires the KEYS
@@ -1482,7 +1482,7 @@ def project_single_plot(report: dict[str, Any], deed_uid: str,
     discarding a complete PlotRow for every OTHER plot in the account) just to read
     ONE row back out -- on a 6,303-plot whale that meant 6,302 wasted `_plot_row()`
     calls per click, each doing real work (ability annotation, DEC calc, badge
-    computation). Measured against player0016 (2026-08-21): `project_board()` on the
+    computation). Measured against player0017 (2026-08-21): `project_board()` on the
     full report takes ~0.37s of CPU for all 6,303 plots; this function does the
     equivalent of ONE of those 6,303 `_plot_row()` calls, not all of them, so it
     stays fast regardless of account size. `workers`/`bonus_assets` are still

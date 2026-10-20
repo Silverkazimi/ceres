@@ -34,7 +34,7 @@ import urllib.request
 import pytest
 from playwright.sync_api import Browser
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres, wait_ready
 
 
 @pytest.fixture(scope="module")
@@ -65,31 +65,31 @@ REMOVAL_IMPACT_TEMPLATE = {
 
 def test_runi_removal_marks_pending_removal_and_restore_repopulates_the_tile(live_browser: tuple[Browser, str]) -> None:
     r"""Replaces both node-sliced `editorGroups()`/`mutateEditorSlot()`/
- `restoreStagedMove()` tests (census row 32) with the real click round-trip on a
- real Runi-staked plot: click the Runi tile's remove button (with another power
- source present so this doesn't route through the hazard modal -- that's
- test_runi_hazard.py's own subject) and read the REAL rendered tile,
- then click it again to restore.
+    `restoreStagedMove()` tests (census row 32) with the real click round-trip on a
+    real Runi-staked plot: click the Runi tile's remove button (with another power
+    source present so this doesn't route through the hazard modal -- that's
+    test_runi_hazard.py's own subject) and read the REAL rendered tile,
+    then click it again to restore.
 
- Named injection #1, run and watched red, then reverted and watched green: in
- `ceres/static/app.js`'s `editorGroups()`, the Runi slot's fallback condition
- `facts.is_runi_staked === true || row.capacity?.runi_staked === true` (the
- live, staging-aware check) was changed to `bonus.runi === true` -- the exact
- never-cleared stale stub this file exists to guard against. Red:
- `playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 30000ms
- exceeded ... waiting for locator(".slot-power .slot-tile[data-group-id='runi']
- [data-slot-action='restore']") to be visible` -- the stub occupant resolved
- again instead of null, so the tile never reached the pending-removal render
- branch. Restoring the line made this test pass again.
+    Named injection #1, run and watched red, then reverted and watched green: in
+    `ceres/static/app.js`'s `editorGroups()`, the Runi slot's fallback condition
+    `facts.is_runi_staked === true || row.capacity?.runi_staked === true` (the
+    live, staging-aware check) was changed to `bonus.runi === true` -- the exact
+    never-cleared stale stub this file exists to guard against. Red:
+    `playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 30000ms
+    exceeded ... waiting for locator(".slot-power .slot-tile[data-group-id='runi']
+    [data-slot-action='restore']") to be visible` -- the stub occupant resolved
+    again instead of null, so the tile never reached the pending-removal render
+    branch. Restoring the line made this test pass again.
 
- Named injection #2, run and watched red, then reverted and watched green: in
- `restoreStagedMove()`, the Runi-specific branch (writing `row.workers`/
- `row.capacity.runi_staked`) was removed so Runi fell through to the generic
- `row.bonus[group.id] = previous` branch. Red: after clicking restore, the tile
- stayed on the empty "Add Runi" button (`AssertionError:
- Locator.wait_for: Timeout ... waiting for locator(".slot-power .slot-tile[data-
- group-id='runi']:not(.is-empty)")`) instead of showing Runi again. Restoring
- the branch made this test pass again (whole-file run: 2 passed)."""
+    Named injection #2, run and watched red, then reverted and watched green: in
+    `restoreStagedMove()`, the Runi-specific branch (writing `row.workers`/
+    `row.capacity.runi_staked`) was removed so Runi fell through to the generic
+    `row.bonus[group.id] = previous` branch. Red: after clicking restore, the tile
+    stayed on the empty "Add Runi" button (`AssertionError:
+    Locator.wait_for: Timeout ... waiting for locator(".slot-power .slot-tile[data-
+    group-id='runi']:not(.is-empty)")`) instead of showing Runi again. Restoring
+    the branch made this test pass again (whole-file run: 2 passed)."""
     browser, base_url = live_browser
     row = _real_row_with_runi(base_url)
     deed_uid = row["deed_uid"]
@@ -116,7 +116,8 @@ def test_runi_removal_marks_pending_removal_and_restore_repopulates_the_tile(liv
     runi_tile.wait_for(timeout=30_000)
     page.locator(".slot-power").first.hover()
     runi_tile.hover()
-    page.wait_for_timeout(200)
+    wait_ready(page)
+    settle(page)
     runi_tile.locator(".slot-remove").click(force=True, timeout=10_000)
 
     pending_tile = page.locator(".slot-power .slot-tile[data-group-id='runi'][data-slot-action='restore']")
@@ -133,18 +134,18 @@ def test_runi_removal_marks_pending_removal_and_restore_repopulates_the_tile(liv
 
 def test_runi_tooltip_leads_with_boost_and_omits_placeholders(live_browser: tuple[Browser, str]) -> None:
     r"""Second, related defect reported the same day (census row 32): the Runi
- tile's tooltip used to fall through the generic monster-card template, which
- for a Runi renders misleading boilerplate and omits everything that matters.
- Drives the real rendered tooltip (`aria-label`) for a real Runi tile in two
- plot states: covered by another power source (no "sole" line) and sole-power
- (the "sole" line appears).
+    tile's tooltip used to fall through the generic monster-card template, which
+    for a Runi renders misleading boilerplate and omits everything that matters.
+    Drives the real rendered tooltip (`aria-label`) for a real Runi tile in two
+    plot states: covered by another power source (no "sole" line) and sole-power
+    (the "sole" line appears).
 
- Named injection, run and watched red, then reverted and watched green: in
- `ceres/static/app.js`'s `editorRuniTip()`, the line
- `if (isSoleSource(row, 'runi')) lines.push(...'sole proven power source');`
- was changed to `if (true) lines.push(...)`. Red: the covered-plot assertion
- (`assert "sole proven power source" not in aria`) failed. Restoring the
- condition made this test pass again (whole-file run: 2 passed)."""
+    Named injection, run and watched red, then reverted and watched green: in
+    `ceres/static/app.js`'s `editorRuniTip()`, the line
+    `if (isSoleSource(row, 'runi')) lines.push(...'sole proven power source');`
+    was changed to `if (true) lines.push(...)`. Red: the covered-plot assertion
+    (`assert "sole proven power source" not in aria`) failed. Restoring the
+    condition made this test pass again (whole-file run: 2 passed)."""
     browser, base_url = live_browser
     row = _real_row_with_runi(base_url)
     deed_uid = row["deed_uid"]

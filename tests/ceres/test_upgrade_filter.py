@@ -1,4 +1,4 @@
-"""Upgrade is a remembered action-visibility preference, not a query."""
+""": Upgrade is a remembered action-visibility preference, not a query."""
 from tests.ceres.test_chain_model import STATIC
 from tests.ceres.vm_context import run_in_module_context
 
@@ -41,7 +41,7 @@ def test_default_off_and_full_width_shared_control_css():
     actions = (STATIC / 'picker-actions.js').read_text()
     assert 'show_upgrade: false' in actions
     css = (STATIC / 'buttons.css').read_text()
-    assert '.candidate-grid-tools > button.candidate-upgrade.ceres-btn' in css
+    assert '.candidate-grid-tools > button.candidate-upgrade.ceres-btn,' in css
     assert '.candidate-actions > button.candidate-upgrade.ceres-btn { width: 100%;' in css
     assert 'flex: 0 0 100%' in css
 

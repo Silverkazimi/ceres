@@ -88,23 +88,23 @@ class IntentPayloadTests(unittest.TestCase):
 
     def test_title_stakes_and_unstakes_using_items_shape(self):
         """the internal rules's 2026-08-27 ruling ("titles must not be locked ... behave like all
- other assets") -- Title's payload shape is observed both directions (an isolated
- Title-only swap, Posting tier), the same footing as Totem/Power Core, so it must
- build the exact same `items[]` shape they do, never raise. Inverts the old
- `test_title_raises_unverified_shape`, which this ruling supersedes.
+        other assets") -- Title's payload shape is observed both directions (an isolated
+        Title-only swap, Posting tier), the same footing as Totem/Power Core, so it must
+        build the exact same `items[]` shape they do, never raise. Inverts the old
+        `test_title_raises_unverified_shape`, which this ruling supersedes.
 
- KNOWN GAP (reported to the dispatching session, not fixed here -- `fides_land/ops.py`
- is outside this agent's `tests/`-only scope): `_ITEM_STAKE_TYPES` at `fides_land/
- ops.py:59` is `frozenset({STAKE_TYPE_POWER_CORE, STAKE_TYPE_TOTEM})` and was never
- updated to include `STAKE_TYPE_TITLE`, so `_intent_class` still falls through to
- `raise LandOpError(f"unknown stake_type_uid {stake_type_uid!r}; refusing to emit")`
- for every Title intent even though `fides_land/render.py`'s allowlist and `ceres/
- op_preview.py`'s `UNVERIFIED_TYPES` were both correctly emptied. This test asserts
- the RULING's intended behaviour and is therefore currently RED against real master
- (observed: `fides_land.ops.LandOpError: unknown stake_type_uid 'STK-LND-TTL';
- refusing to emit`, both directions) -- adding STAKE_TYPE_TITLE to `_ITEM_STAKE_TYPES`
- is the one-line fix that turns it green; verified locally by applying that exact
- edit, confirming this test passes, then reverting it, so this is not a guess."""
+        KNOWN GAP (reported to the dispatching session, not fixed here -- `fides_land/ops.py`
+        is outside this agent's `tests/`-only scope): `_ITEM_STAKE_TYPES` at `fides_land/
+        ops.py:59` is `frozenset({STAKE_TYPE_POWER_CORE, STAKE_TYPE_TOTEM})` and was never
+        updated to include `STAKE_TYPE_TITLE`, so `_intent_class` still falls through to
+        `raise LandOpError(f"unknown stake_type_uid {stake_type_uid!r}; refusing to emit")`
+        for every Title intent even though `fides_land/render.py`'s allowlist and `ceres/
+        op_preview.py`'s `UNVERIFIED_TYPES` were both correctly emptied. This test asserts
+        the RULING's intended behaviour and is therefore currently RED against real master
+        (observed: `fides_land.ops.LandOpError: unknown stake_type_uid 'STK-LND-TTL';
+        refusing to emit`, both directions) -- adding STAKE_TYPE_TITLE to `_ITEM_STAKE_TYPES`
+        is the one-line fix that turns it green; verified locally by applying that exact
+        edit, confirming this test passes, then reverting it, so this is not a guess."""
         for direction in ("stake", "unstake"):
             with self.subTest(direction=direction):
                 op = intents_to_ops([intent("deed-A", "STK-LND-TTL", direction, "TITLE-001")], account="player0005", app=TEST_APP)[0]

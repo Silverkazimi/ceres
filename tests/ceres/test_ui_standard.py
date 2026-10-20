@@ -1,4 +1,4 @@
-"""the Ceres-wide UI standard (`library/ceres-ui-standards.md`) as a failing test.
+""": the Ceres-wide UI standard (`library/ceres-ui-standards.md`) as a failing test.
 
 Owner, 2026-09-27: "This standard must be written down and byte by byte followed by each new
 integration. Nothing must ever deviate from that, unless specificaly instructed and then
@@ -16,7 +16,7 @@ a separate design (, rule P-0) and are not constrained here beyond P-0 itself. T
 Iris stylesheet `canonical.css` is pull-only and excluded from the value ratchets.
 
 Regenerate the baseline (only when the maintainer approved the change it records):
- python3 -m tests.ceres.test_ui_standard --write-baseline
+    python3 -m tests.ceres.test_ui_standard --write-baseline
 """
 from __future__ import annotations
 
@@ -232,7 +232,7 @@ def value_key(value: str) -> str:
 # observations
 
 def observed_raw_colours_beyond_s9310() -> list[dict]:
-    """C-1: the scanner, minus its own reviewed allowlist."""
+    """C-1: the  scanner, minus its own reviewed allowlist."""
     observed = Counter((item.file, item.match_key, item.value) for item in s9310._observed_raw_colours())
     allowed = Counter((e["file"], e["match_key"], e["value"]) for e in s9310._allowlist()["legacy_allowlist"])
     extra = observed - allowed
@@ -518,7 +518,7 @@ def test_ui_standard_holds_against_dated_baseline():
         if new:
             messages.append(f"NEW deviation from {rule}:\n  " + "\n  ".join(map(str, new)))
         if stale:
-            messages.append(f"fixed deviation still in the baseline ({section}); remove it:\n  "
+            messages.append(f"fixed deviation still in the  baseline ({section}); remove it:\n  "
                             + "\n  ".join(map(str, stale)))
     assert not messages, "\n\n".join(messages)
 
@@ -560,7 +560,7 @@ def _write_baseline() -> None:
         "rule": "",
         "recorded_on": "2026-09-28",
         "recorded_at_version": "1.0.0",
-        "note": ("Deviations from library/ceres-ui-standards.md present on master when the guard was "
+        "note": ("Deviations from library/ceres-ui-standards.md present on master  when the guard was "
                  "recorded. Shrinking ratchet: remove an entry when its deviation is fixed; add one only with "
                  "an maintainer-approved exception that is also written into the standard."),
         "baseline": observe(),

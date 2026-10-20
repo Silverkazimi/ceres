@@ -101,8 +101,8 @@ def test_transaction_guard_copy_is_identical(live_browser: tuple[Browser, str]) 
     try:
         page.add_init_script(
             """window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
- callback({success: true, result: {id: 'FAKE-TOOLTIP-TX'}});
- }};"""
+              callback({success: true, result: {id: 'FAKE-TOOLTIP-TX'}});
+            }};"""
         )
         page.route(
             "**/api/op-verify*",

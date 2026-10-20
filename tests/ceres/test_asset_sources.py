@@ -111,4 +111,4 @@ def test_asset_downloads_run_on_their_own_workers_and_attempts_on_a_thread():
     root = Path(__file__).parents[2] / "ceres"
     assert "run_in_executor(_ASSET_EXECUTOR" in (root / "app.py").read_text(encoding="utf-8")
     harvest = (root / "routes_harvest.py").read_text(encoding="utf-8")
-    assert "await asyncio.to_thread(begin_harvest" in harvest and "await asyncio.to_thread(evidence.begin_attempt" in harvest
+    assert "await asyncio.to_thread(begin_harvest," in harvest and "await asyncio.to_thread(evidence.begin_attempt," in harvest

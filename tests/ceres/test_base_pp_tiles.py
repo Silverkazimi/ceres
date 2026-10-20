@@ -122,11 +122,11 @@ def test_worker_tile_shows_no_pp_figure_and_the_footer_reports_base_pp(live_brow
 
 def test_worker_tile_footer_guard_actually_guards(live_browser: tuple[Browser, str]) -> None:
     """MUTATION TEST: `renderEditorBasePpRow`'s cell-class line is patched to never add
- `is-filled` regardless of `column.figure` (the shape of a regression that silently
- drops the footer figure back to nothing, with no per-tile figure to fall back on
- either -- exactly the dead end v0.7.132's move would create if the footer broke).
- Injection served via `page.route` on `**/static/app.js*`; watched red: no
- `.is-filled` footer cell is left to find."""
+    `is-filled` regardless of `column.figure` (the shape of a regression that silently
+    drops the footer figure back to nothing, with no per-tile figure to fall back on
+    either -- exactly the dead end v0.7.132's move would create if the footer broke).
+    Injection served via `page.route` on `**/static/app.js*`; watched red: no
+    `.is-filled` footer cell is left to find."""
     real_source = read_entry_source()
     anchor = "    const classes = ['editor-base-pp-cell', ...(column.figure ? ['is-filled'] : []), ...column.flags];"
     assert real_source.count(anchor) == 1, "renderEditorBasePpRow's cell-class line moved; update this test's injection string"
@@ -202,10 +202,10 @@ def test_terrain_penalty_is_hidden_by_default_but_toggle_reveals_it() -> None:
 
 def test_terrain_penalty_stays_hidden_when_best_unpenalized_card_wastes_headroom() -> None:
     """Guard 4: the maintainer's ruling supersedes the deleted headroom-waste heuristic.
- The old test required a penalised card to appear when the best unpenalised card
- overshot Base PP; the authoritative unchecked state now excludes it.
- Injection: restore the `_base_pp_waste(...) > 0` disjunct; the penalised card
- would reappear and this assertion would go red."""
+    The old test required a penalised card to appear when the best unpenalised card
+    overshot Base PP; the authoritative unchecked state now excludes it.
+    Injection: restore the `_base_pp_waste(...) > 0` disjunct; the penalised card
+    would reappear and this assertion would go red."""
     body = rank_candidates(
         _report(current_base=98000), "base-pp-plot", "worker", player="player0005", now=NOW,
         include_terrain_penalised=False,
@@ -217,9 +217,9 @@ def test_terrain_penalty_stays_hidden_when_best_unpenalized_card_wastes_headroom
 
 def test_terrain_penalty_stays_hidden_when_only_penalized_cards_exist() -> None:
     """Guard 5: an unchecked request never shows a penalized card, even without an
- unpenalized alternative.
- Injection: restore the `best_unpenalized_base is None` disjunct; the blue card
- would reappear and this assertion would go red."""
+    unpenalized alternative.
+    Injection: restore the `best_unpenalized_base is None` disjunct; the blue card
+    would reappear and this assertion would go red."""
     body = rank_candidates(
         _report(candidates=(("blue", 2000, 2),)), "base-pp-plot", "worker", player="player0005", now=NOW,
         include_terrain_penalised=False,

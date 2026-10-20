@@ -1,10 +1,10 @@
 """.
 
 1. `/api/board?plots=<label>` -- the same lean board from the same publication, its `plots` cut to the named rows,
- every board-wide field unchanged, `partial: true`; unknown label 404, malformed 400; the filter is part of the
- cache key (own bytes-cache entry, own ETag).
+   every board-wide field unchanged, `partial: true`; unknown label 404, malformed 400; the filter is part of the
+   cache key (own bytes-cache entry, own ETag).
 2. The page with `?plot=<label>` draws that plot first, then the full board; board-wide values are never shown from
- the one row, and the opened plot does not move when the rest arrives.
+   the one row, and the opened plot does not move when the rest arrives.
 3. `window.__ceresReady` / `ceres:ready` states.
 """
 
@@ -21,6 +21,7 @@ import pytest
 from ceres import capture as capture_mod
 from ceres.config import CeresConfig
 from ceres.routes_board import _board_cache_key, _parse_plot_filter, _plot_label_key, get_board
+from . import board_basic_recording as recording
 
 STATIC = Path(__file__).resolve().parents[2] / "ceres" / "static"
 
@@ -148,7 +149,7 @@ def test_filter_is_part_of_the_cache_key(monkeypatch, report, tmp_path):
 
 
 def test_filtered_read_on_the_artifact_path_parses_the_published_bytes(monkeypatch, tmp_path):
-    """The happy path serves artifact bytes; the filter reads the SAME bytes, never another snapshot."""
+    """The  happy path serves artifact bytes; the filter reads the SAME bytes, never another snapshot."""
     from ceres import board_artifact
     import praetoria.fastjson as fastjson_mod
 
@@ -178,13 +179,13 @@ def test_board_js_reads_the_plot_first_and_holds_board_wide_values():
     # the full board is requested at the same moment, not after the plot
     assert js.index("const fullRequest = fetch(`/api/board${playerQuery()}`") < js.index("first = await drawPlotFirst(")
     # plot-first never reconciles lock plans or restores stage plans from the one row
-    draw = js[js.index("async function drawPlotFirst("):js.index("The resets every fresh")]
+    draw = js[js.index("async function drawPlotFirst("):js.index("// The resets every fresh")]
     assert "reconcilePlotLockPlans" not in draw and "restoreStagePlans" not in draw and "revealBoardTable" not in draw
     assert "controls-row" not in draw and "mobile-action-bar" not in draw  # the filter bar stays hidden
     assert "html.ceres-plot-first .count-cell, html.ceres-plot-first #table-head-sticky .count-total { visibility: hidden; }" in js
     # the kept row and the anchor run in the same task as the full render
     assert "if (keepDetail) {" in js and "PLOT_FIRST_HOOKS?.anchor?.(keepUid, anchorTop)" in js
-    assert "if (EXPANDED_DATA_LOADED.has(deedUid)) continue" in js
+    assert "if (EXPANDED_DATA_LOADED.has(deedUid)) continue; // " in js
 
 
 def test_stage_navigation_opens_on_the_plot_first_draw():
@@ -206,26 +207,26 @@ def test_ready_module_states():
 
 TRACE = """
 (() => {
- window.__ir9252 = { events: [], phasePlot: null, phaseFull: null };
- const sample = () => {
- const rows = [...document.querySelectorAll('#plot-tbody > tr.plot-row')];
- const open = document.querySelector('#plot-tbody > tr.expand-row .editor-band');
- const openRow = open ? open.closest('tr.expand-row').previousElementSibling : null;
- const vis = (el) => !!el && getComputedStyle(el).visibility !== 'hidden' && !el.classList.contains('board-content-hidden');
- return {
- rows: rows.length,
- controls: vis(document.querySelector('.controls-row')),
- countTotal: vis(document.querySelector('#table-head-sticky .count-total')),
- countCell: openRow ? vis(openRow.querySelector('.count-cell')) : null,
- edgeTabs: !!document.querySelector('#edge-tabs.edge-tabs-revealed'),
- top: openRow ? Math.round(openRow.getBoundingClientRect().top) : null,
- };
- };
- window.addEventListener('ceres:ready', (event) => {
- const s = event.detail;
- window.__ir9252.events.push({ board: s.board, plot: s.plot, workers: s.workers, capture: s.capture, ready: s.ready, dom: sample() });
- });
- window.__ir9252.sample = sample;
+  window.__ir9252 = { events: [], phasePlot: null, phaseFull: null };
+  const sample = () => {
+    const rows = [...document.querySelectorAll('#plot-tbody > tr.plot-row')];
+    const open = document.querySelector('#plot-tbody > tr.expand-row .editor-band');
+    const openRow = open ? open.closest('tr.expand-row').previousElementSibling : null;
+    const vis = (el) => !!el && getComputedStyle(el).visibility !== 'hidden' && !el.classList.contains('board-content-hidden');
+    return {
+      rows: rows.length,
+      controls: vis(document.querySelector('.controls-row')),
+      countTotal: vis(document.querySelector('#table-head-sticky .count-total')),
+      countCell: openRow ? vis(openRow.querySelector('.count-cell')) : null,
+      edgeTabs: !!document.querySelector('#edge-tabs.edge-tabs-revealed'),
+      top: openRow ? Math.round(openRow.getBoundingClientRect().top) : null,
+    };
+  };
+  window.addEventListener('ceres:ready', (event) => {
+    const s = event.detail;
+    window.__ir9252.events.push({ board: s.board, plot: s.plot, workers: s.workers, capture: s.capture, ready: s.ready, dom: sample() });
+  });
+  window.__ir9252.sample = sample;
 })();
 """
 
@@ -242,7 +243,7 @@ def test_plot_first_page_in_the_browser():
     from tests.ceres.conftest import LIVE_PLAYER, spawn_live_ceres
 
     with spawn_live_ceres() as (browser, base_url):
-        plot = _label_of(base_url, "I-290-10b2d21ed7bb77")
+        plot = _label_of(base_url, recording.COMBINE.uid)
         assert plot, "fixture plot missing"
         label = "-".join(part.zfill(width) for part, width in zip(plot.split("-"), (3, 2, 3)))
         context = browser.new_context(viewport={"width": 1366, "height": 900}, reduced_motion="reduce")
@@ -328,9 +329,9 @@ def _artifact_setup(monkeypatch, tmp_path, *, interim: bool, patches: bool):
 
 @pytest.mark.parametrize("plots", [None, "65-9-83"])
 def test_interim_board_with_leftover_patches_serves_this_reads_artifact(monkeypatch, tmp_path, plots):
-    """during the interim publication a leftover /expand patch of the
- previous read made /api/board fall back to the previous snapshot -- the linked plot's row claimed
- `assets_loaded: true`, the page paid a GET + a live /expand (~4.8 s), and the board was not this load's read."""
+    """: during the interim publication a leftover /expand patch of the
+    previous read made /api/board fall back to the previous snapshot -- the linked plot's row claimed
+    `assets_loaded: true`, the page paid a GET + a live /expand (~4.8 s), and the board was not this load's read."""
     config = _artifact_setup(monkeypatch, tmp_path, interim=True, patches=True)
     response = get_board(_request(config), plots=plots) if plots else get_board(_request(config))
     assert response.status_code == 200
@@ -340,7 +341,7 @@ def test_interim_board_with_leftover_patches_serves_this_reads_artifact(monkeypa
 
 
 def test_final_board_with_patches_still_merges_them(monkeypatch, tmp_path):
-    """Outside the interim the rule is unchanged: patches on disk mean the snapshot (+ patches) is projected."""
+    """Outside the interim the  rule is unchanged: patches on disk mean the snapshot (+ patches) is projected."""
     config = _artifact_setup(monkeypatch, tmp_path, interim=False, patches=True)
     row = next(r for r in _body(get_board(_request(config)))["plots"] if r["deed_uid"] == "I-1-a")
     assert row["assets_loaded"] is True

@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres, wait_for_board
+from .conftest import settle, spawn_live_ceres, wait_for_board
 
 
 
@@ -151,23 +151,23 @@ def _install_broadcast_probe(page: Page, reject_first: bool = False) -> None:
     rejection = "callback({success: false, error: 'first chunk rejected'});" if reject_first else "callback({success: true, result: {id: txId}});"
     page.add_init_script(
         f"""window.__ceresBroadcastEvents = [];
- let txNumber = 0;
- const ceresOriginalFetch = window.fetch.bind(window);
- window.fetch = (input, init) => {{
- const url = String(input);
- if (!url.includes('/api/op-verify')) return ceresOriginalFetch(input, init);
- const txId = JSON.parse(init.body).tx_id;
- window.__ceresBroadcastEvents.push({{type: 'verify-start', txId, at: performance.now()}});
- return ceresOriginalFetch(input, init).then((response) => {{
- window.__ceresBroadcastEvents.push({{type: 'verify-resolved', txId, at: performance.now()}});
- return response;
- }});
- }};
- window.hive_keychain = {{requestBroadcast: (account, operations, key, callback) => {{
- const txId = `FAKE-TX-${{++txNumber}}`;
- window.__ceresBroadcastEvents.push({{type: 'broadcast', txId, at: performance.now()}});
- setTimeout(() => {{ {rejection} }}, 10);
- }}}};"""
+        let txNumber = 0;
+        const ceresOriginalFetch = window.fetch.bind(window);
+        window.fetch = (input, init) => {{
+          const url = String(input);
+          if (!url.includes('/api/op-verify')) return ceresOriginalFetch(input, init);
+          const txId = JSON.parse(init.body).tx_id;
+          window.__ceresBroadcastEvents.push({{type: 'verify-start', txId, at: performance.now()}});
+          return ceresOriginalFetch(input, init).then((response) => {{
+            window.__ceresBroadcastEvents.push({{type: 'verify-resolved', txId, at: performance.now()}});
+            return response;
+          }});
+        }};
+        window.hive_keychain = {{requestBroadcast: (account, operations, key, callback) => {{
+          const txId = `FAKE-TX-${{++txNumber}}`;
+          window.__ceresBroadcastEvents.push({{type: 'broadcast', txId, at: performance.now()}});
+          setTimeout(() => {{ {rejection} }}, 10);
+        }}}};"""
     )
 
 
@@ -304,18 +304,18 @@ def test_rejected_first_chunk_aborts_remaining_broadcasts(live_browser: tuple[Br
 
 def test_confirmed_broadcast_clears_the_stage(live_browser: tuple[Browser, str]) -> None:
     """Item 25 (live testing 2026-08-24): checkout did not clear after
- signing the transaction, and it must clear instantly afterwards. Before this fix,
- nothing cleared CERES_STAGE after a successful broadcast, so pressing "Prepare
- transaction" again would RE-EMIT moves already applied on-chain, against a
- snapshot that had not caught up -- a live double-apply hazard on a real-money
- tool. This proves the fix on the ONLY safe trigger: a broadcast that verifies as
- `domain-confirmed` clears the stage and the checkout button hides."""
+    signing the transaction, and it must clear instantly afterwards. Before this fix,
+    nothing cleared CERES_STAGE after a successful broadcast, so pressing "Prepare
+    transaction" again would RE-EMIT moves already applied on-chain, against a
+    snapshot that had not caught up -- a live double-apply hazard on a real-money
+    tool. This proves the fix on the ONLY safe trigger: a broadcast that verifies as
+    `domain-confirmed` clears the stage and the checkout button hides."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(
         """window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
- callback({success: true, result: {id: 'FAKE-TX-ID'}});
- }};"""
+          callback({success: true, result: {id: 'FAKE-TX-ID'}});
+        }};"""
     )
     plot_refresh_requests = []
     page.on(
@@ -381,18 +381,18 @@ def test_confirmed_broadcast_clears_the_stage(live_browser: tuple[Browser, str])
 def test_pending_verification_rechecks_without_human_action(live_browser: tuple[Browser, str]) -> None:
     """M8: a pending verdict schedules another verify request automatically.
 
- Injection watch: removing `scheduleCheckoutVerificationPoll()` from the
- non-terminal branch left exactly one request after 4.5 seconds; restoring it
- produced the second request observed below.
+    Injection watch: removing `scheduleCheckoutVerificationPoll()` from the
+    non-terminal branch left exactly one request after 4.5 seconds; restoring it
+    produced the second request observed below.
     """
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(
         """window.__ceresBroadcastCount = 0;
- window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
- window.__ceresBroadcastCount += 1;
- callback({success: true, result: {id: 'FAKE-M8-TX'}});
- }};"""
+        window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
+          window.__ceresBroadcastCount += 1;
+          callback({success: true, result: {id: 'FAKE-M8-TX'}});
+        }};"""
     )
     verify_requests = []
     page.on("request", lambda request: verify_requests.append(request) if "/api/op-verify" in request.url else None)
@@ -422,7 +422,9 @@ def test_pending_verification_rechecks_without_human_action(live_browser: tuple[
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
     panel.locator(".op-state .ceres-notice[data-notice-code='verification_pending']").wait_for(timeout=30_000)
-    page.wait_for_timeout(4_500)
+    while len(verify_requests) < 2:  # the pending verdict schedules a second check
+        page.wait_for_event("request", lambda request: "/api/op-verify" in request.url, timeout=30_000)
+    settle(page)
     assert len(verify_requests) >= 2
     assert page.evaluate("window.__ceresBroadcastCount") == 1
     page.close()
@@ -431,18 +433,18 @@ def test_pending_verification_rechecks_without_human_action(live_browser: tuple[
 def test_in_flight_marker_blocks_a_second_signature(live_browser: tuple[Browser, str]) -> None:
     """M9: a non-confirmed broadcast marks its staged entry and blocks re-signing.
 
- Injection watch: dropping `markBroadcastedChunk()` allowed a second Keychain
- call after the hidden Confirm control was re-enabled; restoring the marker
- kept the broadcast count at one and displayed the in-flight copy.
+    Injection watch: dropping `markBroadcastedChunk()` allowed a second Keychain
+    call after the hidden Confirm control was re-enabled; restoring the marker
+    kept the broadcast count at one and displayed the in-flight copy.
     """
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(
         """window.__ceresBroadcastCount = 0;
- window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
- window.__ceresBroadcastCount += 1;
- callback({success: true, result: {id: 'FAKE-M9-TX'}});
- }};"""
+        window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
+          window.__ceresBroadcastCount += 1;
+          callback({success: true, result: {id: 'FAKE-M9-TX'}});
+        }};"""
     )
     page.route(
         "**/api/op-verify*",
@@ -471,11 +473,11 @@ def test_in_flight_marker_blocks_a_second_signature(live_browser: tuple[Browser,
     preview_requests = []
     page.on("request", lambda request: preview_requests.append(request) if "/api/op-preview" in request.url else None)
     panel.locator(".checkout-prepare").evaluate("button => { button.disabled = false; button.click(); }")
-    page.wait_for_timeout(200)
+    settle(page)
     assert not preview_requests
     confirm = panel.locator("button[data-op-action='confirm']")
     confirm.evaluate("button => { button.hidden = false; button.disabled = false; button.click(); }")
-    page.wait_for_timeout(100)
+    settle(page)
     assert page.evaluate("window.__ceresBroadcastCount") == 1
     page.close()
 
@@ -486,8 +488,8 @@ def test_refresh_errors_render_a_confirmed_terminal_state(live_browser: tuple[Br
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(
         """window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
- callback({success: true, result: {id: 'FAKE-REFRESH-ERROR-TX'}});
- }};"""
+          callback({success: true, result: {id: 'FAKE-REFRESH-ERROR-TX'}});
+        }};"""
     )
 
     def _verify(route):
@@ -530,16 +532,16 @@ def test_refresh_errors_render_a_confirmed_terminal_state(live_browser: tuple[Br
 
 def test_failed_broadcast_leaves_the_stage_intact(live_browser: tuple[Browser, str]) -> None:
     """Item 25's other safety half: a Keychain rejection/cancellation must NEVER
- clear the stage. Real batches of 40 staged moves are routine -- clearing on click instead
- of on confirmation would silently destroy the whole batch the moment Keychain is
- dismissed. Mocks a Keychain REJECTION (success: false); the staged move must
- still be there afterward, both in the checkout panel and on the row."""
+    clear the stage. Real batches of 40 staged moves are routine -- clearing on click instead
+    of on confirmation would silently destroy the whole batch the moment Keychain is
+    dismissed. Mocks a Keychain REJECTION (success: false); the staged move must
+    still be there afterward, both in the checkout panel and on the row."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(
         """window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
- callback({success: false, error: 'user cancelled'});
- }};"""
+          callback({success: false, error: 'user cancelled'});
+        }};"""
     )
     page.goto(base_url)
     wait_for_board(page)

@@ -1,7 +1,7 @@
 """ "Find combinables" on the Cards page (card-combinables.js), its board hand-off (combine-dialog.js, /?combine=<print>),
  (the combine dialog's "To max level" preset never passes max CC), and the Cards header items handed to this row:
- (the cart button is its icon and count), (a Market tile that is not maxed shows "Lv N" where Maxed sits),
- (the whole cheap copy row in green), ("PP/$").
+ (the cart button is its icon and count),  (a Market tile that is not maxed shows "Lv N" where Maxed sits),
+ (the whole cheap copy row in green),  ("PP/$").
 
 The JS runs in the shared vm sandbox (tests/ceres/vm_context.py) on the real modules; no network, no browser."""
 
@@ -29,12 +29,12 @@ FIT_JS = r"""
 const copy = (uid, bcx, over = {}) => ({ uid, bcx, bcx_max: 11, level: 1, level_bcx_thresholds: [1, 3, 6, 9, 11], base_pp: 100 * bcx, available: true, ...over });
 const sum = (list) => list.reduce((n, c) => n + c.bcx, 0);
 const uids = (list) => list.map((c) => c.uid).sort();
-// the case: 6 + 4 + 3 = 13 on an 11-CC card with the old largest-first preset
+// the  case: 6 + 4 + 3 = 13 on an 11-CC card with the old largest-first preset
 const a = [copy('A', 6), copy('B', 4), copy('C', 3), copy('D', 1)];
 const exact = combineFitToMaxCopies(a, 11);
-const b = [copy('E', 6), copy('F', 6), copy('G', 3), copy('H', 3)]; // no subset makes 11: the largest under it (9)
+const b = [copy('E', 6), copy('F', 6), copy('G', 3), copy('H', 3)];       // no subset makes 11: the largest under it (9)
 const under = combineFitToMaxCopies(b, 11);
-const c = [copy('M', 11), copy('S1', 1), copy('S2', 1), copy('S3', 1)]; // a maxed copy never joins a set
+const c = [copy('M', 11), copy('S1', 1), copy('S2', 1), copy('S3', 1)];  // a maxed copy never joins a set
 const withMax = combineFitToMaxCopies(c, 11);
 const none = combineFitToMaxCopies([copy('X', 7), copy('Y', 6)], 11);
 const singles = Array.from({ length: 400 }, (_, i) => copy(`S${String(i).padStart(3, '0')}`, 1));
@@ -55,10 +55,10 @@ const accepted = combineApplySelection(blocked, ['B', 'C'], 'proposed');
 // a quantity clears the explicit preset
 combineApplyQuantity(blocked, 2);
 console.log(JSON.stringify({
- exact: uids(exact), exactSum: sum(exact), underSum: sum(under), under: uids(under), withMax: uids(withMax), none,
- manyLen: many.length, manySum: sum(many), ms,
- toMax: presets.toMax, selectedSum: sum(selected), preset: dialog.preset, after: ledger.afterBcx, before: ledger.beforeBcx,
- refused, accepted, blockedPresetAfterQty: blocked.preset,
+  exact: uids(exact), exactSum: sum(exact), underSum: sum(under), under: uids(under), withMax: uids(withMax), none,
+  manyLen: many.length, manySum: sum(many), ms,
+  toMax: presets.toMax, selectedSum: sum(selected), preset: dialog.preset, after: ledger.afterBcx, before: ledger.beforeBcx,
+  refused, accepted, blockedPresetAfterQty: blocked.preset,
 }));
 """
 
@@ -91,9 +91,9 @@ ADDRESS_JS = r"""
 const ok = combinePrintFromAddress('?player=player0005&combine=433-7-0');
 const bad = ['?combine=C7-433-ABC', '?combine=433-7', '?combine=433-7-9', '?plot=1'].map(combinePrintFromAddress);
 const group = { print: { id: '433-7-0', name: 'Chaos Dragon', card_detail_id: 433, edition: 7, foil: 0, card_set: 'chaos', rarity: 'legendary',
- bcx_max: 11, thresholds: [1, 3, 6, 9, 11] }, copies: [
- { uid: 'C7-433-AAA', bcx: 6, level: 3, land_base_pp: 818, combinable: true, reasons: [] },
- { uid: 'C7-433-BBB', bcx: 11, level: 5, land_base_pp: 1500, combinable: false, reasons: [{ code: 'max', text: 'card is already at max level' }] }] };
+  bcx_max: 11, thresholds: [1, 3, 6, 9, 11] }, copies: [
+  { uid: 'C7-433-AAA', bcx: 6, level: 3, land_base_pp: 818, combinable: true, reasons: [] },
+  { uid: 'C7-433-BBB', bcx: 11, level: 5, land_base_pp: 1500, combinable: false, reasons: [{ code: 'max', text: 'card is already at max level' }] }] };
 const copies = combineCopiesFromGroup(group);
 console.log(JSON.stringify({ ok, bad, copies }));
 """
@@ -114,31 +114,31 @@ def test_board_address_opens_the_dialog_by_print_without_card_ids():
 
 MODE_JS = r"""
 const P = (id, over = {}) => ({ id, card_detail_id: Number(id.split('-')[0]), edition: Number(id.split('-')[1]), foil: Number(id.split('-')[2]),
- name: 'Card ' + id, card_set: 'chaos', rarity: 'rare', bcx_max: 22, thresholds: [1, 3, 5, 8, 12, 17, 22, 22].slice(0, 8), ...over });
+  name: 'Card ' + id, card_set: 'chaos', rarity: 'rare', bcx_max: 22, thresholds: [1, 3, 5, 8, 12, 17, 22, 22].slice(0, 8), ...over });
 const set = { uids: ['C7-1-SECRET01', 'C7-1-SECRET02'], survivor_uid: 'C7-1-SECRET01', count: 2, destroyed_count: 1, warnings: [],
- before: { bcx: 1, level: 1, land_base_pp: 91, maxed: false }, after: { bcx: 2, level: 1, land_base_pp: 182, maxed: false } };
+  before: { bcx: 1, level: 1, land_base_pp: 91, maxed: false }, after: { bcx: 2, level: 1, land_base_pp: 182, maxed: false } };
 const lockSet = { ...set, warnings: [{ code: 'card_lock', text: 'This copy is under a card lock; the combined card will be locked as well.' }] };
 const g1 = { print: P('1-7-0'), copies: [
- { uid: 'C7-1-SECRET01', bcx: 1, level: 1, combinable: true, reasons: [], warnings: [] },
- { uid: 'C7-1-SECRET02', bcx: 1, level: 1, combinable: true, reasons: [], warnings: [] },
- { uid: 'C7-1-SECRET03', bcx: 3, level: 2, combinable: false, plot: { label: '065-09-083' }, reasons: [{ code: 'staked', text: 'staked on Land' }], warnings: [] },
- { uid: 'C7-1-SECRET04', bcx: 2, level: 1, combinable: false, reasons: [{ code: 'delegated_in', text: 'delegated to you' }], warnings: [] }],
- owned_count: 4, combinable_count: 2, sets: [lockSet, set], base: { source: 'copy', bcx: 3, level: 2, maxed: false }, upgrade_hint: { possible: true, discount_likely: false } };
+    { uid: 'C7-1-SECRET01', bcx: 1, level: 1, combinable: true, reasons: [], warnings: [] },
+    { uid: 'C7-1-SECRET02', bcx: 1, level: 1, combinable: true, reasons: [], warnings: [] },
+    { uid: 'C7-1-SECRET03', bcx: 3, level: 2, combinable: false, plot: { label: '065-09-083' }, reasons: [{ code: 'staked', text: 'staked on Land' }], warnings: [] },
+    { uid: 'C7-1-SECRET04', bcx: 2, level: 1, combinable: false, reasons: [{ code: 'delegated_in', text: 'delegated to you' }], warnings: [] }],
+  owned_count: 4, combinable_count: 2, sets: [lockSet, set], base: { source: 'copy', bcx: 3, level: 2, maxed: false }, upgrade_hint: { possible: true, discount_likely: false } };
 const g2 = { print: P('2-7-0'), copies: [], owned_count: 1, combinable_count: 1, sets: [], base: { bcx: 1, level: 1, maxed: false }, upgrade_hint: { possible: true, discount_likely: true } };
 const g3 = { print: P('3-7-1'), copies: [], owned_count: 2, combinable_count: 2, sets: [set], base: { bcx: 2, maxed: false }, upgrade_hint: { possible: false, reason: 'dearer' } };
 const g4 = { print: P('4-7-0'), copies: [], owned_count: 2, combinable_count: 2, sets: [set], base: { bcx: 22, maxed: true }, upgrade_hint: { possible: false, reason: 'max' } };
 const groups = [g1, g2, g3, g4];
 const listing = (k, own = false) => ({ lkey: k, card_detail_id: 1, edition: 7, foil: 0, name: 'Card 1-7-0', bcx: 3, level: 2, price_usd: 1, price_dec: 2000, own });
 const upgrades = new Map([['1-7-0', { data: { print: g1.print, combine_first: true, cart: { listings: [listing('aaaaaaaaaaaaaaa1'), listing('aaaaaaaaaaaaaaa2'), listing('aaaaaaaaaaaaaaa3', true)], keys: ['aaaaaaaaaaaaaaa1', 'aaaaaaaaaaaaaaa2'], bundle: 'Lv 5' },
- verdict: { kind: 'discount', level: 5, label: 'Buy this Level 3 copy (+1 more) — 7% below single copies', total_usd: 3.057, total_dec: 6202, pp_added: 364, to_bcx: 7,
- saving_usd: 0.743, saving_dec: 1503, stop: { to_level: 7, vs_going: 1.04 }, max_option: { kind: 'level', level: 6, total_usd: 6.4 } } } }]]);
+  verdict: { kind: 'discount', level: 5, label: 'Buy this Level 3 copy (+1 more) — 7% below single copies', total_usd: 3.057, total_dec: 6202, pp_added: 364, to_bcx: 7,
+    saving_usd: 0.743, saving_dec: 1503, stop: { to_level: 7, vs_going: 1.04 }, max_option: { kind: 'level', level: 6, total_usd: 6.4 } } } }]]);
 const sortedLevels = cxSorted(groups, 'levels', new Map()).map((g) => g.print.id);
 const sortedSaving = cxSorted(groups, 'saving', upgrades).map((g) => g.print.id);
 const batch = cxNextBatch(groups, upgrades).map((p) => p.id);
 const big = Array.from({ length: 12 }, (_, i) => ({ ...g2, print: P(`${10 + i}-7-0`) }));
 const batchSize = cxNextBatch(big, new Map()).length;
 const cards = [{ card_detail_id: 1, edition: 7, foil: 0, name: 'Card 1', rarity: 'rare', card_set: 'chaos', status: 'idle', bcx: 1, splinters: ['Fire'] },
- { card_detail_id: 2, edition: 7, foil: 0, name: 'Card 2', rarity: 'common', card_set: 'chaos', status: 'staked', bcx: 1, splinters: ['Water'] }];
+  { card_detail_id: 2, edition: 7, foil: 0, name: 'Card 2', rarity: 'common', card_set: 'chaos', status: 'staked', bcx: 1, splinters: ['Water'] }];
 const allowed = [...cxAllowedPrints(cards, { ...cbDefaultFilters(), rarity: ['rare'] })];
 const allowedStatus = [...cxAllowedPrints(cards, { ...cbDefaultFilters(), status: ['staked'] })];
 // the cart: group "up-", own listings never, not counted as "one maxed card"
@@ -152,7 +152,7 @@ const html1 = cxEntryHtml(g1);
 const html2 = cxEntryHtml(g2);
 const html3 = cxEntryHtml(g3);
 console.log(JSON.stringify({ sortedLevels, sortedSaving, batch, batchSize, allowed, allowedStatus, add, inCart, maxGroups, items: cart.items.map((i) => [i.lkey, i.group, i.bundle]),
- states: ['max', 'discount', 'level', 'none', 'no_listings'].map(cxVerdictState), reasons: ['staked', 'delegated_in', 'max', 'listed'].map(cxReasonState), html1, html2, html3 }));
+  states: ['max', 'discount', 'level', 'none', 'no_listings'].map(cxVerdictState), reasons: ['staked', 'delegated_in', 'max', 'listed'].map(cxReasonState), html1, html2, html3 }));
 """
 
 
@@ -221,7 +221,7 @@ def test_page_wiring_header_and_css():
 
 LEVEL_JS = r"""
 const card = { name: 'Gargoya Lion', card_detail_id: 349, edition: 3, card_set: 'chaos', rarity: 'common', foil: 0, level: 6, max_level: 8, bcx: 60,
- bcx_max: 115, land_base_pp: 400, max_level_pp: 1000, splinters: ['Neutral'], maxed: false };
+  bcx_max: 115, land_base_pp: 400, max_level_pp: 1000, splinters: ['Neutral'], maxed: false };
 const market = tileHtml({ card, extra: { metrics: '' } });
 const maxed = tileHtml({ card: { ...card, maxed: true, level: 8, bcx: 115 }, extra: { metrics: '' } });
 const mine = tileHtml({ card });
@@ -243,8 +243,8 @@ def test_market_tile_level_tag():
 def test_cheap_row_whole_row_green_and_in_cart_stays_apart():
     css = (STATIC / "card-browser.css").read_text(encoding="utf-8")
     assert "\n.card-browser .cm-copy.is-cheap .cm-c-usd, .card-browser .cm-copy.is-cheap .cm-c-dec { color: var(--ok); }" not in css  # 's two-number rule is replaced
-    assert ".card-browser .cm-copy-table > .cm-copy.is-cheap { border-color: color-mix(in srgb, var(--ok) 60%, transparent); background" in css
-    assert ".card-browser .cm-copy.is-cheap .cm-cell" in css
+    assert ".card-browser .cm-copy-table > .cm-copy.is-cheap { border-color: color-mix(in srgb, var(--ok) 60%, transparent); background:" in css
+    assert ".card-browser .cm-copy.is-cheap .cm-cell," in css
     assert '.card-browser .cm-copy-table > .cm-copy.is-cheap[data-state="in-cart"] { border-color: var(--ok);' in css
     assert "box-shadow: inset 3px 0 0 var(--ok); }" in css
 
@@ -254,7 +254,7 @@ def test_cheap_row_whole_row_green_and_in_cart_stays_apart():
 def test_rate_box_band_colours():
     css = (STATIC / "card-browser.css").read_text(encoding="utf-8")
     for band, token in (("is-top", "--gold"), ("is-good", "--ok"), ("is-fair", "--warn"), ("is-dear", "--danger")):
-        box = f".card-browser .cm-tile .candidate-grid-metric.cm-metric-rate.{band} {{ border-color: var({token}); background: color-mix(in srgb, var({token}) 14%"
+        box = f".card-browser .cm-tile .candidate-grid-metric.cm-metric-rate.{band} {{ border-color: var({token}); background: color-mix(in srgb, var({token}) 14%,"
         assert box in css, band
         assert f".card-browser .cm-tile .candidate-grid-metric.cm-metric-rate.{band} strong {{ color: var({token}); }}" in css, band
         rule = css[css.index(box):css.index("}", css.index(box))]
@@ -265,7 +265,7 @@ def test_rate_box_band_colours():
 
 ABILITY_JS = r"""
 const card = { name: 'Goblin Chef', card_detail_id: 1, edition: 7, card_set: 'chaos', rarity: 'common', foil: 0, level: 10, max_level: 10, bcx: 400,
- bcx_max: 400, land_base_pp: 1000, max_level_pp: 1000, splinters: ['Fire'], maxed: true, land_abilities: [['GRAIN', 0.01]] };
+  bcx_max: 400, land_base_pp: 1000, max_level_pp: 1000, splinters: ['Fire'], maxed: true, land_abilities: [['GRAIN', 0.01]] };
 const mine = tileHtml({ card, plot: { label: '065-09-083', territory: 'Central Fire' }, status: 'staked' });
 const market = tileHtml({ card, extra: { metrics: '' } });
 console.log(JSON.stringify({ mine, market }));
@@ -289,7 +289,7 @@ def test_ability_icons_below_the_name_on_my_cards_only():
 
 def test_pp_box_accent_on_every_tile():
     css = (STATIC / "card-browser.css").read_text(encoding="utf-8")
-    box = ".card-browser .candidate-grid-metric.cb-metric-pp { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%"
+    box = ".card-browser .candidate-grid-metric.cb-metric-pp { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%,"
     num = ".card-browser .candidate-grid-metric.cb-metric-pp strong { color: var(--accent); font-size: 1.25rem; line-height: 1; }"
     assert box in css and num in css
     rule = css[css.index(box):css.index("}", css.index(num)) + 1]

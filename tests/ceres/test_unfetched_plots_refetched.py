@@ -1,4 +1,4 @@
-""" every page load must end with every plot fetched. Never-fetched
+""" / : every page load must end with every plot fetched. Never-fetched
 plots are queued uncapped, and the same-capture self-heal requests ALL of them."""
 
 from ceres import capture
@@ -45,7 +45,7 @@ def test_self_heal_requests_every_never_fetched_plot_in_one_capture(monkeypatch)
 
 
 def test_self_heal_never_batches_never_fetched_plots_for_huge_accounts(monkeypatch) -> None:
-    # a whale (player0016: 6,300 never-fetched plots) must not be fetched in one batch.
+    # a whale (player0017: 6,300 never-fetched plots) must not be fetched in one batch.
     # now no never-fetched batch at all, for any account -- repair_assets is not called.
     plots = [_plot(f"n{i}") for i in range(250)]
     merged = {"plots": plots, "coverage": {"assets": {}}}
@@ -58,5 +58,5 @@ def test_self_heal_never_batches_never_fetched_plots_for_huge_accounts(monkeypat
             return {}
 
     monkeypatch.setattr(capture, "_publish_asset_repair", lambda config, player, merged, repaired, queued: merged)
-    capture._self_heal_refetches(None, "player0016", merged, capture=FakeCapture())
+    capture._self_heal_refetches(None, "player0017", merged, capture=FakeCapture())
     assert "queued" not in seen

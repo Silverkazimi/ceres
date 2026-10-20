@@ -1,4 +1,4 @@
-"""Static guards for // mobile plot composition."""
+"""Static guards for /// mobile plot composition."""
 
 from __future__ import annotations
 
@@ -210,18 +210,18 @@ def test_resource_flow_css_is_scoped_label_left_value_right() -> None:
 
 _ALL_FOUR_INPUTS_BODY = r"""
 const row = {
- resource: 'sps',
- work_per_hour: 12.5,
- worksite_type: 'Rift Watchtower',
- terrain: 'grasslands',
- grain_cost_per_hour: 12.34,
- wood_cost_per_hour: 5.6,
- stone_cost_per_hour: 2.1,
- iron_cost_per_hour: 0.75,
+  resource: 'sps',
+  work_per_hour: 12.5,
+  worksite_type: 'Rift Watchtower',
+  terrain: 'grasslands',
+  grain_cost_per_hour: 12.34,
+  wood_cost_per_hour: 5.6,
+  stone_cost_per_hour: 2.1,
+  iron_cost_per_hour: 0.75,
 };
 const html = mobileResourceFlowHtml(row);
 for (const label of ['Food/hr', 'Wood/hr', 'Stone/hr', 'Iron/hr']) {
- if (!html.includes(label)) throw new Error('missing ' + label + ': ' + html);
+  if (!html.includes(label)) throw new Error('missing ' + label + ': ' + html);
 }
 const icons = html.match(/class="material-cost-icon"/g) || [];
 if (icons.length !== 4) throw new Error('expected 4 material-cost-icon uses, got ' + icons.length + ': ' + html);
@@ -233,21 +233,21 @@ if (html.includes('unavailable')) throw new Error('a fully-consuming plot must n
 
 _EMPTY_PLOT_BODY = r"""
 const row = {
- resource: null,
- work_per_hour: null,
- worksite_type: null,
- terrain: null,
- grain_cost_per_hour: null,
- wood_cost_per_hour: null,
- stone_cost_per_hour: null,
- iron_cost_per_hour: null,
+  resource: null,
+  work_per_hour: null,
+  worksite_type: null,
+  terrain: null,
+  grain_cost_per_hour: null,
+  wood_cost_per_hour: null,
+  stone_cost_per_hour: null,
+  iron_cost_per_hour: null,
 };
 const html = mobileResourceFlowHtml(row);
 if (!html.includes('Food/hr')) throw new Error('Food/hr must always be shown: ' + html);
 if (!html.includes('unavailable')) throw new Error('missing recipe must read unavailable, not 0: ' + html);
 if (html.includes('0.00') || />0</.test(html)) throw new Error('missing data must never render as a zero: ' + html);
 for (const label of ['Wood/hr', 'Stone/hr', 'Iron/hr']) {
- if (html.includes(label)) throw new Error('an empty plot must not show an unconsumed material line: ' + label);
+  if (html.includes(label)) throw new Error('an empty plot must not show an unconsumed material line: ' + label);
 }
 """
 

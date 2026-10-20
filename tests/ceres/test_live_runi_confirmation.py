@@ -16,7 +16,7 @@ from ceres.config import CeresConfig
 from ceres.routes_op_preview import op_verify
 from praetoria.transport import ResponseData
 
-from .conftest import spawn_live_ceres, wait_for_board
+from .conftest import settle, spawn_live_ceres, wait_for_board
 
 
 @pytest.fixture(scope="module")
@@ -51,9 +51,9 @@ def _runi_plot(page: Page) -> tuple[int, str, dict]:
         assert deed_uid
         detail = page.evaluate(
             """async uid => {
- const response = await fetch(`/api/plots/${encodeURIComponent(uid)}`);
- return response.json();
- }""",
+              const response = await fetch(`/api/plots/${encodeURIComponent(uid)}`);
+              return response.json();
+            }""",
             deed_uid,
         )
         return index, deed_uid, detail
@@ -113,9 +113,9 @@ def _install_card_mocks(
     )
     page.evaluate(
         """window.__runiKeychain = {callback: false, requestBroadcast: (account, operations, key, callback) => {
- setTimeout(() => { window.__runiKeychain.callback = true; callback({success: true, result: {id: 'FAKE-RUNI-TX'}}); }, 25);
- }};
- window.hive_keychain = window.__runiKeychain;"""
+          setTimeout(() => { window.__runiKeychain.callback = true; callback({success: true, result: {id: 'FAKE-RUNI-TX'}}); }, 25);
+        }};
+        window.hive_keychain = window.__runiKeychain;"""
     )
 
 
@@ -178,8 +178,8 @@ def test_runi_not_applied_verdict_clears_in_flight_and_explains_re_stake(
     live_browser: tuple[Browser, str],
 ) -> None:
     """Mutation evidence: route `domain-not-applied` through the pending path; expected red:
- the signed Runi remains locked or the banner says it is still waiting instead of telling the
- maintainer that no game change occurred and exposing Prepare again."""
+    the signed Runi remains locked or the banner says it is still waiting instead of telling the
+    maintainer that no game change occurred and exposing Prepare again."""
     page = _page(live_browser)
     index, deed_uid, detail = _runi_plot(page)
     _install_card_mocks(page, deed_uid, detail, "domain-not-applied")
@@ -212,8 +212,8 @@ def test_below_floor_pending_keeps_one_broadcast_after_two_portfolio_confirms(
     live_browser: tuple[Browser, str], tmp_path, monkeypatch,
 ) -> None:
     """Guard 1, decisive money assertion. Mutation evidence: remove the server age floor so
- the mocked below-floor read becomes `domain-not-applied`; the existing client terminal branch
- then clears `txId` and a second portfolio confirm produces two observed Keychain broadcasts."""
+    the mocked below-floor read becomes `domain-not-applied`; the existing client terminal branch
+    then clears `txId` and a second portfolio confirm produces two observed Keychain broadcasts."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script("window.__ceresOperationPollSchedule = [10, 20, 30];")
@@ -244,10 +244,10 @@ def test_below_floor_pending_keeps_one_broadcast_after_two_portfolio_confirms(
     page.route("**/api/op-verify*", _real_verify)
     page.evaluate(
         """window.__floorBroadcastCount = 0;
- window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
- window.__floorBroadcastCount += 1;
- callback({success: true, result: {id: 'FAKE-BELOW-FLOOR-TX'}});
- }};"""
+        window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
+          window.__floorBroadcastCount += 1;
+          callback({success: true, result: {id: 'FAKE-BELOW-FLOOR-TX'}});
+        }};"""
     )
     _stage_runi_unstake(page, index)
     page.locator("#checkout-btn").click()
@@ -256,7 +256,7 @@ def test_below_floor_pending_keeps_one_broadcast_after_two_portfolio_confirms(
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
     page.wait_for_function("window.__floorBroadcastCount === 1 && document.querySelector('.checkout-move-status')", timeout=30_000)
-    page.wait_for_timeout(150)
+    settle(page)
     page.evaluate("confirmOperationBroadcast({scope: 'portfolio'})")
     assert page.evaluate("window.__floorBroadcastCount") == 1
     entry = page.evaluate("({txId: CERES_STAGE[0]?.txId, broadcastAt: CERES_STAGE[0]?.broadcast_at})")

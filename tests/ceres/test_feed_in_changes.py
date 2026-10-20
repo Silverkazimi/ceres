@@ -1,4 +1,4 @@
-"""running constructions and "Feed the workers" in the Changes window.
+""": running constructions and "Feed the workers" in the Changes window.
 
 Proves, against the running app with the board and wallet mocked:
 - a building plot shows a gold waiting row with its ready time and is not signed; a stalled one is not listed at all (: it has its own Stalled badge on the plot);
@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from playwright.sync_api import Browser, TimeoutError as PlaywrightTimeoutError
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 
 
 def _iso(delta: timedelta) -> str:
@@ -90,7 +90,7 @@ def test_constructions_wait_and_feed_signs_from_changes(live_browser: tuple[Brow
     page.route("**/worksite-preview*", preview_route)
     page.route("**/api/op-inclusion*", lambda route: route.fulfill(status=200, content_type="application/json", body='{"included":true,"block_num":123}'))
     page.route("**/api/op-verify*", lambda route: route.fulfill(status=200, content_type="application/json", body='{"state":"pending"}'))
-    page.goto(f"{base_url}/?player=player0005", timeout=8_000)
+    page.goto(f"{base_url}/?player=sample01", timeout=8_000)
     try:
         page.wait_for_function("document.querySelector('#plot-tbody > tr.plot-row') !== null", timeout=15_000)
     except PlaywrightTimeoutError:
@@ -98,16 +98,16 @@ def test_constructions_wait_and_feed_signs_from_changes(live_browser: tuple[Brow
 
     # Field for field: the worksite window's own completion preview vs the Changes window's feed plan.
     proof = page.evaluate("""async (uid) => {
- const ws = await import('/static/worksite.js');
- const { S } = await import('/static/state.js');
- const { BOARD } = await import('/static/board.js');
- const row = BOARD.plots.find((plot) => plot.deed_uid === uid);
- await ws.requestWorksiteCompletionPreview(row);
- const modal = S.WORKSITE_MODAL_PREVIEW.payload;
- const plan = await ws.prepareWorksiteCompletion(row);
- return { modal: { account: modal.account, operations: modal.chunks[0].operations, grain: modal.grain_cost },
- changes: { account: plan.account, operations: plan.chunk.operations, grain: plan.grainCost } };
- }""", uids["feed"])
+      const ws = await import('/static/worksite.js');
+      const { S } = await import('/static/state.js');
+      const { BOARD } = await import('/static/board.js');
+      const row = BOARD.plots.find((plot) => plot.deed_uid === uid);
+      await ws.requestWorksiteCompletionPreview(row);
+      const modal = S.WORKSITE_MODAL_PREVIEW.payload;
+      const plan = await ws.prepareWorksiteCompletion(row);
+      return { modal: { account: modal.account, operations: modal.chunks[0].operations, grain: modal.grain_cost },
+               changes: { account: plan.account, operations: plan.chunk.operations, grain: plan.grainCost } };
+    }""", uids["feed"])
     assert proof["changes"] == proof["modal"], proof
     feed_bodies = [body for uid, body in preview_bodies if uid == uids["feed"]]
     assert feed_bodies == [{"action": "complete"}, {"action": "complete"}], feed_bodies
@@ -127,7 +127,7 @@ def test_constructions_wait_and_feed_signs_from_changes(live_browser: tuple[Brow
     assert building.count() == 1 and "Building Logging Camp" in building.inner_text()
     assert "Waiting · ready" in building.inner_text() and "(in 1d 2h)" in building.inner_text()
     assert building.locator(".ch-status.is-waiting").count() == 1
-    assert panel.locator('[data-construction-kind="stalled"]').count() == 0, "a stalled build is a plot state with its own badge, never a Changes row"
+    assert panel.locator('[data-construction-kind="stalled"]').count() == 0, ": a stalled build is a plot state with its own badge, never a Changes row"
     feeds = panel.locator('[data-construction-kind="feed"]')
     assert feeds.count() == 2
     texts = feeds.all_inner_texts()
@@ -138,7 +138,7 @@ def test_constructions_wait_and_feed_signs_from_changes(live_browser: tuple[Brow
     sign = panel.page.locator('#changes-overlay [data-checkout-action="sign-worksites"]:not([disabled])')
     sign.click(timeout=8_000)
     page.wait_for_function("window.__s16649Calls.length === 1", timeout=8_000)
-    page.wait_for_timeout(300)
+    settle(page)
     calls = page.evaluate("window.__s16649Calls")
     assert len(calls) == 1, "only the ready feed is signed; waiting rows never reach the wallet"
     assert calls[0]["account"] == "player0005" and calls[0]["key"] == "Posting"

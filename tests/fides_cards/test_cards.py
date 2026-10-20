@@ -37,9 +37,9 @@ def combine_bundle(op, collection=None):
 def test_survivor_uses_highest_bcx_not_payload_position_and_tie_is_alphabetical():
     """A legal same-print tie is invariant under every input permutation.
 
- Mutation injection for independent observation: restore the ``(-bcx, print_id)``
- sort key in ``survivor_rule``. The permutation assertions must then go red because
- the result follows input order instead of the alphabetically first uid.
+    Mutation injection for independent observation: restore the ``(-bcx, print_id)``
+    sort key in ``survivor_rule``. The permutation assertions must then go red because
+    the result follows input order instead of the alphabetically first uid.
     """
     assert survivor_rule(records()) == "C-HIGH"
     tied = [
@@ -56,9 +56,9 @@ def test_survivor_uses_highest_bcx_not_payload_position_and_tie_is_alphabetical(
 def test_survivor_rule_is_total_on_real_collection_groups():
     """Every eligible real-data group has one deterministic survivor.
 
- Mutation injection for independent observation: remove ``uid`` from the survivor
- sort key. The guard must then go red on the first tied group whose input order is
- not its alphabetical order.
+    Mutation injection for independent observation: remove ``uid`` from the survivor
+    sort key. The guard must then go red on the first tied group whose input order is
+    not its alphabetical order.
     """
     if not Path("work/combine-survivor-rule/player0005_collection.json").exists():
         pytest.skip("private work/ evidence file not included in this export")
@@ -79,8 +79,8 @@ def test_survivor_rule_is_total_on_real_collection_groups():
 def test_survivor_rule_matches_independent_reference_for_seeded_real_sets():
     """The shared rule agrees with an independent reference across 500 real sets.
 
- Mutation injection for independent observation: change the reference tie direction
- from ``min`` to ``max``. The guard must go red on the first tied sampled set.
+    Mutation injection for independent observation: change the reference tie direction
+    from ``min`` to ``max``. The guard must go red on the first tied sampled set.
     """
     if not Path("work/combine-survivor-rule/player0005_collection.json").exists():
         pytest.skip("private work/ evidence file not included in this export")
@@ -129,9 +129,9 @@ def test_builder_rejects_third_party_app_identifier():
 def test_ended_land_stake_does_not_block_a_combine():
     """stake_ref_uid persists after a stake ends -- presence alone must not block.
 
- Injection run: reverting `_land_stake_block` to bare
- `record.get("stake_ref_uid")` presence (no stake_end_date check) made this go
- red with CombineError "is Staked on Land". Restored after observing red.
+    Injection run: reverting `_land_stake_block` to bare
+    `record.get("stake_ref_uid")` presence (no stake_end_date check) made this go
+    red with CombineError "is Staked on Land". Restored after observing red.
     """
     ended = records()
     ended[0]["stake_ref_uid"] = "I-294-a2b30476977796"
@@ -143,9 +143,9 @@ def test_ended_land_stake_does_not_block_a_combine():
 def test_live_land_stake_with_no_end_date_still_blocks():
     """A live stake (stake_ref_uid present, no stake_end_date) must still refuse.
 
- Injection run: dropping the `stake_ref_uid`-block branch from
- `_land_stake_block` entirely made this go red -- the live-staked card was
- silently accepted and no CombineError was raised. Restored after observing red.
+    Injection run: dropping the `stake_ref_uid`-block branch from
+    `_land_stake_block` entirely made this go red -- the live-staked card was
+    silently accepted and no CombineError was raised. Restored after observing red.
     """
     staked = records()
     staked[0]["stake_ref_uid"] = "I-294-5d33fb0c6734d1"
@@ -174,11 +174,11 @@ def test_gold_foil_uses_the_same_flat_payload():
 def test_hazard_names_destroyed_cards_and_never_warns_on_a_skinned_copy():
     """A skin is card-level, not per-copy, so a destroyed copy never loses one.
 
- Injection run: reinstating the removed skin `hard_warnings.append(...)` branch
- (firing whenever a destroyed copy's record carries a truthy `skin`) made this go
- red -- `hazard["hard_warnings"]` came back non-empty for the three-gold-Lyanna
- input below, where every copy (survivor and destroyed alike) carries the same
- "splinterstorm" skin. Removed after observing red.
+    Injection run: reinstating the removed skin `hard_warnings.append(...)` branch
+    (firing whenever a destroyed copy's record carries a truthy `skin`) made this go
+    red -- `hazard["hard_warnings"]` came back non-empty for the three-gold-Lyanna
+    input below, where every copy (survivor and destroyed alike) carries the same
+    "splinterstorm" skin. Removed after observing red.
     """
     gold_lyanna = [
         {"uid": "G-TESTCARD01", "card_detail_id": 27, "name": "Lyanna Natura", "edition": 1, "gold": True, "bcx": 14, "level": 1, "skin": "splinterstorm"},
@@ -275,10 +275,10 @@ def test_unpropagated_collection_read_is_pending_not_failure():
 
 def test_restake_requires_capture_newer_than_combine():
     """The Cooling/restake gate (`ceres/routes_op_preview.py::_preview`) refuses staging
- a stake from a capture that is not strictly newer than the combine it followed.
- The planning ledger this used to be keyed through is gone (worker-table rebuild);
- the client now sends `combine_verified_at` straight through and the server compares
- it with `capture_freshness.capture_is_newer_than` -- this is that primitive."""
+    a stake from a capture that is not strictly newer than the combine it followed.
+    The planning ledger this used to be keyed through is gone (worker-table rebuild);
+    the client now sends `combine_verified_at` straight through and the server compares
+    it with `capture_freshness.capture_is_newer_than` -- this is that primitive."""
     combine_at = "2026-08-26T22:00:00Z"
     assert capture_freshness.capture_is_newer_than("2026-08-26T22:00:00Z", combine_at) is False
     assert capture_freshness.capture_is_newer_than("2026-08-26T22:00:01Z", combine_at) is True

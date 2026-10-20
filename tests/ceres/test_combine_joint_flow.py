@@ -47,12 +47,12 @@ def _page(live_browser: tuple[Browser, str]) -> Page:
 
 def _find_real_combine_candidate(page: Page) -> dict:
     """Locate a recorded plot on the fixture board with a staked worker that has a
- combinable idle duplicate, re-deriving app.js's own eligibility rule
- (combineGroupKey/rowCanCombine/groupHasCombinableRow) against the real public
- /api/board and /api/idle-cards payloads -- app.js's BOARD/IDLE_CARDS_CACHE are
- module-scoped (index.html loads app.js as <script type="module">), invisible
- to page.evaluate()'s eval-in-page-world, so eligibility can't be read from the
- module's own state and must be re-derived from the same public data it reads."""
+    combinable idle duplicate, re-deriving app.js's own eligibility rule
+    (combineGroupKey/rowCanCombine/groupHasCombinableRow) against the real public
+    /api/board and /api/idle-cards payloads -- app.js's BOARD/IDLE_CARDS_CACHE are
+    module-scoped (index.html loads app.js as <script type="module">), invisible
+    to page.evaluate()'s eval-in-page-world, so eligibility can't be read from the
+    module's own state and must be re-derived from the same public data it reads."""
     board = page.evaluate("async () => (await fetch('/api/board')).json()")
     idle_resp = page.evaluate("async () => (await fetch('/api/idle-cards')).json()")
     idle_cards = idle_resp.get("cards", [])
@@ -111,17 +111,17 @@ def _expand_plot(page: Page, index: int) -> None:
 
 def _install_settle_mocks(page: Page, survivor_uid: str, destroyed_uids: list[str]) -> dict:
     """Fake /api/op-verify (domain-confirmed, real combine_refresh shape),
- /api/capture/status (one 'running' tick then 'idle'/done -- exercises the real
- poll loop, not just its terminal state), and the post-settle /api/board +
- /api/idle-cards (survivor's bcx/level bumped, destroyed copies dropped).
- Real payloads are read first and mutated in place so every OTHER field stays
- exactly what a real recapture would return.
+    /api/capture/status (one 'running' tick then 'idle'/done -- exercises the real
+    poll loop, not just its terminal state), and the post-settle /api/board +
+    /api/idle-cards (survivor's bcx/level bumped, destroyed copies dropped).
+    Real payloads are read first and mutated in place so every OTHER field stays
+    exactly what a real recapture would return.
 
- LOCAL INVARIANT: a card that is Staked on Land can never be a combine input
- (game-enforced, the internal rules) -- the survivor is always drawn from
- IDLE_CARDS_CACHE, never from a plot's `workers[]`. So the surface that shows
- the settled result is the idle-cards cache (re-fetched fresh after
- IDLE_CARDS_CACHE is nulled post-loadBoard()), not the staked worker table.
+    LOCAL INVARIANT: a card that is Staked on Land can never be a combine input
+    (game-enforced, the internal rules) -- the survivor is always drawn from
+    IDLE_CARDS_CACHE, never from a plot's `workers[]`. So the surface that shows
+    the settled result is the idle-cards cache (re-fetched fresh after
+    IDLE_CARDS_CACHE is nulled post-loadBoard()), not the staked worker table.
     """
     board = page.evaluate("async () => (await fetch('/api/board')).json()")
     idle_resp = page.evaluate("async () => (await fetch('/api/idle-cards')).json()")
@@ -172,9 +172,9 @@ def _install_settle_mocks(page: Page, survivor_uid: str, destroyed_uids: list[st
     )
     page.evaluate(
         """window.__jointKeychain = {callback: false, requestBroadcast: (account, operations, key, callback) => {
- setTimeout(() => { window.__jointKeychain.callback = true; callback({success: true, result: {id: 'FAKE-JOINT-TX'}}); }, 25);
- }};
- window.hive_keychain = window.__jointKeychain;"""
+          setTimeout(() => { window.__jointKeychain.callback = true; callback({success: true, result: {id: 'FAKE-JOINT-TX'}}); }, 25);
+        }};
+        window.hive_keychain = window.__jointKeychain;"""
     )
     return bumped
 

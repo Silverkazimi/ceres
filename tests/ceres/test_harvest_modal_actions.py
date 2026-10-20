@@ -11,9 +11,9 @@ def _source_with_mutable_modal_bindings() -> str:
     source = read_entry_source(ENTRY)
     return source.rsplit("}", 1)[0] + r"""
 Object.defineProperties(globalThis, {
- M: {get: () => M},
- postJson: {get: () => postJson, set: value => {postJson = value;}},
- render: {get: () => render, set: value => {render = value;}}
+  M: {get: () => M},
+  postJson: {get: () => postJson, set: value => {postJson = value;}},
+  render: {get: () => render, set: value => {render = value;}}
 });
 }
 """
@@ -53,11 +53,11 @@ localStorage.setItem(queueKey, queue);
 const runId = 'a'.repeat(32);
 const calls = [];
 fetch = async (url, options) => {
- calls.push({url, options});
- if (url.includes('/state?')) return {ok:true, json:async () => ({regions:[], pools:[]})};
- if (url.includes('/runs?')) return {ok:true, json:async () => ({runs:[{run_id:runId, state:'planned', phase:'after', steps:[]}]})};
- if (url.includes('/stop?')) return {ok:true};
- throw Error('Unexpected fetch: ' + url);
+  calls.push({url, options});
+  if (url.includes('/state?')) return {ok:true, json:async () => ({regions:[], pools:[]})};
+  if (url.includes('/runs?')) return {ok:true, json:async () => ({runs:[{run_id:runId, state:'planned', phase:'after', steps:[]}]})};
+  if (url.includes('/stop?')) return {ok:true};
+  throw Error('Unexpected fetch: ' + url);
 };
 Object.assign(M, {open:true, player:'alice', routingRunId:runId, routingTerminal:false, error:'old routing error', unsubscribe:() => {}, returnFocus:null});
 const routing = createHarvestRouting({player:'alice', scope:{kind:'all'}, activeRunId:runId, onRender:() => {}, isCurrent:() => true});
@@ -122,7 +122,7 @@ const calls = [];
 fetch = async (url, options) => { calls.push({url, options}); return {ok:true}; };
 const runId = 'd'.repeat(32);
 Object.assign(M, {open:true, player:'alice', run:{phase:'failed', busy:false, message:'The game refused this harvest.', members:[]},
- routing:null, routingRunId:runId, routingTerminal:false, unsubscribe:() => {}, returnFocus:null});
+  routing:null, routingRunId:runId, routingTerminal:false, unsubscribe:() => {}, returnFocus:null});
 await closeHarvestModal();
 if (calls.some(({url}) => url.includes('/api/harvest/routing/stop?'))) throw Error(JSON.stringify(calls));
 if (M.open || M.routing || M.routingRunId || !M.run || M.run.phase !== 'failed') throw Error(JSON.stringify(M));

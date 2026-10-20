@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from ceres import game_read, receipt_model, routes_harvest
 import fides.game_verdict as verdict_module
 
-FIXTURE = Path(__file__).parent / "fixtures" / "receipts" / "lookup-harvest_all-25aba9.json"
+FIXTURE = Path(__file__).parent / "fixtures" / "receipts" / "lookup-harvest_all.json"
 
 
 def test_harvest_verifier_and_receipt_model_are_identical(monkeypatch, tmp_path):
@@ -40,8 +40,8 @@ def test_harvest_verifier_and_receipt_model_are_identical(monkeypatch, tmp_path)
 
     monkeypatch.setattr(game_read, "_get", fake_get)
 
-    verified = routes_harvest._verify_harvest_attempt(object(), "player0005", {"attempt_id": "fixture"})
-    header = {"tx_id": info["id"], "operation_index": 0, "player": "player0005",
+    verified = routes_harvest._verify_harvest_attempt(object(), info["player"], {"attempt_id": "fixture"})
+    header = {"tx_id": info["id"], "operation_index": 0, "player": info["player"],
               "custom_json_id": "sm_land_operation", "payload": payload, "timestamp": None}
     expected = receipt_model.receipt(header, lookup, {"fragment_history": fragment})
     assert verified["members"][0]["receipt"] == expected

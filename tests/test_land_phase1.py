@@ -135,9 +135,9 @@ class TransportPhase0Tests(unittest.TestCase):
 class LandPhase1Tests(unittest.TestCase):
     def test_collection_joined_roster_equals_each_deed_asset_roster(self):
         """The decisive R-107 guard compares every deed's joined collection UIDs with
- its per-deed asset UIDs, including a slot-2 gap and Runi at slot 0. Injecting the
- defect `raw["stake_ref_uid"]` -> `raw["stake_plot"]` in the collection join, or
- dropping `and not card.get("stake_end_date")`, makes this assertion fail."""
+        its per-deed asset UIDs, including a slot-2 gap and Runi at slot 0. Injecting the
+        defect `raw["stake_ref_uid"]` -> `raw["stake_plot"]` in the collection join, or
+        dropping `and not card.get("stake_end_date")`, makes this assertion fail."""
         bundle, collection, assets = r107_roster_inputs()
         report = analyze_bundle("player0005", bundle, assets, collection_payload=collection, as_of=AS_OF, include_asset_ids=True)
         actual = {}
@@ -155,9 +155,9 @@ class LandPhase1Tests(unittest.TestCase):
 
     def test_collection_join_keeps_real_shape_without_asset_fanout(self):
         """The bulk-only path keeps the complete roster while leaving asset-only fields
- absent. The slot gap and reserved Runi slot must survive the join. Injecting
- `for collection_worker in asset_cards` in place of `for collection_worker in
- collection_workers` makes the roster empty when `assets={}` and turns this guard red."""
+        absent. The slot gap and reserved Runi slot must survive the join. Injecting
+        `for collection_worker in asset_cards` in place of `for collection_worker in
+        collection_workers` makes the roster empty when `assets={}` and turns this guard red."""
         bundle, collection, _assets = r107_roster_inputs()
         report = analyze_bundle("player0005", bundle, {}, collection_payload=collection, as_of=AS_OF, include_asset_ids=True)
         by_uid = {worker["uid"]: worker for worker in report["workers"]}
@@ -185,22 +185,22 @@ class LandPhase1Tests(unittest.TestCase):
 
     def test_rented_in_card_is_free_but_rented_out_card_stays_blocked(self):
         """A card rented IN (maintainer player0011, delegated to the player) keeps the rental's market_id and a past listing
- expiration_date; it is the renter's to stake. Shape recorded from player0017's collection on 2026-10-18."""
+        expiration_date; it is the renter's to stake. Shape recorded from player0018's collection on 2026-10-18."""
         rented_in = {
-            "uid": "C2-1053-15A6V5Z4HS", "player": "player0011", "delegated_to": "player0017", "rental_type": "season",
+            "uid": "C2-1053-15A6V5Z4HS", "player": "player0011", "delegated_to": "player0018", "rental_type": "season",
             "market_id": "718dd69c05cf5afb6312f62cf3eab2f79440e482-0", "unlock_date": None,
             "expiration_date": "2025-04-24T18:47:09.000Z", "stake_ref_uid": None, "stake_start_date": None, "stake_end_date": None,
         }
-        self.assertEqual(classify_card(rented_in, AS_OF, "player0017").bucket, "unstaked_apparent")
-        rented_out = dict(rented_in, player="player0017", delegated_to="someone")
-        self.assertEqual(classify_card(rented_out, AS_OF, "player0017").reason, "delegated to someone")
-        listed_for_rent = dict(rented_in, player="player0017", delegated_to=None)
-        self.assertEqual(classify_card(listed_for_rent, AS_OF, "player0017").branch, 2)
+        self.assertEqual(classify_card(rented_in, AS_OF, "player0018").bucket, "unstaked_apparent")
+        rented_out = dict(rented_in, player="player0018", delegated_to="someone")
+        self.assertEqual(classify_card(rented_out, AS_OF, "player0018").reason, "delegated to someone")
+        listed_for_rent = dict(rented_in, player="player0018", delegated_to=None)
+        self.assertEqual(classify_card(listed_for_rent, AS_OF, "player0018").branch, 2)
 
     def test_checked_deed_absence_marks_future_stake_as_cooling_at_exact_end(self):
-        """renamed from `stake_expired_or_historical` to `stake_cooling_down` --
- a future `stake_end_date` is a card already off its deed and counting down, not
- one whose stake has already ended."""
+        """: renamed from `stake_expired_or_historical` to `stake_cooling_down` --
+        a future `stake_end_date` is a card already off its deed and counting down, not
+        one whose stake has already ended."""
         end = "2026-08-12T18:57:51Z"
         card = {
             "uid": "C3-82-6KHURMQ2VK", "delegated_to": None, "rental_type": None,
@@ -214,12 +214,12 @@ class LandPhase1Tests(unittest.TestCase):
         self.assertIn(end, result.reason)
 
     def test_future_stake_end_date_is_cooling_down_even_without_asset_cross_check(self):
-        """ R-127: a `stake_end_date` is only ever set once an unstake has begun, so
- a FUTURE one means the card is already off its deed and counting down -- never a
- live, merely-unconfirmed active stake. Before the fix this fell into
- `stake_active_unconfirmed` whenever the deed's assets were not directly
- cross-checked (`assets_checked=False`, the common case), which fed a false
- `collection_join` assignment for a card that no longer belonged on the plot."""
+        """ / R-127: a `stake_end_date` is only ever set once an unstake has begun, so
+        a FUTURE one means the card is already off its deed and counting down -- never a
+        live, merely-unconfirmed active stake. Before the fix this fell into
+        `stake_active_unconfirmed` whenever the deed's assets were not directly
+        cross-checked (`assets_checked=False`, the common case), which fed a false
+        `collection_join` assignment for a card that no longer belonged on the plot."""
         card = {
             "uid": "active", "delegated_to": None, "rental_type": None, "market_id": None,
             "unlock_date": None, "expiration_date": None, "stake_ref_uid": "I-1-a",
@@ -254,7 +254,7 @@ class LandPhase1Tests(unittest.TestCase):
 
     def test_null_end_date_stake_without_asset_cross_check_remains_unconfirmed(self):
         """The bucket `stake_active_unconfirmed` is now reserved for a card with NO
- `stake_end_date` at all -- genuinely staked, just not cross-checked."""
+        `stake_end_date` at all -- genuinely staked, just not cross-checked."""
         card = {
             "uid": "active", "delegated_to": None, "rental_type": None, "market_id": None,
             "unlock_date": None, "expiration_date": None, "stake_ref_uid": "I-1-a",
@@ -281,8 +281,8 @@ class LandPhase1Tests(unittest.TestCase):
         deed_uid = bundle["data"]["deeds"][0]["deed_uid"]
         report = analyze_bundle("player0005", bundle, {deed_uid: {"cards": [], "items": []}}, [{"deed_uid": "other", "reason": "fixture failure"}])
         self.assertFalse(report["coverage"]["assets"]["complete"])
-        self.assertTrue(report["warnings"][0].startswith("PARTIAL DATA"))
-        self.assertTrue(render_land_analysis(report, "table").splitlines()[0].startswith("PARTIAL DATA"))
+        self.assertTrue(report["warnings"][0].startswith("PARTIAL DATA:"))
+        self.assertTrue(render_land_analysis(report, "table").splitlines()[0].startswith("PARTIAL DATA:"))
         self.assertIn("1/11 deeds retrieved", render_land_analysis(report, "table"))
 
     def test_runi_card_is_a_worker(self):
@@ -310,8 +310,8 @@ class LandPhase1Tests(unittest.TestCase):
         self.assertIn("Card ref", outputs["workers"])
         self.assertIn("missing_runi_bonus", outputs["diagnostics"])
         self.assertIn("Deeds:", outputs["analyze"])
-        self.assertIn("Diagnostics by finding code", outputs["analyze"])
-        self.assertIn("Plots by harvest PP descending", outputs["analyze"])
+        self.assertIn("Diagnostics by finding code:", outputs["analyze"])
+        self.assertIn("Plots by harvest PP descending:", outputs["analyze"])
 
     def test_cli_subcommands_select_distinct_renderer_views(self):
         report = report_with_assets()
@@ -325,7 +325,7 @@ class LandPhase1Tests(unittest.TestCase):
         self.assertEqual(len(set(outputs.values())), 5)
         self.assertIn("41-2-27", outputs["plots"])
         self.assertIn("Card ref", outputs["workers"])
-        self.assertIn("Diagnostics by finding code", outputs["diagnostics"])
+        self.assertIn("Diagnostics by finding code:", outputs["diagnostics"])
 
     def test_renderer_limit_announces_true_total(self):
         report = report_with_assets()
@@ -352,7 +352,19 @@ class LandPhase1Tests(unittest.TestCase):
                 self.assertEqual(cli.main(["land", "recommend", "--load-snapshot", "fixture.json", "--all", "--no-card-abilities"]), 0)
         self.assertNotRegex(stderr.getvalue(), r"\d+\.\d{6,}")
         self.assertNotIn("delta=None", stderr.getvalue())
-        self.assertIn("unknown (above cap)", stderr.getvalue())
+        # Fixture rows now carry numeric deltas; exercise an unknown delta through the CLI callback.
+        def recommend_with_unknown_delta(_report, **kwargs):
+            kwargs["on_recommendation"]({
+                "action": "add", "proposal": {"target_plot": "1-1-1"},
+                "delta": {"value": None, "reason": "target plot roster or base PP cap is not observed"},
+            })
+            return recommendations
+        stderr = io.StringIO()
+        with patch.object(cli, "load_snapshot", return_value=report), patch.object(cli, "_require_praetoria_storage_path"), patch.object(cli, "recommend_land", recommend_with_unknown_delta):
+            with redirect_stdout(io.StringIO()), redirect_stderr(stderr):
+                self.assertEqual(cli.main(["land", "recommend", "--load-snapshot", "fixture.json", "--all", "--no-card-abilities"]), 0)
+        self.assertNotIn("delta=None", stderr.getvalue())
+        self.assertIn("delta=unknown (above cap)", stderr.getvalue())
         raw = analyze_bundle("player0005", fixture("deeds_multi.json"), {}, include_raw=True)
         raw_output = render_land_analysis(raw, "json", view="status")
         self.assertIn('"raw"', raw_output)
@@ -373,13 +385,16 @@ class LandPhase1Tests(unittest.TestCase):
             loaded = load_snapshot(path)
             self.assertEqual(loaded["schema_version"], report["schema_version"])
             self.assertEqual(loaded["snapshot"]["status"], "snapshot_replay")
+            # A path not named `*-latest.json` has no separate card sidecar: the inline
+            # cards are replayed, never the snapshot re-read as its own card pool.
+            self.assertEqual(loaded["cards"], report["cards"])
 
     def test_widened_facts_projection_carries_terrain_magic_deed_stats_tax_and_time_crystal(self):
         """Covers the `terrain`/`magic_type`/`deed_stats`/`tax_rate`/`time_crystal_value`
- widening to `land_analysis.py`'s plot `facts` projection (docs land-query.md
- follow-up recorded alongside the Ceres Phase 1 landing, 2026-08-20) -- kept
- verbatim from the deed, and a malformed `stats` string degrades to `{}` rather
- than raising."""
+        widening to `land_analysis.py`'s plot `facts` projection (docs land-query.md
+        follow-up recorded alongside the Ceres Phase 1 landing, 2026-08-20) -- kept
+        verbatim from the deed, and a malformed `stats` string degrades to `{}` rather
+        than raising."""
         report = analyze_bundle("player0005", fixture("deeds_multi.json"), {}, as_of=AS_OF)
         row = next(p for p in report["plots"] if p["deed_uid"] == "I-296-b0dbc1ebc5ef75")
         facts = row["facts"]

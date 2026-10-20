@@ -1,4 +1,4 @@
-""" dividers never render as a bar or at a line edge (source guards)."""
+""" /  / : dividers never render as a bar or at a line edge (source guards)."""
 from pathlib import Path
 
 STATIC = Path(__file__).parents[2] / "ceres" / "static"
@@ -30,13 +30,13 @@ def test_sync_controls_dividers_uses_the_exported_pure_comparison():
 
 def test_divider_is_line_edge_pure_comparison_matches_the_6px_threshold():
     """Executes ONLY the exported pure function (extracted by source slice), never the whole
- module -- app.js runs a `ready(fn)` DOMContentLoaded bootstrap at EOF that needs `document`/
- `window`, which a plain Node process does not have; importing the whole file would throw."""
+    module -- app.js runs a `ready(fn)` DOMContentLoaded bootstrap at EOF that needs `document`/
+    `window`, which a plain Node process does not have; importing the whole file would throw."""
     import re
     import subprocess
 
     js = (STATIC / "app.js").read_text()
-    match = re.search(r"export function dividerIsLineEdge\(prevMid, nextMid\) \{\n return Math\.abs\(prevMid - nextMid\) > 6;\n\}", js)
+    match = re.search(r"export function dividerIsLineEdge\(prevMid, nextMid\) \{\n  return Math\.abs\(prevMid - nextMid\) > 6;\n\}", js)
     assert match, "dividerIsLineEdge source shape changed -- update this test's slice"
     script = match.group(0).replace("export function", "function") + (
         "\nconsole.log(JSON.stringify([dividerIsLineEdge(10, 10), dividerIsLineEdge(10, 16), dividerIsLineEdge(10, 17)]));"

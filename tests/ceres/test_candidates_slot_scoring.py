@@ -25,10 +25,10 @@ into this call site. `praetoria/land_reallocate.py` needed NO changes.
 
 Fail-safe design (deliberate, not an oversight):
 - `slot` genuinely missing, stale, or out of range for this plot -> falls back to the
- OLD whole-roster search (`_resolve_real_slot` returns `None`, or no `plot.cards` entry
- matches). Never guesses "slot 1".
+  OLD whole-roster search (`_resolve_real_slot` returns `None`, or no `plot.cards` entry
+  matches). Never guesses "slot 1".
 - An empty slot click was never affected either way -- no eviction search runs when the
- plot isn't full, slot-specific or otherwise.
+  plot isn't full, slot-specific or otherwise.
 
 A solo BLOODLINE holder is no longer a special case here (2026-08-26 ruling, supersedes
 the earlier 2026-08-21 hard-refusal ruling): it scores for eviction exactly like any other
@@ -119,10 +119,10 @@ def _report(*, capacity: int, workers: list[dict], runi: bool = False, idle_refs
 
 def test_slot_targets_the_specific_occupant_not_whole_roster():
     """Fixture data. Two-worker full plot: slot 1 = "Cheap Worker" (low base, easy to
- beat), slot 2 = "Strong Worker" (high base). Clicking slot 2 (real slot 2, UI index
- 1) must evict "Strong Worker" -- NOT "Cheap Worker", even though evicting "Cheap
- Worker" would score higher and is exactly what the old whole-roster search would
- have picked."""
+    beat), slot 2 = "Strong Worker" (high base). Clicking slot 2 (real slot 2, UI index
+    1) must evict "Strong Worker" -- NOT "Cheap Worker", even though evicting "Cheap
+    Worker" would score higher and is exactly what the old whole-roster search would
+    have picked."""
     report = _report(capacity=2, workers=[
         _worker("Cheap Worker", 1, base=100),
         _worker("Strong Worker", 2, base=50000),
@@ -140,8 +140,8 @@ def test_slot_targets_the_specific_occupant_not_whole_roster():
 
 def test_slot_boundary_first_and_last_slot_resolve_correctly():
     """Fixture data. Five-worker full plot (capacity 5, the real product's max today).
- Clicking UI slot index 0 (real slot 1) and UI slot index 4 (real slot 5) must each
- evict exactly that slot's own occupant."""
+    Clicking UI slot index 0 (real slot 1) and UI slot index 4 (real slot 5) must each
+    evict exactly that slot's own occupant."""
     workers = [_worker(f"Worker {n}", n, base=1000 * n) for n in range(1, 6)]
     report = _report(capacity=5, workers=workers, idle_refs=("candidate-a",))
     for ui_index, expected_name in ((0, "Worker 1"), (4, "Worker 5")):
@@ -155,14 +155,14 @@ def test_slot_boundary_first_and_last_slot_resolve_correctly():
 
 def test_runi_occupied_plot_never_targets_runi_for_eviction():
     """Fixture data. `max_workers_allowed` counts monster-card slots only -- a staked
- Runi occupies its own reserved slot 0 and is counted inside `worker_count`, never
- inside `max_workers_allowed` () -- so `land_reallocate.build_plots` takes
- `capacity = max_workers_allowed` as-is, with no Runi adjustment. Runi never appears
- in `plot.cards` at all (its `asset_kind` is `runi_worker_card`, excluded by
- `build_plots`'s worker-card filter), so `_resolve_real_slot`'s `slot + 1` (minimum
- 1) can structurally never resolve to it. Two real worker slots (1, 2) fill this
- plot's capacity of 2; clicking either must evict the correct worker and never
- mention Runi."""
+    Runi occupies its own reserved slot 0 and is counted inside `worker_count`, never
+    inside `max_workers_allowed` () -- so `land_reallocate.build_plots` takes
+    `capacity = max_workers_allowed` as-is, with no Runi adjustment. Runi never appears
+    in `plot.cards` at all (its `asset_kind` is `runi_worker_card`, excluded by
+    `build_plots`'s worker-card filter), so `_resolve_real_slot`'s `slot + 1` (minimum
+    1) can structurally never resolve to it. Two real worker slots (1, 2) fill this
+    plot's capacity of 2; clicking either must evict the correct worker and never
+    mention Runi."""
     report = _report(capacity=2, workers=[
         _worker("Worker One", 1, base=1000),
         _worker("Worker Two", 2, base=2000),
@@ -179,14 +179,14 @@ def test_runi_occupied_plot_never_targets_runi_for_eviction():
 
 
 def test_runi_plot_with_one_free_monster_slot_scores_a_plain_add_not_an_eviction():
-    """Regression for (2026-08-26). A Runi plot's `max_workers_allowed` counts
- monster-card slots only -- it does NOT already have the Runi subtracted out. A live
- plot with `max_workers_allowed: 5` and 4 staked monster workers therefore has one
- genuinely free monster-card slot (5 - 4 = 1), matching real player0005 plot 41-9-56.
- Before the fix, `build_plots` wrongly computed `capacity = max_workers_allowed - 1
- = 4`, read as already full by 4 workers, and scored a plain add as an eviction.
- After the fix, clicking the free slot must add the candidate with no eviction and a
- positive score."""
+    """Regression for  (2026-08-26). A Runi plot's `max_workers_allowed` counts
+    monster-card slots only -- it does NOT already have the Runi subtracted out. A live
+    plot with `max_workers_allowed: 5` and 4 staked monster workers therefore has one
+    genuinely free monster-card slot (5 - 4 = 1), matching real player0005 plot 41-9-56.
+    Before the fix, `build_plots` wrongly computed `capacity = max_workers_allowed - 1
+    = 4`, read as already full by 4 workers, and scored a plain add as an eviction.
+    After the fix, clicking the free slot must add the candidate with no eviction and a
+    positive score."""
     report = _report(capacity=5, workers=[
         _worker("Worker One", 1, base=1000),
         _worker("Worker Two", 2, base=1000),
@@ -205,8 +205,8 @@ def test_runi_plot_with_one_free_monster_slot_scores_a_plain_add_not_an_eviction
 
 def test_empty_slot_click_runs_no_eviction_search():
     """Fixture data. Plot has capacity 3 but only 1 worker staked -- clicking an empty
- slot on this non-full plot must never surface an eviction: there is room to add the
- candidate."""
+    slot on this non-full plot must never surface an eviction: there is room to add the
+    candidate."""
     report = _report(capacity=3, workers=[_worker("Sole Worker", 1, base=1000)], idle_refs=("candidate-a",))
     body = rank_candidates(
         report, "deed-slot-test", "worker", player="player0005", now=NOW, bucket="idle",
@@ -288,11 +288,11 @@ def test_non_full_plot_with_no_slot_supplied_is_a_plain_add_never_a_roster_searc
 
 def test_solo_bloodline_holder_slot_is_now_a_normal_eviction_target():
     """Fixture data, reusing `test_candidates_ranking.py`'s BLOODLINE-holder table shape.
- A full plot whose slot 1 is a SOLO BLOODLINE holder (no companion sharing its
- sub_type on the plot) is no longer refused as an eviction target (2026-08-26
- ruling, supersedes the 2026-08-21 hard-refusal ruling) -- clicking its slot
- scores it against incoming candidates exactly like any other occupant, and a
- strongly better candidate evicts it."""
+    A full plot whose slot 1 is a SOLO BLOODLINE holder (no companion sharing its
+    sub_type on the plot) is no longer refused as an eviction target (2026-08-26
+    ruling, supersedes the 2026-08-21 hard-refusal ruling) -- clicking its slot
+    scores it against incoming candidates exactly like any other occupant, and a
+    strongly better candidate evicts it."""
     report = _report(capacity=2, workers=[
         _worker("Bloodline Holder", 1, base=150, detail_id=866, level=10),
         _worker("Ordinary Companion", 2, base=5000, detail_id=40001),
@@ -307,13 +307,13 @@ def test_solo_bloodline_holder_slot_is_now_a_normal_eviction_target():
 
 def test_slot_missing_falls_back_to_whole_roster_search():
     """Fixture data. When `slot` is not provided at all (the FastAPI query param is
- genuinely omitted -- `routes_candidates.py` now passes `None` through rather than
- collapsing it to `0`), the old whole-roster search runs, exactly as it did before
- this fix -- a deliberate fail-safe, not an accidental regression. Verifies the
- fallback picks the highest-scoring eviction across the WHOLE roster (here, "Cheap
- Worker") rather than defaulting to "slot 1"'s occupant ("Cheap Worker" IS slot 1
- here, so this also proves the fallback is genuinely whole-roster reasoning and not a
- coincidental slot-1 guess -- see the companion assertion below with slots swapped)."""
+    genuinely omitted -- `routes_candidates.py` now passes `None` through rather than
+    collapsing it to `0`), the old whole-roster search runs, exactly as it did before
+    this fix -- a deliberate fail-safe, not an accidental regression. Verifies the
+    fallback picks the highest-scoring eviction across the WHOLE roster (here, "Cheap
+    Worker") rather than defaulting to "slot 1"'s occupant ("Cheap Worker" IS slot 1
+    here, so this also proves the fallback is genuinely whole-roster reasoning and not a
+    coincidental slot-1 guess -- see the companion assertion below with slots swapped)."""
     report = _report(capacity=2, workers=[
         _worker("Cheap Worker", 1, base=100),
         _worker("Strong Worker", 2, base=50000),
@@ -341,8 +341,8 @@ def test_slot_missing_falls_back_to_whole_roster_search():
 
 def test_unresolvable_slot_falls_back_to_whole_roster_search():
     """Fixture data. `slot` provided but out of range for this plot (no `plot.cards`
- entry has that real slot number) -- same fail-safe fallback as the missing case,
- proven by the same "wherever the cheap worker sits" pattern."""
+    entry has that real slot number) -- same fail-safe fallback as the missing case,
+    proven by the same "wherever the cheap worker sits" pattern."""
     report = _report(capacity=2, workers=[
         _worker("Cheap Worker", 1, base=100),
         _worker("Strong Worker", 2, base=50000),
@@ -365,10 +365,10 @@ SNAPSHOT_PATH = Path.home() / ".ceres" / "snapshots" / "land-player0005-latest.j
 
 def test_real_snapshot_grandmaster_rathe_regression():
     """REAL snapshot data (~/.ceres/snapshots/land-player0005-latest.json), skipped if that
- file isn't present in this environment. Plot `I-290-4bb57b41841c5a` is at full
- worker capacity; "Grandmaster Rathe" is one of its real occupants. Before this fix,
- clicking Rathe's slot showed a top recommendation evicting "Shin-Lo" instead (a
- DIFFERENT slot's occupant) -- exactly the defect this file closes."""
+    file isn't present in this environment. Plot `I-290-4bb57b41841c5a` is at full
+    worker capacity; "Grandmaster Rathe" is one of its real occupants. Before this fix,
+    clicking Rathe's slot showed a top recommendation evicting "Shin-Lo" instead (a
+    DIFFERENT slot's occupant) -- exactly the defect this file closes."""
     import pytest
     if not SNAPSHOT_PATH.exists():
         pytest.skip(f"real snapshot not present at {SNAPSHOT_PATH}")

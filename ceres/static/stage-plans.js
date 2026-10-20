@@ -399,6 +399,10 @@ export async function restoreStagePlans() {
   const isCurrent = () => restoreId === restoreSerial
     && String(CURRENT_PLAYER || BOARD?.player || '').toLowerCase() === account;
   const rawStore = readStore(account);
+  const rawChains = rawStore?.chains && typeof rawStore.chains === 'object' && !Array.isArray(rawStore.chains) ? rawStore.chains : {};
+  const malformedStored = new Set(Object.entries(rawChains)
+    .filter(([, plan]) => !validChainPlan(migrateChainNumbers(JSON.parse(JSON.stringify(plan ?? null)))))
+    .map(([id]) => id));
   const store = mergeStaged(rawStore, {}); // collapse duplicate refs even in a single device's old store
   PLANS.account = account;
   PLANS.restoreId = restoreId;
@@ -408,8 +412,8 @@ export async function restoreStagePlans() {
   PLANS.chains = store.chains && typeof store.chains === 'object' && !Array.isArray(store.chains) ? { ...store.chains } : {};
   // A03: never render malformed records, or overwrite their unresolved evidence.
   Object.values(PLANS.chains).forEach(migrateChainNumbers); // B01: migrate display facts only.
-  const malformedChains = Object.values(PLANS.chains).some(plan => !validChainPlan(plan));
-  PLANS.chains = Object.fromEntries(Object.entries(PLANS.chains).filter(([, plan]) => validChainPlan(plan)));
+  const malformedChains = malformedStored.size > 0 || Object.values(PLANS.chains).some(plan => !validChainPlan(plan));
+  PLANS.chains = Object.fromEntries(Object.entries(PLANS.chains).filter(([id, plan]) => !malformedStored.has(id) && validChainPlan(plan)));
   if (malformedChains) { PLANS.open = false; PLANS.ready = false; stageToast('A saved upgrade plan is malformed. Signing is held until it can be recovered.', true); return; }
   PLANS.known = new Set([...Object.keys(store.plans || {}), ...Object.keys(store.worksites || {}).map((id) => `w:${id}`)]);
   PLANS.pending = new Map();

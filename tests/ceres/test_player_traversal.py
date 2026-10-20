@@ -18,8 +18,8 @@ def _client(tmp_path: Path) -> TestClient:
 
 def test_traversal_player_is_refused_without_absolute_path(tmp_path: Path):
     """Mutation check: removing player validation made this request fail with an uncaught path-boundary error; the guard went red.
- Re-verified 2026-08-28: changed security.py's raised status_code from 422 to 400, watched this
- assertion go red, then restored it and confirmed green."""
+    Re-verified 2026-08-28: changed security.py's raised status_code from 422 to 400, watched this
+    assertion go red, then restored it and confirmed green."""
     client = _client(tmp_path)
     response = client.get("/api/board", params={"player": "../../outside/secret"})
 
@@ -51,9 +51,9 @@ def test_traversal_does_not_read_or_create_outside_storage(tmp_path: Path, monke
 
 def test_valid_player0005_player_still_works_end_to_end(tmp_path: Path):
     """Mutation check: rejecting all non-default or valid account names made this request fail; the guard went red.
- A fresh tmp_path has no captured snapshot, so a valid player still reads 503
- ("no snapshot"), never 422 ("invalid player") -- that distinction is the proof
- validation passed the name through rather than rejecting it."""
+    A fresh tmp_path has no captured snapshot, so a valid player still reads 503
+    ("no snapshot"), never 422 ("invalid player") -- that distinction is the proof
+    validation passed the name through rather than rejecting it."""
     response = _client(tmp_path).get("/api/board", params={"player": "player0005"})
 
     assert response.status_code == 503

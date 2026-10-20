@@ -1,4 +1,4 @@
-""" the Market cart's checkout ("Buy from Ceres").
+""" / : the Market cart's checkout ("Buy from Ceres").
 
 Payload shape and the price rules (DEC, CREDITS), the 150-listing split, sold / price-rise re-confirmation (409), the
 listing key -> market id resolution kept on the server, the outcome per listing (all, partial, none, failed, unknown), no
@@ -350,16 +350,16 @@ def test_active_allowlist_admits_only_the_reviewed_purchase():
 const p = (over = {}) => ({ currency: 'DEC', items: ['%s'], price: 1.5, app: 'ceres/0.29.0', n: 'aaaaaaaaaaaaaaaa', ...over });
 const op = (payload, over = {}) => [['custom_json', { id: 'sm_market_purchase', json: JSON.stringify(payload), required_auths: ['player0005'], required_posting_auths: [], ...over }]];
 const r = {
- ok: reviewedMarketPurchase('player0005', op(p())),
- credits: reviewedMarketPurchase('player0005', op(p({ currency: 'CREDITS', price: 1500 }))),
- other_account: reviewedMarketPurchase('player_0001', op(p())),
- posting: reviewedMarketPurchase('player0005', op(p(), { required_auths: [], required_posting_auths: ['player0005'] })),
- sps: reviewedMarketPurchase('player0005', op(p({ currency: 'SPS' }))),
- extra_field: reviewedMarketPurchase('player0005', op({ ...p(), memo: 'x' })),
- zero: reviewedMarketPurchase('player0005', op(p({ price: 0 }))),
- uid_item: reviewedMarketPurchase('player0005', op(p({ items: ['C3-349-ABC'] }))),
- too_many: reviewedMarketPurchase('player0005', op(p({ items: Array.from({ length: 151 }, (_, i) => i.toString(16).padStart(40, '0') + '-0') }))),
- two_ops: reviewedMarketPurchase('player0005', [...op(p()), ...op(p())]),
+  ok: reviewedMarketPurchase('player0005', op(p())),
+  credits: reviewedMarketPurchase('player0005', op(p({ currency: 'CREDITS', price: 1500 }))),
+  other_account: reviewedMarketPurchase('player_0001', op(p())),
+  posting: reviewedMarketPurchase('player0005', op(p(), { required_auths: [], required_posting_auths: ['player0005'] })),
+  sps: reviewedMarketPurchase('player0005', op(p({ currency: 'SPS' }))),
+  extra_field: reviewedMarketPurchase('player0005', op({ ...p(), memo: 'x' })),
+  zero: reviewedMarketPurchase('player0005', op(p({ price: 0 }))),
+  uid_item: reviewedMarketPurchase('player0005', op(p({ items: ['C3-349-ABC'] }))),
+  too_many: reviewedMarketPurchase('player0005', op(p({ items: Array.from({ length: 151 }, (_, i) => i.toString(16).padStart(40, '0') + '-0') }))),
+  two_ops: reviewedMarketPurchase('player0005', [...op(p()), ...op(p())]),
 };
 console.log(JSON.stringify(r));
 """ % mid(1), entry=STATIC / "broadcast-gate.js").stdout
@@ -378,15 +378,15 @@ const eq = (a, b, what) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw 
 def test_checkout_view_model_and_unknown_outcome_locks():
     out = run_in_module_context(CHECKOUT_VM + r"""
 const quote = {
- quote_id: 'q', dec_price: 0.0005, max_per_transaction: 150, signing: { enabled: true },
- items: [
- { lkey: 'aaaaaaaaaaaaaaa1', pid: '349-3-0', status: 'ok', price_usd: 0.01, seen_usd: 0.01 },
- { lkey: 'aaaaaaaaaaaaaaa2', pid: '349-3-0', status: 'sold', price_usd: null, seen_usd: 0.01, reason: 'Sold to another player.' },
- { lkey: 'aaaaaaaaaaaaaaa3', pid: '349-3-0', status: 'price_changed', rise: true, price_usd: 0.02, was_usd: 0.01, seen_usd: 0.01 },
- ],
- totals: { count: 2, usd: 0.03, DEC: 60, CREDITS: 30, transactions: [{ count: 2 }] },
- currencies: { DEC: { total: 60, balance: 5000, enough: true }, CREDITS: { total: 30, balance: 10, enough: false, short: 20, reason: 'Not enough credits.' } },
- changes: { sold: 1, price_rise: 1, price_drop: 0 },
+  quote_id: 'q', dec_price: 0.0005, max_per_transaction: 150, signing: { enabled: true },
+  items: [
+    { lkey: 'aaaaaaaaaaaaaaa1', pid: '349-3-0', status: 'ok', price_usd: 0.01, seen_usd: 0.01 },
+    { lkey: 'aaaaaaaaaaaaaaa2', pid: '349-3-0', status: 'sold', price_usd: null, seen_usd: 0.01, reason: 'Sold to another player.' },
+    { lkey: 'aaaaaaaaaaaaaaa3', pid: '349-3-0', status: 'price_changed', rise: true, price_usd: 0.02, was_usd: 0.01, seen_usd: 0.01 },
+  ],
+  totals: { count: 2, usd: 0.03, DEC: 60, CREDITS: 30, transactions: [{ count: 2 }] },
+  currencies: { DEC: { total: 60, balance: 5000, enough: true }, CREDITS: { total: 30, balance: 10, enough: false, short: 20, reason: 'Not enough credits.' } },
+  changes: { sold: 1, price_rise: 1, price_drop: 0 },
 };
 const html = reviewHtml(quote);
 eq(quote.items.map(rowState), ['ok', 'sold', 'rise'], 'row states');
@@ -429,7 +429,7 @@ def test_checkout_source_contracts():
     assert "CONFIRM_TTL_MS = 3 * 60 * 1000" in js and "NEVER_SENT_AFTER_MS = 3900 * 1000" in js and "RECHECK_MS = 10000" in js
     assert "Date.now() - Date.parse(tx.asked_at || '') >= NEVER_SENT_AFTER_MS" in js
     # The fresh combine witness uses copy UIDs internally; checkout UI must not expose market IDs or seller data.
-    assert not re.search(r"market_id|seller", js.replace("No market id, uid or seller is ever shown", ""))
+    assert not re.search(r"market_id|seller", js.replace("// No market id, uid or seller is ever shown", ""))
     cart_js = (STATIC / "card-cart.js").read_text(encoding="utf-8")
     assert "import('./card-checkout.js')" in cart_js and "onBought: (keys) => { if (cartRemove(cart.state, keys)) save();" in cart_js
 

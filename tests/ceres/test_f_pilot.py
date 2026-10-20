@@ -10,7 +10,7 @@ STATIC = Path(__file__).parents[2] / "ceres" / "static"
 def test_ability_and_not_soulbound_match_real_copy_fields():
     run_in_module_context("""
 const base = {name:'A', card_set:'land', rarity:'common', foil:0, splinters:['Earth'], status:'idle',
- available:true, soulbound:false, maxed:false, land_base_pp:10, land_abilities:[['GRAIN',0.1],['WOOD',0.2]]};
+  available:true, soulbound:false, maxed:false, land_base_pp:10, land_abilities:[['GRAIN',0.1],['WOOD',0.2]]};
 const bound = {...base, soulbound:true};
 const empty = {...base, land_abilities:[]};
 const matches = (card, ability, status=[]) => cbMatches(card, {...cbDefaultFilters(), ability, status});

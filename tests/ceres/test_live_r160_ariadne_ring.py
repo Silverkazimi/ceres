@@ -10,7 +10,7 @@ import copy
 
 import pytest
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .test_candidate_redesign_frontend import _real_detail_row
 from .test_live_r117_terrain_display import _candidates, _mount
 
@@ -36,7 +36,7 @@ def picker_page(live_browser):
         if not target.count():
             target = page.locator(".slot-group[data-group-id='worker'] .slot-tile[data-slot-action='add']")
         if not target.count():
-            page.wait_for_timeout(2_500)
+            settle(page)
             continue
         try:
             target.first.click(timeout=5_000)
@@ -45,7 +45,7 @@ def picker_page(live_browser):
             opened = True
             break
         except Exception:
-            page.wait_for_timeout(2_000)
+            settle(page)
     assert opened, "picker never opened on a worker tile after 8 attempts (fixture, not product)"
     yield page
     page.close()
@@ -54,38 +54,38 @@ def picker_page(live_browser):
 def _ring_state(page):
     return page.evaluate(
         """() => {
- const tile = document.querySelector('.slot-tile.is-picker-focus');
- const svg = tile?.querySelector(':scope > .picker-focus-ring');
- const arc = svg?.querySelector('.picker-focus-ring-arc');
- const rail = svg?.querySelector('.picker-focus-ring-rail');
- const remove = tile?.querySelector('.slot-remove');
- const rect = element => {
- const box = element.getBoundingClientRect();
- return {left: box.left, top: box.top, right: box.right, bottom: box.bottom, width: box.width, height: box.height};
- };
- const svgRect = svg && rect(svg);
- const tileRect = tile && rect(tile);
- const animation = arc?.getAnimations()[0];
- return {
- focused: document.querySelectorAll('.slot-tile.is-picker-focus').length,
- rings: document.querySelectorAll('.slot-tile .picker-focus-ring').length,
- pathLength: arc?.getAttribute('pathLength'),
- dashArray: arc?.getAttribute('stroke-dasharray'),
- duration: arc && getComputedStyle(arc).animationDuration,
- name: arc && getComputedStyle(arc).animationName,
- timing: arc && getComputedStyle(arc).animationTimingFunction,
- iteration: arc && getComputedStyle(arc).animationIterationCount,
- playState: arc && getComputedStyle(arc).animationPlayState,
- arcStroke: arc && getComputedStyle(arc).stroke,
- railStroke: rail && getComputedStyle(rail).stroke,
- ringZ: svg && getComputedStyle(svg).zIndex,
- removeZ: remove && getComputedStyle(remove).zIndex,
- svgRect, tileRect,
- animationTime: animation?.currentTime,
- pathLengthPixels: arc?.getTotalLength(),
- scrollWidth: document.documentElement.scrollWidth,
- };
- }"""
+          const tile = document.querySelector('.slot-tile.is-picker-focus');
+          const svg = tile?.querySelector(':scope > .picker-focus-ring');
+          const arc = svg?.querySelector('.picker-focus-ring-arc');
+          const rail = svg?.querySelector('.picker-focus-ring-rail');
+          const remove = tile?.querySelector('.slot-remove');
+          const rect = element => {
+            const box = element.getBoundingClientRect();
+            return {left: box.left, top: box.top, right: box.right, bottom: box.bottom, width: box.width, height: box.height};
+          };
+          const svgRect = svg && rect(svg);
+          const tileRect = tile && rect(tile);
+          const animation = arc?.getAnimations()[0];
+          return {
+            focused: document.querySelectorAll('.slot-tile.is-picker-focus').length,
+            rings: document.querySelectorAll('.slot-tile .picker-focus-ring').length,
+            pathLength: arc?.getAttribute('pathLength'),
+            dashArray: arc?.getAttribute('stroke-dasharray'),
+            duration: arc && getComputedStyle(arc).animationDuration,
+            name: arc && getComputedStyle(arc).animationName,
+            timing: arc && getComputedStyle(arc).animationTimingFunction,
+            iteration: arc && getComputedStyle(arc).animationIterationCount,
+            playState: arc && getComputedStyle(arc).animationPlayState,
+            arcStroke: arc && getComputedStyle(arc).stroke,
+            railStroke: rail && getComputedStyle(rail).stroke,
+            ringZ: svg && getComputedStyle(svg).zIndex,
+            removeZ: remove && getComputedStyle(remove).zIndex,
+            svgRect, tileRect,
+            animationTime: animation?.currentTime,
+            pathLengthPixels: arc?.getTotalLength(),
+            scrollWidth: document.documentElement.scrollWidth,
+          };
+        }"""
     )
 
 
@@ -111,7 +111,7 @@ def _assert_ring_contract(page):
 
 def _assert_head_travel(page):
     before = _ring_state(page)
-    page.wait_for_timeout(100)
+    settle(page)
     after = _ring_state(page)
     delta = float(after["animationTime"]) - float(before["animationTime"])
     path_length = float(after["pathLengthPixels"])

@@ -21,11 +21,11 @@ def config(tmp_path) -> CeresConfig:
 @pytest.fixture(autouse=True)
 def _no_card_details_refresh(monkeypatch):
     """This file only fakes `LandCapture` -- `_refresh_card_details` (a real,
- unmocked `card_details` cache read/possible network fetch every
- `_run_capture_quick`/`_run_capture_full` call now makes) is out of scope here
- and, left unmocked, can outlast these tests' short poll windows and leave a
- background thread racing into the NEXT test via the shared `_run_state` dict.
- Balance reads are outside this test's fake capture contract for the same reason."""
+    unmocked `card_details` cache read/possible network fetch every
+    `_run_capture_quick`/`_run_capture_full` call now makes) is out of scope here
+    and, left unmocked, can outlast these tests' short poll windows and leave a
+    background thread racing into the NEXT test via the shared `_run_state` dict.
+    Balance reads are outside this test's fake capture contract for the same reason."""
     monkeypatch.setattr(capture, "_refresh_card_details", lambda: None)
     monkeypatch.setattr(capture, "_fetch_balances", lambda player: None)
 
@@ -35,7 +35,7 @@ def test_derive_request_budget_scales_with_deed_count():
     small = capture.derive_request_budget(130)
     assert small >= 130
 
-    # player0016-scale (6303 deeds) -- the fixed DEFAULT_REQUEST_BUDGET (200) would fail
+    # player0017-scale (6303 deeds) -- the fixed DEFAULT_REQUEST_BUDGET (200) would fail
     # this outright; the derived budget must comfortably exceed the deed count.
     whale = capture.derive_request_budget(6303)
     assert whale > 6303
@@ -49,15 +49,15 @@ def test_derive_request_budget_never_drops_below_the_default():
 
 def test_estimate_capture_seconds_uses_the_concurrent_dispatch_ceiling():
     """2026-08-21 concurrency feature: the estimate now reflects the concurrent
- fan-out's own dispatch ceiling (10 req/s), not the old fully-serial pacing (3.3
- req/s) -- roughly a 3x drop in the estimate, on top of the whale-scale budget
- itself already being derived rather than a fixed constant."""
+    fan-out's own dispatch ceiling (10 req/s), not the old fully-serial pacing (3.3
+    req/s) -- roughly a 3x drop in the estimate, on top of the whale-scale budget
+    itself already being derived rather than a fixed constant."""
     from praetoria.land_analysis import CONCURRENT_DISPATCH_INTERVAL_SECONDS
 
     seconds = capture.estimate_capture_seconds(6303)
     budget = capture.derive_request_budget(6303)
     assert seconds == pytest.approx(budget * CONCURRENT_DISPATCH_INTERVAL_SECONDS)
-    # ~11-12 minutes is the new estimate for player0016-scale at the concurrent ceiling
+    # ~11-12 minutes is the new estimate for player0017-scale at the concurrent ceiling
     # down from the ~31.5 min fully-serial figure measured before concurrency shipped.
     assert 9 * 60 < seconds < 14 * 60
 
@@ -76,10 +76,10 @@ def _fake_report(player, plots=None):
 
 class FakeLandCaptureFull:
     """Duck-types praetoria.land_analysis.LandCapture's FULL-capture surface: preflight +
- capture, wired to fire the same `progress(fetched, total)` callback shape the real
- one uses. Also records the `concurrency` it was constructed with, so
- test_run_capture_full_passes_configured_concurrency can prove
- CeresConfig.capture_concurrency actually reaches LandCapture()."""
+    capture, wired to fire the same `progress(fetched, total)` callback shape the real
+    one uses. Also records the `concurrency` it was constructed with, so
+    test_run_capture_full_passes_configured_concurrency can prove
+    CeresConfig.capture_concurrency actually reaches LandCapture()."""
 
     def __init__(self, *a, concurrency=None, **kw):
         self.request_budget = None
@@ -98,7 +98,7 @@ class FakeLandCaptureFull:
 
 class FakeLandCaptureQuick:
     """Duck-types the QUICK-capture surface only -- no `capture()`/`preflight_deed_count`,
- proving `start_refresh` (the default board load) never calls into the per-deed path."""
+    proving `start_refresh` (the default board load) never calls into the per-deed path."""
 
     def __init__(self, *a, **kw):
         pass
@@ -133,10 +133,10 @@ def test_estimate_capture_reports_deeds_and_cost(monkeypatch):
             return 6303
 
     monkeypatch.setattr(capture, "LandCapture", FakePreflight)
-    result = capture.estimate_capture("player0016")
-    assert result["player"] == "player0016"
+    result = capture.estimate_capture("player0017")
+    assert result["player"] == "player0017"
     assert result["deeds"] == 6303
     assert result["requests_estimated"] > 6303
-    # Concurrent-ceiling estimate (2026-08-21) -- ~11-12 min for player0016-scale, down
+    # Concurrent-ceiling estimate (2026-08-21) -- ~11-12 min for player0017-scale, down
     # from the old fully-serial ~31.5 min figure.
     assert 9 < result["estimated_minutes"] < 14

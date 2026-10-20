@@ -7,7 +7,7 @@ from fides.ledger import Ledger, LedgerError, TERMINAL_FAILURE_STATES
 
 class StubSpec:
     """A stub VerificationSpec -- deliberately generic, no domain vocabulary, per Phase 2's
- acceptance criteria ("never a land one")."""
+    acceptance criteria ("never a land one")."""
 
     def __init__(self, domain_result="domain_verified"):
         self.domain_result = domain_result

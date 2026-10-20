@@ -4,8 +4,8 @@
 No broadcast anywhere in this module: these tests only prove the payload shape, the
 refusal guards, and that the built op passes the render.py allowlist. Real captured
 payload shape (a captured op):
- {"op":"worksite_aura_construction","region_uid":"PR-BRL-41",
- "deed_uids":["I-298-2dd53d9ac60331"],"time_crystals":0,"app":"splinterlands/0.7.60","n":"..."}
+    {"op":"worksite_aura_construction","region_uid":"PR-BRL-41",
+     "deed_uids":["I-298-2dd53d9ac60331"],"time_crystals":0,"app":"splinterlands/0.7.60","n":"..."}
 """
 
 import unittest
@@ -177,7 +177,7 @@ class WorksiteLegalTargetsTests(unittest.TestCase):
 
 class WorksiteChangeOpAllowlistIntegrationTests(unittest.TestCase):
     """End-to-end: build (never broadcast) -> render -> evaluate_allowlist, on a real plot
- code, proving the built op is signable-shaped without ever calling requestBroadcast."""
+    code, proving the built op is signable-shaped without ever calling requestBroadcast."""
 
     def _bundle(self, op):
         renderer = build_renderer(build_uid_index({}), build_deed_labels({}))

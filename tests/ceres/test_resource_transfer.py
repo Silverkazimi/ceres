@@ -1,4 +1,4 @@
-"""player-to-player land-resource transfer (the wallet's Transfer tab beside Swap).
+""": player-to-player land-resource transfer (the wallet's Transfer tab beside Swap).
 
 The maintainer's proven game transaction (player0005 -> player0004, <tx id>, 2026-10-13, Posting) is the region-to-region
 pool swap with from_symbol = to_symbol and `to_player`. Every builder test compares field for field with it; every
@@ -260,11 +260,11 @@ def test_the_swap_verify_confirms_a_transfer_with_the_amount_the_recipient_got()
 
 CARD_JS = """
 const wallet = { account: { DEC: 12, SPS: 0, SPSP: 0, VOUCHER: 0 },
- swap: { symbols: ['GRAIN', 'WOOD', 'STONE', 'IRON'], directions: ['swap_sell', 'swap_buy'], slippage: '2.5', signing_enabled: true },
- regions: [{ region_uid: 'PR-CEF-65', plots_owned: 101, balances: { GRAIN: 50, WOOD: 0, STONE: 0, IRON: 0, RESEARCH: 0, AURA: 0 } }] };
+  swap: { symbols: ['GRAIN', 'WOOD', 'STONE', 'IRON'], directions: ['swap_sell', 'swap_buy'], slippage: '2.5', signing_enabled: true },
+  regions: [{ region_uid: 'PR-CEF-65', plots_owned: 101, balances: { GRAIN: 50, WOOD: 0, STONE: 0, IRON: 0, RESEARCH: 0, AURA: 0 } }] };
 const visible = html => html.replace(/<[^>]*>/g, ' ');
 const QUOTE = { resource_symbol: 'GRAIN', input: '10', intermediate_dec: '0.080', output: '9.030', minimum: '8.804', slippage: '2.5', fee_percent: '10',
- legs: [{ pay: 'GRAIN', receive: 'DEC', fee_percent: '5', fee: '0.500', fee_symbol: 'GRAIN' }, { pay: 'DEC', receive: 'GRAIN', fee_percent: '5', fee: '0.004', fee_symbol: 'DEC' }] };
+  legs: [{ pay: 'GRAIN', receive: 'DEC', fee_percent: '5', fee: '0.500', fee_symbol: 'GRAIN' }, { pay: 'DEC', receive: 'GRAIN', fee_percent: '5', fee: '0.004', fee_symbol: 'DEC' }] };
 """
 
 
@@ -284,16 +284,16 @@ st.xfer.toRegion = 'PR-BRL-41';
 st.xfer.amount = '10'; st.xfer.quoted = '10'; st.xfer.quote = QUOTE;
 html = swapHtml('GRAIN', wallet, 'player0005');
 for (const text of ['✓ @player0004 receives in', 'Region 41', 'data-lp-transfer-region', 'Fee Grain → DEC · 5%', '0.500 Grain', 'Fee DEC → Grain · 5%', '0.004 DEC',
- 'Total fee', '10%', 'At least · slippage 2.5%', '8.804 Grain', '9.030', 'Review transfer of 10.000 Grain'])
- if (!html.includes(text)) throw new Error('quoted form lacks ' + text + ': ' + html);
+                    'Total fee', '10%', 'At least · slippage 2.5%', '8.804 Grain', '9.030', 'Review transfer of 10.000 Grain'])
+  if (!html.includes(text)) throw new Error('quoted form lacks ' + text + ': ' + html);
 if (/data-dec="lp:transfer-review"[^>]*disabled/.test(html)) throw new Error('Review is ready');
 if (/PR-[A-Z]{3}-\\d/.test(visible(html))) throw new Error('no region uid on screen: ' + visible(html));
 for (const [status, text] of [['no_hive_account', 'no Hive account'], ['no_splinterlands_account', 'no Splinterlands account'], ['invalid', 'cannot receive a transfer']]) {
- st.xfer.recipient = { status, account: 'player0004' };
- const card = swapHtml('GRAIN', wallet, 'player0005');
- if (!card.includes(text) || !card.includes('is-danger') || !/lp:transfer-review"[^>]*disabled/.test(card)) throw new Error(status + ': ' + card);
+  st.xfer.recipient = { status, account: 'player0004' };
+  const card = swapHtml('GRAIN', wallet, 'player0005');
+  if (!card.includes(text) || !card.includes('is-danger') || !/lp:transfer-review"[^>]*disabled/.test(card)) throw new Error(status + ': ' + card);
 }
-// a recipient with no land picks any region, and the card says they own no land there.
+// : a recipient with no land picks any region, and the card says they own no land there.
 st.xfer.recipient = { status: 'ok', account: 'player0004', no_land: true, regions: [{ region_uid: 'PR-PNW-1', name: '001 - Viritas', plots_owned: 0 }, { region_uid: 'PR-BRL-41', name: '041 - Pandon Reach', plots_owned: 0 }] };
 html = swapHtml('GRAIN', wallet, 'player0005');
 if (!html.includes('They own no land in this region.') || !html.includes('Region 1 · Viritas') || /lp:transfer-review"[^>]*disabled/.test(html)) throw new Error('no land: ' + html);
@@ -303,7 +303,7 @@ const payload = { op: 'swap_tokens', from_region_uid: 'PR-CEF-65', to_region_uid
 st.xfer.review = { quote: QUOTE, payload, to_player: 'player0004', projected: { region_after: '40' }, nonce: 'n' };
 html = swapHtml('GRAIN', wallet, 'player0005');
 for (const text of ['Review transfer', 'You send', '10.000 Grain', '@player0004', 'into their', 'cannot be undone', 'data-dec="lp:transfer-edit"', 'data-dec="lp:transfer-sign"', 'Region 65 Grain after', '40.000'])
- if (!html.includes(text)) throw new Error('review lacks ' + text + ': ' + html);
+  if (!html.includes(text)) throw new Error('review lacks ' + text + ': ' + html);
 if (!html.includes('data-lp-stage="review"') || /PR-[A-Z]{3}-\\d/.test(visible(html))) throw new Error('review stage: ' + html);
 // Outcomes: amber while the game has not answered, green when confirmed, red with the game's own reason when refused.
 st.stage = 'confirming'; st.checking = true;
@@ -337,44 +337,44 @@ const review = {json.dumps(review)};
 const order = [];
 let verdict = {{ status: 'failed', message: 'Slippage exceeded: received less than the minimum' }};
 globalThis.fetch = async (url, options) => {{
- const path = url.split('?')[0]; const body = JSON.parse(options.body); order.push([path, body]);
- const reply = path === '/api/wallet/transfer/preview' ? review : path === '/api/wallet/lp/verify' ? verdict : {{}};
- return {{ ok: true, status: 200, json: async () => reply }};
+  const path = url.split('?')[0]; const body = JSON.parse(options.body); order.push([path, body]);
+  const reply = path === '/api/wallet/transfer/preview' ? review : path === '/api/wallet/lp/verify' ? verdict : {{}};
+  return {{ ok: true, status: 200, json: async () => reply }};
 }};
 const st = swapState('player0005', 'GRAIN');
 Object.assign(st, {{ tab: 'transfer' }});
 Object.assign(st.xfer, {{ to: 'player0004', recipient: {{ status: 'ok', account: 'player0004', regions: [{{ region_uid: 'PR-BRL-41', name: '041 - Pandon Reach', plots_owned: 0 }}] }},
- toRegion: 'PR-BRL-41', fromRegion: 'PR-CEF-65', amount: '10', quoted: '10', quote: QUOTE }});
+  toRegion: 'PR-BRL-41', fromRegion: 'PR-CEF-65', amount: '10', quoted: '10', quote: QUOTE }});
 let signing = false;
 const ctx = {{ player: 'player0005', account: () => 'player0005', drawer: () => null, wallet: () => wallet, render: () => {{}}, reload: async () => {{}}, setSigning: v => {{ signing = v; }} }};
 const target = {{ closest: () => ({{ dataset: {{ lpSymbol: 'GRAIN' }} }}) }};
 (async () => {{
- await swapAction(ctx, 'transfer-review', target);
- if (order.length !== 1 || order[0][0] !== '/api/wallet/transfer/preview' || order[0][1].sign !== false || order[0][1].to_player !== 'player0004' || order[0][1].in_amount !== '10') throw new Error('review read: ' + JSON.stringify(order));
- if (!st.xfer.review || __signed.length) throw new Error('Review signs nothing');
- await swapAction(ctx, 'transfer-sign', target);
- for (let i = 0; i < 400 && st.stage !== 'refused'; i++) await new Promise(r => setTimeout(r, 2));
- const sign = order[1];
- if (sign[0] !== '/api/wallet/transfer/preview' || sign[1].sign !== true || sign[1].reviewed_payload.n !== review.nonce) throw new Error('sign build: ' + JSON.stringify(sign));
- if (__signed.length !== 1 || __signed[0].authority !== 'Posting' || __signed[0].json.to_player !== 'player0004') throw new Error('one Posting request: ' + JSON.stringify(__signed));
- const check = order[2];
- if (check[0] !== '/api/wallet/lp/verify' || check[1].kind !== 'transfer' || check[1].tx_id !== 'c'.repeat(40) || check[1].expected_payload.to_player !== 'player0004') throw new Error('confirm: ' + JSON.stringify(check));
- if (st.stage !== 'refused' || st.refusal !== 'Slippage exceeded: received less than the minimum') throw new Error('refused: ' + st.stage);
- const red = swapHtml('GRAIN', wallet, 'player0005');
- if (!red.includes('is-failed') || !red.includes('Slippage exceeded: received less than the minimum')) throw new Error('red card: ' + red);
- // Close returns to the Transfer tab with the player kept and the amount cleared; nothing is signed again.
- await swapAction(ctx, 'done', target);
- if (st.stage !== 'edit' || st.tab !== 'transfer' || st.xfer.recipient?.account !== 'player0004' || st.xfer.amount !== '' || st.xfer.review) throw new Error('closed: ' + JSON.stringify(st.xfer));
- if (__signed.length !== 1) throw new Error('never signed again');
- // A confirmed transfer ends green with the amount the game reported.
- verdict = {{ status: 'confirmed', game_result: {json.dumps(OWNER_RESULT["result"]["data"])} }};
- Object.assign(st.xfer, {{ amount: '10', quoted: '10', quote: QUOTE }});
- await swapAction(ctx, 'transfer-review', target);
- await swapAction(ctx, 'transfer-sign', target);
- for (let i = 0; i < 400 && st.stage !== 'done'; i++) await new Promise(r => setTimeout(r, 2));
- if (st.stage !== 'done' || st.receipt.output !== 8.949) throw new Error('green: ' + st.stage + ' ' + JSON.stringify(st.receipt));
- if (!swapHtml('GRAIN', wallet, 'player0005').includes('Transfer confirmed')) throw new Error('green card');
- process.exit(0);
+  await swapAction(ctx, 'transfer-review', target);
+  if (order.length !== 1 || order[0][0] !== '/api/wallet/transfer/preview' || order[0][1].sign !== false || order[0][1].to_player !== 'player0004' || order[0][1].in_amount !== '10') throw new Error('review read: ' + JSON.stringify(order));
+  if (!st.xfer.review || __signed.length) throw new Error('Review signs nothing');
+  await swapAction(ctx, 'transfer-sign', target);
+  for (let i = 0; i < 400 && st.stage !== 'refused'; i++) await new Promise(r => setTimeout(r, 2));
+  const sign = order[1];
+  if (sign[0] !== '/api/wallet/transfer/preview' || sign[1].sign !== true || sign[1].reviewed_payload.n !== review.nonce) throw new Error('sign build: ' + JSON.stringify(sign));
+  if (__signed.length !== 1 || __signed[0].authority !== 'Posting' || __signed[0].json.to_player !== 'player0004') throw new Error('one Posting request: ' + JSON.stringify(__signed));
+  const check = order[2];
+  if (check[0] !== '/api/wallet/lp/verify' || check[1].kind !== 'transfer' || check[1].tx_id !== 'c'.repeat(40) || check[1].expected_payload.to_player !== 'player0004') throw new Error('confirm: ' + JSON.stringify(check));
+  if (st.stage !== 'refused' || st.refusal !== 'Slippage exceeded: received less than the minimum') throw new Error('refused: ' + st.stage);
+  const red = swapHtml('GRAIN', wallet, 'player0005');
+  if (!red.includes('is-failed') || !red.includes('Slippage exceeded: received less than the minimum')) throw new Error('red card: ' + red);
+  // Close returns to the Transfer tab with the player kept and the amount cleared; nothing is signed again.
+  await swapAction(ctx, 'done', target);
+  if (st.stage !== 'edit' || st.tab !== 'transfer' || st.xfer.recipient?.account !== 'player0004' || st.xfer.amount !== '' || st.xfer.review) throw new Error('closed: ' + JSON.stringify(st.xfer));
+  if (__signed.length !== 1) throw new Error('never signed again');
+  // A confirmed transfer ends green with the amount the game reported.
+  verdict = {{ status: 'confirmed', game_result: {json.dumps(OWNER_RESULT["result"]["data"])} }};
+  Object.assign(st.xfer, {{ amount: '10', quoted: '10', quote: QUOTE }});
+  await swapAction(ctx, 'transfer-review', target);
+  await swapAction(ctx, 'transfer-sign', target);
+  for (let i = 0; i < 400 && st.stage !== 'done'; i++) await new Promise(r => setTimeout(r, 2));
+  if (st.stage !== 'done' || st.receipt.output !== 8.949) throw new Error('green: ' + st.stage + ' ' + JSON.stringify(st.receipt));
+  if (!swapHtml('GRAIN', wallet, 'player0005').includes('Transfer confirmed')) throw new Error('green card');
+  process.exit(0);
 }})().catch(error => {{ console.error(error); process.exit(1); }});
 """
     run_in_module_context(body_js, entry=STATIC / "wallet-lp.js", source=source, extra_context_js=extra)
@@ -393,9 +393,9 @@ context.__stubGate = async () => { const e = new Error('timeout'); throw e; };
 const review = {json.dumps(review)};
 const paths = [];
 globalThis.fetch = async (url) => {{
- const path = url.split('?')[0]; paths.push(path);
- if (path === '/api/wallet/lp/find') return {{ ok: false, status: 502, json: async () => ({{}}) }};
- return {{ ok: true, status: 200, json: async () => review }};
+  const path = url.split('?')[0]; paths.push(path);
+  if (path === '/api/wallet/lp/find') return {{ ok: false, status: 502, json: async () => ({{}}) }};
+  return {{ ok: true, status: 200, json: async () => review }};
 }};
 const st = swapState('player0005', 'GRAIN');
 st.tab = 'transfer';
@@ -403,14 +403,14 @@ Object.assign(st.xfer, {{ to: 'player0004', recipient: {{ status: 'ok', account:
 const ctx = {{ player: 'player0005', account: () => 'player0005', drawer: () => null, wallet: () => wallet, render: () => {{}}, reload: async () => {{}}, setSigning: () => {{}} }};
 const target = {{ closest: () => ({{ dataset: {{ lpSymbol: 'GRAIN' }} }}) }};
 (async () => {{
- await swapAction(ctx, 'transfer-sign', target);
- await new Promise(r => setTimeout(r, 20));
- if (st.stage !== 'confirming' || !st.receipt.unknownOutcome) throw new Error('unknown outcome stays open: ' + st.stage);
- const html = swapHtml('GRAIN', wallet, 'player0005');
- if (html.includes('lp:transfer-sign') || html.includes('lp:tab:') || !html.includes('is-waiting')) throw new Error('no second signature: ' + html);
- await swapAction(ctx, 'transfer-sign', target);
- if (paths.filter(p => p === '/api/wallet/transfer/preview').length !== 1) throw new Error('never built again: ' + paths);
- process.exit(0);
+  await swapAction(ctx, 'transfer-sign', target);
+  await new Promise(r => setTimeout(r, 20));
+  if (st.stage !== 'confirming' || !st.receipt.unknownOutcome) throw new Error('unknown outcome stays open: ' + st.stage);
+  const html = swapHtml('GRAIN', wallet, 'player0005');
+  if (html.includes('lp:transfer-sign') || html.includes('lp:tab:') || !html.includes('is-waiting')) throw new Error('no second signature: ' + html);
+  await swapAction(ctx, 'transfer-sign', target);
+  if (paths.filter(p => p === '/api/wallet/transfer/preview').length !== 1) throw new Error('never built again: ' + paths);
+  process.exit(0);
 }})().catch(error => {{ console.error(error); process.exit(1); }});
 """
     run_in_module_context(body_js, entry=STATIC / "wallet-lp.js", source=source, extra_context_js=extra)

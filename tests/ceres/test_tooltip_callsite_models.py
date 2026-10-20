@@ -1,4 +1,4 @@
-"""census row 35 (batch B): these three tests used to scan `app.js`
+"""/census row 35 (batch B): these three tests used to scan `app.js`
 source for the tooltip-model literal object (`kind:`/`severity:`/`title:`/
 `body:`/`foot:` fields) at each callsite. The tooltip ENGINE is `tipAttrs(model,
 severity)`, which turns that model into `data-tip`/`data-tip-kind`/
@@ -27,14 +27,14 @@ def live_browser() -> tuple[Browser, str]:
 
 def test_rendered_clear_plot_control_is_a_structured_danger_warning(live_browser: tuple[Browser, str]) -> None:
     """Census row 35: replaces the source-text scan of `renderEditorGroup()`'s
- Clear Plot warning-model object literal with a read of the real button's
- `data-tip*` attributes (built by `tipAttrs()` from that exact model).
+    Clear Plot warning-model object literal with a read of the real button's
+    `data-tip*` attributes (built by `tipAttrs()` from that exact model).
 
- Named injection (not applied here; independently watched red/green per
- ): the Clear Plot button's model changed from
- `{ kind: 'warn', severity: 'danger', ... }` to
- `{ kind: 'warn', severity: 'caution', ... }`. Expected red:
- `data-tip-severity` reads `"caution"` where this test asserts `"danger"`."""
+    Named injection (not applied here; independently watched red/green per
+    ): the Clear Plot button's model changed from
+    `{ kind: 'warn', severity: 'danger', ... }` to
+    `{ kind: 'warn', severity: 'caution', ... }`. Expected red:
+    `data-tip-severity` reads `"caution"` where this test asserts `"danger"`."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.goto(base_url)
@@ -50,20 +50,20 @@ def test_rendered_clear_plot_control_is_a_structured_danger_warning(live_browser
 
 def test_rendered_warning_badge_carries_dynamic_severity_from_the_row_notice(live_browser: tuple[Browser, str]) -> None:
     """Census row 35: replaces the source-text scan of `badgeHtml()`'s
- dynamic-severity branch (`rawSeverity`/`warningModel`) with a read of a
- real badge chip's rendered `data-tip-severity`/`data-tip-body`. Uses a real
- live plot carrying a badge whose severity comes from the plot's OWN
- `notices` entry (`dark_discount_wasted`, severity `caution`), not a static
- per-badge default -- proving the severity really is read per-row, not
- hardcoded per-badge-code.
+    dynamic-severity branch (`rawSeverity`/`warningModel`) with a read of a
+    real badge chip's rendered `data-tip-severity`/`data-tip-body`. Uses a real
+    live plot carrying a badge whose severity comes from the plot's OWN
+    `notices` entry (`dark_discount_wasted`, severity `caution`), not a static
+    per-badge default -- proving the severity really is read per-row, not
+    hardcoded per-badge-code.
 
- Named injection (not applied here; independently watched red/green per
- ): `badgeHtml()`'s `const rawSeverity = rowNotice?.severity || info.severity;`
- changed to `const rawSeverity = info.severity;` (drops the row's own
- severity in favour of the static default). Expected red: the rendered
- chip's `data-tip-severity` no longer matches the row notice's real
- `severity` field for a badge whose per-row severity differs from its
- static default."""
+    Named injection (not applied here; independently watched red/green per
+    ): `badgeHtml()`'s `const rawSeverity = rowNotice?.severity || info.severity;`
+    changed to `const rawSeverity = info.severity;` (drops the row's own
+    severity in favour of the static default). Expected red: the rendered
+    chip's `data-tip-severity` no longer matches the row notice's real
+    `severity` field for a badge whose per-row severity differs from its
+    static default."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.goto(base_url)

@@ -73,48 +73,48 @@ def live_browser() -> tuple[Browser, str]:
 
 STUB_SESSION = """
 (() => {
- localStorage.setItem('ceres:hiveauth-session:v1:player0005', JSON.stringify({
- account: 'player0005', username: 'player0005', token: 'stub-token-not-real',
- key: 'stub-key-not-real', expire: Date.now() + 3600000
- }));
- localStorage.setItem('ceres.wallet-provider:player0005', 'hiveauth');
- const RealWorker = window.Worker;
- window.Worker = function(url, opts) {
- if (!String(url?.href || url).includes('hiveauth-worker')) return new RealWorker(url, opts);
- const fake = {
- onmessage: null, onerror: null,
- postMessage(message) {
- if (message.action !== 'restore') throw new Error('The wallet switcher test must never sign');
- window.__ir8331_finishRestore = () => fake.onmessage?.({
- data: { type: 'restored', account: message.account, expire: Date.now() + 3600000 }
- });
- },
- terminate() {}
- };
- return fake;
- };
+  localStorage.setItem('ceres:hiveauth-session:v1:player0005', JSON.stringify({
+    account: 'player0005', username: 'player0005', token: 'stub-token-not-real',
+    key: 'stub-key-not-real', expire: Date.now() + 3600000
+  }));
+  localStorage.setItem('ceres.wallet-provider:player0005', 'hiveauth');
+  const RealWorker = window.Worker;
+  window.Worker = function(url, opts) {
+    if (!String(url?.href || url).includes('hiveauth-worker')) return new RealWorker(url, opts);
+    const fake = {
+      onmessage: null, onerror: null,
+      postMessage(message) {
+        if (message.action !== 'restore') throw new Error('The wallet switcher test must never sign');
+        window.__ir8331_finishRestore = () => fake.onmessage?.({
+          data: { type: 'restored', account: message.account, expire: Date.now() + 3600000 }
+        });
+      },
+      terminate() {}
+    };
+    return fake;
+  };
 })();
 """
 
 
 SNAPSHOT = """() => {
- const controls = document.querySelector('#harvest-modal-overlay .hm-foot .wallet-sign-pair .wallet-controls');
- const drawer = controls.querySelector('.wallet-drawer.is-open');
- const toggle = controls.querySelector('[data-wallet-toggle]');
- const buttons = ['keychain', 'hiveauth'].map(kind =>
- drawer.querySelector(`[data-wallet-select="${kind}"]`));
- buttons.push(drawer.querySelector('[data-wallet-disconnect]'));
- const rect = drawer.getBoundingClientRect();
- const toggleRect = toggle.getBoundingClientRect();
- const anchor = parseFloat(drawer.style.getPropertyValue('--wallet-drawer-anchor-x'));
- return {
- rect: [rect.x, rect.y, rect.width, rect.height],
- tops: buttons.map(button => button.getBoundingClientRect().top),
- arrowX: rect.left + anchor,
- toggleX: toggleRect.left + toggleRect.width / 2,
- upward: controls.classList.contains('is-upward'),
- detachedPrevious: window.__ir8331_drawerBefore && !window.__ir8331_drawerBefore.isConnected
- };
+  const controls = document.querySelector('#harvest-modal-overlay .hm-foot .wallet-sign-pair .wallet-controls');
+  const drawer = controls.querySelector('.wallet-drawer.is-open');
+  const toggle = controls.querySelector('[data-wallet-toggle]');
+  const buttons = ['keychain', 'hiveauth'].map(kind =>
+    drawer.querySelector(`[data-wallet-select="${kind}"]`));
+  buttons.push(drawer.querySelector('[data-wallet-disconnect]'));
+  const rect = drawer.getBoundingClientRect();
+  const toggleRect = toggle.getBoundingClientRect();
+  const anchor = parseFloat(drawer.style.getPropertyValue('--wallet-drawer-anchor-x'));
+  return {
+    rect: [rect.x, rect.y, rect.width, rect.height],
+    tops: buttons.map(button => button.getBoundingClientRect().top),
+    arrowX: rect.left + anchor,
+    toggleX: toggleRect.left + toggleRect.width / 2,
+    upward: controls.classList.contains('is-upward'),
+    detachedPrevious: window.__ir8331_drawerBefore && !window.__ir8331_drawerBefore.isConnected
+  };
 }"""
 
 
@@ -127,7 +127,7 @@ def test_harvest_wallet_stays_in_final_layout_after_late_render(
     try:
         page.emulate_media(reduced_motion="reduce")
         page.add_init_script(STUB_SESSION)
-        page.goto(f"{base_url}/?player=player0005", wait_until="load", timeout=90_000)
+        page.goto(f"{base_url}/?player=sample01", wait_until="load", timeout=90_000)
         page.locator("#harvest-btn").wait_for(state="visible", timeout=60_000)
         page.locator("#harvest-btn").click()
         toggle = page.locator("#harvest-modal-overlay .hm-foot .wallet-sign-pair [data-wallet-toggle]")

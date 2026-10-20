@@ -1,17 +1,17 @@
 """ ( lows batch, post-release /682 findings, aletheia-0-9-681-682):
 
 1. regional-dec.js close() must clear the inline top/right/maxHeight positionDesktopPanel()
- wrote, so a desktop->mobile resize before the next open never inherits a stale desktop
- position on the full-height mobile drawer. positionDesktopPanel() itself must also clear
- them when a resize crosses into the mobile tier WHILE the panel stays open (not closed).
+   wrote, so a desktop->mobile resize before the next open never inherits a stale desktop
+   position on the full-height mobile drawer. positionDesktopPanel() itself must also clear
+   them when a resize crosses into the mobile tier WHILE the panel stays open (not closed).
 2. ceres/board.py's lean `GET /api/board` row drops `input_costs_per_hour` (no frontend read)
- -- executed here via project_board(lean=True/False) against a real fixture plot with a
- resource_recipe, plus a source guard on `_LEAN_DEAD_KEYS`.
+   -- executed here via project_board(lean=True/False) against a real fixture plot with a
+   resource_recipe, plus a source guard on `_LEAN_DEAD_KEYS`.
 3. Stale "15 columns"/"1440" comments in index.html and state.js corrected to
- 18/PLOT_TABLE_COLUMN_COUNT and 1680/-1679.
+   18/PLOT_TABLE_COLUMN_COUNT and 1680/-1679.
 4. harvest.py's duplicate-symbol recipe fix is covered by
- tests/ceres/test_resource_inputs_per_hour.py::test_duplicate_symbol_recipe_entries_keep_their_own_per_entry_value
- (board.py's per-symbol SUM vs. harvest.py's per-entry rows).
+   tests/ceres/test_resource_inputs_per_hour.py::test_duplicate_symbol_recipe_entries_keep_their_own_per_entry_value
+   (board.py's per-symbol SUM vs. harvest.py's per-entry rows).
 5. tests/ceres/test_material_columns.py's zeroPp case fix is covered there directly.
 """
 from __future__ import annotations
@@ -75,9 +75,9 @@ def test_lean_board_row_drops_input_costs_per_hour_source_guard():
 
 def test_lean_board_row_omits_input_costs_per_hour_dict_but_keeps_the_flat_keys():
     """Executed, not just a source guard: build a real board row (fixture plot 0 has a
- genuine resource_recipe and total_base_pp_after_cap -- see test_resource_inputs_per_hour.py
- for the underlying formula) and check what `project_board` actually returns for both
- `lean=True` (GET /api/board) and `lean=False` (GET /api/plots/{deed_uid})."""
+    genuine resource_recipe and total_base_pp_after_cap -- see test_resource_inputs_per_hour.py
+    for the underlying formula) and check what `project_board` actually returns for both
+    `lean=True` (GET /api/board) and `lean=False` (GET /api/plots/{deed_uid})."""
     report = build_report()
     deed_uid = report["plots"][0]["deed_uid"]
     details = build_details_by_id()
@@ -102,11 +102,15 @@ def test_lean_board_row_omits_input_costs_per_hour_dict_but_keeps_the_flat_keys(
     }
 
 
-def test_index_html_column_count_comments_say_seventeen_not_fifteen():
-    assert "all 15 columns" not in INDEX_HTML
-    assert "back to 15 columns" not in INDEX_HTML
-    assert "all 17 columns" in INDEX_HTML
-    assert "back to 17 columns" in INDEX_HTML
+def test_index_html_column_count_comment_matches_the_table():
+    # the table comment names the real column count: PLOT_TABLE_COLUMN_COUNT and the <th> cells of the plot table
+    count = int(re.search(r"export const PLOT_TABLE_COLUMN_COUNT = (\d+);", STATE_JS).group(1))
+    table = INDEX_HTML[INDEX_HTML.index('<table class="plot-table"'):]
+    head = re.sub(r"<!--.*?-->", "", table[:table.index("</thead>")], flags=re.S)
+    assert len(re.findall(r"<th\b", head)) == count
+    stated = re.findall(r"\ball (\d+) columns\b", INDEX_HTML)
+    assert stated == [str(count)], stated
+    assert "back to 15 columns" not in INDEX_HTML and "back to 17 columns" not in INDEX_HTML
 
 
 def test_index_html_material_column_breakpoint_comment_says_1760():

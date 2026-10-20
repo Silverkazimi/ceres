@@ -25,7 +25,7 @@ def _request(config: CeresConfig, headers: dict | None = None):
 
 def test_existing_snapshot_get_never_starts_capture(monkeypatch, report, tmp_path):
     """G01 mutation trial: inserting `start_refresh()` into GET made this RED; the
- restored snapshot-only route is GREEN."""
+    restored snapshot-only route is GREEN."""
     config = CeresConfig(root=tmp_path / "ceres", player="player0005")
     monkeypatch.setattr(capture_mod, "latest_snapshot", lambda config, player: (report, object()))
     monkeypatch.setattr(capture_mod, "freshness", lambda config, player: capture_mod.CaptureStatus(state="idle", age_seconds=1, stale=False))
@@ -39,7 +39,7 @@ def test_existing_snapshot_get_never_starts_capture(monkeypatch, report, tmp_pat
 
 def test_missing_snapshot_get_returns_503_without_capture(monkeypatch, tmp_path):
     """G02 mutation trial: replacing the 503 branch with capture startup made this
- guard RED; the restored no-data response is GREEN."""
+    guard RED; the restored no-data response is GREEN."""
     config = CeresConfig(root=tmp_path / "ceres", player="player0005")
     monkeypatch.setattr(capture_mod, "latest_snapshot", lambda config, player: (None, None))
     monkeypatch.setattr(capture_mod, "start_refresh", lambda *args: (_ for _ in ()).throw(AssertionError("GET must not capture")))
@@ -56,11 +56,11 @@ def test_missing_snapshot_get_returns_503_without_capture(monkeypatch, tmp_path)
 
 def _fallback_setup(monkeypatch, report, tmp_path, *, token="tok-1", details_mtime=111, board=None):
     """Force `get_board()` down the fallback branch (no `board_artifact` for this
- player) with a real `SnapshotRef` (a usable path+token, unlike the bare
- `object()` sentinel the other tests in this file use, which deliberately makes
- `_board_cache_key` derive no cache key at all). Patches `project_board` (the
- lowest-level projection), NOT `_cached_project_board` itself, so the real
- key-derivation, object-cache and bytes-cache code under test actually runs."""
+    player) with a real `SnapshotRef` (a usable path+token, unlike the bare
+    `object()` sentinel the other tests in this file use, which deliberately makes
+    `_board_cache_key` derive no cache key at all). Patches `project_board` (the
+    lowest-level projection), NOT `_cached_project_board` itself, so the real
+    key-derivation, object-cache and bytes-cache code under test actually runs."""
     config = CeresConfig(root=tmp_path / "ceres", player="player0005")
     ref = capture_mod.SnapshotRef(path=str(tmp_path / "snap.json"), generated_at="t", player="player0005", token=token)
     monkeypatch.setattr(capture_mod, "latest_snapshot", lambda config, player: (report, ref))
@@ -142,7 +142,7 @@ def test_changed_details_mtime_misses_the_bytes_cache(monkeypatch, report, tmp_p
 
 def test_key_derivation_failure_still_returns_200_uncached(monkeypatch, report, tmp_path):
     """`ref` with no usable `.token` (the bare `object()` sentinel other tests in this
- file already rely on) must degrade to plain, uncached serialization -- never a 500."""
+    file already rely on) must degrade to plain, uncached serialization -- never a 500."""
     from ceres.routes_board import _board_bytes_cache
 
     _clear_board_caches()
@@ -199,8 +199,8 @@ def test_gzip_not_computed_when_client_never_accepts_it(monkeypatch, report, tmp
 
 def test_gzip_from_an_older_raw_generation_is_never_served_with_newer_raw(monkeypatch, report, tmp_path):
     """Regression for the review finding: a late fill of the gzip copy for an OLD raw
- generation must not be attached to a NEWER raw entry stored at the same key in
- between (same token, `details_cache_mtime()` changed and a fresh raw was cached)."""
+    generation must not be attached to a NEWER raw entry stored at the same key in
+    between (same token, `details_cache_mtime()` changed and a fresh raw was cached)."""
     from ceres.routes_board import _board_bytes_cache, _board_cache_key, _cached_board_bytes, _cached_board_gzip
 
     _clear_board_caches()

@@ -11,12 +11,13 @@ from playwright.sync_api import Browser, Page
 from ceres.board import project_single_plot
 from ceres.candidates import rank_candidates
 from .conftest import spawn_live_ceres
+from . import board_basic_recording as recording
 
 
-CASCADE_DEED_UID = "I-294-99ed4b7a4d170e"
-CASCADE_PLOT = "41-9-56"
-RUNI_DEED_UID = "I-295-116f9bb372e311"
-RUNI_PLOT = "41-2-27"
+CASCADE_DEED_UID = recording.OVERCAP.uid
+CASCADE_PLOT = recording.OVERCAP.plot
+RUNI_DEED_UID = recording.RUNI.uid
+RUNI_PLOT = recording.RUNI.plot
 CASCADE_FIGURES = (
     ("Lyanna Natura", 40_000.000, 40_000.000),
     ("Silver Shield Paladin", 32_941.176, 32_941.176),
@@ -240,8 +241,8 @@ def _page(live_browser: tuple[Browser, str]) -> Page:
 def test_r56_over_cap_badge_uses_raw_total(live_browser: tuple[Browser, str]) -> None:
     """R-56: the rendered CAP badge identifies a plot whose raw total exceeds its cap.
 
- Injection: revert the predicate to ``base_pp_after_cap > base_pp_cap``. The raw
- 107641.176 / capped 100000.0 fixture then produces no badge, turning this red.
+    Injection: revert the predicate to ``base_pp_after_cap > base_pp_cap``. The raw
+    107641.176 / capped 100000.0 fixture then produces no badge, turning this red.
     """
     page = _page(live_browser)
     _install_over_cap_fixture(page)
@@ -258,9 +259,9 @@ def test_r56_over_cap_badge_uses_raw_total(live_browser: tuple[Browser, str]) ->
 def test_r66_runi_base_pp_is_outside_plot_cap(live_browser: tuple[Browser, str]) -> None:
     """R-66: a Runi's Base PP is additive and does not consume the plot cap.
 
- The synthetic fixture has a raw total of 101,000, including 1,234 Runi Base PP,
- but only 99,766 from non-Runi workers. Injection: revert the predicate to
- ``base_pp > base_pp_cap``; the fixture then incorrectly produces the badge.
+    The synthetic fixture has a raw total of 101,000, including 1,234 Runi Base PP,
+    but only 99,766 from non-Runi workers. Injection: revert the predicate to
+    ``base_pp > base_pp_cap``; the fixture then incorrectly produces the badge.
     """
     page = _page(live_browser)
     projected = _install_runi_below_cap_fixture(page)
@@ -278,9 +279,9 @@ def test_r66_runi_base_pp_is_outside_plot_cap(live_browser: tuple[Browser, str])
 def test_g1_served_clipping_uses_each_workers_after_cap_value(live_browser: tuple[Browser, str]) -> None:
     """G1: served clipping is decided independently for every worker.
 
- Injection: replace the per-worker ``base_pp_after_cap < base_pp`` predicate with
- the plot-level ``over_cap`` flag. The named deed's real flag is false, so the
- clipped slot 4 and slot 5 assertions go red.
+    Injection: replace the per-worker ``base_pp_after_cap < base_pp`` predicate with
+    the plot-level ``over_cap`` flag. The named deed's real flag is false, so the
+    clipped slot 4 and slot 5 assertions go red.
     """
     page = _page(live_browser)
     editor = _open_cascade_fixture(page)
@@ -294,8 +295,8 @@ def test_g1_served_clipping_uses_each_workers_after_cap_value(live_browser: tupl
 def test_g2_clipped_cell_explains_its_base_pp_shortfall(live_browser: tuple[Browser, str]) -> None:
     """G2: a clipped cell keeps the Base PP name and exposes the interim tooltip model.
 
- Injection: keep the old pre-clip figure and ``after cap`` fragment in the cell.
- The displayed figure, title/key/body/foot, and accessible loss label then go red.
+    Injection: keep the old pre-clip figure and ``after cap`` fragment in the cell.
+    The displayed figure, title/key/body/foot, and accessible loss label then go red.
     """
     page = _page(live_browser)
     editor = _open_cascade_fixture(page)
@@ -311,8 +312,8 @@ def test_g2_clipped_cell_explains_its_base_pp_shortfall(live_browser: tuple[Brow
 def test_g5_capped_zero_is_filled_red_and_marked(live_browser: tuple[Browser, str]) -> None:
     """G5: a game-allocated capped zero remains a visible clipped figure.
 
- Injection: use a falsy check such as ``if (!afterCap)`` or ``afterCap || value``
- before rendering. The slot 5 zero becomes blank or the raw `2,200`, turning this red.
+    Injection: use a falsy check such as ``if (!afterCap)`` or ``afterCap || value``
+    before rendering. The slot 5 zero becomes blank or the raw `2,200`, turning this red.
     """
     page = _page(live_browser)
     editor = _open_cascade_fixture(page)
@@ -327,10 +328,10 @@ def test_g5_capped_zero_is_filled_red_and_marked(live_browser: tuple[Browser, st
 def test_g11_staged_worker_changes_cap_figures_and_preserves_total(live_browser: tuple[Browser, str]) -> None:
     """G11: staging a worker over the cap changes a previously-rendered figure immediately.
 
- On ``41-9-56``, replace slot 4 with a 1,500 PP worker and assert that at least one
- existing figure changes and the rendered total equals ``min(sum(raw), cap)``.
- Injection: revert the derivation input to ``row.workers``. The staged card is absent
- from the effective allocation, so the figures stay unchanged and this guard goes red.
+    On ``41-9-56``, replace slot 4 with a 1,500 PP worker and assert that at least one
+    existing figure changes and the rendered total equals ``min(sum(raw), cap)``.
+    Injection: revert the derivation input to ``row.workers``. The staged card is absent
+    from the effective allocation, so the figures stay unchanged and this guard goes red.
     """
     page = _page(live_browser)
     _install_cascade_fixture(page)
@@ -373,8 +374,8 @@ def test_g11_staged_worker_changes_cap_figures_and_preserves_total(live_browser:
 def test_g3_staged_worker_keeps_plot_terrain_in_tile_tooltip(live_browser: tuple[Browser, str]) -> None:
     """G3: a staged worker retains the plot terrain in its hover-only tile tooltip.
 
- Injection: restore ``terrain_boost: null`` in ``mutateEditorSlot``. The staged tile
- then loses the fixture's ``+10%`` terrain text and this assertion goes red.
+    Injection: restore ``terrain_boost: null`` in ``mutateEditorSlot``. The staged tile
+    then loses the fixture's ``+10%`` terrain text and this assertion goes red.
     """
     page = _page(live_browser)
     _install_plot_fixture(page, CASCADE_DEED_UID, _candidate(0.1))
@@ -389,8 +390,8 @@ def test_g3_staged_worker_keeps_plot_terrain_in_tile_tooltip(live_browser: tuple
 def test_g4_missing_terrain_is_named_and_never_faked_as_zero(live_browser: tuple[Browser, str]) -> None:
     """G4: a missing terrain value stays visibly not calculated, never a fake 0%.
 
- Injection: change the fixture candidate's missing ``terrain_boost`` to ``0.0``.
- The metric then incorrectly becomes ``0%`` and this assertion goes red.
+    Injection: change the fixture candidate's missing ``terrain_boost`` to ``0.0``.
+    The metric then incorrectly becomes ``0%`` and this assertion goes red.
     """
     page = _page(live_browser)
     _install_plot_fixture(page, CASCADE_DEED_UID, _candidate(None))
@@ -406,10 +407,10 @@ def test_g4_missing_terrain_is_named_and_never_faked_as_zero(live_browser: tuple
 def test_g4b_neutral_candidate_is_zero_terrain_point_at_ceres_boundary() -> None:
     """G4b: Ceres normalizes a Neutral candidate to a real 0% terrain point.
 
- Injection: remove the Neutral assignment block after ``row.terrain`` is copied from
- the evaluation. The candidate returns unknown terrain/construction and this goes red.
- The synthetic fixture is the named Runi plot ``41-2-27`` / ``I-295-116f9bb372e311``;
- it is not used as an over-cap fixture.
+    Injection: remove the Neutral assignment block after ``row.terrain`` is copied from
+    the evaluation. The candidate returns unknown terrain/construction and this goes red.
+    The synthetic fixture is the named Runi plot ``41-2-27`` / ``I-295-116f9bb372e311``;
+    it is not used as an over-cap fixture.
     """
     report = {
         "plots": [{
@@ -443,9 +444,9 @@ def test_g4b_neutral_candidate_is_zero_terrain_point_at_ceres_boundary() -> None
 def test_g6_operation_review_uses_ops_disclosure_and_keeps_json(live_browser: tuple[Browser, str]) -> None:
     """G6: the operation-review disclosure has the operations class and still exposes JSON.
 
- Injection: restore any ``op-review-raw`` class or one of the four banned synonym
- strings at its named site. The class/word assertions go red while the disclosure
- remains a real browser interaction rather than a source-text check.
+    Injection: restore any ``op-review-raw`` class or one of the four banned synonym
+    strings at its named site. The class/word assertions go red while the disclosure
+    remains a real browser interaction rather than a source-text check.
     """
     page = _page(live_browser)
     _install_plot_fixture(page, CASCADE_DEED_UID, _candidate(0.1))

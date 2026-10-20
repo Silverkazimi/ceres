@@ -25,5 +25,5 @@ if (zero.includes('is-loss') || !zero.includes('>+0.00</span>')) throw new Error
 
 def test_negative_batch_net_has_danger_theme_rules():
     css = (Path(__file__).parents[2] / "ceres" / "static" / "ceres.css").read_text(encoding="utf-8")
-    assert "is(#harvest-modal-overlay, .harvest-receipt-ledger) .hm-batch-badge.is-net.is-loss { border-color:color-mix(in srgb, var(--danger) 45%, var(--border)); background:color-mix(in srgb, var(--danger) 14%, var(--bg2)); }" in css
-    assert "is(#harvest-modal-overlay, .harvest-receipt-ledger) .hm-batch-badge.is-net.is-loss .hm-batch-number { color:var(--danger); }" in css
+    assert ":is(#harvest-modal-overlay, .harvest-receipt-ledger) .hm-batch-badge.is-net.is-loss { border-color:color-mix(in srgb, var(--danger) 45%, var(--border)); background:color-mix(in srgb, var(--danger) 14%, var(--bg2)); }" in css
+    assert ":is(#harvest-modal-overlay, .harvest-receipt-ledger) .hm-batch-badge.is-net.is-loss .hm-batch-number { color:var(--danger); }" in css

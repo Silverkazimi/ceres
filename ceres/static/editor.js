@@ -1597,6 +1597,8 @@ export function stagedProduction(row, resultingHarvest, resultingWorkPerHour = n
     const projected = now * (after / harvestNow);
     return { resource, now, after: projected, delta: projected - now };
   }
+  // the same for a missing server projection: unknown, not a zero rate.
+  if (resultingWorkPerHour === null || resultingWorkPerHour === undefined || resultingWorkPerHour === '') return null;
   const projected = Number(resultingWorkPerHour);
   if (!Number.isFinite(projected)) return null;
   const base = Number.isFinite(now) ? now : 0;

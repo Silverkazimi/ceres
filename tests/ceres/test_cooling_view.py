@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 
-from ceres import capture as capture_mod
+from ceres import capture as capture_mod, routes_board
 from ceres.app import create_app
 from ceres.cooling import build_cooling_view
 from ceres.config import CeresConfig
@@ -89,8 +89,8 @@ def test_incomplete_coverage_is_not_a_zero_result():
 
 def test_staked_state_is_not_rendered_as_cooling():
     """G5: injecting a label based on not cooldown['ready'] renders a staked card as Cooling.
- A `stake_cooling_down` row with no end date is a malformed/edge case (the classifier
- never produces one), but `cooldown_state` must still refuse to call it "cooling"."""
+    A `stake_cooling_down` row with no end date is a malformed/edge case (the classifier
+    never produces one), but `cooldown_state` must still refuse to call it "cooling"."""
     body = build_cooling_view(_report([_card("staked", "stake_cooling_down", end=None)]), DETAILS, now=NOW)
     assert body["cooling"] == []
 
@@ -99,11 +99,14 @@ def _app_with(report, tmp_path, monkeypatch):
     config = CeresConfig(root=tmp_path / ".ceres")
     app = create_app(config)
     monkeypatch.setattr(capture_mod, "latest_snapshot", lambda config, player: (report, type("Ref", (), {"generated_at": report["generated_at"]})()))
+    # the route reads the wall clock; pin it to the fixtures' moment so their cards are still counting down
+    monkeypatch.setattr(routes_board, "build_cooling_view",
+                        lambda report, details: build_cooling_view(report, details, now=NOW))
     return TestClient(app)
 
 
 def test_cooling_route_answers_only_for_the_boards_own_capture(tmp_path, monkeypatch):
-    """ phase 1: the stamp of the board the page drew is required and must match."""
+    """ /  phase 1: the stamp of the board the page drew is required and must match."""
     report = _report([_card("route", "stake_cooling_down")])
     client = _app_with(report, tmp_path, monkeypatch)
     body = client.get("/api/cooling", params={"player": "player0005", "capture_generated_at": report["generated_at"]}).json()

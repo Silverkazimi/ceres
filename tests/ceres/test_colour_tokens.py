@@ -35,7 +35,9 @@ NAMED_COLOUR_PROPERTIES = re.compile(
     r"(?i)(?:color|background|border|outline|shadow|fill|stroke|decoration|column-rule|caret|accent|scrollbar|stop|flood|lighting|filter)"
 )
 CSS_TEMPLATE_RULE = re.compile(
-    r"(?is)^\s*(?:[.#:\[*]|@(?:media|supports|layer|container|keyframes)\b|\"\n r\"(?:html|body|main|header|footer|section|article|div|span|a|button|input|select|textarea|label|form|\"\n r\"table|thead|tbody|tr|th|td|svg|path)\b)[^{};]*\{"
+    r"(?is)^\s*(?:[.#:\[*]|@(?:media|supports|layer|container|keyframes)\b|"
+    r"(?:html|body|main|header|footer|section|article|div|span|a|button|input|select|textarea|label|form|"
+    r"table|thead|tbody|tr|th|td|svg|path)\b)[^{};]*\{"
 )
 STYLE_ATTRIBUTE = re.compile(r"(?is)\bstyle\s*=\s*([\"'])(.*?)\1")
 STYLE_ASSIGNMENT = re.compile(r"(?im)\.style\.(?P<property>[A-Za-z][A-Za-z0-9]*)\s*=\s*(?P<value>[^;\n]+)")
@@ -43,7 +45,8 @@ STYLE_BRACKET_ASSIGNMENT = re.compile(
     r"(?im)\.style\s*\[\s*([\"'])(?P<property>[A-Za-z][A-Za-z0-9-]*)\1\s*\]\s*=\s*(?P<value>[^;\n]+)"
 )
 SET_PROPERTY = re.compile(
-    r"(?is)\.style\.setProperty\(\s*([\"'])(?P<property>--?[A-Za-z][A-Za-z0-9-]*|[A-Za-z][A-Za-z0-9-]*)\1\s*,\s*\"\n r\"(?P<quote>[\"'`])(?P<value>.*?)(?<!\\)(?P=quote)"
+    r"(?is)\.style\.setProperty\(\s*([\"'])(?P<property>--?[A-Za-z][A-Za-z0-9-]*|[A-Za-z][A-Za-z0-9-]*)\1\s*,\s*"
+    r"(?P<quote>[\"'`])(?P<value>.*?)(?<!\\)(?P=quote)"
 )
 CSS_TEXT_ASSIGNMENT = re.compile(
     r"(?is)\.style\.cssText\s*=\s*(?P<quote>[\"'`])(?P<value>.*?)(?<!\\)(?P=quote)"
@@ -415,7 +418,7 @@ def _observed_raw_colours() -> list[RawColour]:
 
 def test_css_scanner_covers_literals_without_selector_or_comment_noise():
     source = """
-* color: red */
+/* color: red; */
 #abcdef { --local-token: #123; color: #abc; border: 1px solid rgba(1, 2, 3, .4); }
 .mix { background: color-mix(in srgb, var(--bg), transparent); outline-color: color-mix(in srgb, var(--bg), white); }
 .safe { background-image: url('/icon.svg#abcdef'); content: 'red'; }
@@ -443,7 +446,7 @@ def test_html_scanner_is_limited_to_style_contexts():
 
 def test_js_scanner_covers_style_apis_and_css_templates_only():
     source = """
-node.style.color = '#bad'
+// node.style.color = '#bad';
 const prose = 'red and #abcdef';
 node.style.color = enabled ? '#fff' : 'rgb(0 0 0 / .5)';
 node.style.setProperty('border-color', 'hsl(10 20% 30%)');

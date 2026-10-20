@@ -6,53 +6,53 @@ and clicking Refresh did not help. Root-caused by Asclepius, read-only, cited be
 Two independent fixes:
 
 1. `ceres/routes_op_preview.py::op_verify` -- on `domain-confirmed`, re-fetch and persist
- every deed touched by the broadcast ops via `capture_mod.expand_plots`, instead of
- throwing the domain-check's own fresh fetch away. `expand_plots` merges through
- `merge_reports` with a genuinely `retrieved` incoming plot, which REPLACES (not
- preserves) the base's stale worker rows, and persists via
- `_save_snapshot_and_refresh_cache`, which advances the snapshot mtime and so
- invalidates `routes_board.py`'s `_board_cache` for free. `/api/board` itself is
- untouched -- it still never triggers a capture; the mutation is driven entirely by the
- broadcast-confirmation path.
+   every deed touched by the broadcast ops via `capture_mod.expand_plots`, instead of
+   throwing the domain-check's own fresh fetch away. `expand_plots` merges through
+   `merge_reports` with a genuinely `retrieved` incoming plot, which REPLACES (not
+   preserves) the base's stale worker rows, and persists via
+   `_save_snapshot_and_refresh_cache`, which advances the snapshot mtime and so
+   invalidates `routes_board.py`'s `_board_cache` for free. `/api/board` itself is
+   untouched -- it still never triggers a capture; the mutation is driven entirely by the
+   broadcast-confirmation path.
 
 2. `ceres/capture.py::merge_reports` -- a cheap, class-wide backstop: a quick refresh whose
- bulk `worker_count` for a deed CONTRADICTS the count of that deed's own worker rows in
- the base snapshot now drops the stale base plot instead of preserving it. A quick
- refresh that merely LACKS asset detail (no contradiction, nothing new to disprove the
- base) still preserves the enriched base -- the original "never regress a board a prior
- full capture enriched" intent survives unchanged for that, the normal, case.
+   bulk `worker_count` for a deed CONTRADICTS the count of that deed's own worker rows in
+   the base snapshot now drops the stale base plot instead of preserving it. A quick
+   refresh that merely LACKS asset detail (no contradiction, nothing new to disprove the
+   base) still preserves the enriched base -- the original "never regress a board a prior
+   full capture enriched" intent survives unchanged for that, the normal, case.
 
 FOLLOW-UP (same date): Asclepius found `domain-confirmed` was actually UNREACHABLE --
 `/api/op-verify` 500ed on a real happy-path batch, so the refresh wiring above never
 fired in practice until this was fixed too:
 
 3. THE 500 -- `check_domain` (`fides_land/verify.py`) consumes body-form op dicts
- (`raw_op.get("json")`), not the Keychain pair form `["custom_json", {...}]` that
- `_expected_ops` validates `operations` to be. `routes_op_preview.py:162` now unwraps
- (`[op[1] for op in raw_operations]`) before calling it. The early tests in this file
- (`test_domain_confirmed_refreshes_and_persists_the_touched_deed`,
- `test_domain_mismatch_does_not_trigger_a_refresh`) monkeypatch `LandVerificationSpec`
- wholesale and so never exercised the real shape contract -- that is exactly how this
- shipped broken.
- `test_domain_confirmed_reachable_with_the_real_verification_stack` below is the
- regression test: it drives the REAL `verify_chain` and the REAL
- `LandVerificationSpec.check_domain` (only the actual network boundaries -- the Hive RPC
- transport and `MnemosyneEvidence.assets` -- are mocked), with a genuine
- Keychain-shaped `operations` array.
+   (`raw_op.get("json")`), not the Keychain pair form `["custom_json", {...}]` that
+   `_expected_ops` validates `operations` to be. `routes_op_preview.py:162` now unwraps
+   (`[op[1] for op in raw_operations]`) before calling it. The early tests in this file
+   (`test_domain_confirmed_refreshes_and_persists_the_touched_deed`,
+   `test_domain_mismatch_does_not_trigger_a_refresh`) monkeypatch `LandVerificationSpec`
+   wholesale and so never exercised the real shape contract -- that is exactly how this
+   shipped broken.
+   `test_domain_confirmed_reachable_with_the_real_verification_stack` below is the
+   regression test: it drives the REAL `verify_chain` and the REAL
+   `LandVerificationSpec.check_domain` (only the actual network boundaries -- the Hive RPC
+   transport and `MnemosyneEvidence.assets` -- are mocked), with a genuine
+   Keychain-shaped `operations` array.
 
 4. THE `chain_absent` RACE -- `op_verify` makes one direct `verify_chain` lookup and runs the
- domain check EVEN WHEN that chain check stays inconclusive, letting a `domain_verified`
- result stand on its own -- the domain re-read is authoritative and does not depend on Hive
- RPC indexing at all. `chain_absent` + `domain_verified` is now a CONFIRMATION, not a failure.
+   domain check EVEN WHEN that chain check stays inconclusive, letting a `domain_verified`
+   result stand on its own -- the domain re-read is authoritative and does not depend on Hive
+   RPC indexing at all. `chain_absent` + `domain_verified` is now a CONFIRMATION, not a failure.
 
 5. `fides/verify.py::get_transaction` now distinguishes `"not_found"` (the node responded
- affirmatively that the tx does not exist) from `"lookup_failed"` (a transport-level
- failure -- NOT evidence of absence), preserved as `chain.evidence.reason_kind`. See
- `tests/fides/test_verify.py` for the unit-level coverage of that distinction;
- `fides/ledger.py`'s `VALID_STATES`/`TERMINAL_FAILURE_STATES` are UNCHANGED -- `chain`'s
- top-level `status` vocabulary stays exactly `{"chain_verified", "chain_absent"}`, since
- `fides/cli.py`'s `record_chain_result` only ever accepts those two. `reason_kind` is new
- evidence detail, not a new ledger state, so no ledger semantics changed.
+   affirmatively that the tx does not exist) from `"lookup_failed"` (a transport-level
+   failure -- NOT evidence of absence), preserved as `chain.evidence.reason_kind`. See
+   `tests/fides/test_verify.py` for the unit-level coverage of that distinction;
+   `fides/ledger.py`'s `VALID_STATES`/`TERMINAL_FAILURE_STATES` are UNCHANGED -- `chain`'s
+   top-level `status` vocabulary stays exactly `{"chain_verified", "chain_absent"}`, since
+   `fides/cli.py`'s `record_chain_result` only ever accepts those two. `reason_kind` is new
+   evidence detail, not a new ledger state, so no ledger semantics changed.
 
 CURRENT SEAM: operation-equality mismatch detection belongs to `fides.verify.verify_chain`,
 not `/api/op-inclusion`. The latter exposes only whether a block number exists and cannot
@@ -102,12 +102,12 @@ def _real_plot(worker_count: int, *, retrieved: bool) -> dict:
 
 def test_domain_confirmed_refreshes_and_persists_the_touched_deed(monkeypatch, tmp_path):
     """Real deed/worker shape (see module docstring). `verify_chain` and
- `LandVerificationSpec.check_domain` are monkeypatched to force the confirmed branch
- (a real chain/domain check needs a real broadcast, out of scope for a unit test) --
- mutation evidence: pass `include_collection=True` for this stake refresh; expected red:
- the targeted-refresh contract regresses to the account-wide collection sweep. Everything
- downstream of that (`expand_plots`, `merge_reports`,
- `_save_snapshot_and_refresh_cache`) runs for real against a tmp_path snapshot store."""
+    `LandVerificationSpec.check_domain` are monkeypatched to force the confirmed branch
+    (a real chain/domain check needs a real broadcast, out of scope for a unit test) --
+    mutation evidence: pass `include_collection=True` for this stake refresh; expected red:
+    the targeted-refresh contract regresses to the account-wide collection sweep. Everything
+    downstream of that (`expand_plots`, `merge_reports`,
+    `_save_snapshot_and_refresh_cache`) runs for real against a tmp_path snapshot store."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     config.ensure_dirs()
 
@@ -165,8 +165,8 @@ def test_domain_confirmed_refreshes_and_persists_the_touched_deed(monkeypatch, t
 
 def test_domain_mismatch_does_not_trigger_a_refresh(monkeypatch, tmp_path):
     """A domain-mismatch (the hazard-class outcome the internal rules warns about -- chain-confirmed
- but domain-rejected) must not call `expand_plots` at all: there is nothing to refresh
- because the mutation the user staged never actually applied."""
+    but domain-rejected) must not call `expand_plots` at all: there is nothing to refresh
+    because the mutation the user staged never actually applied."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     config.ensure_dirs()
     calls: list[str] = []
@@ -193,10 +193,10 @@ def test_domain_mismatch_does_not_trigger_a_refresh(monkeypatch, tmp_path):
 
 def test_quick_refresh_drops_stale_base_plot_when_bulk_worker_count_contradicts_it():
     """Real deed/worker shape. Base snapshot: retrieved plot, 6 real workers (incl.
- Lyanna). Incoming (a quick, bulk-only refresh -- no per-deed assets, but bulk
- worker_count IS always present): worker_count now 5, contradicting the base's 6
- per-deed worker rows. The stale base plot must be DROPPED, not preserved -- and the
- stale worker row must not be carried forward either."""
+    Lyanna). Incoming (a quick, bulk-only refresh -- no per-deed assets, but bulk
+    worker_count IS always present): worker_count now 5, contradicting the base's 6
+    per-deed worker rows. The stale base plot must be DROPPED, not preserved -- and the
+    stale worker row must not be carried forward either."""
     base = {
         "plots": [_real_plot(6, retrieved=True)],
         "workers": list(REAL_WORKERS),
@@ -220,9 +220,9 @@ def test_quick_refresh_drops_stale_base_plot_when_bulk_worker_count_contradicts_
 
 def test_quick_refresh_still_preserves_enriched_base_when_uncontradicted():
     """The existing 'never regress' intent must survive: a quick refresh that merely
- LACKS asset detail (bulk worker_count agrees with the base's own worker rows -- no
- mutation happened) still preserves the base's retrieved plot and its full worker
- list, exactly as before this fix."""
+    LACKS asset detail (bulk worker_count agrees with the base's own worker rows -- no
+    mutation happened) still preserves the base's retrieved plot and its full worker
+    list, exactly as before this fix."""
     base = {
         "plots": [_real_plot(6, retrieved=True)],
         "workers": list(REAL_WORKERS),
@@ -246,12 +246,12 @@ def test_quick_refresh_still_preserves_enriched_base_when_uncontradicted():
 
 def _real_unstake_operation(deed_uid: str, card_uid: str) -> list:
     """A genuine Keychain pair-form `custom_json` operation -- `["custom_json", {...}]`,
- the "json" field itself JSON-encoded -- matching exactly what `fides_land.ops.to_ops`/
- `intents_to_ops` and `fides.op.requests_for_broadcast` actually produce, and what the
- real Keychain browser extension actually hands back to `verifyBroadcast`. Building this
- by hand (rather than monkeypatching `LandVerificationSpec`) is the point: it is the
- only way to exercise `_expected_ops`'s pair-form requirement AND `check_domain`'s
- body-form requirement against the same object, which is exactly where the 500 lived."""
+    the "json" field itself JSON-encoded -- matching exactly what `fides_land.ops.to_ops`/
+    `intents_to_ops` and `fides.op.requests_for_broadcast` actually produce, and what the
+    real Keychain browser extension actually hands back to `verifyBroadcast`. Building this
+    by hand (rather than monkeypatching `LandVerificationSpec`) is the point: it is the
+    only way to exercise `_expected_ops`'s pair-form requirement AND `check_domain`'s
+    body-form requirement against the same object, which is exactly where the 500 lived."""
     payload = {
         "unstake": {"cards": [{"card_uid": card_uid}], "items": []},
         "stake": {"cards": [], "items": []},
@@ -270,8 +270,8 @@ def _real_unstake_operation(deed_uid: str, card_uid: str) -> list:
 
 def _land_assets_response(remaining_card_uids: list[str]) -> dict:
     """A real-shaped `/land/stake/deeds/{uid}/assets` success envelope -- the exact shape
- `interpret_assets_response` (`fides_land/verify.py`) requires: `status: "success"`
- wrapping `data: {"cards": [...]}`."""
+    `interpret_assets_response` (`fides_land/verify.py`) requires: `status: "success"`
+    wrapping `data: {"cards": [...]}`."""
     return {"status": "success", "data": {"cards": [{"uid": uid} for uid in remaining_card_uids], "items": []}}
 
 
@@ -288,10 +288,10 @@ def _real_chain_rpc(operation: list, method: str) -> dict:
 
 def test_domain_confirmed_reachable_with_the_real_verification_stack(monkeypatch, tmp_path):
     """THE regression test for the 500. Real deed/worker/card_uid (see module docstring).
- Nothing about `verify_chain` or `LandVerificationSpec.check_domain` is monkeypatched --
- only the two actual network boundaries (the Hive RPC transport, and
- `MnemosyneEvidence.assets`) are. This is precisely what the earlier tests in this
- file did NOT do, and precisely how the shape mismatch shipped without a failing test."""
+    Nothing about `verify_chain` or `LandVerificationSpec.check_domain` is monkeypatched --
+    only the two actual network boundaries (the Hive RPC transport, and
+    `MnemosyneEvidence.assets`) are. This is precisely what the earlier tests in this
+    file did NOT do, and precisely how the shape mismatch shipped without a failing test."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     config.ensure_dirs()
     unstaked_uid = "G-TESTCARD01"  # Lyanna Natura, real uid from the player0005 snapshot
@@ -391,7 +391,7 @@ def test_domain_check_survives_a_real_chain_lookup_failure_and_still_confirms(mo
 
 def test_chain_confirmed_unpropagated_unstake_is_terminal_not_applied(monkeypatch, tmp_path):
     """Mutation evidence: leave the pending-to-terminal family guard blanket across all ops;
- expected red: the chain-confirmed stake/unstake remains `domain-pending` and no refresh runs."""
+    expected red: the chain-confirmed stake/unstake remains `domain-pending` and no refresh runs."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     config.ensure_dirs()
     unstaked_uid = "G-TESTCARD01"
@@ -423,8 +423,8 @@ def test_chain_confirmed_unpropagated_unstake_is_terminal_not_applied(monkeypatc
 def test_chain_mismatch_is_reported_by_verify_chain(monkeypatch):
     """Operation-equality mismatch detection remains on the direct fides verification seam.
 
- `/api/op-inclusion` is not equivalent: it reports only whether a block number exists and
- never compares the submitted operations.
+    `/api/op-inclusion` is not equivalent: it reports only whether a block number exists and
+    never compares the submitted operations.
     """
     from fides.op import Op
 

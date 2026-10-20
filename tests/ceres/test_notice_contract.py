@@ -236,22 +236,22 @@ def test_verification_states_use_plain_display_labels(state: str, code: str, lab
 
 def test_frontend_has_no_duplicate_bloodline_producer() -> None:
     """ (row 28): converted from `APP_JS.read_text()` substring
- checks to a `vm_context` whole-module load (no source-position coupling, the
- real module is fully evaluated). `bloodlineBreaksFromRemoval` must not exist
- as a module-scope symbol -- a second bloodline-break calculator alongside the
- real one; `renderNotices` and `NOTICE_CATALOG` must exist as module-scope
- symbols -- the notice-rendering surface and its catalog are present.
+    checks to a `vm_context` whole-module load (no source-position coupling, the
+    real module is fully evaluated). `bloodlineBreaksFromRemoval` must not exist
+    as a module-scope symbol -- a second bloodline-break calculator alongside the
+    real one; `renderNotices` and `NOTICE_CATALOG` must exist as module-scope
+    symbols -- the notice-rendering surface and its catalog are present.
 
- Dropped, not retargeted: the structural "file still ends with a closed
- `ready(() => {...});`, not truncated" claim. It has no module-level
- equivalent -- a whole-module `vm.runInNewContext` load already fails outright
- (a parse error) on a truncated file, which every other test in this module
- already depends on implicitly, so the claim adds nothing beyond "the file
- parses". Once the campaign's split lands, "the file" is 20 files, so a
- single EOF-shape claim about one of them stops meaning what it means today
- (the plan's own §3.1 Batch B ruling gives row 23's "ready() once at EOF"
- claim the identical treatment -- retargeted at the post-split entry file,
- Phase 8's job, not this migration's)."""
+    Dropped, not retargeted: the structural "file still ends with a closed
+    `ready(() => {...});`, not truncated" claim. It has no module-level
+    equivalent -- a whole-module `vm.runInNewContext` load already fails outright
+    (a parse error) on a truncated file, which every other test in this module
+    already depends on implicitly, so the claim adds nothing beyond "the file
+    parses". Once the campaign's split lands, "the file" is 20 files, so a
+    single EOF-shape claim about one of them stops meaning what it means today
+    (the plan's own §3.1 Batch B ruling gives row 23's "ready() once at EOF"
+    claim the identical treatment -- retargeted at the post-split entry file,
+    Phase 8's job, not this migration's)."""
     run_in_module_context(
         "if (typeof bloodlineBreaksFromRemoval !== 'undefined') { "
         "throw new Error('bloodlineBreaksFromRemoval must not exist as a module-scope symbol -- a second bloodline-break calculator alongside the real one'); }\n"

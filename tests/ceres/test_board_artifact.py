@@ -49,14 +49,14 @@ def _identity(config, token, report):
 def isolated_details_identity(monkeypatch):
     """Pin the card-details identity these guards publish against.
 
- `board_artifact.publish` refuses to publish unless the committed identity's
- `details_mtime_ns`/`details_size` still match a LIVE `details_identity()` read
- (board_artifact.py:342-349), and `details_identity()` stats the real
- `~/.praetoria/cache/card_details.json` -- a file outside `tmp_path` that exists on a
- developer machine and not in a clean checkout. Without this pin every `publish()`
- here returns None on a machine that has the cache, so no artifact is ever written and
- the reads below see `None`. Pin it to the "no details cache" identity the fixtures
- already commit.
+    `board_artifact.publish` refuses to publish unless the committed identity's
+    `details_mtime_ns`/`details_size` still match a LIVE `details_identity()` read
+    (board_artifact.py:342-349), and `details_identity()` stats the real
+    `~/.praetoria/cache/card_details.json` -- a file outside `tmp_path` that exists on a
+    developer machine and not in a clean checkout. Without this pin every `publish()`
+    here returns None on a machine that has the cache, so no artifact is ever written and
+    the reads below see `None`. Pin it to the "no details cache" identity the fixtures
+    already commit.
     """
     monkeypatch.setattr(board_artifact, "details_identity", lambda: (None, None))
     monkeypatch.setattr("ceres.routes_board.details_cache_mtime", lambda: None)
@@ -90,8 +90,8 @@ def test_cold_artifact_is_the_canonical_lean_projection(config, monkeypatch):
 
 
 def test_publish_writes_gzip_copy_and_sizes_it_in_identity(config, monkeypatch):
-    """the gzip copy is written at publish time and its size recorded, so no request
- thread ever compresses the board."""
+    """: the gzip copy is written at publish time and its size recorded, so no request
+    thread ever compresses the board."""
     board = {"schema": "ceres.board.v1", "generated_at": "same", "plots": [{"deed_uid": "a"} for _ in range(200)], "coverage": {"assets": {"expected": 3, "retrieved": 3}}}
     report = {"generated_at": "same"}
     monkeypatch.setattr(board_artifact, "project_board", lambda value, details, lean: board)
@@ -118,8 +118,8 @@ def test_publish_writes_gzip_copy_and_sizes_it_in_identity(config, monkeypatch):
 
 
 def test_payload_exposes_no_parsed_board(config, monkeypatch):
-    """the web process serves bytes plus a small `meta`; `json.loads` of the board
- never runs on the request thread."""
+    """: the web process serves bytes plus a small `meta`; `json.loads` of the board
+    never runs on the request thread."""
     board = {"schema": "ceres.board.v1", "generated_at": "same", "plots": [], "coverage": {"assets": {"expected": 1, "retrieved": 0, "failed": 1}}, "notices": [{"code": "x"}]}
     report = {"query": {"player": PLAYER}, "generated_at": "same"}
     monkeypatch.setattr(board_artifact, "project_board", lambda value, details, lean: board)
@@ -426,7 +426,7 @@ def test_heal_with_unchanged_generated_at_rotates_token_and_body(config, monkeyp
 
 def test_artifact_is_published_before_the_board_ready_callback(config, monkeypatch):
     """ (replaces M4): `board_ready` can never be true before the artifact exists --
- publication runs synchronously and the ready callback sees the artifact (+ .gz) on disk."""
+    publication runs synchronously and the ready callback sees the artifact (+ .gz) on disk."""
     report = {"query": {"player": PLAYER}, "generated_at": "same"}
     events = []
     monkeypatch.setattr("ceres.board.load_details_by_id", lambda: {})
@@ -455,8 +455,8 @@ def test_artifact_is_published_before_the_board_ready_callback(config, monkeypat
 
 
 def test_quick_capture_run_starts_no_prewarm_thread(config, monkeypatch):
-    """after the final publish nothing but the self-heal retries runs; the automatic
- picker prewarm and the wait-for-first-read pause are gone."""
+    """: after the final publish nothing but the self-heal retries runs; the automatic
+    picker prewarm and the wait-for-first-read pause are gone."""
     assert not hasattr(capture, "_prewarm_picker")
     assert not hasattr(capture, "_wait_for_first_board_read")
     assert not hasattr(capture, "_enqueue_board_artifact")

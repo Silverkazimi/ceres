@@ -9,12 +9,12 @@ context.TextEncoder = TextEncoder;
 context.AbortController = AbortController;
 const locks = new Map();
 context.navigator.locks = { request(name, options, callback) {
- if (options.ifAvailable && locks.has(name)) return Promise.resolve(callback(null));
- const before = locks.get(name) || Promise.resolve();
- const next = before.catch(()=>{}).then(()=>callback({name}));
- locks.set(name,next);
- next.finally(()=>{if(locks.get(name)===next) locks.delete(name);}).catch(()=>{});
- return next;
+  if (options.ifAvailable && locks.has(name)) return Promise.resolve(callback(null));
+  const before = locks.get(name) || Promise.resolve();
+  const next = before.catch(()=>{}).then(()=>callback({name}));
+  locks.set(name,next);
+  next.finally(()=>{if(locks.get(name)===next) locks.delete(name);}).catch(()=>{});
+  return next;
 }};
 """
 PRELUDE = r"""
@@ -203,10 +203,10 @@ queueRpc=async(method,params)=>{
 const operations=[];
 for(let plot=0;plot<20;plot++) {
  for(const action of ['unstake','stake']) operations.push(['custom_json',{
- id:'sm_stake_change',required_auths:[],required_posting_auths:['alice'],
- json:JSON.stringify({n:`plot-${plot}-${action}`,deed_uid:`I-1-${plot.toString(16).padStart(8,'0')}`,action,
- cards:Array.from({length:5},(_,slot)=>`worker-${plot}-${action}-${slot}`),
- items:[`core-${plot}-${action}`,`totem-${plot}-${action}`,`title-${plot}-${action}`]})
+  id:'sm_stake_change',required_auths:[],required_posting_auths:['alice'],
+  json:JSON.stringify({n:`plot-${plot}-${action}`,deed_uid:`I-1-${plot.toString(16).padStart(8,'0')}`,action,
+    cards:Array.from({length:5},(_,slot)=>`worker-${plot}-${action}-${slot}`),
+    items:[`core-${plot}-${action}`,`totem-${plot}-${action}`,`title-${plot}-${action}`]})
  }]);
 }
 const groups=[];for(let i=0;i<operations.length;i+=4) groups.push(operations.slice(i,i+4));
@@ -253,8 +253,8 @@ def test_serializer_matches_hive_node_vector():
     vector = json.loads((ROOT / 'work/notes/evidence-hive-serialization-vector.json').read_text())
     run("const tx = " + json.dumps(vector['transaction']) + ";\n"
         + "const hex=Array.from(unsignedTransactionBytes(tx),b=>b.toString(16).padStart(2,'0')).join('');\n"
-        + "assert(hex+'00' === " + json.dumps(vector['serialized_signed_hex']) + "'Hive serialization mismatch');\n"
-        + "assert(await queueTransactionId(tx) === " + json.dumps(vector['unsigned_sha256_prefix']) + "'transaction id mismatch');")
+        + "assert(hex+'00' === " + json.dumps(vector['serialized_signed_hex']) + ", 'Hive serialization mismatch');\n"
+        + "assert(await queueTransactionId(tx) === " + json.dumps(vector['unsigned_sha256_prefix']) + ", 'transaction id mismatch');")
 
 
 def test_sign_timeout_discards_late_signature_without_broadcast():

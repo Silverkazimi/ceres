@@ -1,4 +1,4 @@
-"""the rest of the bug-audit fixes (findings #3 to #9 and the /find window).
+""": the rest of the  bug-audit fixes (findings #3 to #9 and the /find window).
 
 #3 a pending SPS deposit is never "settled" before the bridge confirms; #4 an SPS funding transfer whose wallet answer was lost is
 found in the player's own history by its memo; #5 a refund closes a swap only with proof of payment; /find says whether its
@@ -29,7 +29,7 @@ def _info(tx, payload, effects):
             "result": json.dumps({"success": True, "result": {"success": True, "data": effects}})}
 
 
-def _funding_row(index, tx, memo, qty, to="player0015", author=PLAYER, timestamp="2026-10-14T08:04:48"):
+def _funding_row(index, tx, memo, qty, to="player0016", author=PLAYER, timestamp="2026-10-14T08:04:48"):
     payload = {"action": "token_transfer", "params": {"to": to, "qty": qty, "token": "SPS", "memo": memo, "n": "1" * 16}}
     return [index, {"trx_id": tx, "op_in_trx": 0, "timestamp": timestamp,
                     "op": ["custom_json", {"id": "sm_sps", "json": json.dumps(payload), "required_auths": [author], "required_posting_auths": []}]}]
@@ -40,7 +40,7 @@ def _funding_row(index, tx, memo, qty, to="player0015", author=PLAYER, timestamp
 def _deposit(monkeypatch, settle_result):
     expected = operations.add(PLAYER, "", "SPS", 2, 16)["payload"]
     tx = "c" * 40
-    effects = {"pending_deposit_id": 777, "pending_external_amount": 2, "external_transfer_account": "player0015", "resource": "SPS"}
+    effects = {"pending_deposit_id": 777, "pending_external_amount": 2, "external_transfer_account": "player0016", "resource": "SPS"}
     monkeypatch.setattr(lp_routes, "lookup_trx_info", lambda getter, trx: _info(tx, expected, effects))
     seen = []
     def settle(player, step, older=False):
@@ -106,7 +106,7 @@ def _sale(monkeypatch, rows, settle_result=None):
     expected = operations.sell(PLAYER, "", "SPS", "600.392", 1, 2.5)["payload"]
     tx = "a" * 40
     effects = {"external_swap_required": True, "pending_swap_id": 115303, "pending_external_amount": 600.392,
-               "external_transfer_account": "player0015", "external_swap_token": "SPS"}
+               "external_transfer_account": "player0016", "external_swap_token": "SPS"}
     monkeypatch.setattr(lp_routes, "lookup_trx_info", lambda getter, trx: _info(tx, expected, effects))
     monkeypatch.setattr(bridge, "_history", lambda account, start: rows)
     seen = []
@@ -152,13 +152,13 @@ if (stored.receipt.funding_tx !== 'f'.repeat(40)) throw Error('durable intent la
 def test_late_funding_answer_reaches_the_durable_intent():
     source = read_entry_source(STATIC / "wallet-lp.js") \
         .replace("await requestBroadcastThroughGate(ctx.player, st.funding.operations", "await globalThis.__fundGate(ctx.player, st.funding.operations") \
-        .replace("    if (!walletReady(ctx.player)) return;\n if (ctx.account()", "    if (false) return;\n if (ctx.account()")
+        .replace("    if (!walletReady(ctx.player)) return;\n    if (ctx.account()", "    if (false) return;\n    if (ctx.account()")
     _run_wallet(r"""
 let late = null, prompts = 0;
 globalThis.fetch = async (url) => {
- const path = String(url);
- if (path.includes('/sps-funding')) return { ok: true, status: 200, json: async () => ({ status: 'ready', operations: [['custom_json', { id: 'sm_sps', json: '{}' }]] }) };
- return { ok: true, status: 200, json: async () => ({ status: 'settling' }) };
+  const path = String(url);
+  if (path.includes('/sps-funding')) return { ok: true, status: 200, json: async () => ({ status: 'ready', operations: [['custom_json', { id: 'sm_sps', json: '{}' }]] }) };
+  return { ok: true, status: 200, json: async () => ({ status: 'settling' }) };
 };
 globalThis.__fundGate = async (player, ops, onResponse) => { prompts += 1; late = onResponse; const e = new Error('lost'); e.broadcasted = undefined; throw e; };
 Object.assign(st, { stage: 'funding', token: 'tok', receipt: { kind: 'swap_sell', pay: 'SPS', receive: 'DEC', input: 600, nonce: 'ab'.repeat(8), tx_id: 'a'.repeat(40), payload: {}, twoStep: true } });
@@ -177,13 +177,13 @@ if (prompts !== 1) throw Error('a second transfer was requested');
 
 def _swap_step():
     effects = {"external_swap_required": True, "pending_swap_id": 115303, "pending_external_amount": 2,
-               "external_transfer_account": "player0015", "external_swap_token": "SPS", "external_swap_player": PLAYER}
+               "external_transfer_account": "player0016", "external_swap_token": "SPS", "external_swap_player": PLAYER}
     return lp_routes.settlement_step("a" * 40, "swap_sell", "SPS", effects, True, None)
 
 
 def _bridge_row(index, tx, op_id, payload):
     return [index, {"trx_id": tx, "op_in_trx": 0, "timestamp": "2026-10-14T08:05:39",
-                    "op": ["custom_json", {"id": op_id, "json": json.dumps(payload), "required_auths": ["player0015"], "required_posting_auths": []}]}]
+                    "op": ["custom_json", {"id": op_id, "json": json.dumps(payload), "required_auths": ["player0016"], "required_posting_auths": []}]}]
 
 
 def _refund(qty):
@@ -199,7 +199,7 @@ def _game_says_incomplete(monkeypatch):
             pass
         def get_json(self, url):
             envelope = {"success": True, "result": {"success": True, "data": {"pending_swap_id": 115303, "external_swap_completed": False}}}
-            return type("R", (), {"data": {"trx_info": {"id": "d" * 40, "player": "player0015", "type": "land_operation", "data": json.dumps(_SWAP_OP),
+            return type("R", (), {"data": {"trx_info": {"id": "d" * 40, "player": "player0016", "type": "land_operation", "data": json.dumps(_SWAP_OP),
                                                         "success": True, "result": json.dumps(envelope)}}})()
     monkeypatch.setattr(bridge, "FixedGetTransport", Transport)
 
@@ -234,11 +234,11 @@ def test_incomplete_swap_with_a_partial_refund_is_refunded_but_not_full(monkeypa
 def test_card_says_nothing_was_lost_only_for_a_full_refund():
     _run_wallet(r"""
 for (const [full, expectLost] of [[false, false], [true, true]]) {
- globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ status: 'refunded', full, expected: '2', refunded: [{ symbol: 'SPS', amount: full ? '2' : '1.5' }] }) });
- Object.assign(st, { stage: 'settling', receipt: { kind: 'swap_sell', pay: 'SPS', receive: 'DEC', input: 2, nonce: 'ab'.repeat(8), tx_id: 'a'.repeat(40), payload: {}, funding_tx: 'c'.repeat(40) } });
- await swapAction(ctx, 'settle', target);
- if (st.stage !== 'edit') throw Error('refund did not close');
- if (st.lpNote.includes('Nothing was lost') !== expectLost) throw Error('wrong note for full=' + full + ': ' + st.lpNote);
+  globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ status: 'refunded', full, expected: '2', refunded: [{ symbol: 'SPS', amount: full ? '2' : '1.5' }] }) });
+  Object.assign(st, { stage: 'settling', receipt: { kind: 'swap_sell', pay: 'SPS', receive: 'DEC', input: 2, nonce: 'ab'.repeat(8), tx_id: 'a'.repeat(40), payload: {}, funding_tx: 'c'.repeat(40) } });
+  await swapAction(ctx, 'settle', target);
+  if (st.stage !== 'edit') throw Error('refund did not close');
+  if (st.lpNote.includes('Nothing was lost') !== expectLost) throw Error('wrong note for full=' + full + ': ' + st.lpNote);
 }
 """)
 
@@ -270,17 +270,17 @@ def test_short_window_never_releases_an_unanswered_swap():
   const old = new Date(Date.now() - 10 * 60000).toISOString();
 let bodies = [];
 for (const covered of [false, true]) {
- globalThis.fetch = async (url, init) => {
- if (String(url).includes('/find')) { bodies.push(JSON.parse(init.body)); if (bodies.length > 3 && !covered) await swapAction(ctx, 'stop', { closest: () => ({ dataset: { lpSymbol: 'WOOD' } }) }); return { ok: true, status: 200, json: async () => ({ status: 'not_found', covered }) }; }
- throw Error('unexpected ' + url);
- };
- const w = swapState('alice', 'WOOD');
- Object.assign(w, { stage: 'confirming', stopped: false, failed: null, receipt: { kind: 'swap_sell', pay: 'WOOD', receive: 'DEC', input: 1, nonce: 'cd'.repeat(8), tx_id: null, payload: {}, signed_at: old, asked_at: old } });
- bodies = [];
- await swapAction(ctx, 'verify', { closest: () => ({ dataset: { lpSymbol: 'WOOD' } }) });
- if (bodies[0].since !== old) throw Error('find did not send since');
- if (!covered && (w.stage !== 'confirming' || !w.historyUnreadable)) throw Error('short window released the swap: ' + w.stage);
- if (covered && w.stage !== 'confirming') throw Error('a covered history miss before Hive expiry released the request: ' + w.stage);
+  globalThis.fetch = async (url, init) => {
+    if (String(url).includes('/find')) { bodies.push(JSON.parse(init.body)); if (bodies.length > 3 && !covered) await swapAction(ctx, 'stop', { closest: () => ({ dataset: { lpSymbol: 'WOOD' } }) }); return { ok: true, status: 200, json: async () => ({ status: 'not_found', covered }) }; }
+    throw Error('unexpected ' + url);
+  };
+  const w = swapState('alice', 'WOOD');
+  Object.assign(w, { stage: 'confirming', stopped: false, failed: null, receipt: { kind: 'swap_sell', pay: 'WOOD', receive: 'DEC', input: 1, nonce: 'cd'.repeat(8), tx_id: null, payload: {}, signed_at: old, asked_at: old } });
+  bodies = [];
+  await swapAction(ctx, 'verify', { closest: () => ({ dataset: { lpSymbol: 'WOOD' } }) });
+  if (bodies[0].since !== old) throw Error('find did not send since');
+  if (!covered && (w.stage !== 'confirming' || !w.historyUnreadable)) throw Error('short window released the swap: ' + w.stage);
+  if (covered && w.stage !== 'confirming') throw Error('a covered history miss before Hive expiry released the request: ' + w.stage);
 }
 """)
 
@@ -302,7 +302,7 @@ def test_planned_card_placement_rechecks_the_slot_after_the_read():
 def test_malformed_problem_code_is_refused_and_derivation_never_throws():
     run_in_module_context(r"""
 const plan = { version: 2, state: 'planned', card: {}, expected: {}, origin: {},
- inputs: [{ uid: 'a', cc: 1, status: 'active', kind: 'free' }, { uid: 'b', cc: 1, status: 'active', kind: 'free' }], problem: { code: 7 } };
+  inputs: [{ uid: 'a', cc: 1, status: 'active', kind: 'free' }, { uid: 'b', cc: 1, status: 'active', kind: 'free' }], problem: { code: 7 } };
 if (validChainPlan(plan) !== false) throw Error('numeric problem code accepted');
 const inner = { ...plan, problem: null, inputs: [{ ...plan.inputs[0], problem: { code: {} } }, plan.inputs[1]] };
 if (validChainPlan(inner) !== false) throw Error('input problem code accepted');
@@ -317,8 +317,8 @@ def test_saved_plan_reasons_never_show_server_prose():
     run_in_module_context(r"""
 const cases = [['card_unavailable', 'arbitrary server wording'], ['weird_code', null], ['card_unavailable', 'delegated to <b>x</b> and more'], ['card_unavailable', 'locked until soon-ish']];
 for (const [reason, detail] of cases) {
- const text = dropReasonText(reason, detail);
- if (/arbitrary|weird_code|<b>|soon-ish/.test(text)) throw Error('server text shown: ' + text);
+  const text = dropReasonText(reason, detail);
+  if (/arbitrary|weird_code|<b>|soon-ish/.test(text)) throw Error('server text shown: ' + text);
 }
 if (dropReasonText('card_unavailable', 'listed on market') !== 'this card is listed on the market now') throw Error('listed');
 if (dropReasonText('card_unavailable', 'rented (season)') !== 'this card is rented out now') throw Error('rented');

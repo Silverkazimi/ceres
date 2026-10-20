@@ -1,5 +1,5 @@
-"""(auto reload, auto
-close after the final confirmation, total and pay buttons on top) and (the Credits icon).
+""",  (auto reload, auto
+close after the final confirmation, total and pay buttons on top) and  (the Credits icon).
 
 The maintainer's two real records (2026-10-15, by-id lookups, third-party names pseudonymised) replayed through the checkout's verify
 paths: the purchase 74f9f4d5 (17 listings, DEC, success) -> green "Bought 17 of 17"; the combine e72cfe27 (17 cards -> 115 CC)
@@ -129,19 +129,19 @@ const lkeys = result.items.map((r) => r.lkey);
 const confirmed = {{ state: 'confirmed', result, lkeys, currency: 'DEC', price: 10095.2, copy_prices_dec: Object.fromEntries(lkeys.map((k, i) => [k, 100 + i])) }};
 const run = {{ txs: [confirmed], groups: [{{ state: 'combined', name: 'Pelacor Bandit', lkeys: lkeys.slice(1, 9), bcx: 115, resulting_bcx: 115 }}] }};
 console.log(JSON.stringify({{
- bought: txLineHtml(confirmed), all: outcomeHtml(run), green: runAllGreen(run),
- failed: txLineHtml({{ state: 'failed', message: '<img src=x onerror=alert(1)>', lkeys }}),
- missing: txLineHtml({{ state: 'unknown', lkeys }}),
- timeout: txLineHtml({{ state: 'timeout', lkeys, tx_id: 'a'.repeat(40) }}),
- timeoutChip: listingOutcome({{ state: 'timeout' }}, 'k'),
- ready: groupsHtml({{ groups: [{{ state: 'ready', name: 'X', lkeys: ['a', 'b'] }}] }}),
- decAmounts: [amountText('DEC', 2640), amountText('DEC', 10095.2), amountText('DEC', 1.2349)],
- combineTimeout: groupsHtml({{ groups: [{{ state: 'combine-timeout', name: 'X', lkeys: ['a', 'b'], combine_tx: 'b'.repeat(40) }}] }}),
- combineFailed: groupsHtml({{ groups: [{{ state: 'combine-failed', name: 'X', lkeys: ['a', 'b'], message: 'Cards are <locked>' }}] }}),
- notReady: groupsHtml({{ groups: [{{ state: 'not-ready', name: 'X', lkeys: ['a', 'b'] }}] }}),
- open: runAllGreen({{ txs: [confirmed], groups: [{{ state: 'ready' }}] }}),
- skipped: runAllGreen({{ txs: [confirmed], groups: [{{ state: 'skipped' }}] }}),
- partial: runAllGreen({{ txs: [{{ ...confirmed, result: {{ ...result, fill: 'partial' }} }}] }}),
+  bought: txLineHtml(confirmed), all: outcomeHtml(run), green: runAllGreen(run),
+  failed: txLineHtml({{ state: 'failed', message: '<img src=x onerror=alert(1)>', lkeys }}),
+  missing: txLineHtml({{ state: 'unknown', lkeys }}),
+  timeout: txLineHtml({{ state: 'timeout', lkeys, tx_id: 'a'.repeat(40) }}),
+  timeoutChip: listingOutcome({{ state: 'timeout' }}, 'k'),
+  ready: groupsHtml({{ groups: [{{ state: 'ready', name: 'X', lkeys: ['a', 'b'] }}] }}),
+  decAmounts: [amountText('DEC', 2640), amountText('DEC', 10095.2), amountText('DEC', 1.2349)],
+  combineTimeout: groupsHtml({{ groups: [{{ state: 'combine-timeout', name: 'X', lkeys: ['a', 'b'], combine_tx: 'b'.repeat(40) }}] }}),
+  combineFailed: groupsHtml({{ groups: [{{ state: 'combine-failed', name: 'X', lkeys: ['a', 'b'], message: 'Cards are <locked>' }}] }}),
+  notReady: groupsHtml({{ groups: [{{ state: 'not-ready', name: 'X', lkeys: ['a', 'b'] }}] }}),
+  open: runAllGreen({{ txs: [confirmed], groups: [{{ state: 'ready' }}] }}),
+  skipped: runAllGreen({{ txs: [confirmed], groups: [{{ state: 'skipped' }}] }}),
+  partial: runAllGreen({{ txs: [{{ ...confirmed, result: {{ ...result, fill: 'partial' }} }}] }}),
 }}));
 """)
     assert 'data-state="ok"' in got["bought"] and "Bought 17 of 17. Paid $4.98 (10,095.2 DEC at the game&#39;s rate)." in got["bought"]
@@ -210,17 +210,17 @@ def test_the_wallet_reminder_is_the_shared_component_with_its_clock():
 _checkoutForTests.player = 'player0005';
 const asked = new Date(Date.now() - 30000).toISOString();
 console.log(JSON.stringify({
- buy: txLineHtml({ state: 'asked', asked_at: asked, lkeys: [] }),
- combine: groupLineHtml({ state: 'combine-asked', asked_at: asked, lkeys: ['a', 'b'] }),
- checking: txLineHtml({ state: 'sent', signed_at: new Date(Date.now() - 42000).toISOString(), lkeys: [] }),
- clock: [walletClockText(0, 120000, 30000), walletClockText(0, 110000, 110000), elapsedText(0, 42000)],
- plain: walletWaitHtml('player0005', 'Active'),
- ms: WALLET_REQUEST_MS,
+  buy: txLineHtml({ state: 'asked', asked_at: asked, lkeys: [] }),
+  combine: groupLineHtml({ state: 'combine-asked', asked_at: asked, lkeys: ['a', 'b'] }),
+  checking: txLineHtml({ state: 'sent', signed_at: new Date(Date.now() - 42000).toISOString(), lkeys: [] }),
+  clock: [walletClockText(0, 120000, 30000), walletClockText(0, 110000, 110000), elapsedText(0, 42000)],
+  plain: walletWaitHtml('player0005', 'Active'),
+  ms: WALLET_REQUEST_MS,
 }));
 """)
     for key, keytext in (("buy", "(Active key)"), ("combine", "")):
         html = got[key]
-        assert 'class="wallet-wait is' in html and "has-clock" in html and "data-wallet-clock" in html, key
+        assert 'class="wallet-wait is-' in html and "has-clock" in html and "data-wallet-clock" in html, key
         assert "Approve the request in the Keychain extension now" in html or "Check the Keychain app on your phone now" in html
         assert keytext in html and "If the time runs out, Ceres asks the game whether it went through. Do not sign it again." in html
     # the wallet's own request lifetime, 30 s gone: Keychain 120 s -> 1:30, HiveAuth 110 s -> 1:20 (this sandbox has no extension)
@@ -240,9 +240,9 @@ def test_pay_bar_on_top_and_credits_icon():
 _checkoutForTests.player = 'player0005';
 _checkoutForTests.currency = 'CREDITS';
 const quote = { quote_id: 'q', dec_price: 0.0005, max_per_transaction: 150, signing: { enabled: true },
- items: [{ lkey: 'aaaaaaaaaaaaaaa1', pid: '349-3-0', status: 'ok', price_usd: 0.01, seen_usd: 0.01 }],
- totals: { count: 1, usd: 0.01, DEC: 20, CREDITS: 10, transactions: [{ count: 1 }] },
- currencies: { DEC: { total: 20, balance: 5000, enough: true }, CREDITS: { total: 10, balance: 1000, enough: true } }, changes: {} };
+  items: [{ lkey: 'aaaaaaaaaaaaaaa1', pid: '349-3-0', status: 'ok', price_usd: 0.01, seen_usd: 0.01 }],
+  totals: { count: 1, usd: 0.01, DEC: 20, CREDITS: 10, transactions: [{ count: 1 }] },
+  currencies: { DEC: { total: 20, balance: 5000, enough: true }, CREDITS: { total: 10, balance: 1000, enough: true } }, changes: {} };
 console.log(JSON.stringify({ review: reviewHtml(quote), credits: amountHtml('CREDITS', 10), dec: amountHtml('DEC', 20), foot: (_checkoutForTests.stage = 'review', _checkoutForTests.quote = quote, footHtml()) }));
 """)
     review = got["review"]
@@ -252,7 +252,17 @@ console.log(JSON.stringify({ review: reviewHtml(quote), credits: amountHtml('CRE
     assert "/static/assets/land/token-credits.png" in got["credits"] and "10 credits" in got["credits"]
     assert "/static/assets/land/token-dec.png" in got["dec"]
     assert 'data-co-action="continue"' not in got["foot"]
-    assert (STATIC / "assets" / "land" / "token-credits.png").read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+    # The public tree ships no game artwork: the icon must be on the recorded download list (game image
+    # host, pinned SHA-256), and once downloaded it is a PNG.
+    source_manifest = STATIC / "assets" / "sources.json"
+    local = STATIC / "assets" / "land" / "token-credits.png"
+    if source_manifest.is_file():
+        sources = json.loads(source_manifest.read_text(encoding="utf-8"))
+        icon = next(row for row in sources if row["path"] == "land/token-credits.png")
+        assert icon["source_url"].startswith("https://d36mxiodymuqjm.cloudfront.net/") and icon["source_url"].endswith(".png")
+        assert re.fullmatch(r"[0-9a-f]{64}", icon["sha256"]) and icon["byte_size"] > 0
+    assert local.is_file()
+    assert local.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
     css = (STATIC / "card-checkout.css").read_text(encoding="utf-8")
     assert re.search(r"\.co-paybar \{ position: sticky;", css)
 
@@ -265,7 +275,7 @@ def test_auto_close_reload_and_cart_pay_bar_contracts():
     verify_combine = js[js.index("async function verifyCombine"):js.index("function footHtml")]
     assert "fetch(" not in verify_combine and "post('combine-verify'" in verify_combine
     cart = (STATIC / "card-cart.js").read_text(encoding="utf-8")
-    assert "onCombined: () => cartAfterPurchase({ combined: true })" in cart and "cartAfterPurchase(); }" in cart
+    assert "onCombined: () => cartAfterPurchase({ combined: true })" in cart and "cartAfterPurchase(); }," in cart
     assert "cart.deps?.reloadMarket?.()" in cart and "/api/capture/refresh?" in cart and "wait_for=settled" in cart
     market = (STATIC / "card-market.js").read_text(encoding="utf-8")
     assert "reloadMarket: () => cmReload(), reloadCards: deps.reloadCards" in market and "market.stale = true" in market
@@ -284,10 +294,10 @@ console.log(JSON.stringify({ html: cartPanelHtml() }));
 def test_owned_cards_refresh_waits_for_the_board_read_then_reloads():
     out = run_in_module_context(r"""
 (async () => {
- const calls = []; let reads = 0; let reloaded = 0;
- const fetcher = async (url, opts) => { calls.push((opts?.method || 'GET') + ' ' + url); if (String(url).includes('/status')) { reads += 1; return { ok: true, json: async () => ({ state: reads < 3 ? 'running' : 'idle' }) }; } return { ok: true, json: async () => ({}) }; };
- await cartRefreshOwned('player0005', () => { reloaded += 1; }, { fetcher });
- console.log(JSON.stringify({ calls, reloaded }));
+  const calls = []; let reads = 0; let reloaded = 0;
+  const fetcher = async (url, opts) => { calls.push((opts?.method || 'GET') + ' ' + url); if (String(url).includes('/status')) { reads += 1; return { ok: true, json: async () => ({ state: reads < 3 ? 'running' : 'idle' }) }; } return { ok: true, json: async () => ({}) }; };
+  await cartRefreshOwned('player0005', () => { reloaded += 1; }, { fetcher });
+  console.log(JSON.stringify({ calls, reloaded }));
 })().catch((e) => { console.error(e); process.exit(1); });
 """, entry=STATIC / "card-cart.js").stdout
     got = json.loads(out.strip().splitlines()[-1])

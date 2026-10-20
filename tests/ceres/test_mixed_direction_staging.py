@@ -11,9 +11,10 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import spawn_live_ceres, wait_for_board
+from . import board_basic_recording as recording
 
 
-DEED_UID = "I-295-116f9bb372e311"
+DEED_UID = recording.RUNI.uid
 
 
 @pytest.fixture(scope="module")

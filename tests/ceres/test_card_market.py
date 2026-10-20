@@ -1,4 +1,4 @@
-"""the Cards page's Market mode (the shop, phase 2) -- read only. : read automatically on entering Market mode
+""": the Cards page's Market mode (the shop, phase 2) -- read only. : read automatically on entering Market mode
 and on each settled filter change (the Load button is gone); the Maxed filter.
 
 Server normalisation runs on a recorded, pseudonymised upstream fixture (no live network in any test); the client model
@@ -215,13 +215,13 @@ MODEL = STATIC / "card-market-model.js"
 ROWS_JS = r"""
 const eq = (a, b, what) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw Error(what + ': ' + JSON.stringify(a) + ' != ' + JSON.stringify(b)); };
 const r = (name, over) => ({ name, card_set: 'chaos', rarity: 'common', foil: 0, splinters: ['Fire'], land_base_pp: 100, max_level_pp: 1000,
- price_dec: 100, max_cost_dec: 2000, ...over, get price_usd() { return this.price_dec * 0.0005; },
- get max_cost_usd() { return this.max_cost_dec === null ? null : this.max_cost_dec * 0.0005; } });
+  price_dec: 100, max_cost_dec: 2000, ...over, get price_usd() { return this.price_dec * 0.0005; },
+  get max_cost_usd() { return this.max_cost_dec === null ? null : this.max_cost_dec * 0.0005; } });
 const rows = [
- r('Cheap now', { price_dec: 50 }), // 0.5 DEC/PP now, 2.0 at max
- r('Cheap at max', { price_dec: 200, max_cost_dec: 800 }), // 2.0 now, 0.8 at max
- r('Big', { land_base_pp: 1000, price_dec: 1500, max_cost_dec: 1500, card_set: 'alpha', rarity: 'rare' }), 
- r('Unknown PP', { land_base_pp: null, max_level_pp: null, max_cost_dec: null, price_dec: 1 }),
+  r('Cheap now', { price_dec: 50 }),                         // 0.5 DEC/PP now, 2.0 at max
+  r('Cheap at max', { price_dec: 200, max_cost_dec: 800 }),   // 2.0 now, 0.8 at max
+  r('Big', { land_base_pp: 1000, price_dec: 1500, max_cost_dec: 1500, card_set: 'alpha', rarity: 'rare' }),  // 1.5 / 1.5
+  r('Unknown PP', { land_base_pp: null, max_level_pp: null, max_cost_dec: null, price_dec: 1 }),
 ];
 """
 
@@ -261,7 +261,7 @@ eq(cmQuery('player0005', { ...base, maxed: true }, 'cost_per_pp'), '/api/market?
 eq(cmFiltersChanged({ maxed: false }, { ...base, maxed: true }), true, 'maxed is a server filter');
 eq(cmView([...rows, r('Maxed one', { maxed: true })], { ...base, maxed: true }).tiles.map((t) => t.card.name), ['Maxed one'], 'maxed only');
 eq([cmFormatRatio(0.3698), cmFormatRatio(0.0823), cmFormatRatio(12.149), cmFormatRatio(2284.79), cmFormatRatio(null)],
- ['0.37', '0.082', '12.1', '2,285', '—'], 'ratio format');
+   ['0.37', '0.082', '12.1', '2,285', '—'], 'ratio format');
 eq([cmFormatDec(2284.79), cmFormatUsd(1.128), cmFormatUsd(0.013)], ['2,285', '$1.13', '$0.013'], 'money format');
 """)
 
@@ -272,30 +272,30 @@ FAKE_DOM = r"""
 context.__fetches = [];
 context.__els = {};
 function __el(id) {
- if (!context.__els[id]) {
- const listeners = {};
- context.__els[id] = {
- id, hidden: false, innerHTML: '', textContent: '', value: '', dataset: {}, attrs: {},
- addEventListener(type, fn) { (listeners[type] ||= []).push(fn); },
- fire(type) { return Promise.all((listeners[type] || []).map((fn) => fn({ type }))); },
- setAttribute(k, v) { this.attrs[k] = String(v); }, removeAttribute(k) { delete this.attrs[k]; },
- insertAdjacentHTML(_where, html) { this.innerHTML += html; },
- getBoundingClientRect() { return { top: 99999, height: 0 }; },
- };
- }
- return context.__els[id];
+  if (!context.__els[id]) {
+    const listeners = {};
+    context.__els[id] = {
+      id, hidden: false, innerHTML: '', textContent: '', value: '', dataset: {}, attrs: {},
+      addEventListener(type, fn) { (listeners[type] ||= []).push(fn); },
+      fire(type) { return Promise.all((listeners[type] || []).map((fn) => fn({ type }))); },
+      setAttribute(k, v) { this.attrs[k] = String(v); }, removeAttribute(k) { delete this.attrs[k]; },
+      insertAdjacentHTML(_where, html) { this.innerHTML += html; },
+      getBoundingClientRect() { return { top: 99999, height: 0 }; },
+    };
+  }
+  return context.__els[id];
 }
 context.document = { ...context.document, getElementById: __el, querySelectorAll() { return []; }, body: { dataset: {} } };
 context.__signals = [];
 context.__state = { hold: false };
 context.__fakeFetch = (url, init) => {
- context.__fetches.push(String(url));
- context.__signals.push(init && init.signal);
- if (context.__state.hold) return new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(Object.assign(Error('aborted'), { name: 'AbortError' }))));
- return Promise.resolve({ ok: true, status: 200, json: async () => ({ read_at: '2026-10-14T12:00:00Z', prints_read: 1, prints_matching: 1, dec_usd: 0.0005,
- listings: [{ name: 'Gargoya Lion', card_detail_id: 349, edition: 3, card_set: 'chaos', rarity: 'common', foil: 0, level: 9, max_level: 10, bcx: 338,
- bcx_max: 400, land_base_pp: 845, max_level_pp: 1000, price_usd: 1.128, price_dec: 2256, max_cost_dec: 2628, max_cost_usd: 1.314, missing_cc: 62,
- splinters: ['Neutral'], market_url: 'https://splinterlands.com/card-detail/349/regular/3?tab=for-sale', pp_source: 'listing' }] }) });
+  context.__fetches.push(String(url));
+  context.__signals.push(init && init.signal);
+  if (context.__state.hold) return new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(Object.assign(Error('aborted'), { name: 'AbortError' }))));
+  return Promise.resolve({ ok: true, status: 200, json: async () => ({ read_at: '2026-10-14T12:00:00Z', prints_read: 1, prints_matching: 1, dec_usd: 0.0005,
+    listings: [{ name: 'Gargoya Lion', card_detail_id: 349, edition: 3, card_set: 'chaos', rarity: 'common', foil: 0, level: 9, max_level: 10, bcx: 338,
+      bcx_max: 400, land_base_pp: 845, max_level_pp: 1000, price_usd: 1.128, price_dec: 2256, max_cost_dec: 2628, max_cost_usd: 1.314, missing_cc: 62,
+      splinters: ['Neutral'], market_url: 'https://splinterlands.com/card-detail/349/regular/3?tab=for-sale', pp_source: 'listing' }] }) });
 };
 context.fetch = context.__fakeFetch;
 context.window.fetch = context.__fakeFetch;
@@ -303,57 +303,57 @@ context.window.fetch = context.__fakeFetch;
 
 AUTO_JS = r"""
 (async () => {
- const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
- const filters = { q: '', set: '', rarity: 'common', foil: '', splinter: '', min_pp: '', max_pp: '', maxed: false };
- const drawn = [];
- initMarket({ tileHtml: (tile) => { if (!tile.skeleton) drawn.push(tile); return '<article class="cb-tile"></article>'; }, filters: () => filters,
- player: () => 'player0005', renderCards() {} });
- await wait(10);
- if (__fetches.length) throw Error('read while in My cards mode: ' + __fetches.join(', '));
- // entering Market mode reads at once
- await __els['cb-mode-market'].fire('click');
- await wait(20);
- if (__fetches.length !== 1 || !__fetches[0].startsWith('/api/market?player=player0005&rarity=common&sort=cost_per_pp')) throw Error('entry: ' + __fetches.join(', '));
- // the tile has the one-click maxed button, no market link
- if (drawn.length !== 1 || !drawn[0].extra || /View on market/.test(drawn[0].extra.after) || /<a /.test(drawn[0].extra.after) || !/data-cm-action="add-max"/.test(drawn[0].extra.after)) throw Error('tile: ' + (drawn[0] && drawn[0].extra.after));
- // the price badge is drawn at the art's bottom edge (extra.bottom), no longer in the foot
- if (!/2,256/.test(drawn[0].extra.bottom) || !/token-dec\.png/.test(drawn[0].extra.bottom) || !/slot-wait-badge cm-price-badge/.test(drawn[0].extra.bottom) || drawn[0].extra.foot) throw Error('price badge: ' + drawn[0].extra.bottom);
- if (!/PP\/\$/.test(drawn[0].extra.metrics) || /at max level/.test(drawn[0].extra.metrics) || /cm-metric-max/.test(drawn[0].extra.metrics)) throw Error('metrics: ' + drawn[0].extra.metrics);
- if (!/listing/.test(__els['cm-summary'].innerHTML) || !/Best .* PP\/\$/.test(__els['cm-summary'].innerHTML) || /Filters changed/.test(__els['cm-summary'].innerHTML)) throw Error('summary: ' + __els['cm-summary'].innerHTML);
- // leaving and re-entering with the same filters re-uses the read
- await __els['cb-mode-cards'].fire('click'); await __els['cb-mode-market'].fire('click');
- await wait(20);
- if (__fetches.length !== 1) throw Error('same filters read again: ' + __fetches.join(', '));
- // the PP range is a server filter now -- a change reads again after the debounce, with min_pp in the query
- filters.min_pp = '100';
- await __els['cm-sort'].fire('change');
- await wait(450);
- if (__fetches.length !== 2 || !/rarity=common&min_pp=100&sort=/.test(__fetches[1])) throw Error('a PP change did not read: ' + __fetches.join(', '));
- filters.min_pp = '';
- await wait(20);
- // three quick server-filter changes: one read, after the debounce, with the settled filters
- filters.rarity = 'rare'; await __els['cm-sort'].fire('change');
- await wait(100);
- filters.rarity = 'epic'; await __els['cm-sort'].fire('change');
- await wait(100);
- filters.maxed = true; await __els['cm-sort'].fire('change');
- await wait(200);
- if (__fetches.length !== 2) throw Error('read before the debounce settled: ' + __fetches.join(', '));
- if (__els['cm-loading'].hidden) throw Error('no spinner while a read is pending');
- await wait(300);
- if (__fetches.length !== 3 || !/rarity=epic&maxed=1&sort=/.test(__fetches[2])) throw Error('settled read: ' + __fetches.join(', '));
- await wait(20);
- // a read in flight is aborted when the filters change again
- __state.hold = true;
- filters.rarity = 'legendary'; await __els['cm-sort'].fire('change');
- await wait(450);
- if (__fetches.length !== 4) throw Error('fourth read: ' + __fetches.join(', '));
- filters.rarity = 'rare'; await __els['cm-sort'].fire('change');
- await wait(20);
- if (!__signals[3].aborted) throw Error('the stale read was not aborted');
- __state.hold = false;
- await wait(450);
- if (__fetches.length !== 5 || !/rarity=rare&maxed=1/.test(__fetches[4])) throw Error('after abort: ' + __fetches.join(', '));
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const filters = { q: '', set: '', rarity: 'common', foil: '', splinter: '', min_pp: '', max_pp: '', maxed: false };
+  const drawn = [];
+  initMarket({ tileHtml: (tile) => { if (!tile.skeleton) drawn.push(tile); return '<article class="cb-tile"></article>'; }, filters: () => filters,
+    player: () => 'player0005', renderCards() {} });
+  await wait(10);
+  if (__fetches.length) throw Error('read while in My cards mode: ' + __fetches.join(', '));
+  // entering Market mode reads at once
+  await __els['cb-mode-market'].fire('click');
+  await wait(20);
+  if (__fetches.length !== 1 || !__fetches[0].startsWith('/api/market?player=player0005&rarity=common&sort=cost_per_pp')) throw Error('entry: ' + __fetches.join(', '));
+  // : the tile has the one-click maxed button, no market link
+  if (drawn.length !== 1 || !drawn[0].extra || /View on market/.test(drawn[0].extra.after) || /<a /.test(drawn[0].extra.after) || !/data-cm-action="add-max"/.test(drawn[0].extra.after)) throw Error('tile: ' + (drawn[0] && drawn[0].extra.after));
+  // : the price badge is drawn at the art's bottom edge (extra.bottom), no longer in the foot
+  if (!/2,256/.test(drawn[0].extra.bottom) || !/token-dec\.png/.test(drawn[0].extra.bottom) || !/slot-wait-badge cm-price-badge/.test(drawn[0].extra.bottom) || drawn[0].extra.foot) throw Error('price badge: ' + drawn[0].extra.bottom);
+  if (!/PP\/\$/.test(drawn[0].extra.metrics) || /at max level/.test(drawn[0].extra.metrics) || /cm-metric-max/.test(drawn[0].extra.metrics)) throw Error('metrics: ' + drawn[0].extra.metrics);
+  if (!/listing/.test(__els['cm-summary'].innerHTML) || !/Best .* PP\/\$/.test(__els['cm-summary'].innerHTML) || /Filters changed/.test(__els['cm-summary'].innerHTML)) throw Error('summary: ' + __els['cm-summary'].innerHTML);
+  // leaving and re-entering with the same filters re-uses the read
+  await __els['cb-mode-cards'].fire('click'); await __els['cb-mode-market'].fire('click');
+  await wait(20);
+  if (__fetches.length !== 1) throw Error('same filters read again: ' + __fetches.join(', '));
+  // : the PP range is a server filter now -- a change reads again after the debounce, with min_pp in the query
+  filters.min_pp = '100';
+  await __els['cm-sort'].fire('change');
+  await wait(450);
+  if (__fetches.length !== 2 || !/rarity=common&min_pp=100&sort=/.test(__fetches[1])) throw Error('a PP change did not read: ' + __fetches.join(', '));
+  filters.min_pp = '';
+  await wait(20);
+  // three quick server-filter changes: one read, after the debounce, with the settled filters
+  filters.rarity = 'rare'; await __els['cm-sort'].fire('change');
+  await wait(100);
+  filters.rarity = 'epic'; await __els['cm-sort'].fire('change');
+  await wait(100);
+  filters.maxed = true; await __els['cm-sort'].fire('change');
+  await wait(200);
+  if (__fetches.length !== 2) throw Error('read before the debounce settled: ' + __fetches.join(', '));
+  if (__els['cm-loading'].hidden) throw Error('no spinner while a read is pending');
+  await wait(300);
+  if (__fetches.length !== 3 || !/rarity=epic&maxed=1&sort=/.test(__fetches[2])) throw Error('settled read: ' + __fetches.join(', '));
+  await wait(20);
+  // a read in flight is aborted when the filters change again
+  __state.hold = true;
+  filters.rarity = 'legendary'; await __els['cm-sort'].fire('change');
+  await wait(450);
+  if (__fetches.length !== 4) throw Error('fourth read: ' + __fetches.join(', '));
+  filters.rarity = 'rare'; await __els['cm-sort'].fire('change');
+  await wait(20);
+  if (!__signals[3].aborted) throw Error('the stale read was not aborted');
+  __state.hold = false;
+  await wait(450);
+  if (__fetches.length !== 5 || !/rarity=rare&maxed=1/.test(__fetches[4])) throw Error('after abort: ' + __fetches.join(', '));
 })().catch((error) => { console.error(error); process.exit(1); });
 """
 

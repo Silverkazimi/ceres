@@ -395,7 +395,7 @@ export function stageMovePayload(entry) {
   // its own live snapshot at preview time regardless of what the client saw at stage time.
   // _worksite_parked_reason is page state written after each preview; sending it made the Changes window's batch
   // look changed and request a second, identical preview (each one now a live read, ).
-  const { _asset_name, _asset, _previous_asset, _source_deed_uid, _notices, _restake, _synthetic, _unstake_tx, _plan_invalid_reason, _plan_invalid_detail, _worksite_parked_reason, base, cooldown, combine_verified_at, txId, broadcast_at, delta_status, delta_reason, ...move } = entry;
+  const { _asset_name, _asset, _previous_asset, _source_deed_uid, _notices, _restake, _synthetic, _unstake_tx, _plan_invalid_reason, _plan_invalid_detail, _worksite_parked_reason, base, cooldown, combine_verified_at, txId, broadcast_at, delta_status, delta_reason, chain_id, chain_input_uid, ...move } = entry;
   return move;
 }
 

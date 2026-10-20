@@ -75,11 +75,12 @@ def test_start_input_uses_open_board_comfortable_height_token() -> None:
         ".start-input {", 1
     )[1].split("}", 1)[0]
     comfortable_rule = re.search(
-        r'is\(\.ceres-btn-group, \.ceres-btn, \.ceres-wide-input\)\'\n r\'\[data-control-density="comfortable"\]\s*\{([^}]+)\}',
+        r':is\(\.ceres-btn-group, \.ceres-btn, \.ceres-wide-input\)'
+        r'\[data-control-density="comfortable"\]\s*\{([^}]+)\}',
         BUTTONS,
     )
     assert comfortable_rule
-    assert "ceres-control-min-block: 2.75rem" in comfortable_rule.group(1)
+    assert "--ceres-control-min-block: 2.75rem" in comfortable_rule.group(1)
 
 
 def test_phone_start_controls_share_the_stacked_width() -> None:

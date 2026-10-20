@@ -1,4 +1,4 @@
-"""the Receipts feature is gone -- no route, no button, no script, no dead helpers -- and what shared its code still works."""
+""": the Receipts feature is gone -- no route, no button, no script, no dead helpers -- and what shared its code still works."""
 from __future__ import annotations
 
 import re
@@ -65,7 +65,7 @@ def test_confirmation_pill_has_no_open_receipt_action_or_receipt_storage():
     assert "ceres:open-receipt" not in OPERATIONS
     assert "writeConfirmationReceipt" not in OPERATIONS
     assert "receiptStoreKey" not in OPERATIONS
-    assert "Receipts removed; see library/ceres-receipts-removal.md" in OPERATIONS
+    assert ": Receipts removed; see library/ceres-receipts-removal.md" in OPERATIONS
     # The one-time cleanup of the old browser list is the only remaining mention of the storage key.
     assert "startsWith('ceres:receipts:v1:')" in OPERATIONS and "removeItem(name)" in OPERATIONS
     assert "ceres:receipts:v1:${" not in OPERATIONS and "localStorage.setItem(`ceres:receipts" not in OPERATIONS

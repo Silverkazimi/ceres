@@ -17,9 +17,9 @@ globalThis.setTimeout = (fn, ms, ...rest) => realSetTimeout(fn, 0, ...rest);
 const symbol = 'WOOD';
 const st = swapState('alice', symbol);
 Object.assign(st, { direction: 'sell', amount: '10', quoted: '10', region: 'PR-AAA-1',
- quote: { kind: 'swap_sell', input: 10, output: 5, minimum: 4.9, fee_percent: '1', pool_cost: 0.1 } });
+  quote: { kind: 'swap_sell', input: 10, output: 5, minimum: 4.9, fee_percent: '1', pool_cost: 0.1 } });
 const wallet = { account: { DEC: '100' }, swap: { symbols: ['WOOD'], directions: ['swap_sell', 'swap_buy'], signing_enabled: true, rates: {}, fees: {} },
- regions: [{ region_uid: 'PR-AAA-1', balances: { WOOD: '50' } }] };
+  regions: [{ region_uid: 'PR-AAA-1', balances: { WOOD: '50' } }] };
 const target = { closest: () => ({ dataset: { lpSymbol: 'WOOD' } }) };
 const ctx = { player: 'alice', account: () => 'alice', drawer: () => null, wallet: () => wallet, render: () => {}, setSigning: () => {}, reload: async () => {} };
 """
@@ -34,14 +34,14 @@ def test_no_transaction_id_is_found_in_history_then_confirmed():
     _run(r"""
 let finds = 0;
 globalThis.fetch = async (url, init) => {
- const path = String(url); calls.push(path);
- if (path.includes('/find')) { finds += 1; return { ok: true, status: 200, json: async () => finds < 3 ? { status: 'not_found', covered: true } : { status: 'found', tx_id: 'd'.repeat(40) } }; }
- if (path.includes('/verify')) {
- const body = JSON.parse(init.body);
- if (body.tx_id !== 'd'.repeat(40)) throw Error('verify without the found id');
- return { ok: true, status: 200, json: async () => ({ status: 'confirmed', game_result: { dec_amount: '5' } }) };
- }
- return { ok: true, status: 200, json: async () => ({ operations: [['custom_json', { id: 'x', json: '{}' }]], nonce: 'ab'.repeat(8), payload: {}, quote: { input: 10, output: 5 } }) };
+  const path = String(url); calls.push(path);
+  if (path.includes('/find')) { finds += 1; return { ok: true, status: 200, json: async () => finds < 3 ? { status: 'not_found', covered: true } : { status: 'found', tx_id: 'd'.repeat(40) } }; }
+  if (path.includes('/verify')) {
+    const body = JSON.parse(init.body);
+    if (body.tx_id !== 'd'.repeat(40)) throw Error('verify without the found id');
+    return { ok: true, status: 200, json: async () => ({ status: 'confirmed', game_result: { dec_amount: '5' } }) };
+  }
+  return { ok: true, status: 200, json: async () => ({ operations: [['custom_json', { id: 'x', json: '{}' }]], nonce: 'ab'.repeat(8), payload: {}, quote: { input: 10, output: 5 } }) };
 };
 globalThis.__gate = async () => { const e = new Error('HiveAuth gave no id'); e.broadcasted = undefined; throw e; };
 await swapAction(ctx, 'swap', target);
@@ -55,9 +55,9 @@ if (calls.some(path => path.includes('/verify') && false)) throw Error('unreacha
 def test_stop_ends_the_automatic_check_and_shows_resume():
     _run(r"""
 globalThis.fetch = async (url) => {
- const path = String(url);
- if (path.includes('/find')) { st.stopped || swapAction(ctx, 'stop', target); return { ok: true, status: 200, json: async () => ({ status: 'not_found', covered: true }) }; }
- return { ok: true, status: 200, json: async () => ({ operations: [['custom_json', { id: 'x', json: '{}' }]], nonce: 'ab'.repeat(8), payload: {}, quote: { input: 10, output: 5 } }) };
+  const path = String(url);
+  if (path.includes('/find')) { st.stopped || swapAction(ctx, 'stop', target); return { ok: true, status: 200, json: async () => ({ status: 'not_found', covered: true }) }; }
+  return { ok: true, status: 200, json: async () => ({ operations: [['custom_json', { id: 'x', json: '{}' }]], nonce: 'ab'.repeat(8), payload: {}, quote: { input: 10, output: 5 } }) };
 };
 globalThis.__gate = async () => { const e = new Error('no answer'); e.broadcasted = undefined; throw e; };
 await swapAction(ctx, 'swap', target);
@@ -95,25 +95,25 @@ def test_unsent_swap_stays_pending_until_expiry_and_late_broadcast_is_adopted_be
     _run(r"""
 let finds = 0; let previews = 0; let gates = 0; let late = false;
 globalThis.fetch = async (url, init) => {
- const path = String(url); calls.push(path);
- if (path.includes('/find')) { finds += 1; return { ok: true, status: 200, json: async () => late ? { status: 'found', tx_id: 'e'.repeat(40) } : { status: 'not_found', covered: true } }; }
- if (path.includes('/verify')) return { ok: true, status: 200, json: async () => ({ status: 'confirmed', game_result: { dec_amount: '5' } }) };
- previews += 1;
- return { ok: true, status: 200, json: async () => ({ operations: [['custom_json', { id: 'x', json: '{}' }]], nonce: 'ab'.repeat(8), payload: {}, quote: { input: 10, output: 5 } }) };
+  const path = String(url); calls.push(path);
+  if (path.includes('/find')) { finds += 1; return { ok: true, status: 200, json: async () => late ? { status: 'found', tx_id: 'e'.repeat(40) } : { status: 'not_found', covered: true } }; }
+  if (path.includes('/verify')) return { ok: true, status: 200, json: async () => ({ status: 'confirmed', game_result: { dec_amount: '5' } }) };
+  previews += 1;
+  return { ok: true, status: 200, json: async () => ({ operations: [['custom_json', { id: 'x', json: '{}' }]], nonce: 'ab'.repeat(8), payload: {}, quote: { input: 10, output: 5 } }) };
 };
 globalThis.__gate = async () => { gates += 1; const e = new Error('no answer'); e.broadcasted = undefined; throw e; };
 const realNow = Date.now; let offset = 0; Date.now = () => realNow() + offset;
-await swapAction(ctx, 'swap', target); // the click returns at once; the mock clock advances six minutes, below Hive expiry plus grace
+await swapAction(ctx, 'swap', target);  // the click returns at once; the mock clock advances six minutes, below Hive expiry plus grace
 await new Promise(r => realSetTimeout(r, 20));
 offset = 6 * 60000;
 for (let i = 0; i < 60; i++) { await new Promise(r => realSetTimeout(r, 2)); if (st.stage !== 'confirming') throw Error('released before Hive expiry: ' + st.stage); }
-late = true; offset = 0; // the wallet broadcast late; the next action adopts it before any new signature
+late = true; offset = 0;  // the wallet broadcast late; the next action adopts it before any new signature
 if (st.stage !== 'confirming') throw Error('expected the unresolved intent to remain blocked, got ' + st.stage + ' ' + st.lpNote);
 const stored = JSON.parse(localStorage.getItem('ceres:wallet-lp-intent:v1:alice:WOOD') || 'null');
 if (stored?.stage !== 'confirming' || stored.receipt?.nonce !== 'ab'.repeat(8)) throw Error('the pending intent was not durably retained');
 // A second click cannot start while this stored intent is unresolved; the background check adopts the late broadcast.
 await swapAction(ctx, 'swap', target);
-await swapAction(ctx, 'verify', target); // resume if the zero-delay VM reached the defensive round cap
+await swapAction(ctx, 'verify', target);  // resume if the zero-delay VM reached the defensive round cap
 for (let i = 0; i < 200 && st.stage !== 'done'; i++) await new Promise(r => realSetTimeout(r, 2));
 if (gates !== 1) throw Error('a second swap was requested from the wallet: ' + gates);
 if (st.stage !== 'done' || st.receipt.tx_id !== 'e'.repeat(40)) throw Error('the late broadcast was not adopted: ' + st.stage);
@@ -138,10 +138,10 @@ def test_failing_history_read_keeps_the_swap_open_and_blocks_a_second_swap():
     _run(PREVIEW + r"""
 let gates = 0; let previews = 0; let finds = 0;
 globalThis.fetch = async (url) => {
- const path = String(url);
- if (path.includes('/find')) { finds += 1; throw new Error('network down'); }
- if (path.includes('/verify')) throw Error('verify without an id');
- previews += 1; return { ok: true, status: 200, json: async () => previewJson };
+  const path = String(url);
+  if (path.includes('/find')) { finds += 1; throw new Error('network down'); }
+  if (path.includes('/verify')) throw Error('verify without an id');
+  previews += 1; return { ok: true, status: 200, json: async () => previewJson };
 };
 globalThis.__gate = async () => { gates += 1; const e = new Error('no answer'); e.broadcasted = undefined; throw e; };
 await swapAction(ctx, 'swap', target);
@@ -167,9 +167,9 @@ def test_successful_not_found_before_expiry_keeps_the_amber_intent_open():
     _run(PREVIEW + r"""
 let gates = 0; let failing = true;
 globalThis.fetch = async (url) => {
- const path = String(url);
- if (path.includes('/find')) { if (failing) return { ok: false, status: 502, json: async () => ({ error: 'bad gateway' }) }; return { ok: true, status: 200, json: async () => ({ status: 'not_found', covered: true }) }; }
- return { ok: true, status: 200, json: async () => previewJson };
+  const path = String(url);
+  if (path.includes('/find')) { if (failing) return { ok: false, status: 502, json: async () => ({ error: 'bad gateway' }) }; return { ok: true, status: 200, json: async () => ({ status: 'not_found', covered: true }) }; }
+  return { ok: true, status: 200, json: async () => previewJson };
 };
 globalThis.__gate = async () => { gates += 1; const e = new Error('no answer'); e.broadcasted = undefined; throw e; };
 await swapAction(ctx, 'swap', target);
@@ -191,10 +191,10 @@ def test_watch_list_with_failing_read_refuses_to_open_the_wallet():
 seedWatch();
 let gates = 1; let previews = 0; let finds = 0; let ok = false;
 globalThis.fetch = async (url) => {
- const path = String(url);
- if (path.includes('/find')) { finds += 1; if (!ok) throw new Error('network down'); return { ok: true, status: 200, json: async () => ({ status: 'not_found', covered: true }) }; }
- if (path.includes('/verify')) return { ok: true, status: 200, json: async () => ({ status: 'confirmed', game_result: { dec_amount: '5' } }) };
- previews += 1; return { ok: true, status: 200, json: async () => previewJson };
+  const path = String(url);
+  if (path.includes('/find')) { finds += 1; if (!ok) throw new Error('network down'); return { ok: true, status: 200, json: async () => ({ status: 'not_found', covered: true }) }; }
+  if (path.includes('/verify')) return { ok: true, status: 200, json: async () => ({ status: 'confirmed', game_result: { dec_amount: '5' } }) };
+  previews += 1; return { ok: true, status: 200, json: async () => previewJson };
 };
 globalThis.__gate = async () => { gates += 1; return { txId: 'f'.repeat(40) }; };
 freshQuote();
@@ -203,7 +203,7 @@ if (finds !== 1 || previews !== 0 || gates !== 1) throw Error('the wallet path w
 if (st.stage !== 'edit' || st.lpNote !== HISTORY_UNREADABLE_NOTE) throw Error('no clear line on refusal: ' + st.lpNote);
 if (!swapHtml(symbol, wallet, 'alice').includes('wallet-swap-note is-warn')) throw Error('the line is not shown on the card');
 if (!localStorage.getItem(watchKey)) throw Error('the watch entry was dropped on a failed read');
-ok = true; // absence alone cannot clear the retained wallet intent before expiry
+ok = true;  // absence alone cannot clear the retained wallet intent before expiry
 await swapAction(ctx, 'swap', target);
 if (previews !== 0 || gates !== 1) throw Error('a history miss allowed another wallet request: previews ' + previews + ' gates ' + gates);
 if (st.stage !== 'edit' || !localStorage.getItem(watchKey)) throw Error('the unresolved intent was not retained');
@@ -217,10 +217,10 @@ def test_watch_list_with_found_adopts_and_never_opens_the_wallet():
 seedWatch();
 let gates = 0; let previews = 0;
 globalThis.fetch = async (url) => {
- const path = String(url);
- if (path.includes('/find')) return { ok: true, status: 200, json: async () => ({ status: 'found', tx_id: 'e'.repeat(40) }) };
- if (path.includes('/verify')) return { ok: true, status: 200, json: async () => ({ status: 'confirmed', game_result: { dec_amount: '5' } }) };
- previews += 1; return { ok: true, status: 200, json: async () => previewJson };
+  const path = String(url);
+  if (path.includes('/find')) return { ok: true, status: 200, json: async () => ({ status: 'found', tx_id: 'e'.repeat(40) }) };
+  if (path.includes('/verify')) return { ok: true, status: 200, json: async () => ({ status: 'confirmed', game_result: { dec_amount: '5' } }) };
+  previews += 1; return { ok: true, status: 200, json: async () => previewJson };
 };
 globalThis.__gate = async () => { gates += 1; return { txId: 'f'.repeat(40) }; };
 freshQuote();
@@ -238,9 +238,9 @@ def test_expired_confirmation_does_not_loop_and_resume_reads_the_game():
     _run(PREVIEW + r"""
 let verifies = 0; let renders = 0;
 globalThis.fetch = async (url) => {
- const path = String(url);
- if (path.includes('/verify')) { verifies += 1; return { ok: true, status: 200, json: async () => ({ status: 'pending' }) }; }
- return { ok: true, status: 200, json: async () => ({ status: 'not_found', covered: true }) };
+  const path = String(url);
+  if (path.includes('/verify')) { verifies += 1; return { ok: true, status: 200, json: async () => ({ status: 'pending' }) }; }
+  return { ok: true, status: 200, json: async () => ({ status: 'not_found', covered: true }) };
 };
 const old = new Date(realNow() - 4 * 60000).toISOString();
 Object.assign(st, { stage: 'confirming', receipt: { kind: 'swap_sell', pay: 'WOOD', receive: 'DEC', input: 10, output: 5, nonce: 'ab'.repeat(8), payload: {}, tx_id: 'd'.repeat(40), signed_at: old } });

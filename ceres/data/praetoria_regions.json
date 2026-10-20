@@ -1,5 +1,5 @@
 {
-  "source": "one /land/deeds?region_number=N&limit=1 read per region (game API, public), 2026-10-15; regions 144-200 returned no deeds. The 143 Praetoria regions a transfer may target when the recipient owns no land.",
+  "source": "/: one /land/deeds?region_number=N&limit=1 read per region (game API, public), 2026-10-15; regions 144-200 returned no deeds. The 143 Praetoria regions a transfer may target when the recipient owns no land.",
   "regions": [
     {
       "region_uid": "PR-PNW-1",

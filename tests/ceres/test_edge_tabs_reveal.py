@@ -1,5 +1,5 @@
 """ (maintainer, verbatim): "the wallet slider must not be visible during the
-animation at page load" -- extended by (maintainer, verbatim): "flag button
+animation at page load" -- extended by  (maintainer, verbatim): "flag button
 appears, then disappears behind the loadig animation, then reappears with the
 full board. Stop that flashing, it must first be visible when the board has
 loaded". `#edge-tabs` (the Wallet picker's strip), `#badge-flag` and
@@ -36,7 +36,7 @@ def test_edge_tabs_starts_hidden_pre_js():
 
 
 def test_badge_bar_and_flag_also_start_hidden_pre_js():
-    """joins the SAME treatment as #edge-tabs."""
+    """: joins the SAME treatment as #edge-tabs."""
     css = CERES_CSS.read_text(encoding="utf-8")
     bar_rule = next(
         (m.group(1) for m in re.finditer(r"(?:^|\n)\.badge-bar \{(.*?)\n\}\n", css, re.S) if "position: absolute;" in m.group(1)),
@@ -65,8 +65,8 @@ def test_edge_tabs_revealed_class_fades_in_with_its_own_iris_style_keyframe():
     # past the viewport edge). These two elements are already JS-positioned
     # exactly where they belong before this class is ever added, so the
     # `transform` was dropped -- opacity-only, nothing left that can drift.
-    assert "from { opacity: 0; }" in keyframe
-    assert "to { opacity: 1; }" in keyframe
+    assert re.search(r"\bfrom\s*\{\s*opacity: 0;\s*\}", keyframe)
+    assert re.search(r"\bto\s*\{\s*opacity: 1;\s*\}", keyframe)
     assert "translateX" not in keyframe
     canonical_css = (STATIC / "canonical.css").read_text(encoding="utf-8")
     assert "@keyframes fadeInRight {" in canonical_css  # the vendored original, untouched
@@ -81,14 +81,14 @@ def test_edge_tabs_revealed_class_fades_in_with_its_own_iris_style_keyframe():
     # `.scroll-top` reduced-motion guard) finds its block by searching for the
     # FIRST multi-line `@media (prefers-reduced-motion: reduce) {` in the file
     # a second one earlier in the file would shadow it.
-    assert "#edge-tabs.edge-tabs-revealed { animation: none; }" in css
+    assert "#edge-tabs.edge-tabs-revealed { animation: none; } /*  */" in css
 
 
 def test_badge_bar_and_flag_get_their_own_reveal_classes_reusing_the_keyframe():
-    """`.badge-bar-revealed`/`.badge-flag-revealed` reuse the SAME
- `edgeTabsFadeInRight` keyframe the Wallet's own reveal uses -- one shared
- Iris-style fade timing across all three handles, not three near-duplicate
- keyframes."""
+    """: `.badge-bar-revealed`/`.badge-flag-revealed` reuse the SAME
+    `edgeTabsFadeInRight` keyframe the Wallet's own reveal uses -- one shared
+    Iris-style fade timing across all three handles, not three near-duplicate
+    keyframes."""
     css = CERES_CSS.read_text(encoding="utf-8")
     for class_name in ("badge-bar-revealed", "badge-flag-revealed"):
         # Anchored at line-start so the combined reduced-motion selector further
@@ -103,31 +103,34 @@ def test_badge_bar_and_flag_get_their_own_reveal_classes_reusing_the_keyframe():
         assert "animation: edgeTabsFadeInRight" in rule
     assert (
         "#badge-bar.badge-bar-revealed, #badge-flag.badge-flag-revealed { animation: none; } "
-        "* : id-qualified so this override always outranks the later un-scoped "
-        ".badge-bar-revealed/.badge-flag-revealed rules, regardless of source order *"
+        "/* : id-qualified so this override always outranks the later un-scoped "
+        ".badge-bar-revealed/.badge-flag-revealed rules, regardless of source order */"
     ) in css
 
 
 def test_reduced_motion_override_is_id_qualified_for_all_three_handles():
-    """`.badge-bar-revealed`/`.badge-flag-revealed` redeclare `animation:
- edgeTabsFadeInRight` later in the file at equal class-only specificity, so the
- plain-class override above them lost the cascade on source order alone (measured
- on the live site: opacity 0 -> 0.19 -> 0.46 -> 1 under reduced motion). `#edge-tabs`
- happened to work only because its base rule sits earlier in the file. Every one of
- the three reduced-motion overrides must be id-qualified so the fix does not depend
- on rule order."""
+    """: `.badge-bar-revealed`/`.badge-flag-revealed` redeclare `animation:
+    edgeTabsFadeInRight` later in the file at equal class-only specificity, so the
+    plain-class override above them lost the cascade on source order alone (measured
+    on the live site: opacity 0 -> 0.19 -> 0.46 -> 1 under reduced motion). `#edge-tabs`
+    happened to work only because its base rule sits earlier in the file. Every one of
+    the three reduced-motion overrides must be id-qualified so the fix does not depend
+    on rule order."""
     css = CERES_CSS.read_text(encoding="utf-8")
-    media_match = re.search(r"@media \(prefers-reduced-motion: reduce\) \{(.*?)\n\}\n", css, re.S)
-    assert media_match, "reduced-motion media block not found"
-    block = media_match.group(1)
-    assert "#edge-tabs.edge-tabs-revealed { animation: none; }" in block
-    assert "#badge-bar.badge-bar-revealed, #badge-flag.badge-flag-revealed { animation: none; }" in block
+    # The file has several reduced-motion blocks; all three overrides must share one multi-line block.
+    blocks = [m.group(1) for m in re.finditer(r"@media \(prefers-reduced-motion: reduce\) \{\n(.*?)\n\}\n", css, re.S)]
+    assert blocks, "reduced-motion media block not found"
+    assert any(
+        "#edge-tabs.edge-tabs-revealed { animation: none; }" in block
+        and "#badge-bar.badge-bar-revealed, #badge-flag.badge-flag-revealed { animation: none; }" in block
+        for block in blocks
+    )
 
 
 def test_board_reveal_dispatches_the_hand_off_event():
     """board.js cannot import app.js directly (app.js already imports FROM
- board.js) -- a DOM CustomEvent is the hand-off, same pattern
- `ceres:player-changed` already uses in this file."""
+    board.js) -- a DOM CustomEvent is the hand-off, same pattern
+    `ceres:player-changed` already uses in this file."""
     js = BOARD_JS.read_text(encoding="utf-8")
     fn_match = re.search(r"function revealBoardTable\(ready = true\) \{.*?\n\}\n", js, re.S)
     assert fn_match, "revealBoardTable source shape changed -- update this test's slice"
@@ -135,10 +138,10 @@ def test_board_reveal_dispatches_the_hand_off_event():
 
 
 def test_badge_overlay_dispatches_its_own_rows_synced_event_once():
-    """badge-overlay.js owns the "bar's own rows have been laid out"
- fact -- it dispatches this once, on its own first `syncBadgeOverlay()`
- pass, so app.js's reveal gate never shows the bar before it actually has
- content."""
+    """: badge-overlay.js owns the "bar's own rows have been laid out"
+    fact -- it dispatches this once, on its own first `syncBadgeOverlay()`
+    pass, so app.js's reveal gate never shows the bar before it actually has
+    content."""
     js = BADGE_OVERLAY_JS.read_text(encoding="utf-8")
     assert "let barRowsSyncedOnce = false;" in js
     fn_match = re.search(r"export function syncBadgeOverlay\(reason\) \{.*?\n\}\n", js, re.S)
@@ -172,7 +175,7 @@ def test_app_js_reveals_all_three_handles_together_only_after_every_condition():
     assert "window.addEventListener('ceres:badge-bar-synced'" in init_body
     assert "BAR_ROWS_SYNCED = true;" in init_body
     assert init_body.count("maybeRevealEdgeHandles();") == 2
-    assert "initEdgeTabsReveal()" in js
+    assert "initEdgeTabsReveal(); // " in js
     # centerThemePicker()'s own badge-bar block sets its position flag exactly once
     # the geometry has actually been written, not unconditionally. moved the
     # edge-tabs equivalent out into updateEdgeTabsPosition() (see
@@ -182,13 +185,13 @@ def test_app_js_reveals_all_three_handles_together_only_after_every_condition():
     assert center_match, "centerThemePicker source shape changed -- update this test's slice"
     center_body = center_match.group(0)
     assert "updateEdgeTabsPosition();" in center_body
-    assert "badgeBarEl.style.height = `${scrollerRect.height}px`; // V\n BAR_POSITIONED = true;" in center_body
+    assert re.search(r"badgeBarEl\.style\.height = `\$\{scrollerRect\.height\}px`;[ \t]*(?://[^\n]*)?\n\s*BAR_POSITIONED = true;", center_body)
     assert center_body.count("maybeRevealEdgeHandles();") == 1
 
     edge_tabs_fn_match = re.search(r"function updateEdgeTabsPosition\(\) \{.*?\n\}\n", js, re.S)
     assert edge_tabs_fn_match, "updateEdgeTabsPosition source shape changed -- update this test's slice"
     edge_tabs_body = edge_tabs_fn_match.group(0)
-    assert "edgeTabs.style.top = `${edgeTabsY}px`; // V\n EDGE_TABS_POSITIONED = true;" in edge_tabs_body
+    assert re.search(r"edgeTabs\.style\.top = `\$\{edgeTabsY\}px`;[ \t]*(?://[^\n]*)?\n\s*EDGE_TABS_POSITIONED = true;", edge_tabs_body)
     assert "maybeRevealEdgeHandles();" in edge_tabs_body
 
 

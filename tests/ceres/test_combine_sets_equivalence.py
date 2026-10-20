@@ -1,4 +1,4 @@
-"""Exact output equivalence checks for the multiplicity search."""
+"""Exact output equivalence checks for the  multiplicity search."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""a different retained Card ID is valid only with full combine effects."""
+""": a different retained Card ID is valid only with full combine effects."""
 from fides_cards.verify import CardVerificationSpec
 
 BEFORE = [{"uid": "C-A", "card_detail_id": 7, "bcx": 5, "level": 2, "owner": "alice"},

@@ -1,7 +1,7 @@
-""" the Market's card menu, the cart, the price badge at the bottom of the art,
+""" /  /  /  / : the Market's card menu, the cart, the price badge at the bottom of the art,
 the tile hover (fade and border, no zoom) and loading without layout shift.
 
-. . (maintainer decision): checkout buys from Ceres in a later queue; Checkout is present but disabled.
+. .  (maintainer decision): checkout buys from Ceres in a later queue; Checkout is present but disabled.
 No live network: the upstream is a synthetic getter; the client runs in the vm harness."""
 
 from __future__ import annotations
@@ -186,11 +186,11 @@ MODEL = STATIC / "card-cart-model.js"
 CART_JS = r"""
 const eq = (a, b, what) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw Error(what + ': ' + JSON.stringify(a) + ' != ' + JSON.stringify(b)); };
 const L = (k, bcx, usd, over = {}) => ({ lkey: k, name: 'Gargoya Lion', card_detail_id: 349, edition: 3, foil: 0, card_set: 'chaos', rarity: 'common',
- level: 1, bcx, land_base_pp: bcx * 2.5, price_usd: usd, price_dec: usd / 0.0005, ...over });
+  level: 1, bcx, land_base_pp: bcx * 2.5, price_usd: usd, price_dec: usd / 0.0005, ...over });
 const listings = [L('aaaaaaaaaaaaaaa1', 338, 1.0), L('aaaaaaaaaaaaaaa2', 60, 0.3), L('aaaaaaaaaaaaaaa3', 1, 0.01), L('aaaaaaaaaaaaaaa4', 1, 0.01),
- L('aaaaaaaaaaaaaaa5', 420, 1.9), L('aaaaaaaaaaaaaaa6', 300, 0.1, { own: true }), L('aaaaaaaaaaaaaaa7', 400, 2.5)];
+  L('aaaaaaaaaaaaaaa5', 420, 1.9), L('aaaaaaaaaaaaaaa6', 300, 0.1, { own: true }), L('aaaaaaaaaaaaaaa7', 400, 2.5)];
 const data = { print: { id: '349-3-0', bcx_max: 400, max_level: 10 }, truncated: false, listings,
- bundles: [{ level: 10, max: true, reachable: true, keys: ['aaaaaaaaaaaaaaa1', 'aaaaaaaaaaaaaaa2', 'aaaaaaaaaaaaaaa3', 'aaaaaaaaaaaaaaa4'] }] };
+  bundles: [{ level: 10, max: true, reachable: true, keys: ['aaaaaaaaaaaaaaa1', 'aaaaaaaaaaaaaaa2', 'aaaaaaaaaaaaaaa3', 'aaaaaaaaaaaaaaa4'] }] };
 """
 
 
@@ -253,7 +253,7 @@ const none = cmMaxedPick(data, cart);
 eq([none.listings.length, /Not enough copies on sale for another maxed card: 0 of 400 CC/.test(none.reason)], [0, true], 'nothing left: a reason');
 eq(cmCheapestCover([[300, 0.9], [100, 0.5], [250, 0.7], [150, 0.45], [60, 0.2]], 400).sort(), [2, 3], 'the same min-cost cover as the server');
 eq(cmCheapestCover([[10, 1]], 400), null, 'unreachable');
-// the menu's bundles are priced from the copies not in the cart; one press = one group, removed as one ()
+// : the menu's bundles are priced from the copies not in the cart; one press = one group, removed as one ()
 const d2 = { ...data, print: { ...data.print, max_level_pp: 1000, thresholds: [1, 5, 14, 30, 60, 100, 150, 220, 300, 400] } };
 const c2 = { items: [], removed: [] };
 const b0 = cmLevelBundles(d2, c2);
@@ -272,14 +272,14 @@ eq([cmRowState(listings[5], cart), cmRowState(listings[0], cart), cmRowState(L('
 
 MENU_JS = r"""
 const L = (k, bcx, usd, over = {}) => ({ lkey: k, name: 'Gargoya Lion', card_detail_id: 349, edition: 3, foil: 0, card_set: 'chaos', rarity: 'common',
- level: 1, bcx, land_base_pp: bcx * 2.5, pp_per_usd: bcx * 2.5 / usd, price_usd: usd, price_dec: usd / 0.0005, over_cheapest: 0, over_flag: false, ...over });
+  level: 1, bcx, land_base_pp: bcx * 2.5, pp_per_usd: bcx * 2.5 / usd, price_usd: usd, price_dec: usd / 0.0005, over_cheapest: 0, over_flag: false, ...over });
 const listings = [L('aaaaaaaaaaaaaaa1', 338, 1.0), L('aaaaaaaaaaaaaaa2', 60, 0.3), L('aaaaaaaaaaaaaaa6', 300, 0.1, { own: true }),
- L('aaaaaaaaaaaaaaa7', 20, 0.5, { over_cheapest: 2.4, over_flag: true })];
+  L('aaaaaaaaaaaaaaa7', 20, 0.5, { over_cheapest: 2.4, over_flag: true })];
 const data = { print: { id: '349-3-0', name: 'Gargoya Lion', card_set: 'chaos', foil: 0, rarity: 'common', bcx_max: 400, max_level: 10, max_level_pp: 1000,
- thresholds: [1, 5, 14, 30, 60, 100, 150, 220, 300, 400], market_url: 'https://splinterlands.com/card-detail/349/regular/3?tab=for-sale' },
- truncated: true, count: 4, on_sale: 639, listings,
- bundles: [{ level: 10, max: true, reachable: false, cc_needed: 400, cc_available: 418 },
- { level: 9, max: false, reachable: true, reached_level: 9, keys: ['aaaaaaaaaaaaaaa1'], parts_cc: [338], count: 1, bcx: 338, price_usd: 1, price_dec: 2000, land_base_pp: 845, pp_per_usd: 845 }] };
+  thresholds: [1, 5, 14, 30, 60, 100, 150, 220, 300, 400], market_url: 'https://splinterlands.com/card-detail/349/regular/3?tab=for-sale' },
+  truncated: true, count: 4, on_sale: 639, listings,
+  bundles: [{ level: 10, max: true, reachable: false, cc_needed: 400, cc_available: 418 },
+            { level: 9, max: false, reachable: true, reached_level: 9, keys: ['aaaaaaaaaaaaaaa1'], parts_cc: [338], count: 1, bcx: 338, price_usd: 1, price_dec: 2000, land_base_pp: 845, pp_per_usd: 845 }] };
 cartAdd(cartState(), [listings[1]]);
 const menu = cartMenuHtml(data, 'https://example.invalid/a.png', null);
 const panel = cartPanelHtml();
@@ -318,12 +318,12 @@ def test_menu_and_cart_panel_colour_coding_and_disabled_checkout():
 def test_market_tile_hooks_cart_state_and_skeleton():
     out = run_in_module_context(r"""
 const row = { name: 'Gargoya Lion', card_detail_id: 349, edition: 3, card_set: 'chaos', rarity: 'common', foil: 0, level: 9, max_level: 10, bcx: 338,
- bcx_max: 400, land_base_pp: 845, max_level_pp: 1000, price_usd: 1, price_dec: 2000, splinters: ['Neutral'], lkey: 'aaaaaaaaaaaaaaa1',
- market_url: 'https://splinterlands.com/card-detail/349/regular/3?tab=for-sale' };
+  bcx_max: 400, land_base_pp: 845, max_level_pp: 1000, price_usd: 1, price_dec: 2000, splinters: ['Neutral'], lkey: 'aaaaaaaaaaaaaaa1',
+  market_url: 'https://splinterlands.com/card-detail/349/regular/3?tab=for-sale' };
 const before = cmTileHtml(cmTiles([row])[0], tileHtml);
 cartAdd(cartState(), [row]);
 const after = cmTileHtml(cmTiles([row])[0], tileHtml, { fade: true });
-// the maxed card this tile's button added -> green tile, "Remove from cart" in the destructive treatment
+// : the maxed card this tile's button added -> green tile, "Remove from cart" in the destructive treatment
 const other = { ...row, lkey: 'aaaaaaaaaaaaaaa9', bcx: 1 };
 cartAdd(cartState(), [{ ...row, lkey: 'aaaaaaaaaaaaaaa8' }], { group: 'max-x', via: 'aaaaaaaaaaaaaaa9', bundle: 'Lv 10' });
 const added = cmTileHtml(cmTiles([other])[0], tileHtml);
@@ -347,29 +347,29 @@ console.log(JSON.stringify({ before, after, added, second, skeleton: cmSkeletonH
 
 RELOAD_JS = r"""
 (async () => {
- const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
- const filters = { q: '', set: '', rarity: 'common', foil: '', splinter: '', min_pp: '', max_pp: '', maxed: false };
- initMarket({ tileHtml: (tile) => `<article class="cb-tile${tile.extra.className ? ' ' + tile.extra.className : ''}"></article>`, filters: () => filters,
- player: () => 'player0005', renderCards() {} });
- __state.hold = true;
- await __els['cb-mode-market'].fire('click');
- await wait(10);
- const first = __els['cm-grid'].innerHTML;
- if ((first.match(/cm-skeleton/g) || []).length < 1) throw Error('no placeholders on first entry: ' + first);
- if (!/Reading the market/.test(__els['cm-summary'].innerHTML) || __els['cm-summary'].hidden) throw Error('summary not reserved');
- if (__els['cm-grid'].dataset.cmLoading) throw Error('placeholders are not dimmed');
- __state.hold = false;
- filters.foil = '0'; await __els['cm-sort'].fire('change');
- await wait(450);
- const loaded = __els['cm-grid'].innerHTML;
- if (!/cm-fade-in/.test(loaded) || /cm-skeleton/.test(loaded)) throw Error('results do not fade in: ' + loaded);
- // a re-read keeps the tiles in place, dimmed, until the new answer is in
- __state.hold = true;
- filters.foil = ''; await __els['cm-sort'].fire('change');
- await wait(450);
- if (__els['cm-grid'].innerHTML !== loaded) throw Error('the grid changed while a read was pending');
- if (__els['cm-grid'].dataset.cmLoading !== 'true' || __els['cm-loading'].hidden) throw Error('no soft dim / floating spinner');
- if (!/listing shown/.test(__els['cm-summary'].innerHTML) || /Reading the market/.test(__els['cm-summary'].innerHTML)) throw Error('summary cleared');
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const filters = { q: '', set: '', rarity: 'common', foil: '', splinter: '', min_pp: '', max_pp: '', maxed: false };
+  initMarket({ tileHtml: (tile) => `<article class="cb-tile${tile.extra.className ? ' ' + tile.extra.className : ''}"></article>`, filters: () => filters,
+    player: () => 'player0005', renderCards() {} });
+  __state.hold = true;
+  await __els['cb-mode-market'].fire('click');
+  await wait(10);
+  const first = __els['cm-grid'].innerHTML;
+  if ((first.match(/cm-skeleton/g) || []).length < 1) throw Error('no placeholders on first entry: ' + first);
+  if (!/Reading the market/.test(__els['cm-summary'].innerHTML) || __els['cm-summary'].hidden) throw Error('summary not reserved');
+  if (__els['cm-grid'].dataset.cmLoading) throw Error('placeholders are not dimmed');
+  __state.hold = false;
+  filters.foil = '0'; await __els['cm-sort'].fire('change');
+  await wait(450);
+  const loaded = __els['cm-grid'].innerHTML;
+  if (!/cm-fade-in/.test(loaded) || /cm-skeleton/.test(loaded)) throw Error('results do not fade in: ' + loaded);
+  // a re-read keeps the tiles in place, dimmed, until the new answer is in
+  __state.hold = true;
+  filters.foil = ''; await __els['cm-sort'].fire('change');
+  await wait(450);
+  if (__els['cm-grid'].innerHTML !== loaded) throw Error('the grid changed while a read was pending');
+  if (__els['cm-grid'].dataset.cmLoading !== 'true' || __els['cm-loading'].hidden) throw Error('no soft dim / floating spinner');
+  if (!/listing shown/.test(__els['cm-summary'].innerHTML) || /Reading the market/.test(__els['cm-summary'].innerHTML)) throw Error('summary cleared');
 })().catch((error) => { console.error(error); process.exit(1); });
 """
 
@@ -381,7 +381,7 @@ def test_loading_keeps_layout_and_fades():
     assert '<div class="cb-summary" id="cm-summary" role="status" aria-live="polite"><span class="cb-summary-item"><strong>—</strong> listings shown</span>' in page
     assert re.search(r'<div class="cm-stage">\s*<div class="cb-loading cm-loading" id="cm-loading"', page)
     css = (STATIC / "card-browser.css").read_text(encoding="utf-8")
-    for rule in (".card-browser #cm-summary.cb-summary { inline-size: 100%; min-block-size",
+    for rule in (".card-browser #cm-summary.cb-summary { inline-size: 100%; min-block-size:",
                  ".card-browser .cm-stage { position: relative;",
                  ".card-browser .cm-stage > .cm-loading { position: absolute;",
                  ".card-browser .cm-stage > .cm-message { position: absolute;",
@@ -408,11 +408,11 @@ def test_tile_hover_and_price_badge_css():
     assert ".card-browser.cb-reduce-motion .cb-grid > .cb-tile { transition: none; }" in css
     assert ".card-browser .cb-grid > .cb-tile:hover .cb-art > img { transform: none; }" in css  # no zoom
     assert "border-color: color-mix(in srgb, var(--text) 60%, transparent); background: var(--cb-glass-hover); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 60%, transparent)" in css
-    assert ":is(" not in css.split("the card menu and the cart")[-1]
+    assert ":is(" not in css.split(" / ")[-1]
     for rule in re.findall(r"^([^@/\s][^{]*)\{", css, re.M):
         for selector in rule.split(","):
             assert selector.strip().startswith((".card-browser", "html")), selector
-    for colour in re.findall(r"var\(--(cyan|info)\)", css.split("the card menu and the cart")[-1]):
+    for colour in re.findall(r"var\(--(cyan|info)\)", css.split(" / ")[-1]):
         raise AssertionError(colour)
 
 
@@ -458,11 +458,11 @@ def test_route_takes_the_pp_range(client, monkeypatch):
 def test_skeleton_count_is_whole_rows_filling_the_viewport():
     out = run_in_module_context(r"""
 console.log(JSON.stringify([
- cmSkeletonCount(6, 864, 190, 455, 12), // 6 columns; (864 - 190) / 467 -> 2 rows
- cmSkeletonCount(1, 844, 560, 600, 12), // phone: one column, one row
- cmSkeletonCount(4, 900, -50, 400, 10), // scrolled: the grid's top above the viewport counts as 0 -> 3 rows
- cmSkeletonCount(5, 900, 100, 0, 0), // unknown tile size: one full row
- cmSkeletonCount(0, 900, 100, 400, 0), // no column count: one column
+  cmSkeletonCount(6, 864, 190, 455, 12),   // 6 columns; (864 - 190) / 467 -> 2 rows
+  cmSkeletonCount(1, 844, 560, 600, 12),   // phone: one column, one row
+  cmSkeletonCount(4, 900, -50, 400, 10),   // scrolled: the grid's top above the viewport counts as 0 -> 3 rows
+  cmSkeletonCount(5, 900, 100, 0, 0),      // unknown tile size: one full row
+  cmSkeletonCount(0, 900, 100, 400, 0),    // no column count: one column
 ]));
 """, entry=STATIC / "card-market.js").stdout
     assert json.loads(out.strip().splitlines()[-1]) == [12, 1, 12, 5, 2]
@@ -526,7 +526,7 @@ console.log(JSON.stringify({ added, row }));
     assert 'data-cm-action="add"' not in got["row"]
     tile = run_in_module_context(r"""
 const row = { name: 'Gargoya Lion', card_detail_id: 349, edition: 3, card_set: 'chaos', rarity: 'common', foil: 0, level: 9, max_level: 10, bcx: 300,
- bcx_max: 400, land_base_pp: 750, max_level_pp: 1000, price_usd: 0.1, price_dec: 200, splinters: ['Neutral'], lkey: 'aaaaaaaaaaaaaaa6', own: true };
+  bcx_max: 400, land_base_pp: 750, max_level_pp: 1000, price_usd: 0.1, price_dec: 200, splinters: ['Neutral'], lkey: 'aaaaaaaaaaaaaaa6', own: true };
 console.log(JSON.stringify(cmTileHtml(cmTiles([row])[0], tileHtml)));
 """, entry=STATIC / "card-browser.js").stdout
     assert '<span class="cm-tag cm-own">Your listing</span>' in json.loads(tile.strip().splitlines()[-1])
@@ -552,37 +552,37 @@ def test_load_more_offset_after_ranking():
 
 LOAD_MORE_JS = r"""
 (async () => {
- const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
- const filters = { q: '', set: '', rarity: 'common', foil: '', splinter: '', min_pp: '', max_pp: '', maxed: false };
- let page = 0;
- globalThis.fetch = window.fetch = (url) => {
- __fetches.push(String(url));
- page = /page=2/.test(url) ? 2 : 1;
- const listing = (n, rate) => ({ name: 'Card ' + n, card_detail_id: n, edition: 3, foil: 0, rarity: 'common', card_set: 'chaos', level: 1, bcx: 1, bcx_max: 400,
- land_base_pp: rate, price_usd: 1, price_dec: 2000, splinters: [], lkey: ('a'.repeat(15) + n).slice(-16) });
- const body = page === 2 ? { listings: [listing(3, 9000)], prints_read: 200, prints_matching: 250, has_more: false, page: 2 }
- : { listings: [listing(1, 10), listing(2, 5)], prints_read: 100, prints_matching: 250, has_more: true, page: 1 };
- return Promise.resolve({ ok: true, status: 200, json: async () => ({ read_at: '2026-10-15T09:00:00Z', dec_usd: 0.0005, ...body }) });
- };
- initMarket({ tileHtml: (tile) => `<article class="cb-tile">${tile.listing ? tile.listing.name : ''}</article>`, filters: () => filters, player: () => 'player0005', renderCards() {} });
- await __els['cb-mode-market'].fire('click');
- await wait(30);
- if (__els['cm-more'].hidden) throw Error('no Load more while more prints are left');
- const before = __els['cm-grid'].innerHTML;
- await cmLoadMore();
- await wait(10);
- if (!/page=2/.test(__fetches[__fetches.length - 1])) throw Error('not the next page: ' + __fetches.join(', '));
- const after = __els['cm-grid'].innerHTML;
- // the new page is drawn after the tiles already there, even with a better rate (9000 PP per $): nothing on screen moves
- if (!after.startsWith(before) || after.indexOf('Card 3') < after.indexOf('Card 2')) throw Error('reflow: ' + after);
- if (!/best 200 of 250 prints/.test(__els['cm-summary'].innerHTML)) throw Error('summary: ' + __els['cm-summary'].innerHTML);
- if (!__els['cm-more'].hidden) throw Error('Load more stays when nothing is left');
- // a filter change starts again at page 1
- filters.rarity = 'rare'; await __els['cm-sort'].fire('change');
- await wait(450);
- const last = __fetches[__fetches.length - 1];
- if (/page=/.test(last) || !/rarity=rare/.test(last)) throw Error('reset: ' + last);
- if (/Card 3/.test(__els['cm-grid'].innerHTML)) throw Error('page 2 kept after a filter change');
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const filters = { q: '', set: '', rarity: 'common', foil: '', splinter: '', min_pp: '', max_pp: '', maxed: false };
+  let page = 0;
+  globalThis.fetch = window.fetch = (url) => {
+    __fetches.push(String(url));
+    page = /page=2/.test(url) ? 2 : 1;
+    const listing = (n, rate) => ({ name: 'Card ' + n, card_detail_id: n, edition: 3, foil: 0, rarity: 'common', card_set: 'chaos', level: 1, bcx: 1, bcx_max: 400,
+      land_base_pp: rate, price_usd: 1, price_dec: 2000, splinters: [], lkey: ('a'.repeat(15) + n).slice(-16) });
+    const body = page === 2 ? { listings: [listing(3, 9000)], prints_read: 200, prints_matching: 250, has_more: false, page: 2 }
+                            : { listings: [listing(1, 10), listing(2, 5)], prints_read: 100, prints_matching: 250, has_more: true, page: 1 };
+    return Promise.resolve({ ok: true, status: 200, json: async () => ({ read_at: '2026-10-15T09:00:00Z', dec_usd: 0.0005, ...body }) });
+  };
+  initMarket({ tileHtml: (tile) => `<article class="cb-tile">${tile.listing ? tile.listing.name : ''}</article>`, filters: () => filters, player: () => 'player0005', renderCards() {} });
+  await __els['cb-mode-market'].fire('click');
+  await wait(30);
+  if (__els['cm-more'].hidden) throw Error('no Load more while more prints are left');
+  const before = __els['cm-grid'].innerHTML;
+  await cmLoadMore();
+  await wait(10);
+  if (!/page=2/.test(__fetches[__fetches.length - 1])) throw Error('not the next page: ' + __fetches.join(', '));
+  const after = __els['cm-grid'].innerHTML;
+  // the new page is drawn after the tiles already there, even with a better rate (9000 PP per $): nothing on screen moves
+  if (!after.startsWith(before) || after.indexOf('Card 3') < after.indexOf('Card 2')) throw Error('reflow: ' + after);
+  if (!/best 200 of 250 prints/.test(__els['cm-summary'].innerHTML)) throw Error('summary: ' + __els['cm-summary'].innerHTML);
+  if (!__els['cm-more'].hidden) throw Error('Load more stays when nothing is left');
+  // a filter change starts again at page 1
+  filters.rarity = 'rare'; await __els['cm-sort'].fire('change');
+  await wait(450);
+  const last = __fetches[__fetches.length - 1];
+  if (/page=/.test(last) || !/rarity=rare/.test(last)) throw Error('reset: ' + last);
+  if (/Card 3/.test(__els['cm-grid'].innerHTML)) throw Error('page 2 kept after a filter change');
 })().catch((error) => { console.error(error); process.exit(1); });
 """
 
@@ -624,9 +624,9 @@ def test_maxed_price_is_the_same_under_every_sort():
 def test_menu_max_choice_has_one_price_and_remains_removable():
     out = run_in_module_context(r"""
 const L = (k, bcx, usd) => ({ lkey: k, name: 'Gargoya Lion', card_detail_id: 349, edition: 3, foil: 0, level: 1, bcx,
- land_base_pp: bcx * 2.5, price_usd: usd, price_dec: usd / 0.0005 });
+  land_base_pp: bcx * 2.5, price_usd: usd, price_dec: usd / 0.0005 });
 const data = { print: { id: '349-3-0', name: 'Gargoya Lion', bcx_max: 400, max_level: 10, max_level_pp: 1000,
- thresholds: [1, 5, 14, 30, 60, 100, 150, 220, 300, 400] }, listings: [L('aaaaaaaaaaaaaaa1', 400, 1), L('aaaaaaaaaaaaaaa2', 400, 2)] };
+  thresholds: [1, 5, 14, 30, 60, 100, 150, 220, 300, 400] }, listings: [L('aaaaaaaaaaaaaaa1', 400, 1), L('aaaaaaaaaaaaaaa2', 400, 2)] };
 const before = cartMenuHtml(data, '', null);
 cartAdd(cartState(), [data.listings[0]], { group: 'max-one', bundle: 'Lv 10' });
 const after = cartMenuHtml(data, '', null);
@@ -647,7 +647,7 @@ def test_bundle_button_toggles_in_cart():
     out = run_in_module_context(r"""
 const L = (k, bcx, usd) => ({ lkey: k, name: 'Gargoya Lion', card_detail_id: 349, edition: 3, foil: 0, level: 1, bcx, land_base_pp: bcx * 2.5, price_usd: usd, price_dec: usd / 0.0005 });
 const data = { print: { id: '349-3-0', bcx_max: 400, max_level: 10, max_level_pp: 1000, thresholds: [1, 5, 14, 30, 60, 100, 150, 220, 300, 400] },
- listings: [L('aaaaaaaaaaaaaaa1', 400, 1), L('aaaaaaaaaaaaaaa2', 400, 2)] };
+  listings: [L('aaaaaaaaaaaaaaa1', 400, 1), L('aaaaaaaaaaaaaaa2', 400, 2)] };
 cartAdd(cartState(), [data.listings[0]], { group: 'lv-1', bundle: 'Lv 10' });
 console.log(JSON.stringify(cartBundleButtonsHtml(data)));
 """, entry=STATIC / "card-cart.js").stdout

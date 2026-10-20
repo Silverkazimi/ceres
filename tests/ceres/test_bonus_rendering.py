@@ -1,9 +1,9 @@
-"""Browser rendering guards for bulk-derived bonus identity (row 6, migration).
+"""Browser rendering guards for bulk-derived bonus identity (row 6,  migration).
 
 Was a Node harness that sliced `bonusProvenanceNote`/`fmtTotem`/`fmtTitle`/
 `bonusResolutionHtml` out of `app.js` by source position and hand-stubbed their
 callees (`totemIconHtml`, `titleIconHtml`, `titleRarityGem`, `rarityGemHtml`).
-Retired per (source-string slicing is banned) and campaign §3.1 batch C
+Retired per  (source-string slicing is banned) and campaign §3.1 batch C
 row 6. Replaced with a route-mocked live board: `/api/board` is served a real
 129-plot snapshot with exactly one plot's `bonus.totem`/`bonus.title` swapped
 for each scenario's shape (`ceres/board.py::_bonus_for_plot`'s own output
@@ -61,12 +61,12 @@ def _board_with_bonus(base_url: str, *, totem: dict | None = None, title: dict |
 
 def _render_cell(page, base_url: str, board: dict, deed_uid: str, cell_selector: str) -> tuple[str, str]:
     """Serve `board` for `/api/board`, load the page, and return
- `(data-tip, outerHTML)` of the named plot row's cell."""
+    `(data-tip, outerHTML)` of the named plot row's cell."""
     page.route(
         "**/api/board*",
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(board)),
     )
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function(
         "document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000,
     )
@@ -144,10 +144,10 @@ def test_conflicting_asset_renders_visible_warning(live_browser: tuple[Browser, 
 
 def test_resolved_asset_renders_no_pill_and_no_provenance_note(live_browser: tuple[Browser, str]) -> None:
     """Owner ruling (2026-08-30): `resolved` ("Loaded") is the NORMAL case and
- must say nothing about provenance anywhere -- no visible pill (the old
- `.bonus-resolution.bonus-resolved` span, now dead CSS) and no note folded
- into the icon's tooltip either (that treatment is `derived`-only). See
- module docstring for this test's named injection."""
+    must say nothing about provenance anywhere -- no visible pill (the old
+    `.bonus-resolution.bonus-resolved` span, now dead CSS) and no note folded
+    into the icon's tooltip either (that treatment is `derived`-only). See
+    module docstring for this test's named injection."""
     browser, base_url = live_browser
     totem = {
         "name": "Common Totem Land", "rarity": "common", "boost": 0.1,

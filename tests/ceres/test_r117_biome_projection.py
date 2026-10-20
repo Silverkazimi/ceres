@@ -76,7 +76,7 @@ def test_projection_guard_rejects_injected_regression(mutation, mixed_biome_repo
 
 
 def test_lean_row_drops_editor_only_keys(mixed_biome_report, details_by_id):
-    """swap_eligibility / multiplier_parts ride only on the full (detail) row."""
+    """: swap_eligibility / multiplier_parts ride only on the full (detail) row."""
     report, deed = mixed_biome_report
     full = project_single_plot(report, deed, details_by_id)
     assert "swap_eligibility" in full and "multiplier_parts" in full

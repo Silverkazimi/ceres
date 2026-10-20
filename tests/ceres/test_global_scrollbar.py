@@ -35,7 +35,7 @@ def test_global_scrollbar_contract_covers_every_css_scroll_surface() -> None:
             surfaces.append(f"{path.name}: JavaScript-created overflow")
 
     assert surfaces
-    assert css.count("where(*), html {") == 1
+    assert css.count(":where(*), html {") == 1
     assert re.search(r":where\(\*\),\s*html\s*\{[^}]*scrollbar-width:\s*thin", css, re.DOTALL)
     assert re.search(
         r":where\(\*\),\s*html\s*\{[^}]*scrollbar-color:\s*var\(--border-bright\)\s+transparent",
@@ -43,13 +43,13 @@ def test_global_scrollbar_contract_covers_every_css_scroll_surface() -> None:
         re.DOTALL,
     )
     assert re.search(r":where\(\*\)::\-webkit-scrollbar,\s*html::\-webkit-scrollbar\s*\{[^}]*width:\s*0\.5rem[^}]*height:\s*0\.5rem", css)
-    assert "where(*)::-webkit-scrollbar-track, html::-webkit-scrollbar-track { background: transparent; }" in css
+    assert ":where(*)::-webkit-scrollbar-track, html::-webkit-scrollbar-track { background: transparent; }" in css
     assert re.search(
         r":where\(\*\)::\-webkit-scrollbar-thumb,\s*html::\-webkit-scrollbar-thumb\s*\{[^}]*background:\s*var\(--border-bright\)[^}]*border-radius:\s*999px",
         css,
         re.DOTALL,
     )
-    assert "where(*)::-webkit-scrollbar-thumb:hover, html::-webkit-scrollbar-thumb:hover { background: var(--accent); }" in css
+    assert ":where(*)::-webkit-scrollbar-thumb:hover, html::-webkit-scrollbar-thumb:hover { background: var(--accent); }" in css
 
 
 def test_scrollbar_contract_has_no_local_native_reset() -> None:
@@ -62,4 +62,4 @@ def test_scrollbar_contract_has_no_local_native_reset() -> None:
                     local_rules.append(f"{path.name}: {selector}")
             if re.search(r"scrollbar-width\s*:\s*auto\b", body):
                 local_rules.append(f"{path.name}: {selector} resets scrollbar-width to auto")
-    assert not local_rules, "scrolling surfaces must use the intrinsic global contract " + "; ".join(local_rules)
+    assert not local_rules, "scrolling surfaces must use the intrinsic global contract: " + "; ".join(local_rules)

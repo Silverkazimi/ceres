@@ -54,20 +54,20 @@ def test_plot_table_header_order_keeps_terrain_and_worksite_separate() -> None:
 
 def test_worksite_cell_is_icon_only_and_terrain_keeps_its_own_cell() -> None:
     """ (row 34, (b) half): converted from source-substring
- checks to a whole-module `vm_context` load, for the one claim below with no
- rendered form -- `terrainWorksiteCellHtml` (the pre-split merged-cell
- builder this feature replaced) must not exist as a module-scope symbol.
- The other former substring claims are dropped as redundant, not just
- retargeted: `'class="resource-cell"'`/`'class="${terrainCell.cls}"'`/
- `"resourceIconHtml(row.resource)"` in `plotRowCellsHtml()` and the
- icon-only shape of `resourceIconHtml()` (no `<span>`) are implementation
- spellings of exactly what `test_pre_merge_cells_render_terrain_background_input_and_worksite_icon`
- below already proves by rendering a real board row -- a real
- `td.terrain-cell`/`td.resource-cell` pair with an icon and zero `<span>`
- children. `"worksite-label" not in source` is covered the same way: that
- class could only appear via the label-span shape the rendered sibling's
- own named injection (a `<span>${label}</span>` reintroduced into
- `resourceIconHtml()`) demonstrates it would catch."""
+    checks to a whole-module `vm_context` load, for the one claim below with no
+    rendered form -- `terrainWorksiteCellHtml` (the pre-split merged-cell
+    builder this feature replaced) must not exist as a module-scope symbol.
+    The other former substring claims are dropped as redundant, not just
+    retargeted: `'class="resource-cell"'`/`'class="${terrainCell.cls}"'`/
+    `"resourceIconHtml(row.resource)"` in `plotRowCellsHtml()` and the
+    icon-only shape of `resourceIconHtml()` (no `<span>`) are implementation
+    spellings of exactly what `test_pre_merge_cells_render_terrain_background_input_and_worksite_icon`
+    below already proves by rendering a real board row -- a real
+    `td.terrain-cell`/`td.resource-cell` pair with an icon and zero `<span>`
+    children. `"worksite-label" not in source` is covered the same way: that
+    class could only appear via the label-span shape the rendered sibling's
+    own named injection (a `<span>${label}</span>` reintroduced into
+    `resourceIconHtml()`) demonstrates it would catch."""
     run_in_module_context(
         "if (typeof terrainWorksiteCellHtml !== 'undefined') { "
         "throw new Error('terrainWorksiteCellHtml (the retired merged-cell builder) must not exist as a module-scope symbol'); }"
@@ -76,18 +76,18 @@ def test_worksite_cell_is_icon_only_and_terrain_keeps_its_own_cell() -> None:
 
 def test_pre_merge_cells_render_terrain_background_input_and_worksite_icon(live_browser: tuple[Browser, str]) -> None:
     r"""Named injection, run and watched red, then reverted and watched green: in
- `ceres/static/app.js`'s `resourceIconHtml()`, the icon-only return
- `return \`<img class="resource-icon" src="${ASSET_BASE}/${file}" alt="${label}"${tipAttrs(label)}>\`;`
- was changed to append a visible label span,
- `return \`<img class="resource-icon" src="${ASSET_BASE}/${file}" alt="${label}"${tipAttrs(label)}><span>${label}</span>\`;`.
- Red: the real board row's `td.resource-cell` gained a `<span>` child --
- `assert 0 == 1` on the "no <span> in the resource cell" assertion. Restoring
- the line made this test pass again (whole-file run: 4 passed).
+    `ceres/static/app.js`'s `resourceIconHtml()`, the icon-only return
+    `return \`<img class="resource-icon" src="${ASSET_BASE}/${file}" alt="${label}"${tipAttrs(label)}>\`;`
+    was changed to append a visible label span,
+    `return \`<img class="resource-icon" src="${ASSET_BASE}/${file}" alt="${label}"${tipAttrs(label)}><span>${label}</span>\`;`.
+    Red: the real board row's `td.resource-cell` gained a `<span>` child --
+    `assert 0 == 1` on the "no <span> in the resource cell" assertion. Restoring
+    the line made this test pass again (whole-file run: 4 passed).
 
- Reads a REAL plot row already mounted in the main table (no route mocking --
- terrain/resource are static per-plot board-summary fields, not detail-fetch
- only) rather than re-slicing and re-executing the two render functions in a
- sandboxed script."""
+    Reads a REAL plot row already mounted in the main table (no route mocking --
+    terrain/resource are static per-plot board-summary fields, not detail-fetch
+    only) rather than re-slicing and re-executing the two render functions in a
+    sandboxed script."""
     browser, base_url = live_browser
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=10) as response:
         board = json.loads(response.read().decode("utf-8"))
@@ -98,7 +98,7 @@ def test_pre_merge_cells_render_terrain_background_input_and_worksite_icon(live_
     resource_key = row["resource"].lower()
 
     page = browser.new_page(viewport={"width": 1400, "height": 900})
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     tr = page.locator(f"tr.plot-row[data-deed-uid='{row['deed_uid']}']")
     tr.wait_for(timeout=30_000)
@@ -119,5 +119,5 @@ def test_pre_merge_cells_render_terrain_background_input_and_worksite_icon(live_
 
 def test_plot_and_terrain_background_rules_remain_in_css() -> None:
     css = (INDEX_HTML.parent / "ceres.css").read_text(encoding="utf-8")
-    assert "td.plot-cell.territory-broken-lands { background: var(--territory-broken-lands);" in css
-    assert "td.terrain-cell.terrain-plains { background: var(--terrain-plains);" in css
+    assert "td.plot-cell.territory-broken-lands       { background: var(--territory-broken-lands);" in css
+    assert "td.terrain-cell.terrain-plains    { background: var(--terrain-plains);" in css

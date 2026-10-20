@@ -37,15 +37,15 @@ plots = build_plots(report)
 deed_uids = [uid for uid, plot in plots.items() if plot.card_capacity > 0 and len(plot.cards) >= plot.card_capacity]
 deed_uids = deed_uids[:8] or list(plots)[:8]
 for deed_uid in deed_uids:
- for _ in range(2):
- rank_candidates(report, deed_uid, "worker", player="player0005", now=datetime.now(timezone.utc), bucket="idle", limit=100, slot=0, details_by_id=details)
+    for _ in range(2):
+        rank_candidates(report, deed_uid, "worker", player="player0005", now=datetime.now(timezone.utc), bucket="idle", limit=100, slot=0, details_by_id=details)
 timings = []
 for deed_uid in deed_uids:
- for _ in range(3):
- started = time.perf_counter()
- body = rank_candidates(report, deed_uid, "worker", player="player0005", now=datetime.now(timezone.utc), bucket="idle", limit=100, slot=0, details_by_id=details)
- timings.append((time.perf_counter() - started) * 1000)
- assert body["returned"] <= 100
+    for _ in range(3):
+        started = time.perf_counter()
+        body = rank_candidates(report, deed_uid, "worker", player="player0005", now=datetime.now(timezone.utc), bucket="idle", limit=100, slot=0, details_by_id=details)
+        timings.append((time.perf_counter() - started) * 1000)
+        assert body["returned"] <= 100
 print(json.dumps(timings))
 """
     result = subprocess.run(

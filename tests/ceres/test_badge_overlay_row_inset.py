@@ -26,16 +26,16 @@ def test_mounted_read_phase_computes_a_separate_inset_pair_for_the_overlay_row()
     assert fn_match, "syncBadgeOverlay source shape changed -- update this test's slice"
     body = fn_match.group(0)
     # The bar row keeps its own 1px inset while remaining the full-height click target.
-    assert "top: `${trRect.top - scrollerRect.top + 1}px`" in body
-    assert "height: `${Math.max(0, trRect.height - 2)}px`" in body
+    assert "top: `${trRect.top - scrollerRect.top + 1}px`," in body
+    assert "height: `${Math.max(0, trRect.height - 2)}px`," in body
     # The overlay row gets its OWN, separately-computed inset pair.
-    assert "overlayTop: `${trRect.top - scrollerRect.top + 3}px`" in body
-    assert "overlayHeight: `${Math.max(0, trRect.height - 6)}px`" in body
+    assert "overlayTop: `${trRect.top - scrollerRect.top + 3}px`," in body
+    assert "overlayHeight: `${Math.max(0, trRect.height - 6)}px`," in body
 
 
 def test_write_phase_applies_the_inset_pair_only_to_the_overlay_row():
     js = BADGE_OVERLAY_JS.read_text(encoding="utf-8")
-    assert "for (const { deedUid, top, height, overlayTop, overlayHeight, row } of mounted) {" in js
+    assert "for (const { deedUid, top, height, overlayTop, overlayHeight, row, tr } of mounted) {" in js
     # Bar row: still the plain, uninset values.
     assert "if (barRow.style.top !== top) barRow.style.top = top;" in js
     assert "if (barRow.style.height !== height) barRow.style.height = height;" in js
@@ -54,8 +54,8 @@ def test_badge_overlay_row_glow_tightened_to_stay_inside_the_inset():
 
 def test_badge_bar_row_geometry_untouched():
     """The bar's own per-row click target keeps the shared Iris-strip glow and
- the plain, full-<tr>-height sizing -- only touched the OPEN
- slide-out (`.badge-overlay-row`), not the always-visible bar row."""
+    the plain, full-<tr>-height sizing --  only touched the OPEN
+    slide-out (`.badge-overlay-row`), not the always-visible bar row."""
     css = CERES_CSS.read_text(encoding="utf-8")
     assert ".badge-bar-row {" in css
     bar_row_rule = css.split(".badge-bar-row {", 1)[1].split("\n}\n", 1)[0]

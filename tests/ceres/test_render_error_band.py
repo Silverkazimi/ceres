@@ -19,7 +19,7 @@ def test_render_error_stand_in_keeps_band_height_and_logs_plot(live_browser: tup
     page = browser.new_page(viewport={"width": 1536, "height": 945})
     console_errors: list[str] = []
     page.on("console", lambda message: console_errors.append(message.text) if message.type == "error" else None)
-    page.goto(f"{base_url}/?player=player0005", timeout=15_000)
+    page.goto(f"{base_url}/?player=sample01", timeout=15_000)
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length >= 1", timeout=60_000)
     page.evaluate("() => { window.fetch = () => new Promise(() => {}); return 0; }")
 
@@ -33,28 +33,28 @@ def test_render_error_stand_in_keeps_band_height_and_logs_plot(live_browser: tup
 
     page.evaluate(
         """async uid => {
- const rows = await import('/static/rows.js');
- const table = await import('/static/table.js');
- const row = table.CURRENT_ROWS.find(candidate => candidate.deed_uid === uid);
- if (!row) throw new Error(`plot row ${uid} is unavailable`);
- const workers = Array.isArray(row.workers) ? row.workers : [];
- let filters = 0;
- const injectedWorkers = new Proxy(workers, {
- get(target, property, receiver) {
- if (property === 'filter' && ++filters === 2) {
- return () => { throw new Error(' injected render failure'); };
- }
- return Reflect.get(target, property, receiver);
- },
- });
- Object.defineProperty(row, 'workers', {
- configurable: true,
- get: () => injectedWorkers,
- });
- rows.updateMountedRow(uid);
- delete row.workers;
- row.workers = workers;
- }""",
+          const rows = await import('/static/rows.js');
+          const table = await import('/static/table.js');
+          const row = table.CURRENT_ROWS.find(candidate => candidate.deed_uid === uid);
+          if (!row) throw new Error(`plot row ${uid} is unavailable`);
+          const workers = Array.isArray(row.workers) ? row.workers : [];
+          let filters = 0;
+          const injectedWorkers = new Proxy(workers, {
+            get(target, property, receiver) {
+              if (property === 'filter' && ++filters === 2) {
+                return () => { throw new Error(' injected render failure'); };
+              }
+              return Reflect.get(target, property, receiver);
+            },
+          });
+          Object.defineProperty(row, 'workers', {
+            configurable: true,
+            get: () => injectedWorkers,
+          });
+          rows.updateMountedRow(uid);
+          delete row.workers;
+          row.workers = workers;
+        }""",
         uid,
     )
 
@@ -66,4 +66,4 @@ def test_render_error_stand_in_keeps_band_height_and_logs_plot(live_browser: tup
     page.close()
 
     assert abs(stand_in_height - normal_height) <= 1, {"normal": normal_height, "stand_in": stand_in_height}
-    assert any(uid in message and "injected render failure" in message for message in console_errors), console_errors
+    assert any(uid in message and " injected render failure" in message for message in console_errors), console_errors

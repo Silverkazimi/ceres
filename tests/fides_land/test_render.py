@@ -75,10 +75,10 @@ class RenderRowTests(unittest.TestCase):
 
 class AllowlistAttemptedViolationTests(unittest.TestCase):
     """One test per allowlist rule (plan §9 Phase 4: 'refuses each of the six land allowlist
- violations individually'). fides_land implements seven checks (the plan's prose lists a
- 'key must be Posting' item beyond the six the acceptance bullet counts, folded in here as
- defence in depth since it costs nothing) -- every one of them is individually violation-
- tested below, a superset of the six named."""
+    violations individually'). fides_land implements seven checks (the plan's prose lists a
+    'key must be Posting' item beyond the six the acceptance bullet counts, folded in here as
+    defence in depth since it costs nothing) -- every one of them is individually violation-
+    tested below, a superset of the six named."""
 
     def test_clean_bundle_passes(self):
         result = evaluate_allowlist(build_clean_bundle())
@@ -162,9 +162,9 @@ class AllowlistAttemptedViolationTests(unittest.TestCase):
         self.assertTrue(any("STK-LND-WKR" in v for v in result["violations"]))
 
     def test_permits_power_core_in_stake_items(self):
-        """fides_land/ops.py:intents_to_ops already routes STK-LND-PCR/STK-LND-TOT into
- items[] -- the allowlist must permit exactly what the emitter already produces, not
- refuse it. Reproduces the exact bundle shape from the bug report."""
+        """: fides_land/ops.py:intents_to_ops already routes STK-LND-PCR/STK-LND-TOT into
+        items[] -- the allowlist must permit exactly what the emitter already produces, not
+        refuse it. Reproduces the exact bundle shape from the bug report."""
         ops = clean_land_ops()
         ops[1].json_payload["stake"]["items"] = [{"item_uid": "ITEM1", "stake_type_uid": "STK-LND-PCR"}]
         result = evaluate_allowlist(build_clean_bundle(ops))
@@ -178,12 +178,12 @@ class AllowlistAttemptedViolationTests(unittest.TestCase):
 
     def test_permits_the_real_bare_unstake_item_shape_with_no_stake_type_uid_at_all(self):
         """`fides_land/ops.py:_intent_entry` never puts `stake_type_uid` on an unstake-side
- item -- `{"item_uid": ...}` is the ONLY shape a real Power Core/Totem unstake ever
- takes. Found live 2026-08-26 wiring this allowlist into the browser signing path for
- the first time: `_resolve_path` resolved the absent key to `None`, which then failed
- the 'in' check on every real unstake -- the rule's own "(when present)" label was
- never actually vacuous. `test_permits_totem_in_unstake_items` above never caught this
- because it hand-set an explicit `stake_type_uid` no real op ever carries."""
+        item -- `{"item_uid": ...}` is the ONLY shape a real Power Core/Totem unstake ever
+        takes. Found live 2026-08-26 wiring this allowlist into the browser signing path for
+        the first time: `_resolve_path` resolved the absent key to `None`, which then failed
+        the 'in' check on every real unstake -- the rule's own "(when present)" label was
+        never actually vacuous. `test_permits_totem_in_unstake_items` above never caught this
+        because it hand-set an explicit `stake_type_uid` no real op ever carries."""
         ops = clean_land_ops()
         ops[0].json_payload["unstake"]["items"] = [{"item_uid": "I-1"}]
         result = evaluate_allowlist(build_clean_bundle(ops))
@@ -191,14 +191,14 @@ class AllowlistAttemptedViolationTests(unittest.TestCase):
 
     def test_permits_title_in_stake_items(self):
         """the internal rules's 2026-08-27 ruling ("titles must not be locked ... behave like all
- other assets") -- Title's stake and unstake payloads are both observed (an isolated
- Title-only swap, Posting tier), the same evidentiary footing as Totem/Power Core, so
- the allowlist must permit it in `stake.items[*]` exactly as it does STK-LND-PCR/
- STK-LND-TOT above. Inverts the old `test_refuses_title_in_stake_items`, which this
- ruling supersedes. MUTATION: reverting `stake.items[*]`'s allowed value list in
- `fides_land/render.py` from `["STK-LND-PCR", "STK-LND-TOT", "STK-LND-TTL"]` back to
- `["STK-LND-PCR", "STK-LND-TOT"]` turns this red with `result["ok"] is False` and a
- `stake.items` violation naming STK-LND-TTL -- confirmed live, see dispatch report."""
+        other assets") -- Title's stake and unstake payloads are both observed (an isolated
+        Title-only swap, Posting tier), the same evidentiary footing as Totem/Power Core, so
+        the allowlist must permit it in `stake.items[*]` exactly as it does STK-LND-PCR/
+        STK-LND-TOT above. Inverts the old `test_refuses_title_in_stake_items`, which this
+        ruling supersedes. MUTATION: reverting `stake.items[*]`'s allowed value list in
+        `fides_land/render.py` from `["STK-LND-PCR", "STK-LND-TOT", "STK-LND-TTL"]` back to
+        `["STK-LND-PCR", "STK-LND-TOT"]` turns this red with `result["ok"] is False` and a
+        `stake.items` violation naming STK-LND-TTL -- confirmed live, see dispatch report."""
         ops = clean_land_ops()
         ops[1].json_payload["stake"]["items"] = [{"item_uid": "I-1", "stake_type_uid": "STK-LND-TTL"}]
         result = evaluate_allowlist(build_clean_bundle(ops))
@@ -206,9 +206,9 @@ class AllowlistAttemptedViolationTests(unittest.TestCase):
 
     def test_permits_runi_in_stake_cards(self):
         """ finding 3: `ops.py` legitimately emits STK-LND-RUNI in `stake.cards[*]`
- (its payload is now OBSERVED both directions), but the allowlist pinned
- `stake.cards[*]` to STK-LND-WKR only -- a real, valid Runi stake bundle was
- refused. The allowlist must permit exactly what the emitter now produces."""
+        (its payload is now OBSERVED both directions), but the allowlist pinned
+        `stake.cards[*]` to STK-LND-WKR only -- a real, valid Runi stake bundle was
+        refused. The allowlist must permit exactly what the emitter now produces."""
         ops = clean_land_ops()
         ops[1].json_payload["stake"]["cards"][0]["stake_type_uid"] = "STK-LND-RUNI"
         result = evaluate_allowlist(build_clean_bundle(ops))
@@ -274,30 +274,30 @@ class AllowlistAttemptedViolationTests(unittest.TestCase):
 
 class RefusalSetIsEmptyTests(unittest.TestCase):
     """POSITIVE guard, item 3 of the 2026-08-27 dispatch brief ("titles must not be locked
- ... Make 100% of all assets and workers unlockable at any state without exceptions"):
- every stake type Ceres can address must survive a full intent -> op -> render allowlist
- round trip, in BOTH directions, with no payload-shape refusal anywhere in the chain.
- This is the union of the individual per-type tests scattered across `test_render.py`,
- `test_intent.py` and `test_waves.py` -- each of those proves ONE type in ONE module;
- this proves ALL FIVE in ONE round trip through the real emitter and the real allowlist
- together, so a type that passes each module in isolation but breaks when chained (e.g.
- a shape one module emits that another's allowlist doesn't recognise) cannot hide."""
+    ... Make 100% of all assets and workers unlockable at any state without exceptions"):
+    every stake type Ceres can address must survive a full intent -> op -> render allowlist
+    round trip, in BOTH directions, with no payload-shape refusal anywhere in the chain.
+    This is the union of the individual per-type tests scattered across `test_render.py`,
+    `test_intent.py` and `test_waves.py` -- each of those proves ONE type in ONE module;
+    this proves ALL FIVE in ONE round trip through the real emitter and the real allowlist
+    together, so a type that passes each module in isolation but breaks when chained (e.g.
+    a shape one module emits that another's allowlist doesn't recognise) cannot hide."""
 
     ALL_FIVE_STAKE_TYPES = (STAKE_TYPE_WORKER, STAKE_TYPE_RUNI, STAKE_TYPE_POWER_CORE, STAKE_TYPE_TOTEM, STAKE_TYPE_TITLE)
 
     def test_all_five_stake_types_survive_intent_to_op_to_render_round_trip(self):
         """MUTATION: putting `STAKE_TYPE_TITLE` back into `fides_land/ops.py`'s
- `_UNVERIFIED_STAKE_TYPES` (its pre-2026-08-27 value) turns this red on both Title
- subtests with `fides_land.ops.LandOpError: stake type 'STK-LND-TTL' has payload
- shape UNVERIFIED`, caught below and reported by name rather than aborting the whole
- test -- confirmed live, see dispatch report.
+        `_UNVERIFIED_STAKE_TYPES` (its pre-2026-08-27 value) turns this red on both Title
+        subtests with `fides_land.ops.LandOpError: stake type 'STK-LND-TTL' has payload
+        shape UNVERIFIED`, caught below and reported by name rather than aborting the whole
+        test -- confirmed live, see dispatch report.
 
- Also currently RED on real master for the OTHER reason recorded throughout this
- dispatch (a gap outside `tests/`, not this injection): `fides_land/ops.py:59`'s
- `_ITEM_STAKE_TYPES` frozenset was never given STAKE_TYPE_TITLE, so both Title
- subtests fail with `LandOpError: unknown stake_type_uid 'STK-LND-TTL'`. Verified
- locally that adding STAKE_TYPE_TITLE to `_ITEM_STAKE_TYPES` turns both Title
- subtests (and this whole test) green; reverted after confirming."""
+        Also currently RED on real master for the OTHER reason recorded throughout this
+        dispatch (a gap outside `tests/`, not this injection): `fides_land/ops.py:59`'s
+        `_ITEM_STAKE_TYPES` frozenset was never given STAKE_TYPE_TITLE, so both Title
+        subtests fail with `LandOpError: unknown stake_type_uid 'STK-LND-TTL'`. Verified
+        locally that adding STAKE_TYPE_TITLE to `_ITEM_STAKE_TYPES` turns both Title
+        subtests (and this whole test) green; reverted after confirming."""
         refused = []
         for stake_type in self.ALL_FIVE_STAKE_TYPES:
             for direction in ("stake", "unstake"):
@@ -316,8 +316,8 @@ class RefusalSetIsEmptyTests(unittest.TestCase):
 
     def test_the_refusal_set_itself_is_empty(self):
         """Direct check on the constant this whole ruling emptied -- the two guards above
- prove the BEHAVIOUR; this proves the DATA it comes from, so a future edit that
- re-populates the set is caught even before it changes any observable op result."""
+        prove the BEHAVIOUR; this proves the DATA it comes from, so a future edit that
+        re-populates the set is caught even before it changes any observable op result."""
         from fides_land.ops import _UNVERIFIED_STAKE_TYPES
         self.assertEqual(_UNVERIFIED_STAKE_TYPES, frozenset())
 

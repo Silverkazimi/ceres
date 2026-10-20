@@ -258,10 +258,10 @@ class LandPhase2Tests(unittest.TestCase):
 
     def test_recommend_cli_defaults_to_pricing_card_ability_side_effects(self):
         """ flipped default: `land recommend` prices plot-wide land-ability/bloodline side
- effects UNLESS `--no-card-abilities` is passed. Reuses the Tireless-Farmhand-shaped fixture
- from `test_land_recommend.py` (a net-negative eviction that only looks positive
- without side-effect pricing) end-to-end through the CLI, with the card_details fetch
- mocked so the test stays network-free."""
+        effects UNLESS `--no-card-abilities` is passed. Reuses the Tireless-Farmhand-shaped fixture
+        from `test_land_recommend.py` (a net-negative eviction that only looks positive
+        without side-effect pricing) end-to-end through the CLI, with the card_details fetch
+        mocked so the test stays network-free."""
         from tests.test_land_recommend import DETAILS, _report_with_farmhand_plot
 
         report = _report_with_farmhand_plot()
@@ -277,8 +277,8 @@ class LandPhase2Tests(unittest.TestCase):
 
     def test_no_card_abilities_flag_opts_out_and_leaves_side_effects_unevaluated(self):
         """The escape hatch: with `--no-card-abilities`, the same net-negative candidate the
- default path excludes is still gross-ranked positive and labelled unevaluated -- proving
- the flag genuinely disables pricing rather than merely renaming a dead option."""
+        default path excludes is still gross-ranked positive and labelled unevaluated -- proving
+        the flag genuinely disables pricing rather than merely renaming a dead option."""
         from tests.test_land_recommend import _report_with_farmhand_plot
 
         report = _report_with_farmhand_plot()

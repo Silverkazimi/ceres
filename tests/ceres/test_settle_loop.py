@@ -1,4 +1,4 @@
-"""the pool settlement is read by itself on a
+""": the pool settlement is read by itself on a
 schedule; past the limit the card is red with a clear line; a confirmed-but-pending swap past the limit fails the same way."""
 from pathlib import Path
 
@@ -25,8 +25,8 @@ def test_settlement_is_read_by_itself_until_the_pool_has_paid():
     _run(r"""
 let reads = 0;
 globalThis.fetch = async (url) => {
- if (String(url).includes('/settle')) { reads += 1; return { ok: true, status: 200, json: async () => reads < 3 ? { status: 'settling' } : { status: 'settled', received: [{ symbol: 'DEC', amount: '4817.193' }], bridge_tx_id: 'b'.repeat(40) } }; }
- throw Error('unexpected ' + url);
+  if (String(url).includes('/settle')) { reads += 1; return { ok: true, status: 200, json: async () => reads < 3 ? { status: 'settling' } : { status: 'settled', received: [{ symbol: 'DEC', amount: '4817.193' }], bridge_tx_id: 'b'.repeat(40) } }; }
+  throw Error('unexpected ' + url);
 };
 Object.assign(st, { stage: 'settling', receipt: { kind: 'swap_sell', pay: 'SPS', receive: 'DEC', input: 600, output: null, nonce: 'ab'.repeat(8), tx_id: 'a'.repeat(40), payload: {}, funding_tx: 'c'.repeat(40), funding_at: new Date().toISOString() } });
 resumeSwapChecks(ctx);

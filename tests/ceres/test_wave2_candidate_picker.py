@@ -1,10 +1,10 @@
-"""Browser coverage for the Phase 4 candidate picker (row 40, migration).
+"""Browser coverage for the  Phase 4 candidate picker (row 40,  migration).
 
 Was a Node harness that sliced `candidateQuery`, `updatePickerRegion`, `pickerResultNotice`,
 `renderCandidateRow`, and the Power Core one-click staging pair
 (`stagedPowerCoreRefs`..`renderEditorTile`, `CERES_POWER_CORE_PENDING`..
 `handleSlotEditorClick`) out of `app.js` by source position and hand-stubbed their
-callees. Retired per (campaign §3.1 batch C row 40) and replaced with a
+callees. Retired per  (campaign §3.1 batch C row 40) and replaced with a
 route-mocked live board: real plot fixtures (by deed, `spawn_live_ceres`) with the
 worker/totem/title/power_core group opened through the real click path, requests read
 off the real network layer, and rendered output read off the real DOM -- no source
@@ -12,27 +12,27 @@ slicing, no hand-stubbed helpers.
 
 Named injections (/, not performed here -- independent verification only):
 1. `candidateQuery()` (app.js:3975): add `params.set('preset', 'net_gain_default')`
- unconditionally for worker/runi groups. Expected red:
- `test_worker_query_uses_construction_sort_and_independent_filters` sees `preset` in
- the worker-group request params it asserts absent.
+   unconditionally for worker/runi groups. Expected red:
+   `test_worker_query_uses_construction_sort_and_independent_filters` sees `preset` in
+   the worker-group request params it asserts absent.
 2. `pickerResultNotice()` (app.js:4357): change the `negative_net_gain` branch's
- `noticeFor('negative_net_gain')` to `noticeFor('capacity')`. Expected red:
- `test_picker_empty_states_explain_all_decided_exclusion_reasons`'s negative-net-gain
- case reads the capacity message instead.
+   `noticeFor('negative_net_gain')` to `noticeFor('capacity')`. Expected red:
+   `test_picker_empty_states_explain_all_decided_exclusion_reasons`'s negative-net-gain
+   case reads the capacity message instead.
 3. `renderCandidateRow()`'s item branch (app.js:4284): drop the `itemClass` check so
- totem/title rows fall into the worker-shaped branch. Expected red:
- `test_totem_and_title_candidate_rows_reuse_the_existing_icon_helpers` finds
- `candidate-base`/PP columns present on an item row, which it asserts absent.
+   totem/title rows fall into the worker-shaped branch. Expected red:
+   `test_totem_and_title_candidate_rows_reuse_the_existing_icon_helpers` finds
+   `candidate-base`/PP columns present on an item row, which it asserts absent.
 4. `stagePowerCoreOneClick()` (app.js:6449): drop the `!reserved.has(assetRef)` filter
- term. Expected red:
- `test_power_core_click_stages_one_unreserved_core_and_tracks_count_left` stages the
- already-reserved `core-used` candidate on the first click instead of refusing with
- "No unstaged Power Cores".
+   term. Expected red:
+   `test_power_core_click_stages_one_unreserved_core_and_tracks_count_left` stages the
+   already-reserved `core-used` candidate on the first click instead of refusing with
+   "No unstaged Power Cores".
 5. `updatePickerRegion()`'s sort-chip sync loop (around app.js:6795): remove the
- `chip.classList.toggle('is-active', ...)` call for the non-matching chips (leave only
- the matching chip's toggle). Expected red:
- `test_partial_picker_refresh_syncs_exactly_one_active_sort_chip` sees more than one
- `.is-active` chip after switching sort.
+   `chip.classList.toggle('is-active', ...)` call for the non-matching chips (leave only
+   the matching chip's toggle). Expected red:
+   `test_partial_picker_refresh_syncs_exactly_one_active_sort_chip` sees more than one
+   `.is-active` chip after switching sort.
 """
 
 from __future__ import annotations
@@ -45,7 +45,7 @@ import urllib.request
 import pytest
 from playwright.sync_api import Browser
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 
 
 @pytest.fixture(scope="module")
@@ -143,7 +143,7 @@ def test_worker_query_uses_construction_sort_and_independent_filters(live_browse
     name_chip.wait_for(timeout=30_000)
     with page.expect_request(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*"):
         name_chip.click()
-    page.wait_for_timeout(200)
+    settle(page)
     assert seen, "clicking the Name sort chip did not request candidates"
     params = urllib.parse.parse_qs(urllib.parse.urlparse(seen[-1]).query)
     assert params.get("sort") == ["name"]
@@ -175,7 +175,7 @@ def test_partial_picker_refresh_syncs_exactly_one_active_sort_chip(live_browser:
     for sort_id in sort_ids:
         chip = page.locator(f"[data-picker-action='sort'][data-sort='{sort_id}']").first
         chip.click()
-        page.wait_for_timeout(200)
+        settle(page)
         active = page.locator("[data-picker-action='sort'].is-active")
         assert active.count() == 1, f"expected exactly one active sort chip after selecting {sort_id!r}, saw {active.count()}"
         assert active.first.get_attribute("data-sort") == sort_id

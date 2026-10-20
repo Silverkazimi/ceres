@@ -96,7 +96,7 @@ def test_l1_05_buckets_exist():
     ("routes_op_preview.py", '"verify"'), ("routes_harvest_routing.py", '"routing"')])
 def test_l1_05_each_route_module_spends_a_bucket(module, marker):
     source = (ROOT / module).read_text(encoding="utf-8")
-    assert re.search(r"client_limits\.limit\(request " + re.escape(marker) + r"\)", source), module
+    assert re.search(r"client_limits\.limit\(request, " + re.escape(marker) + r"\)", source), module
     assert re.search(r"^from \. import .*client_limits", source, re.M), module + " calls client_limits without importing it"
 
 

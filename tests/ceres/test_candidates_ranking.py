@@ -70,12 +70,12 @@ def test_best_eviction_victim_is_selected_by_resulting_plot_gain():
     assert result[2]["evicted"]["name"] == "Resident"
 
 
-def test_distinct_bloodlines_stack_in_candidate_result():
+def _bloodline_score(elemental_rate):
     details = {
         866: {"id": 866, "sub_type": "Djinn", "stats": {"land_abilities": [[["BLOODLINE", 0.1, "Djinn"]]]}},
         867: {"id": 867, "sub_type": "Djinn", "stats": {"land_abilities": [[['OTHER', 0.0]]]}},
         985: {"id": 985, "sub_type": "Elemental", "stats": {"land_abilities": [[['OTHER', 0.0]]]}},
-        986: {"id": 986, "sub_type": "Elemental", "stats": {"land_abilities": [[["BLOODLINE", 0.1, "Elemental"]]]}},
+        986: {"id": 986, "sub_type": "Elemental", "stats": {"land_abilities": [[["BLOODLINE", elemental_rate, "Elemental"]]]}},
     }
     plot = _plot([
         _card("Djinn holder", 1000, "Red", 866, 1),
@@ -83,8 +83,18 @@ def test_distinct_bloodlines_stack_in_candidate_result():
         _card("Elemental companion", 1000, "Red", 985, 1),
     ])
     candidate = _candidate("Sunlit Hart", 1000, "Red", 986, 1)
-    result = score_candidates_for_plot(plot, [candidate], target_slot_occupant=None, details_by_id=details)[0]
-    assert result[1] == 1500.0
+    return score_candidates_for_plot(plot, [candidate], target_slot_occupant=None, details_by_id=details)[0][1]
+
+
+def test_distinct_bloodlines_do_not_stack_in_candidate_result():
+    # Toil and Kin does not stack: of all triggered bloodline bonuses only the single largest applies
+    # (praetoria.land_reallocate.plot_bloodline_boost). The plot already runs the Djinn +10 %.
+    # An equal Elemental +10 % adds nothing to the plot: the candidate's own 1000 x 1.1 only
+    # (stacking would score 1500).
+    assert _bloodline_score(0.1) == 1100.0
+    # A stronger Elemental +20 % replaces the +10 % for all four cards: 4000 x 1.2 - 3000 x 1.1 = 1500
+    # (stacking would score 1900).
+    assert _bloodline_score(0.2) == 1500.0
 
 
 def test_terrain_match_can_beat_a_higher_pp_mismatch():

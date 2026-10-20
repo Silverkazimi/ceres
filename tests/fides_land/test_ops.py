@@ -10,7 +10,7 @@ TEST_APP = "ceres/0.0.0"
 
 def _worked_example_plan():
     """The plan §3.2 worked example: move card X (staked at S) -> D, evicting E (staked at
- D); backfill idle card Y -> S."""
+    D); backfill idle card Y -> S."""
     x = card("X", origin="staked", asset_ref="ref-x", card_uid="UID-X", source_uid="deed-S")
     e = evicted("E", asset_ref="ref-e", card_uid="UID-E")
     y = card("Y", origin="idle", bucket="unstaked_apparent", asset_ref="ref-y", card_uid="UID-Y")
@@ -51,8 +51,8 @@ class OpsWorkedExampleTests(unittest.TestCase):
 
 class OpsAttemptedViolationTests(unittest.TestCase):
     """Each test forces the property the plan's Phase 3 acceptance criteria named, and checks
- the implementation actually refuses/never produces the violating shape -- not just that
- the happy path looks right."""
+    the implementation actually refuses/never produces the violating shape -- not just that
+    the happy path looks right."""
 
     def test_to_ops_rejects_third_party_app_identifier(self):
         with self.assertRaisesRegex(land_ops.LandOpError, "third-party app identifier"):

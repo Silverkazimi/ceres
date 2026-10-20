@@ -99,6 +99,7 @@ def _donor_candidate_row() -> dict:
     ]
     donor_body = rank_candidates(
         donor_report, "plot-api", "worker", player="player0005", bucket="staked", include_cooling=True,
+        include_terrain_penalised=True,  # Red is -50 % on the destination; hidden by default
         limit=100, details_by_id=BASIC_DETAILS,
     )
     return next(row for row in donor_body["candidates"] if row["asset_ref"] == "donor")

@@ -108,8 +108,8 @@ def test_incoming_retrieved_wins_over_base_retrieved_stale_copy():
 
 def test_expand_deed_carries_forward_base_collection_and_unassigned_items():
     """expand_deed() reports carry no collection sweep or unassigned-item capture of
- their own (as_of=None, collection_payload=None) -- a lazy expand must not wipe
- those out if the base snapshot already had them."""
+    their own (as_of=None, collection_payload=None) -- a lazy expand must not wipe
+    those out if the base snapshot already had them."""
     quick = _report([_plot("a", False)], cards=[{"asset_ref": "c1"}], unassigned_items={"totem": {"capturable": True}})
     expanded = _report([_plot("a", True)], workers=[{"stake_ref_uid": "a"}], cards=[], unassigned_items=None)
     merged = merge_reports(quick, expanded)
@@ -119,15 +119,15 @@ def test_expand_deed_carries_forward_base_collection_and_unassigned_items():
 
 def test_quick_refresh_carries_forward_a_prior_full_capture_collection_coverage():
     """ regression: a full capture() sets coverage.collection.complete=True
- alongside its real collection sweep in `cards`; capture_quick() never fetches the
- collection at all (collection_payload=None -> collection.complete=False on the
- incoming report). merge_reports already carried `cards` forward from base so it
- was never actually dropped -- but it left coverage["collection"] at incoming's
- always-False value, so /api/combine/preview's `_collection()` gate
- (routes_combine.py) refused every combine with `collection_incomplete` against a
- snapshot that in fact held the full collection. Injected the defect this guards
- (deleting the `carried_forward_cards` collection-coverage carry-forward block in
- merge_reports) and watched this assertion fail before the fix."""
+    alongside its real collection sweep in `cards`; capture_quick() never fetches the
+    collection at all (collection_payload=None -> collection.complete=False on the
+    incoming report). merge_reports already carried `cards` forward from base so it
+    was never actually dropped -- but it left coverage["collection"] at incoming's
+    always-False value, so /api/combine/preview's `_collection()` gate
+    (routes_combine.py) refused every combine with `collection_incomplete` against a
+    snapshot that in fact held the full collection. Injected the defect this guards
+    (deleting the `carried_forward_cards` collection-coverage carry-forward block in
+    merge_reports) and watched this assertion fail before the fix."""
     full = _report(
         [_plot("a", True)],
         workers=[{"stake_ref_uid": "a"}],
@@ -146,8 +146,8 @@ def test_quick_refresh_carries_forward_a_prior_full_capture_collection_coverage(
 
 def test_failed_refresh_preserves_last_known_collection_and_balances():
     """A failed quick collection/balance refresh must retain the last known values;
- deleting the existing carry-forward branches was injected and made this assertion
- fail before the branches were restored."""
+    deleting the existing carry-forward branches was injected and made this assertion
+    fail before the branches were restored."""
     base = _report(
         [_plot("a", True)],
         cards=[{"asset_ref": "known-card"}],
@@ -171,7 +171,7 @@ def test_failed_refresh_preserves_last_known_collection_and_balances():
 
 def test_successful_empty_collection_replaces_stale_cards():
     """A successful empty sweep is authoritative: changing the complete-coverage
- check back to a cards-only check made this test retain stale cards."""
+    check back to a cards-only check made this test retain stale cards."""
     base = _report(
         [_plot("a", True)],
         cards=[{"asset_ref": "stale-card"}],
@@ -189,9 +189,9 @@ def test_successful_empty_collection_replaces_stale_cards():
 
 def test_a_fresh_collection_sweep_on_incoming_is_never_overridden_by_a_stale_base():
     """The carry-forward is one-directional: when `incoming` itself ran a real
- collection sweep (a full capture), its own fresh coverage must win outright, even
- if base also had one -- merge_reports must not resurrect a stale base flag over a
- fresh incoming one."""
+    collection sweep (a full capture), its own fresh coverage must win outright, even
+    if base also had one -- merge_reports must not resurrect a stale base flag over a
+    fresh incoming one."""
     old_full = _report(
         [_plot("a", True)],
         workers=[{"stake_ref_uid": "a"}],

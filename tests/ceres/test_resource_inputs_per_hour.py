@@ -1,4 +1,4 @@
-""" hourly_resource_costs() (Wood/Stone/Iron per hour) and its two call sites,
+""" -- hourly_resource_costs() (Wood/Stone/Iron per hour) and its two call sites,
 ceres/harvest.py::project_harvest_plot and ceres/board.py::_plot_row, sharing one formula
 (qty * base_pp per recipe entry). On an ordinary one-entry-per-symbol recipe the two surfaces
 agree exactly, value for value ( keeps this true after the duplicate-symbol fix below).
@@ -104,13 +104,13 @@ def test_board_and_harvest_call_sites_agree_on_a_qty_zero_recipe_entry():
 
 
 def test_duplicate_symbol_recipe_entries_keep_their_own_per_entry_value():
-    """a recipe with TWO entries of the same symbol used to have project_harvest_plot
- read `hourly_resource_costs()`'s per-SYMBOL SUM for every row of that symbol, so both
- entries reported the combined total instead of their own share. `hourly_resource_costs()`
- (board.py's own reading) legitimately sums per symbol -- that's its contract -- but
- project_harvest_plot's `costs` list keeps one row PER RECIPE ENTRY, in that entry's own
- qty * base_pp. The two surfaces are still consistent: the board's per-symbol total equals
- the SUM of that symbol's individual harvest rows, never each row equalling the total."""
+    """: a recipe with TWO entries of the same symbol used to have project_harvest_plot
+    read `hourly_resource_costs()`'s per-SYMBOL SUM for every row of that symbol, so both
+    entries reported the combined total instead of their own share. `hourly_resource_costs()`
+    (board.py's own reading) legitimately sums per symbol -- that's its contract -- but
+    project_harvest_plot's `costs` list keeps one row PER RECIPE ENTRY, in that entry's own
+    qty * base_pp. The two surfaces are still consistent: the board's per-symbol total equals
+    the SUM of that symbol's individual harvest rows, never each row equalling the total."""
     recipe = _recipe(("WOOD", 0.005), ("WOOD", 0.003), ("IRON", 0.0005))
     plot = _sps_plot(recipe, 40000.0)
     wf, sf = plot["worksite_facts"], plot["staking_facts"]

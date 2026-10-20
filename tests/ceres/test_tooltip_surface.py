@@ -38,67 +38,67 @@ def _asset_root() -> Path:
 
 _HARVEST_SCRIPT = """
 state => {
- const selectorFor = element => {
- if (element.id) return `#${CSS.escape(element.id)}`;
- const classes = [...element.classList].filter(Boolean);
- if (classes.length) {
- const candidate = `.${classes.map(name => CSS.escape(name)).join('.')}`;
- if (document.querySelectorAll(candidate).length === 1) return candidate;
- }
- const attrs = ['data-deed-uid', 'data-group-id', 'data-slot-index',
- 'data-slot-action', 'data-picker-action', 'data-checkout-action',
- 'data-worksite-action', 'data-ability-tip'];
- const anchor = attrs.find(name => element.hasAttribute(name));
- if (anchor) {
- const candidate = `${element.tagName.toLowerCase()}[${anchor}="${CSS.escape(element.getAttribute(anchor))}"]`;
- if (document.querySelectorAll(candidate).length === 1) return candidate;
- }
- const parts = [];
- let current = element;
- while (current && current.nodeType === Node.ELEMENT_NODE && current !== document.body) {
- let part = current.tagName.toLowerCase();
- const siblings = [...current.parentElement.children].filter(
- sibling => sibling.tagName === current.tagName
- );
- if (siblings.length > 1) part += `:nth-of-type(${siblings.indexOf(current) + 1})`;
- parts.unshift(part);
- const candidate = parts.join(' > ');
- if (document.querySelectorAll(candidate).length === 1) return candidate;
- current = current.parentElement;
- }
- return parts.join(' > ');
- };
+  const selectorFor = element => {
+    if (element.id) return `#${CSS.escape(element.id)}`;
+    const classes = [...element.classList].filter(Boolean);
+    if (classes.length) {
+      const candidate = `.${classes.map(name => CSS.escape(name)).join('.')}`;
+      if (document.querySelectorAll(candidate).length === 1) return candidate;
+    }
+    const attrs = ['data-deed-uid', 'data-group-id', 'data-slot-index',
+      'data-slot-action', 'data-picker-action', 'data-checkout-action',
+      'data-worksite-action', 'data-ability-tip'];
+    const anchor = attrs.find(name => element.hasAttribute(name));
+    if (anchor) {
+      const candidate = `${element.tagName.toLowerCase()}[${anchor}="${CSS.escape(element.getAttribute(anchor))}"]`;
+      if (document.querySelectorAll(candidate).length === 1) return candidate;
+    }
+    const parts = [];
+    let current = element;
+    while (current && current.nodeType === Node.ELEMENT_NODE && current !== document.body) {
+      let part = current.tagName.toLowerCase();
+      const siblings = [...current.parentElement.children].filter(
+        sibling => sibling.tagName === current.tagName
+      );
+      if (siblings.length > 1) part += `:nth-of-type(${siblings.indexOf(current) + 1})`;
+      parts.unshift(part);
+      const candidate = parts.join(' > ');
+      if (document.querySelectorAll(candidate).length === 1) return candidate;
+      current = current.parentElement;
+    }
+    return parts.join(' > ');
+  };
 
- const identityKind = element => {
- const classes = element.classList;
- if (classes.contains('rarity-gem')) return 'rarity';
- if (classes.contains('terrain-emblem')) return 'terrain';
- if (classes.contains('resource-icon')) return 'resource';
- if (classes.contains('type-mark')) return 'type';
- if (classes.contains('splinter-icon') || classes.contains('terrain-affinity-badge')) return 'splinter';
- if (classes.contains('set-icon')) return 'set';
- if (classes.contains('totem-icon')) return 'totem';
- if (classes.contains('title-icon')) return 'title';
- if (classes.contains('ability-icon') && element.tagName === 'IMG') return 'ability';
- return null;
- };
- return [...document.querySelectorAll('[data-tip], [title], [data-ability-tip]')].map(element => ({
- selector: selectorFor(element),
- visible_text: (element.innerText || '').trim(),
- data_tip: element.getAttribute('data-tip'),
- data_tip_body: element.getAttribute('data-tip-body'),
- data_tip_foot: element.getAttribute('data-tip-foot'),
- data_tip_kind: element.getAttribute('data-tip-kind'),
- data_tip_severity: element.getAttribute('data-tip-severity'),
- data_tip_icon: element.getAttribute('data-tip-icon'),
- identity_kind: identityKind(element),
- data_tip_key: element.getAttribute('data-tip-key'),
- data_ability_tip: element.getAttribute('data-ability-tip'),
- aria_label: element.getAttribute('aria-label'),
- native_title_present: element.hasAttribute('title'),
- native_title: element.getAttribute('title'),
- state,
- }));
+  const identityKind = element => {
+    const classes = element.classList;
+    if (classes.contains('rarity-gem')) return 'rarity';
+    if (classes.contains('terrain-emblem')) return 'terrain';
+    if (classes.contains('resource-icon')) return 'resource';
+    if (classes.contains('type-mark')) return 'type';
+    if (classes.contains('splinter-icon') || classes.contains('terrain-affinity-badge')) return 'splinter';
+    if (classes.contains('set-icon')) return 'set';
+    if (classes.contains('totem-icon')) return 'totem';
+    if (classes.contains('title-icon')) return 'title';
+    if (classes.contains('ability-icon') && element.tagName === 'IMG') return 'ability';
+    return null;
+  };
+  return [...document.querySelectorAll('[data-tip], [title], [data-ability-tip]')].map(element => ({
+    selector: selectorFor(element),
+    visible_text: (element.innerText || '').trim(),
+    data_tip: element.getAttribute('data-tip'),
+    data_tip_body: element.getAttribute('data-tip-body'),
+    data_tip_foot: element.getAttribute('data-tip-foot'),
+    data_tip_kind: element.getAttribute('data-tip-kind'),
+    data_tip_severity: element.getAttribute('data-tip-severity'),
+    data_tip_icon: element.getAttribute('data-tip-icon'),
+    identity_kind: identityKind(element),
+    data_tip_key: element.getAttribute('data-tip-key'),
+    data_ability_tip: element.getAttribute('data-ability-tip'),
+    aria_label: element.getAttribute('aria-label'),
+    native_title_present: element.hasAttribute('title'),
+    native_title: element.getAttribute('title'),
+    state,
+  }));
 }
 """
 
@@ -295,11 +295,11 @@ def test_rendered_key_contrast_meets_wcag_aa_for_all_theme_severity_combinations
 ) -> None:
     """The key's rendered color must clear 4.5:1 against the rendered tooltip fill.
 
- Only the four ``none`` cases are production-reachable: no production site
- emits both a key and a severity. The other eight theme × severity cases are
- forward-guards; the severity is set by hand on the rendered box. Injection
- (not applied): ``.tip-key { color: var(--gold) }`` makes the wood case fail
- and name wood at 1.59:1.
+    Only the four ``none`` cases are production-reachable: no production site
+    emits both a key and a severity. The other eight theme × severity cases are
+    forward-guards; the severity is set by hand on the rendered box. Injection
+    (not applied): ``.tip-key { color: var(--gold) }`` makes the wood case fail
+    and name wood at 1.59:1.
     """
     browser, base_url = live_browser
     page = _page(browser, base_url)
@@ -332,9 +332,9 @@ def test_rendered_key_has_weight_size_position_and_name_empty_guard(
 ) -> None:
     """The key is bold, larger than body text, first in the body, and labels stay empty.
 
- Injection (not applied): ``font-weight: 400`` makes the weight assertion
- fail; appending ``''`` unconditionally to the body makes the Name-size
- ``:empty`` assertion fail.
+    Injection (not applied): ``font-weight: 400`` makes the weight assertion
+    fail; appending ``''`` unconditionally to the body makes the Name-size
+    ``:empty`` assertion fail.
     """
     browser, base_url = live_browser
     page = _page(browser, base_url)
@@ -367,8 +367,8 @@ def test_rendered_key_has_weight_size_position_and_name_empty_guard(
 def test_every_harvested_key_is_in_aria_label(tooltip_harvest: dict) -> None:
     """Every rendered key must remain in its accessible name.
 
- Injection (not applied): dropping ``key`` from ``accessibleText`` makes
- this assertion fail for the named key-bearing element.
+    Injection (not applied): dropping ``key`` from ``accessibleText`` makes
+    this assertion fail for the named key-bearing element.
     """
     keyed = [
         (state_name, element)
@@ -389,34 +389,34 @@ def test_tooltip_icon_helper_branches_emit_their_declared_icons() -> None:
     """Exercise every phase-one helper branch, including branches absent from live data."""
     body = r"""
 const expected = [
- ['rarity', tooltipIconPath('rarity', 'common'), 'rarity/gem-common.svg'],
- ['plot-rarity-standard', (plotRarityCellHtml({ rarity: 'common' }).match(/data-tip-icon="([^"]+)"/) || [])[1], 'rarity/gem-common.svg'],
- ['plot-rarity-mythic-keep', (plotRarityCellHtml({ rarity: 'mythic', worksite_type: 'KEEP' }).match(/data-tip-icon="([^"]+)"/) || [])[1], 'land/status-keeps-on.svg'],
- ['plot-rarity-mythic-castle', (plotRarityCellHtml({ rarity: 'mythic', worksite_type: 'CASTLE' }).match(/data-tip-icon="([^"]+)"/) || [])[1], 'land/status-castle-on.svg'],
- ['terrain', tooltipIconPath('terrain', 'forest'), 'land/terrain-emblem-forest.svg'],
- ['resource-dec', tooltipIconPath('resource', 'dec'), 'land/token-dec.png'],
- ['resource-map', tooltipIconPath('resource', 'wood'), 'resources/wood_200.webp'],
- ['splinter', tooltipIconPath('splinter', 'fire'), 'splinter/fire.svg'],
- ['type-default', tooltipIconPath('type', 'natural'), 'land/status-natural-off.svg'],
- ['type-kingdom', tooltipIconPath('type', 'kingdom', 'KEEP'), 'land/status-keeps-off.svg'],
- ['set', tooltipIconPath('set', 'chaos'), 'sets/chaos-legion.svg'],
- ['totem', tooltipIconPath('totem', 'common'), 'totems/totem-common.png'],
- ['title', tooltipIconPath('title', 'The Untamed'), 'titles/title-untamed.svg'],
- ['ability-map', tooltipIconPath('ability', 'GRAIN'), 'abilities/ability_bountiful-grain.png'],
- ['ability-research', tooltipIconPath('ability', 'research'), 'resources/research.png'],
- ['ability-sps', tooltipIconPath('ability', 'sps'), 'resources/sps.png'],
+  ['rarity', tooltipIconPath('rarity', 'common'), 'rarity/gem-common.svg'],
+  ['plot-rarity-standard', (plotRarityCellHtml({ rarity: 'common' }).match(/data-tip-icon="([^"]+)"/) || [])[1], 'rarity/gem-common.svg'],
+  ['plot-rarity-mythic-keep', (plotRarityCellHtml({ rarity: 'mythic', worksite_type: 'KEEP' }).match(/data-tip-icon="([^"]+)"/) || [])[1], 'land/status-keeps-on.svg'],
+  ['plot-rarity-mythic-castle', (plotRarityCellHtml({ rarity: 'mythic', worksite_type: 'CASTLE' }).match(/data-tip-icon="([^"]+)"/) || [])[1], 'land/status-castle-on.svg'],
+  ['terrain', tooltipIconPath('terrain', 'forest'), 'land/terrain-emblem-forest.svg'],
+  ['resource-dec', tooltipIconPath('resource', 'dec'), 'land/token-dec.png'],
+  ['resource-map', tooltipIconPath('resource', 'wood'), 'resources/wood_200.webp'],
+  ['splinter', tooltipIconPath('splinter', 'fire'), 'splinter/fire.svg'],
+  ['type-default', tooltipIconPath('type', 'natural'), 'land/status-natural-off.svg'],
+  ['type-kingdom', tooltipIconPath('type', 'kingdom', 'KEEP'), 'land/status-keeps-off.svg'],
+  ['set', tooltipIconPath('set', 'chaos'), 'sets/chaos-legion.svg'],
+  ['totem', tooltipIconPath('totem', 'common'), 'totems/totem-common.png'],
+  ['title', tooltipIconPath('title', 'The Untamed'), 'titles/title-untamed.svg'],
+  ['ability-map', tooltipIconPath('ability', 'GRAIN'), 'abilities/ability_bountiful-grain.png'],
+  ['ability-research', tooltipIconPath('ability', 'research'), 'resources/research.png'],
+  ['ability-sps', tooltipIconPath('ability', 'sps'), 'resources/sps.png'],
 ];
 for (const [branch, actual, expectedIcon] of expected) {
- if (actual !== expectedIcon) throw new Error(`${branch}: expected ${expectedIcon}, got ${actual}`);
+  if (actual !== expectedIcon) throw new Error(`${branch}: expected ${expectedIcon}, got ${actual}`);
 }
 for (const [branch, actual] of [
- ['ability-static-charge-gap', tooltipIconPath('ability', 'static_charge')],
- ['unknown-set-gap', tooltipIconPath('set', 'Riftwatchers')],
+  ['ability-static-charge-gap', tooltipIconPath('ability', 'static_charge')],
+  ['unknown-set-gap', tooltipIconPath('set', 'Riftwatchers')],
 ]) {
- if (actual !== null) throw new Error(`${branch}: expected no tooltip icon, got ${actual}`);
+  if (actual !== null) throw new Error(`${branch}: expected no tooltip icon, got ${actual}`);
 }
 if (tooltipIconPath('title', 'The Uncatalogued') !== 'titles/title-proven.svg') {
- throw new Error('unknown title must use the approved fallback icon');
+  throw new Error('unknown title must use the approved fallback icon');
 }
 """
     run_in_module_context(body, entry=STATIC / "icons.js")
@@ -463,8 +463,8 @@ def test_fractional_base_pp_cell_keeps_exact_attribute_without_tooltip(
 ) -> None:
     """A live fractional Base PP cell keeps ``data-pp-exact`` but no hover tooltip.
 
- Injection (not applied): restoring the Exact PP branch in ``ppAttrs`` makes
- this cell carry ``data-tip`` and names the failure here.
+    Injection (not applied): restoring the Exact PP branch in ``ppAttrs`` makes
+    this cell carry ``data-tip`` and names the failure here.
     """
     browser, base_url = live_browser
     page = _page(browser, base_url)
@@ -548,7 +548,7 @@ def test_data_tip_aria_gaps_are_limited_to_known_static_selectors(tooltip_harves
     missing = _missing_aria(tooltip_harvest)
     unexpected = [entry for entry in missing if entry["selector"] not in KNOWN_ARIA_GAPS]
     assert not unexpected, (
-        "app-wide data-tip aria-label assertion failed; \"\n f\"all missing elements: {json.dumps(missing, sort_keys=True)}"
+        "app-wide data-tip aria-label assertion failed; " f"all missing elements: {json.dumps(missing, sort_keys=True)}"
     )
 
 

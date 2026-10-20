@@ -1,4 +1,4 @@
-"""step 3 "Combine" lists every copy that goes in -- staked, cooling and free -- and names the result as CC / max CC and level."""
+""": step 3 "Combine" lists every copy that goes in -- staked, cooling and free -- and names the result as CC / max CC and level."""
 from tests.ceres.test_chain_model import STATIC
 from tests.ceres.vm_context import run_in_module_context
 
@@ -10,9 +10,9 @@ const now=Date.parse('2026-10-14T12:00:00Z'); const soon='2026-10-16T09:30:00Z';
 const plan={version:2,id:'cc-test',state:'cooling',problem:null,origin:{kind:'tile',asset_uid:'C7-ANCHOR0001',stage_back:true},
  card:{name:'Hamford Sparkwright',level:4,bcx:30,base_pp:150},expected:{level:5,bcx:61,bcx_max:400,base_pp:305,survivor_uid:'C7-ANCHOR0001'},ready_at:soon,
  inputs:[{uid:'C7-ANCHOR0001',cc:30,kind:'staked',status:'active',source:{deed_uid:'plot-one',slot_index:0},unstake:{tx_id:'t1',signed_at:'2026-10-14T10:00:00Z',confirmed_at:'2026-10-14T10:05:00Z'},ready_at:soon},
- {uid:'C7-STAKED00002',cc:20,kind:'staked',status:'active',source:{deed_uid:'plot-one',slot_index:1},unstake:{tx_id:'t2',signed_at:'2026-10-14T10:00:00Z'},ready_at:null},
- {uid:'C7-COOLING0003',cc:10,kind:'cooling',status:'active',ready_at:soon},
- {uid:'C7-FREE0000004',cc:1,kind:'free',status:'active',ready_at:null}]};
+  {uid:'C7-STAKED00002',cc:20,kind:'staked',status:'active',source:{deed_uid:'plot-one',slot_index:1},unstake:{tx_id:'t2',signed_at:'2026-10-14T10:00:00Z'},ready_at:null},
+  {uid:'C7-COOLING0003',cc:10,kind:'cooling',status:'active',ready_at:soon},
+  {uid:'C7-FREE0000004',cc:1,kind:'free',status:'active',ready_at:null}]};
 const html=chainCardHtml('cc-test',plan,now);
 const step=html.slice(html.indexOf('chain-step-3'),html.indexOf('chain-step-4'));
 const text=step.replace(/<[^>]*>/g,' ');

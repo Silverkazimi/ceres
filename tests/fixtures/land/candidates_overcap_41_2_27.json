@@ -405,7 +405,7 @@
     {
       "uid": "C2-505-0000000888",
       "card_detail_id": 505,
-      "player": "player0014",
+      "player": "player0015",
       "bcx": 11,
       "gold": false,
       "foil": 0,
@@ -679,7 +679,7 @@
         "branch": 8
       },
       "facts": {
-        "player": "player0014",
+        "player": "player0015",
         "uid": "C2-505-0000000888",
         "card_detail_id": 505,
         "xp": 11,

@@ -1,4 +1,4 @@
-"""a plot row with a pending change (the pulsing clock) pulses a faint gold across the whole row."""
+""": a plot row with a pending change (the pulsing clock) pulses a faint gold across the whole row."""
 from pathlib import Path
 
 STATIC = Path(__file__).parents[2] / "ceres" / "static"

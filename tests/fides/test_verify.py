@@ -38,10 +38,10 @@ class VerifyChainTests(unittest.TestCase):
 
     def test_get_transaction_reports_lookup_failed_on_transport_error(self):
         """A transport-level failure (network blip, timeout, malformed response) is NOT
- evidence the transaction is absent -- a real 2026-08-24 live-broadcast case showed
- `verifyBroadcast` can be called before the tx has even reached a block, and this
- must never be collapsed into the same 'not found' bucket as an affirmative RPC
- not-found response."""
+        evidence the transaction is absent -- a real 2026-08-24 live-broadcast case showed
+        `verifyBroadcast` can be called before the tx has even reached a block, and this
+        must never be collapsed into the same 'not found' bucket as an affirmative RPC
+        not-found response."""
         def failing_transport(node, method, params):
             raise OSError("upstream down")
         tx, reason_kind = get_transaction("tx1", transport=failing_transport)

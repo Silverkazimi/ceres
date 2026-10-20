@@ -2,10 +2,10 @@
 answered from fixtures after a delay (so the placeholders are on screen first), every image a 1x1 png, nothing else served.
 
 From the first paint to the loaded page, at 1536x864 and 390x844, in My cards and in Market:
- * no layout shift at all (PerformanceObserver 'layout-shift', total 0);
- * the filter row (its box and every field in it) and the summary bar keep their size and place;
- * the first tile lands where its placeholder was (Market: the first placeholder tile; My cards: the loading line), and the
- tiles keep their height once drawn (no empty 26rem content-visibility box that shrinks a frame later).
+  * no layout shift at all (PerformanceObserver 'layout-shift', total 0);
+  * the filter row (its box and every field in it) and the summary bar keep their size and place;
+  * the first tile lands where its placeholder was (Market: the first placeholder tile; My cards: the loading line), and the
+    tiles keep their height once drawn (no empty 26rem content-visibility box that shrinks a frame later).
 Run under the shared browser lock:
 flock -w 900 /tmp/er-browser.lock nice -n 15 python3 -m pytest -q tests/ceres/test_cards_no_jump_browser.py"""
 
@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 
 import pytest
 from playwright.sync_api import sync_playwright
+from .conftest import settle
 
 pytestmark = pytest.mark.browser
 
@@ -96,27 +97,27 @@ def _serve():
 # Every animation frame from the first one: the boxes that must not move. Rects are [left, top, width, height] in CSS px.
 SAMPLER = r"""
 (() => {
- window.__shifts = []; window.__frames = [];
- try { new PerformanceObserver((list) => { for (const e of list.getEntries()) window.__shifts.push({ value: e.value, input: e.hadRecentInput,
- nodes: (e.sources || []).map((s) => (s.node && s.node.nodeType === 1 ? s.node.tagName + '#' + s.node.id + '.' + s.node.className : String(s.node))) }); })
- .observe({ type: 'layout-shift', buffered: true }); } catch (_) {}
- const R = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return b.width || b.height ? [b.left, b.top, b.width, b.height].map((v) => Math.round(v * 10) / 10) : null; };
- const tick = () => {
- if (document.body) {
- const market = (document.body.dataset.cbMode || document.documentElement.dataset.cbStart) === 'market';
- const grid = document.getElementById(market ? 'cm-grid' : 'cb-grid');
- const tiles = grid ? grid.querySelectorAll(':scope > .cb-tile') : [];
- const cols = grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : 1;
- window.__frames.push({ t: performance.now(), mode: document.body.dataset.cbMode || null,
- controls: R(document.getElementById('cb-controls')), fields: [...document.querySelectorAll('#cb-controls > *')].map(R),
- purchaseBar: R(document.querySelector('.cp-bar')), purchaseButton: R(document.querySelector('[data-cp-action="load"]')),
- summary: R(document.getElementById(market ? 'cm-summary' : 'cb-summary')),
- loading: market ? null : R(document.getElementById('cb-loading')),
- tile: R(tiles[0]), row2: R(tiles[cols]), skeleton: !!(grid && grid.querySelector(':scope > .cm-skeleton')), tiles: tiles.length });
- }
- requestAnimationFrame(tick);
- };
- requestAnimationFrame(tick);
+  window.__shifts = []; window.__frames = [];
+  try { new PerformanceObserver((list) => { for (const e of list.getEntries()) window.__shifts.push({ value: e.value, input: e.hadRecentInput,
+    nodes: (e.sources || []).map((s) => (s.node && s.node.nodeType === 1 ? s.node.tagName + '#' + s.node.id + '.' + s.node.className : String(s.node))) }); })
+    .observe({ type: 'layout-shift', buffered: true }); } catch (_) {}
+  const R = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return b.width || b.height ? [b.left, b.top, b.width, b.height].map((v) => Math.round(v * 10) / 10) : null; };
+  const tick = () => {
+    if (document.body) {
+      const market = (document.body.dataset.cbMode || document.documentElement.dataset.cbStart) === 'market';
+      const grid = document.getElementById(market ? 'cm-grid' : 'cb-grid');
+      const tiles = grid ? grid.querySelectorAll(':scope > .cb-tile') : [];
+      const cols = grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : 1;
+      window.__frames.push({ t: performance.now(), mode: document.body.dataset.cbMode || null,
+        controls: R(document.getElementById('cb-controls')), fields: [...document.querySelectorAll('#cb-controls > *')].map(R),
+        purchaseBar: R(document.querySelector('.cp-bar')), purchaseButton: R(document.querySelector('[data-cp-action="load"]')),
+        summary: R(document.getElementById(market ? 'cm-summary' : 'cb-summary')),
+        loading: market ? null : R(document.getElementById('cb-loading')),
+        tile: R(tiles[0]), row2: R(tiles[cols]), skeleton: !!(grid && grid.querySelector(':scope > .cm-skeleton')), tiles: tiles.length });
+    }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 })();
 """
 
@@ -139,7 +140,7 @@ def _run(width: int, height: int, mode: str) -> dict:
                 page.wait_for_function("document.body.dataset.marketState === 'loaded' && !!document.querySelector('#cm-grid > .cb-tile:not(.cm-skeleton)')", timeout=30000)
             else:
                 page.wait_for_selector('body[data-view-ready="true"] #cb-grid > .cb-tile', timeout=30000)
-            page.wait_for_timeout(1200)  # the fade-ins and any late frame
+            settle(page)  # the fade-ins and any late frame
             got = page.evaluate("({ shifts: window.__shifts, frames: window.__frames })")
             got["errors"] = errors
             got["requests"] = requests
@@ -152,7 +153,7 @@ def _header_only(shift: dict) -> bool:
     return bool(shift["nodes"]) and all(n.startswith("DIV#.board-header-row") for n in shift["nodes"])
 
 
-@pytest.mark.xfail(strict=True, reason="header row: card-browser.js placeThemeDock() sets --hdr-pad-right from the measured "
+@pytest.mark.xfail(strict=True, reason=" header row: card-browser.js placeThemeDock() sets --hdr-pad-right from the measured "
                    "theme picker after the first paint (ceres.css fallback 4.25rem = 68 px, measured 44 px at 1536), so the header "
                    "controls slide 24 px right; remove this xfail when the header reserves its final padding before the first paint")
 @pytest.mark.parametrize("mode", ["cards", "market"])
@@ -214,11 +215,11 @@ def test_purchases_bar_reserved_from_first_paint_without_history_read(width, hei
     assert not [s for s in got["shifts"] if not s["input"] and not _header_only(s)]
 
 
-@pytest.mark.xfail(strict=True, reason="with the 8.25rem name box and \"Ability\" line 1 has 98.4 px left at 1536x864 and "
+@pytest.mark.xfail(strict=True, reason=": with the 8.25rem name box and \"Ability\" line 1 has 98.4 px left at 1536x864 and "
                    "Sort needs 118 px (8.8 px gap + 109.2 px): 19.6 px short; remove this xfail when the row fits")
 def test_my_cards_filter_row_is_one_line_at_1536():
     """ (maintainer chose "Narrow name search + \"Ability\""): with the 8.25rem name box and the "Ability" pill the whole
- My cards filter row, Sort included, is one line at 1536x864."""
+    My cards filter row, Sort included, is one line at 1536x864."""
     got = _run(1536, 864, "cards")
     last = [f for f in got["frames"] if f["controls"]][-1]
     tops = {round(r[1]) for r in last["fields"] if r}

@@ -1,4 +1,4 @@
-"""leaving for the wallet app must not delete a routing run; the wallet drawer (QR) is clamped inside the viewport."""
+"""/: leaving for the wallet app must not delete a routing run; the wallet drawer (QR) is clamped inside the viewport."""
 from pathlib import Path
 
 STATIC = Path(__file__).parents[2] / "ceres" / "static"
@@ -15,7 +15,7 @@ def test_pagehide_never_discards_a_run_that_is_being_signed():
 def test_account_menu_places_its_inline_pairing_without_a_transaction_drawer():
     menu = (STATIC / "account-menu.js").read_text()
     assert "walletControlsHtml" not in menu and "layoutOpenWalletDrawers" not in menu
-    assert "accountWalletRequest(account)" in menu and "panel.innerHTML = accountMenuHtml();\n place();" in menu
+    assert "accountWalletRequest(account)" in menu and "panel.innerHTML = accountMenuHtml();\n  place();" in menu
     css = (STATIC / "ceres.css").read_text()
     assert ".account-menu {" in css and "max-block-size: calc(100vh - 5rem)" in css
     assert ".acct-pairing .wallet-qr svg { max-inline-size: 100%; block-size: auto; }" in css
@@ -41,7 +41,7 @@ def test_hiveauth_waiting_text_tells_the_player_to_switch_to_the_keychain_app_in
 
 
 def test_transaction_wallet_drawers_still_clamp_after_account_menu_simplification():
-    """the account panel uses inline pairing; transaction footers keep their clamped wallet drawer."""
+    """: the account panel uses inline pairing; transaction footers keep their clamped wallet drawer."""
     wallet = (STATIC / "wallet.js").read_text()
     guard = wallet[wallet.index("function layoutDrawer"):wallet.index("export function layoutOpenWalletDrawers")]
     assert "drawer?.classList.contains('is-open')" in guard

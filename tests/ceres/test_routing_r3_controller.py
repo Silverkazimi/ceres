@@ -50,9 +50,9 @@ def test_sale_only_approval_numbers_use_compiler_manifest(tmp_path, monkeypatch,
 const manifest = {json.dumps(manifest)};
 const counts = routingApprovalCounts(manifest);
 if (counts.fixed !== {expected} || counts.conditional !== 0 || counts.maximum !== manifest.approval_counts.routing)
- throw Error(JSON.stringify(counts));
+  throw Error(JSON.stringify(counts));
 for (const [index, bundle] of manifest.bundles.entries())
- if (bundle.approval !== index + 1) throw Error('approval number changed');
+  if (bundle.approval !== index + 1) throw Error('approval number changed');
 """, entry=STATIC / "routing-window.js")
 
 
@@ -62,27 +62,27 @@ walletReady = () => true;
 navigator.locks = { request: async (_name, fn) => fn() };
 const bundle = { id: 'bundle-1', wave: 0, approval: 1, operations: [] };
 const record = { run_id: 'a'.repeat(32), state: 'ready', manifest: { bundles: [bundle], approval_counts: { harvest: 1 } },
- bundles: { 'bundle-1': { state: 'planned' } }, operations: {}, call_budget: { stopped: false, total: 0 } };
+  bundles: { 'bundle-1': { state: 'planned' } }, operations: {}, call_budget: { stopped: false, total: 0 } };
 let signatures = 0;
 const api = async (_player, path, body) => {
- if (path === 'run' || path === 'state') return record;
- if (path === 'claim') { record.bundles['bundle-1'].state = 'claimed'; return {
- authority: 'Posting', member_nonces: ['member-1'], operations: [['custom_json', { id: 'sm_land_operation', json: '{"n":"member-1"}' }]] }; }
- if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-09-24T00:00:00' };
- if (path === 'attach') { record.bundles['bundle-1'] = { state: 'outcome_unknown', tx_id: body.tx_id }; return record; }
- throw Error('unexpected endpoint ' + path);
+  if (path === 'run' || path === 'state') return record;
+  if (path === 'claim') { record.bundles['bundle-1'].state = 'claimed'; return {
+    authority: 'Posting', member_nonces: ['member-1'], operations: [['custom_json', { id: 'sm_land_operation', json: '{"n":"member-1"}' }]] }; }
+  if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-09-24T00:00:00' };
+  if (path === 'attach') { record.bundles['bundle-1'] = { state: 'outcome_unknown', tx_id: body.tx_id }; return record; }
+  throw Error('unexpected endpoint ' + path);
 };
 const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txId: 'b'.repeat(40) }],
- sign: async (_player, _ops, _callback, authority) => {
- if (authority !== 'Posting') throw Error('wrong authority');
- signatures += 1;
- const error = Error('wallet outcome uncertain'); error.txId = 'b'.repeat(40); throw error;
- } });
+  sign: async (_player, _ops, _callback, authority) => {
+    if (authority !== 'Posting') throw Error('wrong authority');
+    signatures += 1;
+    const error = Error('wallet outcome uncertain'); error.txId = 'b'.repeat(40); throw error;
+  } });
 (async () => {
- await run.create({ preview_id: 'preview', preview_digest: 'digest' });
- await run.action('sign');
- await run.action('sign');
- if (signatures !== 1 || record.bundles['bundle-1'].state !== 'outcome_unknown') throw Error('uncertain bundle was signed again');
+  await run.create({ preview_id: 'preview', preview_digest: 'digest' });
+  await run.action('sign');
+  await run.action('sign');
+  if (signatures !== 1 || record.bundles['bundle-1'].state !== 'outcome_unknown') throw Error('uncertain bundle was signed again');
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "routing-run.js")
 

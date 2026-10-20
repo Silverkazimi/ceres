@@ -1,4 +1,4 @@
-"""the optional login stays in one account panel; transaction wallet controls stay separate."""
+""": the optional login stays in one account panel; transaction wallet controls stay separate."""
 from pathlib import Path
 
 from tests.ceres.vm_context import run_in_module_context
@@ -10,28 +10,28 @@ window.isSecureContext = true;
 context.crypto = require('node:crypto').webcrypto;
 context.WebSocket = class {};
 context.Worker = class {
- constructor() { this.messages = []; context.__workers.push(this); }
- postMessage(message) { this.messages.push(message); }
- terminate() { this.terminated = true; }
+  constructor() { this.messages = []; context.__workers.push(this); }
+  postMessage(message) { this.messages.push(message); }
+  terminate() { this.terminated = true; }
 };
 context.__workers = [];
 context.__button = {
- dataset: {}, classList: { toggle() {} }, style: {}, setAttribute() {}, removeAttribute() {},
- getBoundingClientRect() { return { left: 100, width: 40, bottom: 50 }; },
- contains() { return false; }, addEventListener(type, fn) { this[type] = fn; },
+  dataset: {}, classList: { toggle() {} }, style: {}, setAttribute() {}, removeAttribute() {},
+  getBoundingClientRect() { return { left: 100, width: 40, bottom: 50 }; },
+  contains() { return false; }, addEventListener(type, fn) { this[type] = fn; },
 };
 context.__panel = {
- dataset: {}, hidden: true, offsetWidth: 330, innerHTML: '',
- style: { setProperty() {} }, classList: { toggle() {} }, setAttribute() {},
- contains() { return false; }, addEventListener(type, fn) { this[type] = fn; },
+  dataset: {}, hidden: true, offsetWidth: 330, innerHTML: '',
+  style: { setProperty() {} }, classList: { toggle() {} }, setAttribute() {},
+  contains() { return false; }, addEventListener(type, fn) { this[type] = fn; },
 };
 document.getElementById = id => id === 'account-menu-btn' ? context.__button : null;
 document.createElement = () => context.__panel;
 window.dispatchEvent = event => { for (const fn of __ceresListeners[event.type] || []) fn(event); return true; };
 context.fetch = async (url, init = {}) => {
- if (url === '/api/auth/challenge') return { status: 200, json: async () => ({ message: 'login text', challenge_id: 'challenge' }), headers: { get() { return null; } } };
- if (url === '/api/auth/verify') return { status: 200, json: async () => ({ account: 'alice', token: 'token' }), headers: { get() { return null; } } };
- throw Error('unexpected fetch: ' + url);
+  if (url === '/api/auth/challenge') return { status: 200, json: async () => ({ message: 'login text', challenge_id: 'challenge' }), headers: { get() { return null; } } };
+  if (url === '/api/auth/verify') return { status: 200, json: async () => ({ account: 'alice', token: 'token' }), headers: { get() { return null; } } };
+  throw Error('unexpected fetch: ' + url);
 };
 context.window.fetch = context.fetch;
 """
@@ -51,7 +51,7 @@ mountAccountMenu();
 __button.click({ stopPropagation() {} });
 selectAccountWallet('alice', 'hiveauth');
 let stopped = false;
-__panel.click({ target: { closest: selector => selector === '[data-account]' ? { dataset: { account: 'player0013' }, disabled: false } : null }, stopPropagation() { stopped = true; } });
+__panel.click({ target: { closest: selector => selector === '[data-account]' ? { dataset: { account: 'player0014' }, disabled: false } : null }, stopPropagation() { stopped = true; } });
 if (!stopped) for (const fn of __ceresListeners['doc:click'] || []) fn({ target: { closest() { return null; } } });
 await new Promise(resolve => setTimeout(resolve, 20));
 const worker = __workers.at(-1);
@@ -92,11 +92,11 @@ if (html.includes('wallet-toggle') || html.includes('wallet-drawer') || html.inc
 
 def test_signed_in_delete_options_are_folded_and_require_confirmation():
     run(r"""
-await player0013('alice', { sign: async () => 'a'.repeat(130) });
+await player0014('alice', { sign: async () => 'a'.repeat(130) });
 html = accountMenuHtml('alice');
 if (!html.includes('Signed in as alice') || !html.includes('data-account="signout"')) throw Error('signed-in state missing');
 if (!html.includes('Saved data options') || html.includes('data-account="delete-space"')) throw Error('delete options are not folded');
-// Sign out and Saved data options share one row, and Sign out wears the wallet logo of the current login
+//  / : Sign out and Saved data options share one row, and Sign out wears the wallet logo of the current login
 const row = html.match(/<div class="acct-actions">(.*?)<\/div>/s);
 if (!row || !row[1].includes('data-account="signout"') || !row[1].includes('data-account="manage"')) throw Error('Sign out and Saved data options are not on one row');
 if (!/data-account="signout"[^>]*>\s*<img class="wallet-logo"/.test(html)) throw Error('Sign out does not show the wallet logo');
@@ -124,7 +124,7 @@ selectAccountWallet('alice', 'keychain');
 mountAccountMenu();
 __button.click({ stopPropagation() {} });
 const click = action => __panel.click({ target: { closest: selector => selector === '[data-account]' ? { dataset: { account: action } } : null }, stopPropagation() {} });
-click('player0013');
+click('player0014');
 await new Promise(resolve => setTimeout(resolve, 20));
 if (!approve || __panel.hidden || !__panel.innerHTML.includes('Confirm in the Keychain extension')) throw Error('Keychain approval was not shown inline');
 if (__panel.innerHTML.includes('wallet-qr')) throw Error('Keychain must not show a QR');
@@ -138,7 +138,7 @@ selectAccountWallet('alice', 'hiveauth');
 mountAccountMenu();
 __button.click({ stopPropagation() {} });
 const click = action => __panel.click({ target: { closest: selector => selector === '[data-account]' ? { dataset: { account: action } } : null }, stopPropagation() {} });
-click('player0013');
+click('player0014');
 await new Promise(resolve => setTimeout(resolve, 20));
 const worker = __workers.at(-1);
 const sent = worker.messages.find(message => message.action === 'connect');
@@ -155,9 +155,9 @@ def test_cancel_during_server_verification_does_not_save_session():
 let finishVerify;
 const originalFetch = fetch;
 fetch = (url, init) => url === '/api/auth/verify'
- ? new Promise(resolve => { finishVerify = resolve; }) : originalFetch(url, init);
+  ? new Promise(resolve => { finishVerify = resolve; }) : originalFetch(url, init);
 const attempt = ++state.attempt;
-const signing = player0013('alice', { sign: async () => 'a'.repeat(130), shouldContinue: () => state.attempt === attempt });
+const signing = player0014('alice', { sign: async () => 'a'.repeat(130), shouldContinue: () => state.attempt === attempt });
 for (let i = 0; i < 20 && !finishVerify; i++) await new Promise(resolve => setTimeout(resolve, 1));
 if (!finishVerify) throw Error('verification did not begin');
 ++state.attempt;

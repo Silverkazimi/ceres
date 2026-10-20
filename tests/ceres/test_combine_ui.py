@@ -5,7 +5,7 @@ see CHANGELOG): selection now happens in one dialog gathering every owned copy
 of a card, not by hand-finding N rows in the idle-cards table.
 
 /census row 17 (batch B): the file used to run one giant
-`_combine_contract()` source-string scan over `app.js`, which itself
+`_combine_contract()` source-string scan over `app.js`, which  itself
 named as the example of implementation-spelling coupling (`isGoldFoil(candidate)`
 at the old line 29 -- now demonstrably stale, per the census). Converted to
 rendered reads of the real dialog, opened the same route-mocked way
@@ -39,7 +39,7 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Browser
 
-from tests.ceres.conftest import LIVE_PLAYER, spawn_live_ceres, wait_for_board
+from .conftest import LIVE_PLAYER, settle, spawn_live_ceres, wait_for_board
 
 ROOT = Path(__file__).parents[2]
 CSS = ROOT / "ceres/static/ceres.css"
@@ -54,7 +54,7 @@ def live_browser() -> tuple[Browser, str]:
 
 def _real_occupied_worker(base_url: str, *, require_gold: bool = False) -> tuple[str, dict]:
     """A real, combinable (unmaxed, resolved-ceiling) worker occupant, real
- plot -- optionally required to be a gold-foil printing."""
+    plot -- optionally required to be a gold-foil printing."""
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=10) as response:
         board = json.loads(response.read().decode("utf-8"))
     for plot in board["plots"]:
@@ -83,8 +83,8 @@ def _open_combine_dialog(
     extra_copies: list[dict] | None = None, preview_response: dict | None = None,
 ):
     """Same real-chip-click flow as `test_combine_hero.py`'s helper, generalised
- to accept extra blocked/context copies and a caller-supplied preview
- response (so gate/refusal states can be exercised)."""
+    to accept extra blocked/context copies and a caller-supplied preview
+    response (so gate/refusal states can be exercised)."""
     if occupant is None or deed_uid is None:
         deed_uid, occupant = _real_occupied_worker(base_url)
 
@@ -133,7 +133,7 @@ def _open_combine_dialog(
     chip.click()
     overlay = page.locator("#combine-dialog-overlay")
     overlay.wait_for(state="visible", timeout=30_000)
-    page.wait_for_timeout(200)  # renderCombineDialog() after requestCombinePreview() resolves
+    settle(page)  # renderCombineDialog() after requestCombinePreview() resolves
     return deed_uid, occupant, [duplicate_one, duplicate_two], seen_preview_requests
 
 
@@ -141,14 +141,14 @@ def test_rendered_combine_dialog_posts_selected_uids_and_gates_signing_on_refusa
     live_browser: tuple[Browser, str],
 ) -> None:
     """Census row 17: replaces the source-text checks that `/api/combine/preview`
- is POSTed with `{ uids }` and that the sign button carries the disabled
- attribute + a gate-reason aria-label when the server refuses. Reads the
- REAL outgoing request body and the REAL rendered sign button.
+    is POSTed with `{ uids }` and that the sign button carries the disabled
+    attribute + a gate-reason aria-label when the server refuses. Reads the
+    REAL outgoing request body and the REAL rendered sign button.
 
- Named injection (not applied here; independently watched): `requestCombinePreview()`'s
- fetch body changed from `JSON.stringify({ uids })` to `JSON.stringify({})`.
- Expected red: the mocked route's captured request body no longer contains
- the two selected uids."""
+    Named injection (not applied here; independently watched): `requestCombinePreview()`'s
+    fetch body changed from `JSON.stringify({ uids })` to `JSON.stringify({})`.
+    Expected red: the mocked route's captured request body no longer contains
+    the two selected uids."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     deed_uid, occupant, copies, requests = _open_combine_dialog(
@@ -170,13 +170,13 @@ def test_rendered_combine_dialog_sign_button_is_enabled_when_preview_is_buildabl
     live_browser: tuple[Browser, str],
 ) -> None:
     """Census row 17 (contrasting case to the refusal test above): a `buildable:
- true` preview must leave the sign button enabled with the plain sign label,
- not the gate reason.
+    true` preview must leave the sign button enabled with the plain sign label,
+    not the gate reason.
 
- Named injection (not applied here; independently watched): `renderCombineDialogEditor()`'s
- `const canSign = !!preview?.buildable && ...` changed to `const canSign = false;`.
- Expected red: `sign_button.get_attribute("disabled") is not None` where this
- test asserts it is `None`."""
+    Named injection (not applied here; independently watched): `renderCombineDialogEditor()`'s
+    `const canSign = !!preview?.buildable && ...` changed to `const canSign = false;`.
+    Expected red: `sign_button.get_attribute("disabled") is not None` where this
+    test asserts it is `None`."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     _open_combine_dialog(page, base_url)
@@ -191,14 +191,14 @@ def test_rendered_combine_hero_art_uses_the_gold_suffixed_cdn_url_for_a_gold_sur
     live_browser: tuple[Browser, str],
 ) -> None:
     """Census row 17: replaces the literal `isGoldFoil(candidate)` source-spelling
- check ('s own named example of implementation-spelling coupling,
- confirmed stale by the census) with the actual rendered proof: a gold-foil
- survivor's hero art `<img src>` must carry the CDN's `_gold` suffix.
+    check ('s own named example of implementation-spelling coupling,
+    confirmed stale by the census) with the actual rendered proof: a gold-foil
+    survivor's hero art `<img src>` must carry the CDN's `_gold` suffix.
 
- Named injection (not applied here; independently watched): `editorCardImage()`'s
- URL template changed from `${...}${isGoldFoil(asset) ? '_gold' : ''}.jpg` to
- always omit the suffix. Expected red: `"_gold" in src` fails for a gold
- survivor."""
+    Named injection (not applied here; independently watched): `editorCardImage()`'s
+    URL template changed from `${...}${isGoldFoil(asset) ? '_gold' : ''}.jpg` to
+    always omit the suffix. Expected red: `"_gold" in src` fails for a gold
+    survivor."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     deed_uid, occupant = _real_occupied_worker(base_url, require_gold=True)
@@ -214,18 +214,18 @@ def test_rendered_combine_dialog_lists_every_owned_copy_including_blocked_ones(
     live_browser: tuple[Browser, str],
 ) -> None:
     """Census row 17 (`_gather_all_contract`): replaces the source-string scan of
- `openCombineGroupDialog()` (full group reaches the dialog; only
- `c.uid && c.available` copies get pre-ticked) with a rendered read: a
- blocked (unavailable) third copy must still appear in the list, marked
- `.is-blocked` with its own reason, never `.is-survives`/`.is-destroyed`
- (which would mean it got pre-ticked despite being ineligible).
+    `openCombineGroupDialog()` (full group reaches the dialog; only
+    `c.uid && c.available` copies get pre-ticked) with a rendered read: a
+    blocked (unavailable) third copy must still appear in the list, marked
+    `.is-blocked` with its own reason, never `.is-survives`/`.is-destroyed`
+    (which would mean it got pre-ticked despite being ineligible).
 
- Named injection (not applied here; independently watched): `openCombineGroupDialog()`'s
- pretick line `if (c.uid && c.available) COMBINE_SELECTION.set(...)` changed
- to `if (c.uid) COMBINE_SELECTION.set(...)` (ticks every copy regardless of
- availability). Expected red: the blocked row's class includes `is-survives`
- or `is-destroyed` instead of `is-blocked`, and/or the preview POST body
- includes the blocked copy's uid."""
+    Named injection (not applied here; independently watched): `openCombineGroupDialog()`'s
+    pretick line `if (c.uid && c.available) COMBINE_SELECTION.set(...)` changed
+    to `if (c.uid) COMBINE_SELECTION.set(...)` (ticks every copy regardless of
+    availability). Expected red: the blocked row's class includes `is-survives`
+    or `is-destroyed` instead of `is-blocked`, and/or the preview POST body
+    includes the blocked copy's uid."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     deed_uid, occupant = _real_occupied_worker(base_url)
@@ -257,11 +257,11 @@ def test_rendered_combine_dialog_lists_every_owned_copy_including_blocked_ones(
 
 def test_dialog_contract_and_layout_scope() -> None:
     """CSS-only: `ceres/static/ceres.css` is the subject under test here, not
- `app.js` text -- outside this census row's JS-reading scope, left
- unchanged. (`COMBINE_SELECTION`/`COMBINE_DIALOG`/`beginSharedOperation`/
- `operations: [body.operation]`/op-verify/domain-confirmed/
- `applyCombineConfirmedUpdate` assertions from the old `_combine_contract`
- were dropped here -- see module docstring's SCOPE NOTE.)"""
+    `app.js` text -- outside this census row's JS-reading scope, left
+    unchanged. (`COMBINE_SELECTION`/`COMBINE_DIALOG`/`beginSharedOperation`/
+    `operations: [body.operation]`/op-verify/domain-confirmed/
+    `applyCombineConfirmedUpdate` assertions from the old `_combine_contract`
+    were dropped here -- see module docstring's SCOPE NOTE.)"""
     css = CSS.read_text(encoding="utf-8")
     assert ".combine-dialog-overlay" in css
     assert ".combine-copy-row" in css
@@ -275,7 +275,7 @@ def test_dialog_contract_and_layout_scope() -> None:
 
 def test_notice_catalog_owns_combine_copy() -> None:
     """Reads `ceres/notices.py`, not `ceres/static/*.js` -- outside this
- census's scope, left unchanged."""
+    census's scope, left unchanged."""
     source = NOTICES.read_text(encoding="utf-8")
     for code in (
         "combine_select", "combine_preview_loading", "combine_refusal",

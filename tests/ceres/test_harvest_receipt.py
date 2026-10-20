@@ -1,15 +1,16 @@
-"""receipt and Harvest all share the current ledger builders."""
+""": receipt and Harvest all share the current ledger builders."""
 from __future__ import annotations
 
 import json
 import re
-import subprocess
 from pathlib import Path
 
 from .vm_context import read_entry_source, run_in_module_context
 
 ROOT = Path(__file__).parents[2]
-PRE_EXTRACTION_BASELINE = "b8b9279aca529ac7b38b29643480983bd6ba5ced"  # pinned pre-extraction baseline; `master` stopped meaning "before" once landed in .
+# The Harvest all renderer as it was before its ledger builders were extracted (a frozen copy
+# the public tree has no history to read it back from).
+PRE_EXTRACTION_SNAPSHOT = Path(__file__).parent / "fixtures" / "harvest-modal-pre-extraction.js"  # pinned pre-extraction state, independent of the moving master branch.
 STATIC = ROOT / "ceres" / "static"
 MODAL = STATIC / "harvest-modal.js"
 RESULTS = STATIC / "harvest-results.js"
@@ -26,8 +27,17 @@ def test_region_receipt_is_net_first_and_preserves_confirmation() -> None:
             "received_by_token": {"GRAIN": 100, "WOOD": 20},
             "costs_by_token": {"GRAIN": 15, "WOOD": 5},
             "evidence": ["regional_rewards"],
+        }, {
+            "outcome": "success",
+            "region_uid": "PR-CEF-42",
+            "received_by_token": {"GRAIN": 100, "WOOD": 20},
+            "costs_by_token": {"GRAIN": 15, "WOOD": 5},
+            "evidence": ["regional_rewards"],
         }],
     }
+    # one confirmed region shows only the Total box (its region row would repeat the same
+    # ledger), so the per-region plaque and row amounts are checked on a two-region run.
+    single = {**run, "members": run["members"][:1]}
     run_js = json.dumps(run)
     result = run_in_module_context(
         f"const receipt = harvestSuccessHtml({run_js});\n"
@@ -37,7 +47,11 @@ def test_region_receipt_is_net_first_and_preserves_confirmation() -> None:
         "if (!receipt.includes('class=\"hm-batch-slots\"')) throw Error('shared six-column slot grid missing');\n"
         "if (!receipt.includes('>Show costs</button>') || receipt.includes('>− costs</span>')) throw Error('costs are not collapsed');\n"
         "if (!receipt.includes('>+85.00</span>') || !receipt.includes('>+15.00</span>')) throw Error('net-first amounts missing');\n"
-        "if (!receipt.includes('Harvest complete') || !receipt.includes('1 collection confirmed by the game.')) throw Error('game confirmation banner changed');\n"
+        "if (!receipt.includes('>+170.00</span>') || !receipt.includes('>+30.00</span>')) throw Error('net-first total missing');\n"
+        "if (!receipt.includes('Harvest complete') || !receipt.includes('2 collections confirmed by the game.')) throw Error('game confirmation banner changed');\n"
+        f"const one = harvestSuccessHtml({json.dumps(single)});\n"
+        "if (!one.includes('class=\"hm-batch-total\"') || one.includes('class=\"hm-batch-region\"')) throw Error('one region must show only the Total ledger');\n"
+        "if (!one.includes('>+85.00</span>') || !one.includes('1 collection confirmed by the game.')) throw Error('single-region total or banner changed');\n"
         "if (!receipt.includes('https://hivehub.dev/tx/c81db445bd4265ef5b20d5e07debd0ce3a71df5a')) throw Error('transaction link missing');\n"
         f"const expanded = harvestSuccessHtml({run_js}, {{costsOpen: new Set(['total', 'PR-CEF-41'])}});\n"
         "for (const amount of ['+100.00', '−15.00', '+85.00', 'received', '− costs', '= net']) if (!expanded.includes(amount)) throw Error(`expanded ledger missing ${amount}`);",
@@ -47,15 +61,9 @@ def test_region_receipt_is_net_first_and_preserves_confirmation() -> None:
 
 
 def test_harvest_all_is_byte_identical_after_extracting_shared_builders() -> None:
-    old_modal = subprocess.run(
-        ["git", "show", f"{PRE_EXTRACTION_BASELINE}:ceres/static/harvest-modal.js"],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout
-    old_helpers = old_modal[old_modal.index("function batchBadgeHtml("):old_modal.index("function batchStatusPill(")]
-    old_renderer = old_modal[old_modal.index("function batchBodyHtml()"):old_modal.index("an empty batch")]
+    old_modal = PRE_EXTRACTION_SNAPSHOT.read_text(encoding="utf-8")
+    old_helpers = old_modal[old_modal.index("function batchBadgeHtml("):old_modal.index("function batchBodyHtml()")]
+    old_renderer = old_modal[old_modal.index("function batchBodyHtml()"):]
     old_helpers = re.sub(r"\bbatchBadgeHtml(?=\()", "oldBatchBadgeHtml", old_helpers)
     old_helpers = re.sub(r"\bbatchLedgerRows(?=\()", "oldBatchLedgerRows", old_helpers)
     old_renderer = old_renderer.replace("function batchBodyHtml()", "function oldBatchBodyHtml()")
@@ -68,10 +76,10 @@ def test_harvest_all_is_byte_identical_after_extracting_shared_builders() -> Non
         r"""
 M.mode = 'batch'; M.scopeKind = 'all'; M.selectedRegions = new Set(); M.costsOpen = new Set();
 M.regionLayout = {resources: ['GRAIN', 'WOOD'], rows: [
- {region_uid: 'PR-CEF-41', region_number: '041', plots: 2, resources: ['GRAIN', 'WOOD']}
+  {region_uid: 'PR-CEF-41', region_number: '041', plots: 2, resources: ['GRAIN', 'WOOD']}
 ]};
 M.preview = {regions: [{region_uid: 'PR-CEF-41', region_number: '041', status: 'included',
- net_by_token: {GRAIN: 100, WOOD: 20}, cost_now: {GRAIN: 15, WOOD: 5}}], issues: []};
+  net_by_token: {GRAIN: 100, WOOD: 20}, cost_now: {GRAIN: 15, WOOD: 5}}], issues: []};
 const before = oldBatchBodyHtml();
 const after = batchBodyHtml();
 if (before !== after) throw Error(`Harvest all markup changed after extraction\nOLD: ${before}\nNEW: ${after}`);

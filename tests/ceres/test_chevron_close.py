@@ -1,4 +1,4 @@
-"""plot/picker Close buttons are icon-only red chevron-up buttons on a
+""": plot/picker Close buttons are icon-only red chevron-up buttons on a
 semi-transparent ground (maintainer ruling 2026-09-19), not the ceres-btn family."""
 from pathlib import Path
 

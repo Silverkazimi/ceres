@@ -222,7 +222,7 @@ export function chainCardHtml(id, plan, now = Date.now()) {
     : input.unstake?.tx_id ? 'Staked, unstake signed' : 'Staked, unstake not signed yet';
   const combineInputs = [...inputs].sort((a, b) => (a.uid === anchorUid ? 0 : 1) - (b.uid === anchorUid ? 0 : 1));
   const combineRows = shown([...groups(combineInputs).map((group) => groupRow(group, `${group[0].uid === anchorUid ? 'The worker being upgraded · ' : ''}${copyState(group[0])}`, group[0].kind === 'free')),
-    ...plan.inputs.filter(input => input.status === 'unavailable').map(input => row(input, 'Unavailable · leave out to review the remaining copies', false))], 3);
+    ...plan.inputs.filter(input => input.status === 'unavailable').map(input => row(input, 'Unavailable · leave out to review the remaining copies'))], 3);
   const expected = plan.expected?.bcx ? plan.expected : null;
   const result = expected ? `<p class="chain-result">Result: <b>${num(expected.bcx)}${expected.bcx_max != null ? ` / ${num(expected.bcx_max)}` : ''} CC → Level ${esc(expected.level ?? '—')}</b>${expected.base_pp_capped ? ' · above the max CC, base PP stops rising' : ''}</p>` : '';
   let combine = `<p>${inputs.length} cards into one · ${derived.state === 'ready' ? 'Ready to combine' : 'waits for the last cooldown'}<span class="chain-phone"> · Combine from a computer</span></p>${combineRows}${result}`;

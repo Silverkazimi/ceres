@@ -83,8 +83,8 @@ def _settled_head(monkeypatch, head_block: int = 120):
 
 def test_stale_worksite_read_is_pending_not_mismatch(monkeypatch, tmp_path):
     """Mutation evidence: apply the stake/unstake terminal rule to `sm_land_operation` too;
- expected red: a chain-confirmed worksite whose `project_type` remains the prior value becomes
- `domain-not-applied` instead of retaining propagation-lag `domain-pending`."""
+    expected red: a chain-confirmed worksite whose `project_type` remains the prior value becomes
+    `domain-not-applied` instead of retaining propagation-lag `domain-pending`."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     monkeypatch.setattr(routes_op_preview_mod, "verify_chain", _chain_verified_stub)
     _settled_head(monkeypatch)
@@ -131,7 +131,7 @@ def test_worksite_facts_none_is_could_not_verify(monkeypatch, tmp_path):
 
 def test_chain_verified_stake_without_live_effect_is_terminal_not_applied(monkeypatch, tmp_path):
     """Guard 7. Mutation evidence: omit terminal age evidence; expected red: a terminal receipt
- loses the server-measured inclusion block, head, age, or attempt that justifies re-signing."""
+    loses the server-measured inclusion block, head, age, or attempt that justifies re-signing."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     monkeypatch.setattr(routes_op_preview_mod, "verify_chain", _chain_verified_stub)
     _settled_head(monkeypatch)
@@ -159,7 +159,7 @@ def test_chain_verified_stake_without_live_effect_is_terminal_not_applied(monkey
 
 def test_chain_verified_stake_below_settle_floor_remains_pending(monkeypatch, tmp_path):
     """Guard 1 server half. Mutation evidence: remove the age comparison; expected red: a
- second live read below the 20-block floor becomes re-signable too early."""
+    second live read below the 20-block floor becomes re-signable too early."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     monkeypatch.setattr(routes_op_preview_mod, "verify_chain", _chain_verified_stub)
     _settled_head(monkeypatch, head_block=119)
@@ -180,7 +180,7 @@ def test_chain_verified_stake_below_settle_floor_remains_pending(monkeypatch, tm
 
 def test_chain_verified_stake_first_read_is_pending_even_after_settle(monkeypatch, tmp_path):
     """Guard 2. Mutation evidence: remove the minimum-attempt clause; expected red: one live
- domain read can produce a terminal verdict."""
+    domain read can produce a terminal verdict."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     monkeypatch.setattr(routes_op_preview_mod, "verify_chain", _chain_verified_stub)
     _settled_head(monkeypatch)
@@ -200,7 +200,7 @@ def test_chain_verified_stake_first_read_is_pending_even_after_settle(monkeypatc
 @pytest.mark.parametrize("head_block, expected_state", [(119, "domain-pending"), (120, "domain-not-applied")])
 def test_chain_verified_stake_settle_floor_is_inclusive(monkeypatch, tmp_path, head_block, expected_state):
     """Guard 3. Mutation evidence: change `>=` to `>` or lower the constant; one boundary row
- must turn red while the other remains correct."""
+    must turn red while the other remains correct."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     monkeypatch.setattr(routes_op_preview_mod, "verify_chain", _chain_verified_stub)
     _settled_head(monkeypatch, head_block=head_block)
@@ -227,7 +227,7 @@ def test_chain_verified_stake_settle_floor_is_inclusive(monkeypatch, tmp_path, h
 )
 def test_chain_verified_stake_age_lookup_is_fail_safe(monkeypatch, tmp_path, chain_evidence, head_block, rpc_error):
     """Guard 4. Mutation evidence: return a large default age or let the head RPC exception
- escape; missing inclusion evidence and RPC failure must both stay pending without a 500."""
+    escape; missing inclusion evidence and RPC failure must both stay pending without a 500."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     monkeypatch.setattr(
         routes_op_preview_mod,
@@ -256,8 +256,8 @@ def test_chain_verified_stake_age_lookup_is_fail_safe(monkeypatch, tmp_path, cha
 
 def test_stake_without_chain_inclusion_remains_pending(monkeypatch, tmp_path):
     """Mutation evidence: remove the `chain_verified` condition from the terminal branch;
- expected red: a live domain absence with no observed inclusion is incorrectly declared a
- failed game application."""
+    expected red: a live domain absence with no observed inclusion is incorrectly declared a
+    failed game application."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     monkeypatch.setattr(
         routes_op_preview_mod,

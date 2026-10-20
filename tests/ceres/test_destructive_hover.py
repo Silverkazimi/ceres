@@ -74,5 +74,7 @@ def test_destructive_secondary_hover_wins_with_danger_border() -> None:
     generic_winner = max(generic, key=lambda rule: (rule[1], rule[2]))
     destructive_winner = max(destructive, key=lambda rule: (rule[1], rule[2]))
     assert destructive_winner[1:] > generic_winner[1:], (
-        "destructive hover must win by specificity or source order: \"\n f\"{destructive_winner[0]!r} {destructive_winner[1:]} <= \"\n f\"{generic_winner[0]!r} {generic_winner[1:]}"
+        "destructive hover must win by specificity or source order: "
+        f"{destructive_winner[0]!r} {destructive_winner[1:]} <= "
+        f"{generic_winner[0]!r} {generic_winner[1:]}"
     )

@@ -1,4 +1,4 @@
-"""sorting is interactive as soon as the early board is revealed."""
+""": sorting is interactive as soon as the early board is revealed."""
 
 import json
 import re
@@ -12,36 +12,36 @@ from .vm_context import STATIC, read_entry_source, run_in_module_context
 _EARLY_SORT_BODY = r"""
 function assert(ok, message) { if (!ok) throw new Error(message); }
 function element(key) {
- return {
- dataset: {key}, hidden: true, value: '', textContent: '', listeners: {},
- classList: {add() {}, remove() {}, toggle() {}, contains() { return false; }},
- style: {setProperty() {}, removeProperty() {}},
- addEventListener(type, listener) { (this.listeners[type] ||= []).push(listener); },
- removeEventListener() {},
- // start page (/): loadBoard() calls hideStartPage()/showStartPage()
- // which touch these on whatever document.getElementById(...) returns.
- remove() {}, setAttribute() {}, removeAttribute() {}, getAttribute() { return null; },
- appendChild() {}, prepend() {}, replaceChildren() {}, focus() {},
- querySelector() { return null; }, querySelectorAll() { return []; },
- cloneNode() { return null; }, closest() { return null; }, insertAdjacentHTML() {},
- };
+  return {
+    dataset: {key}, hidden: true, value: '', textContent: '', listeners: {},
+    classList: {add() {}, remove() {}, toggle() {}, contains() { return false; }},
+    style: {setProperty() {}, removeProperty() {}},
+    addEventListener(type, listener) { (this.listeners[type] ||= []).push(listener); },
+    removeEventListener() {},
+    //  start page (/): loadBoard() calls hideStartPage()/showStartPage(),
+    // which touch these on whatever document.getElementById(...) returns.
+    remove() {}, setAttribute() {}, removeAttribute() {}, getAttribute() { return null; },
+    appendChild() {}, prepend() {}, replaceChildren() {}, focus() {},
+    querySelector() { return null; }, querySelectorAll() { return []; },
+    cloneNode() { return null; }, closest() { return null; }, insertAdjacentHTML() {},
+  };
 }
 const headers = __HEADER_KEYS__.map(element);
 const elements = new Map();
 document.getElementById = (id) => {
- if (!elements.has(id)) elements.set(id, element());
- return elements.get(id);
+  if (!elements.has(id)) elements.set(id, element());
+  return elements.get(id);
 };
 document.querySelectorAll = (selector) =>
- selector === '#plot-table thead [data-key]' ? headers : [];
+  selector === '#plot-table thead [data-key]' ? headers : [];
 window.scrollTo = () => {};
 initFilterDropdowns = updateHeaderHeightVar = () => {};
 populateFilterOptions = populateSortOptions = syncFilterDropdowns = () => {};
 renderCheckoutSurface = restoreInFlightRecords = ensureHazardOverlay = () => {};
 renderTotalsStrip = prefetchIdleCardsCache = () => {};
 matchesFilters = () => true;
-// fixture gap: the sandbox publishes one global per bare top-level
-// declaration name, but four DIFFERENT modules each declare their own private
+// / fixture gap: the sandbox publishes one global per bare top-level
+// declaration name, but four DIFFERENT modules each declare their own private,
 // unrelated "function render(...)" (table.js's real one plus unexported local ones in
 // harvest-modal.js/regional-dec.js/fill-plot.js); whichever evaluates last wins the
 // global, so board.js's own bare `render(true)` call can silently invoke someone else's
@@ -57,51 +57,55 @@ const pendingTail = new Promise((resolve) => { resolveTail = resolve; });
 const originalReveal = revealBoardTable;
 let listenersAtReveal;
 revealBoardTable = () => {
- originalReveal();
- listenersAtReveal = headers.map((header) => header.listeners.click?.length || 0);
- resolveReveal();
+  originalReveal();
+  listenersAtReveal = headers.map((header) => header.listeners.click?.length || 0);
+  resolveReveal();
 };
 let statusRequests = 0;
+let secondInit = false;
 fetch = async (url) => {
- const path = String(url).split('?')[0];
- if (path === '/api/capture/refresh') return {ok: true, status: 202};
- if (path === '/api/capture/status') {
- statusRequests += 1;
- if (statusRequests > 1) return pendingTail;
- return {ok: true, json: async () => ({state: 'running', board_ready: true, phase: 'gaps'})};
- }
- if (path === '/api/board') return {ok: true, status: 200, json: async () => ({
- player: 'player0005', sortable: ['harvest_pp', 'base_pp'], notices: [], notice_catalog: {},
- plots: [
- {deed_uid: 'A', harvest_pp: 20, base_pp: 1, badges: []},
- {deed_uid: 'B', harvest_pp: 10, base_pp: 2, badges: []},
- ],
- })};
- throw new Error('unexpected request: ' + url);
+  const path = String(url).split('?')[0];
+  if (path === '/api/capture/refresh') return {ok: true, status: 202};
+  if (path === '/api/capture/status') {
+    statusRequests += 1;
+    if (secondInit) return {ok: true, json: async () => ({state: 'done'})};
+    if (statusRequests > 1) return pendingTail;
+    return {ok: true, json: async () => ({state: 'running', board_ready: true, phase: 'gaps'})};
+  }
+  if (path === '/api/board') return {ok: true, status: 200, json: async () => ({
+    player: 'player0005', sortable: ['harvest_pp', 'base_pp'], notices: [], notice_catalog: {},
+    plots: [
+      {deed_uid: 'A', harvest_pp: 20, base_pp: 1, badges: []},
+      {deed_uid: 'B', harvest_pp: 10, base_pp: 2, badges: []},
+    ],
+  })};
+  throw new Error('unexpected request: ' + url);
 };
 const watchdog = setTimeout(() => { throw new Error('early-sort guard did not finish'); }, 1000);
 (async () => {
- let initDone = false;
- const initializing = init().then(() => { initDone = true; });
- assert(BOARD === null, 'fixture must begin before the first board arrives');
- baseHeader.listeners.click?.[0]();
- assert(S.SORT_KEY === 'harvest_pp', 'pre-load numeric click must be ignored');
- await revealed;
- assert(headers.length === 19 && listenersAtReveal.every((count) => count === 1),
- 'expected 19/19 header click listeners at reveal: ' + listenersAtReveal);
- assert(statusRequests === 2 && !initDone, 'self-heal tail must still be pending');
- assert(orderNow() === 'A,B', 'initial real render must sort by harvest PP');
- baseHeader.listeners.click[0]();
- assert(orderNow() === 'B,A', 'header click did not re-sort during the self-heal tail');
- assert(!initDone, 'sort assertions must precede tail completion');
- resolveTail({ok: true, json: async () => ({state: 'failed'})});
- await initializing;
- await init();
- assert(headers.every((header) => header.listeners.click?.length === 1),
- 'expected exactly one click listener per header after repeated init');
+  let initDone = false;
+  const initializing = init().then(() => { initDone = true; });
+  assert(BOARD === null, 'fixture must begin before the first board arrives');
+  baseHeader.listeners.click?.[0]();
+  assert(S.SORT_KEY === 'harvest_pp', 'pre-load numeric click must be ignored');
+  await revealed;
+  assert(headers.length === 19 && listenersAtReveal.every((count) => count === 1),
+    'expected 19/19 header click listeners at reveal: ' + listenersAtReveal);
+  assert(statusRequests === 2 && !initDone, 'self-heal tail must still be pending');
+  assert(orderNow() === 'A,B', 'initial real render must sort by harvest PP');
+  baseHeader.listeners.click[0]();
+  assert(orderNow() === 'B,A', 'header click did not re-sort during the self-heal tail');
+  assert(!initDone, 'sort assertions must precede tail completion');
+  resolveTail({ok: true, json: async () => ({state: 'failed'})});
+  await initializing;
+  secondInit = true;
+  await init();
+  await init();
+  assert(headers.every((header) => header.listeners.click?.length === 1),
+    'expected exactly one click listener per header after repeated init');
 })().then(() => clearTimeout(watchdog), (error) => {
- clearTimeout(watchdog);
- setTimeout(() => { throw error; }, 0);
+  clearTimeout(watchdog);
+  setTimeout(() => { throw error; }, 0);
 });
 """
 
@@ -121,6 +125,7 @@ def _early_sort_body() -> str:
 _WITH_PLAYER_IN_URL = (
     "window.location.search = '?player=player0005';"
     " context.history = {replaceState() {}};"  # syncPlayerInUrl() calls history.replaceState (/)
+    " document.documentElement.classList = {add() {}, remove() {}, toggle() {}, contains() { return false; }};"
 )
 
 
@@ -140,7 +145,7 @@ def test_sort_binding_below_initial_load_injection_goes_red() -> None:
     start = source.rindex("document.querySelectorAll('#plot-table thead [data-key]').forEach((control) => {")
     end = source.index("  document.getElementById('close-all-plots')", start)
     binding = source[start:end]
-    load_line = "  if (CURRENT_PLAYER) await loadBoard(); else showStartPage(); // no player in the URL -> start page, no table\n"
+    load_line = "  if (CURRENT_PLAYER) await loadBoard(); else showStartPage(); // : no player in the URL -> start page, no table\n"
     # The binding block and the loadBoard() call are no longer adjacent (other init() wiring
     # close-all-plots, open-all-plots, resize listeners -- sits between them since 's rework)
     # so move the block from its own spot to directly ahead of loadBoard() instead of swapping two

@@ -8,10 +8,11 @@ import pytest
 from PIL import Image
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
+from . import board_basic_recording as recording
 
 
-PLOT_WITH_RUNI = "041-09-056"
+PLOT_WITH_RUNI = recording.OVERCAP.label
 
 
 def _open_editor(page, base_url: str, plot: str) -> None:
@@ -158,9 +159,9 @@ def test_held_change_and_base_pp_tooltips_remain_legacy_shape(editor_page):
 def test_slot_editor_tooltips_never_render_object_object(editor_page):
     """Bloodline tooltip models are composed before entering the rendered DOM.
 
- Injection: restore ``lines.push(bloodlineAbilityTip(entry))`` at either
- Bloodline call site. The browser then exposes ``[object Object]`` in an
- attribute and this goes red.
+    Injection: restore ``lines.push(bloodlineAbilityTip(entry))`` at either
+    Bloodline call site. The browser then exposes ``[object Object]`` in an
+    attribute and this goes red.
     """
     page, base_url = editor_page
     _open_editor(page, base_url, PLOT_WITH_RUNI)
@@ -173,8 +174,8 @@ def test_slot_editor_tooltips_never_render_object_object(editor_page):
 def test_worker_tile_base_pp_matches_its_correlated_cell(editor_page):
     """Worker tiles name the capped Base PP shown by their matching cell.
 
- Injection: revert the worker key to ``occupant.base_pp``. A clipped worker
- then disagrees with the cell carrying the same group and slot identity.
+    Injection: revert the worker key to ``occupant.base_pp``. A clipped worker
+    then disagrees with the cell carrying the same group and slot identity.
     """
     page, base_url = editor_page
     _open_editor(page, base_url, PLOT_WITH_RUNI)
@@ -193,9 +194,9 @@ def test_worker_tile_base_pp_matches_its_correlated_cell(editor_page):
 def test_base_pp_cell_tooltips_do_not_use_picker_label(editor_page):
     """Per-card Base PP tooltips use the settled label, scoped to their cells.
 
- Injection: restore ``Construction PP`` in the cell's construction fragment.
- The cell-scoped assertion goes red while the legitimate candidate picker
- column remains outside this test's scope.
+    Injection: restore ``Construction PP`` in the cell's construction fragment.
+    The cell-scoped assertion goes red while the legitimate candidate picker
+    column remains outside this test's scope.
     """
     page, base_url = editor_page
     _open_editor(page, base_url, PLOT_WITH_RUNI)
@@ -215,9 +216,9 @@ def test_base_pp_cell_tooltips_do_not_use_picker_label(editor_page):
 def test_base_pp_tooltip_fragments_are_terminated_sentences(editor_page):
     """Terrain and construction fragments remain prose in every rendered state.
 
- Injection: restore the bare-space ``terrainText``/``constructionText``
- splice. A rendered body then contains an unterminated fragment and goes red;
- the four combinations are represented by the optional fragments independently.
+    Injection: restore the bare-space ``terrainText``/``constructionText``
+    splice. A rendered body then contains an unterminated fragment and goes red;
+    the four combinations are represented by the optional fragments independently.
     """
     page, base_url = editor_page
     _open_editor(page, base_url, PLOT_WITH_RUNI)
@@ -243,8 +244,8 @@ def _open_worksite_modal(page, base_url: str):
 def test_worksite_tile_art_has_rendered_pixel_coverage(editor_page):
     """Worksite art fills the tile's rendered content area, not only its source box.
 
- Injection: restore ``background-size: auto 100%``. The screenshot then has
- less than the required non-background coverage.
+    Injection: restore ``background-size: auto 100%``. The screenshot then has
+    less than the required non-background coverage.
     """
     page, base_url = editor_page
     modal = _open_worksite_modal(page, base_url)
@@ -261,7 +262,7 @@ def test_worksite_tile_art_has_rendered_pixel_coverage(editor_page):
 def test_worksite_modal_click_does_not_open_tooltip(editor_page):
     """Programmatic modal focus after a real click does not open a tile tooltip.
 
- Injection: remove the ``:focus-visible`` gate from the delegated focus handler.
+    Injection: remove the ``:focus-visible`` gate from the delegated focus handler.
     """
     page, base_url = editor_page
     _open_worksite_modal(page, base_url)
@@ -271,8 +272,8 @@ def test_worksite_modal_click_does_not_open_tooltip(editor_page):
 def test_worksite_modal_keyboard_focus_still_opens_tooltip(editor_page):
     """A real Tab into a worksite tile still exposes its focus tooltip.
 
- Injection: make the delegated focus handler never fire. ``locator.focus()``
- is intentionally not used because it inherits the prior modality.
+    Injection: make the delegated focus handler never fire. ``locator.focus()``
+    is intentionally not used because it inherits the prior modality.
     """
     page, base_url = editor_page
     _open_worksite_modal(page, base_url)
@@ -296,8 +297,8 @@ def test_worker_tile_tooltip_lists_the_pp_chain(editor_page):
 def test_worksite_resource_tooltip_names_worksite(editor_page):
     """A worksite resource icon identifies both the worksite and its output.
 
- Injection: revert ``resourceIconHtml`` to title the icon with only the
- resource. The rendered tooltip then has no distinct worksite title.
+    Injection: revert ``resourceIconHtml`` to title the icon with only the
+    resource. The rendered tooltip then has no distinct worksite title.
     """
     page, base_url = editor_page
     _open_editor(page, base_url, PLOT_WITH_RUNI)
@@ -314,8 +315,8 @@ def test_worksite_resource_tooltip_names_worksite(editor_page):
 def test_clear_workers_button_is_distinct_and_explained(editor_page):
     """The worker-group clear action is labelled and tooltiped distinctly.
 
- Injection: revert the label to ``Clear group`` and remove its tooltip. The
- rendered control then fails both the visible-copy and tooltip assertions.
+    Injection: revert the label to ``Clear group`` and remove its tooltip. The
+    rendered control then fails both the visible-copy and tooltip assertions.
     """
     page, base_url = editor_page
     _open_editor(page, base_url, PLOT_WITH_RUNI)
@@ -354,23 +355,23 @@ def _measure_arrow(page, trigger, scroll=True):
     if scroll:
         trigger.scroll_into_view_if_needed()
     trigger.hover()
-    page.wait_for_timeout(250)
+    settle(page)
     assert page.locator("#ceres-tooltip").evaluate(
         "tip => !tip.hidden && tip.classList.contains('is-visible')"
     )
     return trigger.evaluate(
         """trigger => {
- const tip = document.querySelector('#ceres-tooltip');
- const tipRect = tip.getBoundingClientRect();
- const triggerRect = trigger.getBoundingClientRect();
- const paintedArrow = tipRect.left + parseFloat(getComputedStyle(tip).borderLeftWidth)
- + parseFloat(getComputedStyle(tip, '::after').left);
- return {
- arrow: paintedArrow,
- trigger: triggerRect.left + triggerRect.width / 2,
- box: tipRect.left + tipRect.width / 2,
- };
- }"""
+            const tip = document.querySelector('#ceres-tooltip');
+            const tipRect = tip.getBoundingClientRect();
+            const triggerRect = trigger.getBoundingClientRect();
+            const paintedArrow = tipRect.left + parseFloat(getComputedStyle(tip).borderLeftWidth)
+                + parseFloat(getComputedStyle(tip, '::after').left);
+            return {
+                arrow: paintedArrow,
+                trigger: triggerRect.left + triggerRect.width / 2,
+                box: tipRect.left + tipRect.width / 2,
+            };
+        }"""
     )
 
 
@@ -379,9 +380,9 @@ def _arrow_measurements(page):
     measurements = [_measure_arrow(page, triggers.nth(index), scroll=False) for index in range(min(5, triggers.count()))]
     edge_index = page.evaluate(
         """() => Array.from(document.querySelectorAll('#plot-tbody [data-tip]')).findIndex(el => {
- const rect = el.getBoundingClientRect();
- return !el.parentElement.closest('[data-tip]') && rect.width > 0;
- })"""
+            const rect = el.getBoundingClientRect();
+            return !el.parentElement.closest('[data-tip]') && rect.width > 0;
+        })"""
     )
     assert edge_index >= 0
     edge = page.locator('#plot-tbody [data-tip]').nth(edge_index)
@@ -393,14 +394,14 @@ def _arrow_measurements(page):
 def test_tooltip_arrow_is_painted_at_trigger_center(editor_page):
     """The shared tooltip arrow follows the trigger, including clamped boxes.
 
- The position is measured from the tooltip border and the computed ``::after``
- ``left``; ``--ceres-tooltip-arrow-left`` is never read back because that would
- measure the same CSS variable the buggy code writes. A pixel probe, if added,
- must key on the arrow's own ``border-top-color``, never on pixels that merely
- differ from the background: ``box-shadow: 0 8px 20px`` bleeds below the box
- and is symmetric about the box centre, producing a false centred result.
- retires the old stacked/signal/compact arrow variants in favor of one
- peer-depth shell.
+    The position is measured from the tooltip border and the computed ``::after``
+    ``left``; ``--ceres-tooltip-arrow-left`` is never read back because that would
+    measure the same CSS variable the buggy code writes. A pixel probe, if added,
+    must key on the arrow's own ``border-top-color``, never on pixels that merely
+    differ from the background: ``box-shadow: 0 8px 20px`` bleeds below the box
+    and is symmetric about the box centre, producing a false centred result.
+     retires the old stacked/signal/compact arrow variants in favor of one
+    peer-depth shell.
     """
     page, base_url = editor_page
     page.set_viewport_size({"width": 1920, "height": 1080})

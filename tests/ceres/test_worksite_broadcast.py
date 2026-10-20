@@ -186,7 +186,7 @@ class TestBuildWorksitePreview:
 
 class TestWorksitePreviewRoute:
     """`POST /api/plots/{deed_uid}/worksite-preview` -- the browser-facing entry point,
- mirroring `test_op_preview.py::test_http_preview_contract_and_no_broadcast`'s pattern."""
+    mirroring `test_op_preview.py::test_http_preview_contract_and_no_broadcast`'s pattern."""
 
     def _request(self, tmp_path, report):
         config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
@@ -299,8 +299,8 @@ class TestWorksitePreviewRoute:
 
 class TestFetchWorksiteFacts:
     """`ceres/capture.py::fetch_worksite_facts` -- the fresh (uncached) re-read used ONLY
- for post-broadcast worksite-change domain verification. It reads the land bundle
- directly through `fresh_read`, bypassing cached capture expansion."""
+    for post-broadcast worksite-change domain verification. It reads the land bundle
+    directly through `fresh_read`, bypassing cached capture expansion."""
 
     @staticmethod
     def _install_bundle(monkeypatch, payload):

@@ -37,7 +37,7 @@ export function accountMenuHtml(account = walletAccount()) {
   const manageBtn = spaceAvailable(account) ? `<button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-account="manage" aria-expanded="${state.manage || Boolean(state.confirm)}">Saved data options</button>` : '';   // next to Sign in / Sign out, not under it
   const main = signedIn
     ? `<p class="acct-note acct-state" role="status">Signed in as ${esc(account)}. Your routing setup and staged changes are saved across devices.</p><div class="acct-actions"><button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-account="signout"${state.busy ? ' disabled' : ''}>${walletLogoHtml(sessionWallet(account) || kind)}Sign out</button>${manageBtn}</div>`
-    : `<p class="acct-note">Save your routing setup and staged changes across devices. One confirmation in your wallet, no transaction, no cost.</p>${walletChoice}<div class="acct-actions"><button type="button" class="ceres-btn ceres-btn--primary" data-control-density="comfortable" data-account="player0013"${state.busy ? ' disabled' : ''}>Sign in</button>${manageBtn}</div>${waiting}`;
+    : `<p class="acct-note">Save your routing setup and staged changes across devices. One confirmation in your wallet, no transaction, no cost.</p>${walletChoice}<div class="acct-actions"><button type="button" class="ceres-btn ceres-btn--primary" data-control-density="comfortable" data-account="player0014"${state.busy ? ' disabled' : ''}>Sign in</button>${manageBtn}</div>${waiting}`;
   const deleteControls = state.confirm
     ? `<p class="acct-note acct-warn" role="alert">${state.confirm === 'space' ? 'This permanently deletes your saved routing setup, staged changes and their older versions from the Ceres server. Copies on your own devices stay.' : 'This deletes the game data Ceres cached for this account. It is fetched again the next time you open the board. Your saved setup stays.'} Your wallet will ask you to sign a short message.</p><div class="acct-row"><button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-control-case="destructive" data-account="delete-confirm"${state.busy ? ' disabled' : ''}>${state.confirm === 'space' ? 'Delete saved data' : 'Delete cached data'}</button><button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-account="delete-cancel">Cancel</button></div>`
     : `<div class="acct-delete-actions"><button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-control-case="destructive" data-account="delete-space">Delete saved data…</button><button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-control-case="destructive" data-account="delete-cache">Delete cached data…</button></div>`;
@@ -74,7 +74,7 @@ function render() {
 
 function close() { if (state.open) { state.open = false; render(); button?.focus?.({ preventScroll: true }); } }
 
-async function player0013() {
+async function player0014() {
   const account = walletAccount();
   if (!account || state.busy) return;
   const kind = selectedWallet(account);
@@ -135,7 +135,7 @@ export function mountAccountMenu() {
     if (wallet && !state.busy) { selectAccountWallet(walletAccount(), wallet.dataset.accountWallet); state.note = ''; render(); return; }
     const action = event.target.closest('[data-account]');
     if (!action || action.disabled) return;
-    if (action.dataset.account === 'player0013') player0013();
+    if (action.dataset.account === 'player0014') player0014();
     else if (action.dataset.account === 'cancel') cancelSignIn();
     else if (action.dataset.account === 'signout') signOutNow();
     else if (action.dataset.account === 'manage') { state.manage = !state.manage; state.confirm = null; render(); }

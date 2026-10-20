@@ -23,7 +23,7 @@ def _header(lookup, index=0):
 
 
 def test_regional_harvest_net_tax_and_field_provenance():
-    lookup = _fixture("lookup-harvest_all-25aba9.json")
+    lookup = _fixture("lookup-harvest_all.json")
     row = receipt_model.receipt(_header(lookup), lookup, {"fragment_history": {"status": "success", "data": []}})
     assert row["id"] == lookup["trx_info"]["id"] + ":0"
     assert row["link"] == "https://hivehub.dev/tx/" + row["tx_id"]
@@ -39,14 +39,14 @@ def test_regional_harvest_net_tax_and_field_provenance():
 
 
 def test_plot_harvest_and_tax_collection_shapes_and_deduplicated_hits():
-    plot = _fixture("lookup-harvest_resources-ef80ae.json")
+    plot = _fixture("lookup-harvest_resources.json")
     plot_row = receipt_model.receipt(_header(plot), plot, {"fragment_history": {"data": []}})
     assert plot_row["received"]["SPS"] == 56.619
     assert plot_row["costs"] == {"GRAIN": 5690.925, "WOOD": 2845.463,
                                  "STONE": 1138.185, "IRON": 284.546}
 
-    tax = _fixture("lookup-tax_collection-8de7-2.json")
-    fragment = _fixture("fragment-history-8de7-2.json")
+    tax = _fixture("lookup-tax_collection-op2.json")
+    fragment = _fixture("fragment-history-tax_collection-op2.json")
     tax_row = receipt_model.receipt(_header(tax, 2), tax, {"fragment_history": fragment})
     assert tax_row["received"]["GRAIN"] == 3721.62
     assert tax_row["costs"] == {"GRAIN": 1000.0}
@@ -60,7 +60,7 @@ def test_plot_harvest_and_tax_collection_shapes_and_deduplicated_hits():
 
 
 def test_mismatched_game_record_cannot_supply_amounts():
-    lookup = _fixture("lookup-harvest_all-25aba9.json")
+    lookup = _fixture("lookup-harvest_all.json")
     header = _header(lookup)
     header["player"] = "other-player"
     row = receipt_model.receipt(header, lookup)

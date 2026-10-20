@@ -1,4 +1,4 @@
-"""name every source plot once, including multiple copies on a plot."""
+""": name every source plot once, including multiple copies on a plot."""
 from tests.ceres.test_chain_model import STATIC
 from tests.ceres.vm_context import run_in_module_context
 

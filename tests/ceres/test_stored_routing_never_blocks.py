@@ -1,4 +1,4 @@
-""" (incident,, then "we only
+""" /  (incident,, then "we only
 dropped broken routes from 1 single harvest ... I never wanted to delete root routing setup"): a user's saved routes are their ROOT setup and are never
 deleted. Saved routes that fit this harvest come back; routes that do not fit it, or are damaged, are only left out of the screen (and stay stored);
 damaged, hostile or oversized stored values are ignored without an error and can never block the screen."""
@@ -13,7 +13,7 @@ KEY = "ceres:harvest-routing:v1:alice"
 CALL = r"""
 navigator.locks = { request: async (_name, fn) => fn() };
 const setup = createRoutingSetup({ player: 'alice', scope: { kind: 'all' }, regions: [{ region_uid: 'PR-LOP-60' }], receipts: [],
- enabledKinds: ['sale_dec', 'lp_wallet'], signingEnabled: true, onRender: () => {}, isCurrent: () => true });
+  enabledKinds: ['sale_dec', 'lp_wallet'], signingEnabled: true, onRender: () => {}, isCurrent: () => true });
 const html = setup.html();
 """
 
@@ -25,12 +25,12 @@ def _run(body):
 def test_saved_routes_that_fit_this_harvest_come_back_and_the_root_setup_is_never_deleted():
     _run(f"""
 localStorage.setItem('{KEY}', JSON.stringify({{ protected_wallet_dec: '12.5', slippage: '9', reserves: [{{ region_uid: 'x', symbol: 'DEC' }}], rules: [
- {{ id: 'r1', kind: 'liquidity', dec_source: 'wallet', source_region: 'PR-LOP-60', symbol: 'WOOD', quantity_mode: 'percent', quantity: '100' }},
- {{ id: 'r2', kind: 'liquidity', dec_source: 'wallet', source_region: 'PR-OTHER-1', symbol: 'GRAIN', quantity_mode: 'percent', quantity: '100' }},
- 'broken', null, {{ id: 'r3', kind: 'liquidity', dec_source: 'wallet', source_region: 5, symbol: 7 }}] }}));
+  {{ id: 'r1', kind: 'liquidity', dec_source: 'wallet', source_region: 'PR-LOP-60', symbol: 'WOOD', quantity_mode: 'percent', quantity: '100' }},
+  {{ id: 'r2', kind: 'liquidity', dec_source: 'wallet', source_region: 'PR-OTHER-1', symbol: 'GRAIN', quantity_mode: 'percent', quantity: '100' }},
+  'broken', null, {{ id: 'r3', kind: 'liquidity', dec_source: 'wallet', source_region: 5, symbol: 7 }}] }}));
 {CALL}
 if (!html.includes('<strong>1 route</strong>')) throw Error('the saved route that fits this harvest did not come back: ' + html.slice(0, 300));
-setup.setting('protected_wallet_dec', '3'); // any save must keep the routes that do not fit this harvest
+setup.setting('protected_wallet_dec', '3');   // any save must keep the routes that do not fit this harvest
 const left = JSON.parse(localStorage.getItem('{KEY}'));
 if (!left.rules.some(rule => rule.id === 'r2')) throw Error('a saved route for another region was deleted: ' + JSON.stringify(left));
 if (!left.rules.some(rule => rule.id === 'r1')) throw Error('the route shown here was deleted');
@@ -60,9 +60,9 @@ if (!html.includes('r3-setup')) throw Error('read failure broke the screen'); }}
 def test_routes_of_this_visit_are_kept_only_if_this_harvest_produced_them():
     _run(f"""
 const rules = [{{ id: 'a', kind: 'liquidity', dec_source: 'wallet', source_region: 'PR-LOP-60', symbol: 'WOOD', quantity_mode: 'percent', quantity: '25' }},
- {{ id: 'b', kind: 'liquidity', dec_source: 'wallet', source_region: 'PR-LOP-60', symbol: 'GRAIN', quantity_mode: 'percent', quantity: '25' }}];
+  {{ id: 'b', kind: 'liquidity', dec_source: 'wallet', source_region: 'PR-LOP-60', symbol: 'GRAIN', quantity_mode: 'percent', quantity: '25' }}];
 const setup = createRoutingSetup({{ player: 'alice', scope: {{ kind: 'all' }}, regions: [{{ region_uid: 'PR-LOP-60' }}], receipts: [], initialRules: rules,
- produced: new Set(['PR-LOP-60|WOOD']), enabledKinds: ['lp_wallet'], signingEnabled: true, onRender: () => {{}}, isCurrent: () => true }});
+  produced: new Set(['PR-LOP-60|WOOD']), enabledKinds: ['lp_wallet'], signingEnabled: true, onRender: () => {{}}, isCurrent: () => true }});
 if (!setup.html().includes('<strong>1 route</strong>')) throw Error('a route the harvest did not produce was kept');
 """)
 
@@ -73,7 +73,7 @@ navigator.locks = {{ request: async (_n, fn) => fn() }};
 let handed = null;
 const rule = {{ id: 'a', kind: 'liquidity', dec_source: 'wallet', source_region: 'PR-LOP-60', symbol: 'WOOD', quantity_mode: 'percent', quantity: '25' }};
 const setup = createRoutingSetup({{ player: 'alice', scope: {{ kind: 'all' }}, regions: [{{ region_uid: 'PR-LOP-60' }}], receipts: [], initialRules: [rule],
- enabledKinds: ['lp_wallet'], signingEnabled: true, onRender: () => {{}}, isCurrent: () => true, onRulesChange: rules => {{ handed = rules; }} }});
+  enabledKinds: ['lp_wallet'], signingEnabled: true, onRender: () => {{}}, isCurrent: () => true, onRulesChange: rules => {{ handed = rules; }} }});
 setup.setting('protected_wallet_dec', '3');
 if (!handed || handed.length !== 1 || handed[0].id !== 'a') throw Error('routes were not handed to the caller');
 if (JSON.parse(localStorage.getItem('{KEY}')).rules.length !== 1) throw Error('the route was not saved to the root setup');
@@ -81,11 +81,11 @@ if (JSON.parse(localStorage.getItem('{KEY}')).rules.length !== 1) throw Error('t
 
 
 def test_pre_harvest_setup_has_one_clear_way_forward():
-    """before the harvest is confirmed the setup says what comes next and offers 'Continue to harvest'; after it, the notice is gone."""
+    """: before the harvest is confirmed the setup says what comes next and offers 'Continue to harvest'; after it, the notice is gone."""
     base = lambda receipts: f"""
 navigator.locks = {{ request: async (_n, fn) => fn() }};
 const setup = createRoutingSetup({{ player: 'alice', scope: {{ kind: 'all' }}, regions: [{{ region_uid: 'PR-LOP-60' }}], receipts: {receipts},
- enabledKinds: ['sale_dec'], signingEnabled: true, onRender: () => {{}}, isCurrent: () => true }});
+  enabledKinds: ['sale_dec'], signingEnabled: true, onRender: () => {{}}, isCurrent: () => true }});
 const html = setup.html();
 """
     _run(base("[]") + "if (!html.includes('r3-pre-harvest') || !html.includes('Continue to harvest') || !html.includes('data-hm=\"routing-back\"')) throw Error('no way forward');")
@@ -95,7 +95,7 @@ const html = setup.html();
 MAKE = r"""
 navigator.locks = { request: async (_n, fn) => fn() };
 const make = (extra = {}) => createRoutingSetup({ player: 'alice', scope: { kind: 'all' }, regions: [{ region_uid: 'PR-LOP-60' }], receipts: [],
- enabledKinds: ['lp_wallet'], signingEnabled: true, onRender: () => {}, isCurrent: () => true, ...extra });
+  enabledKinds: ['lp_wallet'], signingEnabled: true, onRender: () => {}, isCurrent: () => true, ...extra });
 const rule = (id, region = 'PR-LOP-60', symbol = 'WOOD') => ({ id, kind: 'liquidity', dec_source: 'wallet', source_region: region, symbol, quantity_mode: 'percent', quantity: '100' });
 const read = () => JSON.parse(localStorage.getItem('ceres:harvest-routing:v1:alice'));
 """
@@ -136,5 +136,5 @@ const setup = make();
 setup.action('remove', { dataset: { r3Index: '0' } });
 const left = read().rules.map(r => r.id).sort().join(',');
 if (left !== 'b,c') throw Error('expected only the removed route to go, got ' + left);
-if (asked !== 0) throw Error('the screen asked the server for routes'); // (the safety list is not a route source)
+if (asked !== 0) throw Error('the screen asked the server for routes');   // (the safety list is not a route source)
 """)

@@ -153,10 +153,10 @@ def test_only_explicit_unblocked_unmaxed_copy_is_combinable():
 def test_ended_land_stake_does_not_block_worker_upgrade_eligibility():
     """stake_ref_uid persists after a stake ends -- a past stake_end_date must not block.
 
- Injection run: reverting `_land_stake_reason` to bare
- `if record.get("stake_ref_uid") or ...:` (no stake_end_date check) made this go
- red -- `ended-copy` dropped out of `other_copies` and `combinable_count` fell
- to 0. Restored after observing red.
+    Injection run: reverting `_land_stake_reason` to bare
+    `if record.get("stake_ref_uid") or ...:` (no stake_end_date check) made this go
+    red -- `ended-copy` dropped out of `other_copies` and `combinable_count` fell
+    to 0. Restored after observing red.
     """
     cards = [
         _card(CURRENT, "C-CURRENT", 3),
@@ -173,9 +173,9 @@ def test_ended_land_stake_does_not_block_worker_upgrade_eligibility():
 def test_live_land_stake_with_no_end_date_still_blocks_worker_upgrade():
     """A live stake (stake_ref_uid present, stake_end_date unset) must still block.
 
- Injection run: dropping the `stake_ref_uid` block entirely from
- `_land_stake_reason` made this go red -- `staked-copy` was silently accepted as
- eligible. Restored after observing red.
+    Injection run: dropping the `stake_ref_uid` block entirely from
+    `_land_stake_reason` made this go red -- `staked-copy` was silently accepted as
+    eligible. Restored after observing red.
     """
     cards = [
         _card(CURRENT, "C-CURRENT", 3),

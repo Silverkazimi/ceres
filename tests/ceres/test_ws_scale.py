@@ -13,7 +13,7 @@ def desktop_art_rules() -> str:
 
 
 def test_worksite_scale_defaults_to_one_and_only_targets_wide_low_families() -> None:
-    assert "ws-scale: 1;" in CSS
+    assert "--ws-scale: 1;" in CSS
     rules = re.findall(
         r'html:not\(\.ceres-lw-le-1279\) \.editor-worksite-art\[data-worksite-kind="([^"]+)"\] \{ --ws-scale: ([0-9.]+); \}',
         CSS,

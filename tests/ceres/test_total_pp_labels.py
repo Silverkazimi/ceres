@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 from typing import Mapping
@@ -15,8 +14,6 @@ EDITOR_JS = ROOT / "ceres" / "static" / "editor.js"
 ROWS_JS = ROOT / "ceres" / "static" / "rows.js"
 WORKSITE_JS = ROOT / "ceres" / "static" / "worksite.js"
 INDEX_HTML = ROOT / "ceres" / "static" / "index.html"
-TEXTS_MD = ROOT / "work" / "tooltips" / "TEXTS.md"
-TEXTS_JSON = ROOT / "work" / "tooltips" / "TEXTS.json"
 TEXT_SUFFIXES = {".css", ".html", ".js", ".json", ".md", ".py", ".txt"}
 STATIC_FILES = tuple(sorted(
     path for path in (ROOT / "ceres" / "static").rglob("*")
@@ -29,7 +26,7 @@ SECOND_NAME = re.compile(r"\bHarvest PP\b", re.IGNORECASE)
 
 
 def _read_sources(overrides: Mapping[Path, str] | None = None) -> dict[Path, str]:
-    paths = (*STATIC_FILES, *CERES_PY_FILES, TEXTS_MD, TEXTS_JSON)
+    paths = (*STATIC_FILES, *CERES_PY_FILES)
     sources = {path: path.read_text(encoding="utf-8") for path in paths}
     if overrides:
         sources.update(overrides)
@@ -103,18 +100,20 @@ def _label_values(sources: Mapping[Path, str]) -> dict[str, str]:
     }
 
 
-def _tooltip_title_values(sources: Mapping[Path, str]) -> tuple[list[str], list[str]]:
-    markdown_titles = [
-        title
-        for line in sources[TEXTS_MD].splitlines()
-        if re.match(r"\|\s*49\s*\|", line)
-        for title in re.findall(r"Title [`\"]([^`\"]+)[`\"]", line)
+def _tooltip_title_values(sources: Mapping[Path, str]) -> list[str]:
+    """Every shipped title of the staged-change aggregate tooltip (the editor's change badges).
+
+    The tooltip copy document this list was once read from is a maintainer document outside the public
+    tree; the titles the page actually shows live in editor.js's renderChangeBadges()."""
+    editor = sources[EDITOR_JS]
+    start = editor.index("function renderChangeBadges(")
+    body = editor[start:editor.index("\n}\n", start)]
+    titles = [
+        title for title in re.findall(r"title:\s*['\"`]([^'\"`]*PP after the change)['\"`]", body)
+        if "Base PP" not in title
     ]
-    data = json.loads(sources[TEXTS_JSON])
-    json_row = next(row for row in data["rows"] if row.get("row") == 49)
-    json_titles = [json_row["title"]]
-    json_titles.extend(state["title"] for state in json_row["states"])
-    return markdown_titles, json_titles
+    assert titles, "renderChangeBadges() must title the aggregate PP change tooltip"
+    return titles
 
 
 def _user_facing_label_values(sources: Mapping[Path, str]) -> list[tuple[str, str]]:
@@ -151,15 +150,10 @@ def _assert_total_pp_contract(sources: Mapping[Path, str]) -> None:
         if value != expected[name]
     ]
 
-    markdown_titles, json_titles = _tooltip_title_values(sources)
+    tooltip_titles = _tooltip_title_values(sources)
     mismatches.extend(
-        f"TEXTS.md row 49 title: expected a Total PP title, found {title!r}"
-        for title in markdown_titles
-        if not title.startswith(TOTAL_PP)
-    )
-    mismatches.extend(
-        f"TEXTS.json row 49 title: expected a Total PP title, found {title!r}"
-        for title in json_titles
+        f"aggregate change tooltip title: expected a Total PP title, found {title!r}"
+        for title in tooltip_titles
         if not title.startswith(TOTAL_PP)
     )
     mismatches.extend(
@@ -172,7 +166,7 @@ def _assert_total_pp_contract(sources: Mapping[Path, str]) -> None:
         raise AssertionError("\n".join(mismatches))
 
     assert not any(SECOND_NAME.search(value) for value in labels.values())
-    assert not any(SECOND_NAME.search(title) for title in markdown_titles + json_titles)
+    assert not any(SECOND_NAME.search(title) for title in tooltip_titles)
 
 
 def test_harvest_stage_aggregate_uses_total_pp_at_every_label_site() -> None:

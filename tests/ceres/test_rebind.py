@@ -1,4 +1,4 @@
-""" actual survivor, capture freshness, next Sign and confirmation."""
+""" : actual survivor, capture freshness, next Sign and confirmation."""
 from tests.ceres.test_sign_order import SETUP, STATIC
 from tests.ceres.vm_context import run_in_module_context
 

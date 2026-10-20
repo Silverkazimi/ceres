@@ -1,5 +1,5 @@
 {
-  "_provenance": "recorded 2026-10-15 11:58 UTC from GET https:// api.splinterlands.com/market/history?player=<maintainer>&game=splinterlands and GET /cards/find?ids=<the 14 bought copies>; account names, card uids and transaction ids pseudonymised (library/index.md scheme); every other field as recorded (cards/find trimmed to the fields Ceres reads).",
+  "_provenance": ": recorded 2026-10-15 11:58 UTC from GET https://api.splinterlands.com/market/history?player=<maintainer>&game=splinterlands and GET /cards/find?ids=<the 14 bought copies>; account names, card uids and transaction ids pseudonymised (library/index.md scheme); every other field as recorded (cards/find trimmed to the fields Ceres reads).",
   "history": [
     {
       "id": 190663494,

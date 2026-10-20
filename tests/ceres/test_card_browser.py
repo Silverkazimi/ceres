@@ -1,4 +1,4 @@
-"""the read-only card browser -- /api/cards rows, the max-level Land PP table and the
+""": the read-only card browser -- /api/cards rows, the max-level Land PP table and the
 client's filter/sort/grouping functions (card-browser-model.js, run in the vm harness)."""
 
 from __future__ import annotations
@@ -199,19 +199,19 @@ def _vm(body: str) -> None:
 CARDS_JS = r"""
 const NOW = Date.parse('2026-10-14T12:00:00Z');
 const base = { card_set: 'chaos', edition: 7, foil: 0, gold: false, level: 10, bcx: 400, max_level: 10, no_pp: false,
- splinters: ['Fire'], available: true, unavailable_reason: null, soulbound: false, status: 'idle', plot: null,
- ready_at: null, land_abilities: [], maxed: true, max_level_pp: 1000, land_base_pp: 1000, rarity: 'common' };
+  splinters: ['Fire'], available: true, unavailable_reason: null, soulbound: false, status: 'idle', plot: null,
+  ready_at: null, land_abilities: [], maxed: true, max_level_pp: 1000, land_base_pp: 1000, rarity: 'common' };
 const cards = [
- { ...base, card_detail_id: 1, name: 'Goblin Chef' },
- { ...base, card_detail_id: 1, name: 'Goblin Chef', status: 'staked', plot: '065-07-089', plot_territory: 'Central Fire' },
- { ...base, card_detail_id: 1, name: 'Goblin Chef', status: 'staked', plot: '065-07-089' },
- { ...base, card_detail_id: 1, name: 'Goblin Chef', level: 5, bcx: 50, maxed: false, land_base_pp: 125 },
- { ...base, card_detail_id: 2, name: 'Zebra', rarity: 'rare', foil: 1, gold: true, max_level_pp: 4000, land_base_pp: 4000, bcx: 22, splinters: ['Water'] },
- { ...base, card_detail_id: 3, name: 'Arcane', card_set: 'conclave', foil: 3, max_level_pp: null, land_base_pp: 5000, bcx: 1, soulbound: true },
- { ...base, card_detail_id: 4, name: 'Cooler', status: 'cooling', ready_at: '2026-10-16T00:00:00Z', land_abilities: [['GRAIN', 0.01]] },
- { ...base, card_detail_id: 5, name: 'Expired', status: 'cooling', ready_at: '2026-10-13T00:00:00Z' },
- { ...base, card_detail_id: 6, name: 'Listed', available: false, unavailable_reason: 'listed on market' },
- { ...base, card_detail_id: 7, name: 'Gladiator', card_set: 'gladius', no_pp: true, land_base_pp: 0, max_level_pp: 0, bcx: 1 },
+  { ...base, card_detail_id: 1, name: 'Goblin Chef' },
+  { ...base, card_detail_id: 1, name: 'Goblin Chef', status: 'staked', plot: '065-07-089', plot_territory: 'Central Fire' },
+  { ...base, card_detail_id: 1, name: 'Goblin Chef', status: 'staked', plot: '065-07-089' },
+  { ...base, card_detail_id: 1, name: 'Goblin Chef', level: 5, bcx: 50, maxed: false, land_base_pp: 125 },
+  { ...base, card_detail_id: 2, name: 'Zebra', rarity: 'rare', foil: 1, gold: true, max_level_pp: 4000, land_base_pp: 4000, bcx: 22, splinters: ['Water'] },
+  { ...base, card_detail_id: 3, name: 'Arcane', card_set: 'conclave', foil: 3, max_level_pp: null, land_base_pp: 5000, bcx: 1, soulbound: true },
+  { ...base, card_detail_id: 4, name: 'Cooler', status: 'cooling', ready_at: '2026-10-16T00:00:00Z', land_abilities: [['GRAIN', 0.01]] },
+  { ...base, card_detail_id: 5, name: 'Expired', status: 'cooling', ready_at: '2026-10-13T00:00:00Z' },
+  { ...base, card_detail_id: 6, name: 'Listed', available: false, unavailable_reason: 'listed on market' },
+  { ...base, card_detail_id: 7, name: 'Gladiator', card_set: 'gladius', no_pp: true, land_base_pp: 0, max_level_pp: 0, bcx: 1 },
 ];
 const f = (over) => ({ ...cbDefaultFilters(), ...over });
 const names = (view) => view.tiles.map((t) => t.card.name);
@@ -293,7 +293,7 @@ def _tile_js() -> str:
 
 def test_status_badges_live_inside_the_art_container():
     js = _tile_js()
-    tile = js[js.index("function tileHtml(tile)"):js.index("── rendering")]
+    tile = js[js.index("function tileHtml(tile)"):js.index("// ── rendering")]
     art_open = tile.index('<span class="candidate-art cb-art"')
     art_close = tile.index('</span><span class="candidate-grid-icon-level cb-level">')
     art = tile[art_open:art_close]
@@ -346,7 +346,7 @@ def test_ability_row_sits_directly_above_the_name():
     js = _tile_js()
     row = js[js.index("function abilityRow(card)"):js.index("function tileHtml(tile)")]
     assert 'class="slot-ability-row is-centred cb-abilities"' in row and 'class="slot-ability-item"' in row
-    tile = js[js.index("function tileHtml(tile)"):js.index("── rendering")]
+    tile = js[js.index("function tileHtml(tile)"):js.index("// ── rendering")]
     assert "} cb-caption\"><strong class=\"slot-name\">" in tile and "'slot-caption slot-caption--long' : 'slot-caption'" in tile
     css = (STATIC / "card-browser.css").read_text(encoding="utf-8")
     # the plot tile's name geometry (ceres.css .editor-band, reference width 107.2) scaled to this art's width
@@ -422,7 +422,7 @@ def test_cc_line_shows_current_over_max():
     line = js[js.index("function ccLine(card)"):js.index("function tileHtml(tile)")]
     assert "CC <b>${cc}</b> / ${max}" in line
     assert "card.bcx_max === 0 ? 'max'" in line and "card.bcx_max > 0 ? num(card.bcx_max) : '—'" in line
-    tile = js[js.index("function tileHtml(tile)"):js.index("── rendering")]
+    tile = js[js.index("function tileHtml(tile)"):js.index("// ── rendering")]
     assert "${ccLine(card)}" in tile and "} CC` : '— CC'" not in tile
 
 
@@ -466,13 +466,13 @@ if (a !== ' data-tip="Rarity: Rare" data-tip-kind="explain" aria-label="Rarity: 
 
 TILE_JS = r"""
 const base = { name: 'Goblin Chef', card_set: 'chaos', edition: 7, foil: 0, level: 10, max_level: 10, bcx: 379, bcx_max: 379,
- maxed: true, no_pp: false, splinters: ['Fire'], rarity: 'legendary', land_base_pp: 1000, max_level_pp: 1000, land_abilities: [] };
+  maxed: true, no_pp: false, splinters: ['Fire'], rarity: 'legendary', land_base_pp: 1000, max_level_pp: 1000, land_abilities: [] };
 const tiles = [
- { card: { ...base, foil: 1, bcx: 380, land_abilities: [['GRAIN', 0.01], ['BLOODLINE', 0.3, 'Undead'], 'ENERGIZED', ['DD', 0.5], ['STATIC_CHARGE', 0.1], ['RESEARCH', 0.02]] },
- status: 'staked', plot: { label: '065-09-083', territory: 'Central Fire' }, readyAt: null, unavailable: '' },
- { card: { ...base, foil: 3, bcx: 1, bcx_max: 0, splinters: ['Water', 'Death'], card_set: 'conclave', edition: 14 }, status: 'cooling', plot: null, readyAt: '2026-10-16T02:00:00Z', unavailable: 'Soulbound' },
- { card: { ...base, maxed: false, level: 4, bcx: 20, card_set: 'land', edition: 21, rarity: 'rare', foil: 2 }, status: 'staked', plot: null, readyAt: null, unavailable: 'Listed for sale' },
- { card: { ...base, card_set: 'gladius', edition: 6, no_pp: true, land_base_pp: 0, foil: 4 }, status: 'idle', plot: null, readyAt: null, unavailable: 'Dead in Survival' },
+  { card: { ...base, foil: 1, bcx: 380, land_abilities: [['GRAIN', 0.01], ['BLOODLINE', 0.3, 'Undead'], 'ENERGIZED', ['DD', 0.5], ['STATIC_CHARGE', 0.1], ['RESEARCH', 0.02]] },
+    status: 'staked', plot: { label: '065-09-083', territory: 'Central Fire' }, readyAt: null, unavailable: '' },
+  { card: { ...base, foil: 3, bcx: 1, bcx_max: 0, splinters: ['Water', 'Death'], card_set: 'conclave', edition: 14 }, status: 'cooling', plot: null, readyAt: '2026-10-16T02:00:00Z', unavailable: 'Soulbound' },
+  { card: { ...base, maxed: false, level: 4, bcx: 20, card_set: 'land', edition: 21, rarity: 'rare', foil: 2 }, status: 'staked', plot: null, readyAt: null, unavailable: 'Listed for sale' },
+  { card: { ...base, card_set: 'gladius', edition: 6, no_pp: true, land_base_pp: 0, foil: 4 }, status: 'idle', plot: null, readyAt: null, unavailable: 'Dead in Survival' },
 ];
 console.log(JSON.stringify(tiles.map(tileHtml)));
 """
@@ -535,7 +535,7 @@ def test_filter_row_set_rarity_and_splinter_options_carry_tooltips():
     assert "set: (v) => (v ? { icon: setIcon(v) } : null)" in js and "splinter: (v) => (v ? { icon: splinterIcon(v) } : null)" in js
     run_in_module_context(r"""
 for (const html of [setIcon('chaos'), setIcon('other'), splinterIcon('dragon'), rarityGem('epic')]) {
- if (!/ data-tip="[^"]+"/.test(html)) throw Error('no tooltip: ' + html);
+  if (!/ data-tip="[^"]+"/.test(html)) throw Error('no tooltip: ' + html);
 }
 if (!setIcon('rebellion').includes('data-tip="Set: Rebellion"')) throw Error(setIcon('rebellion'));
 """, entry=CARD_BROWSER)
@@ -572,4 +572,4 @@ def test_black_foils_draw_the_blk_art():
     editor = (STATIC / "editor.js").read_text(encoding="utf-8")
     assert "isGoldFoil(asset) ? '_gold' : isBlackFoil(asset) ? '_blk' : ''" in editor
     fmt = (STATIC / "format.js").read_text(encoding="utf-8")
-    assert "export function isBlackFoil(w) {\n return ['3', '4'].includes(cardFoilValue(w));" in fmt
+    assert "export function isBlackFoil(w) {\n  return ['3', '4'].includes(cardFoilValue(w));" in fmt

@@ -65,7 +65,7 @@ def test_staged_add_undo_uses_checkout_path_and_live_opposite_direction_stages(
     live_browser: tuple[Browser, str],
 ) -> None:
     """R-45 maintainer ruling: an opposite-direction removal is priced and staged while an
- incoming change remains staged on the same plot."""
+    incoming change remains staged on the same plot."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=10) as response:

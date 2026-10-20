@@ -29,14 +29,14 @@ def _page(browser: tuple[Browser, str], *, slow_fill: bool = False) -> Page:
         page.add_init_script(
             """
             window.requestIdleCallback = function (callback) {
- return window.setTimeout(function () {
- callback({timeRemaining: function () { return 0; }});
- }, 1000);
- };
- window.cancelIdleCallback = window.clearTimeout;
+              return window.setTimeout(function () {
+                callback({timeRemaining: function () { return 0; }});
+              }, 1000);
+            };
+            window.cancelIdleCallback = window.clearTimeout;
             """
         )
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     return page
 
 
@@ -106,21 +106,21 @@ def _wait_rows(page: Page, count: int, *, settle: bool = True) -> None:
 def _wait_stable_width(page: Page, *, stable_ms: int = 250, timeout_ms: int = 20_000) -> int:
     page.evaluate(
         """(stableMs) => {
- const token = {};
- window.__ceresWidthToken = token;
- const state = { lastValue: null, lastChange: performance.now(), stableMs, stableSince: 0 };
- window.__ceresWidthWatch = state;
- const tick = () => {
- if (window.__ceresWidthToken !== token) return; // superseded -- stop this chain
- const table = document.getElementById('plot-table');
- const value = table ? table.scrollWidth : null;
- const now = performance.now();
- if (value !== state.lastValue) { state.lastValue = value; state.lastChange = now; }
- state.stableSince = now - state.lastChange;
- requestAnimationFrame(tick);
- };
- requestAnimationFrame(tick);
- }""",
+          const token = {};
+          window.__ceresWidthToken = token;
+          const state = { lastValue: null, lastChange: performance.now(), stableMs, stableSince: 0 };
+          window.__ceresWidthWatch = state;
+          const tick = () => {
+            if (window.__ceresWidthToken !== token) return; // superseded -- stop this chain
+            const table = document.getElementById('plot-table');
+            const value = table ? table.scrollWidth : null;
+            const now = performance.now();
+            if (value !== state.lastValue) { state.lastValue = value; state.lastChange = now; }
+            state.stableSince = now - state.lastChange;
+            requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        }""",
         stable_ms,
     )
     page.wait_for_function(
@@ -135,17 +135,17 @@ def _metrics(page: Page) -> dict:
     return page.evaluate(
         """
         () => ({
- tableWidth: document.querySelector('#plot-table').scrollWidth,
- scrollerWidth: document.querySelector('#plot-table-scroll').scrollWidth,
- left: document.querySelector('#plot-table-scroll').scrollLeft,
- scrollerOver: document.querySelector('#plot-table-scroll').scrollWidth
- - document.querySelector('#plot-table-scroll').clientWidth,
- pageOver: document.documentElement.scrollWidth - document.documentElement.clientWidth,
- windowTop: window.scrollY,
- clipped: [...document.querySelectorAll('#plot-tbody tr.plot-row td')]
- .filter(td => td.scrollWidth > td.clientWidth + 2).length,
- rows: document.querySelectorAll('#plot-tbody > tr.plot-row').length
- })
+          tableWidth: document.querySelector('#plot-table').scrollWidth,
+          scrollerWidth: document.querySelector('#plot-table-scroll').scrollWidth,
+          left: document.querySelector('#plot-table-scroll').scrollLeft,
+          scrollerOver: document.querySelector('#plot-table-scroll').scrollWidth
+            - document.querySelector('#plot-table-scroll').clientWidth,
+          pageOver: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          windowTop: window.scrollY,
+          clipped: [...document.querySelectorAll('#plot-tbody tr.plot-row td')]
+            .filter(td => td.scrollWidth > td.clientWidth + 2).length,
+          rows: document.querySelectorAll('#plot-tbody > tr.plot-row').length
+        })
         """
     )
 
@@ -249,9 +249,9 @@ def test_root_font_change_moves_between_table_and_cards(
     browser: tuple[Browser, str], plot_count: int
 ) -> None:
     """A larger browser text size (32px root) narrows the effective width like
- browser zoom: the width classes are in em, so the board switches to the card
- view instead of cutting the table off, with the filter intact and no side
- scroll. Back at 16px the table returns at its exact reference width."""
+    browser zoom: the width classes are in em, so the board switches to the card
+    view instead of cutting the table off, with the filter intact and no side
+    scroll. Back at 16px the table returns at its exact reference width."""
     reference = _full_width(browser, plot_count)
     page = _page(browser)
     _wait_rows(page, plot_count)
@@ -259,22 +259,22 @@ def test_root_font_change_moves_between_table_and_cards(
     _wait_rows(page, 4)
     page.evaluate(
         """() => {
- document.documentElement.style.fontSize = '32px';
- window.dispatchEvent(new Event('resize'));
- }"""
+          document.documentElement.style.fontSize = '32px';
+          window.dispatchEvent(new Event('resize'));
+        }"""
     )
     page.wait_for_function("document.querySelectorAll('#plot-card-list .plot-card').length === 4", timeout=30_000)
     cards = page.evaluate(
         """() => ({phone: document.documentElement.classList.contains('ceres-lw-le-1279'),
- tableShown: getComputedStyle(document.getElementById('plot-table-scroll')).display !== 'none',
- pageOver: document.documentElement.scrollWidth - document.documentElement.clientWidth})"""
+          tableShown: getComputedStyle(document.getElementById('plot-table-scroll')).display !== 'none',
+          pageOver: document.documentElement.scrollWidth - document.documentElement.clientWidth})"""
     )
     assert cards["phone"] and not cards["tableShown"] and cards["pageOver"] <= 0, cards
     page.evaluate(
         """() => {
- document.documentElement.style.fontSize = '';
- window.dispatchEvent(new Event('resize'));
- }"""
+          document.documentElement.style.fontSize = '';
+          window.dispatchEvent(new Event('resize'));
+        }"""
     )
     _wait_rows(page, 4)
     page.locator("#rarity-filter").select_option("")
@@ -294,10 +294,10 @@ def test_v0413_width_and_window_position_guarantees_hold(
     preserved = _metrics(page)
     page.evaluate(
         """() => {
- const input = document.querySelector('#text-filter');
- input.value = '1';
- input.dispatchEvent(new Event('input', {bubbles: true}));
- }"""
+          const input = document.querySelector('#text-filter');
+          input.value = '1';
+          input.dispatchEvent(new Event('input', {bubbles: true}));
+        }"""
     )
     page.wait_for_function(
         "document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=60_000
@@ -308,10 +308,10 @@ def test_v0413_width_and_window_position_guarantees_hold(
     assert after_filter["windowTop"] == preserved["windowTop"]
     page.evaluate(
         """() => {
- const input = document.querySelector('#text-filter');
- input.value = '';
- input.dispatchEvent(new Event('input', {bubbles: true}));
- }"""
+          const input = document.querySelector('#text-filter');
+          input.value = '';
+          input.dispatchEvent(new Event('input', {bubbles: true}));
+        }"""
     )
     _wait_rows(page, plot_count)
     after_clear = _assert_unclipped(page)

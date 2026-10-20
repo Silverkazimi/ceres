@@ -167,19 +167,19 @@ class IntentWaveTests(unittest.TestCase):
 
     def test_op_payload_support_does_not_auto_exempt_a_new_stake_type_from_cooldown(self):
         """`land_ops._ITEM_STAKE_TYPES` and `waves`'s cooldown classification are
- deliberately DECOUPLED (found while wiring Ceres's browser-side cooldown gate,
- `ceres-multiplot-batch-checkout-gap.md` W3): `_ITEM_STAKE_TYPES` tracks which
- stake types have a verified op PAYLOAD shape, nothing about the ~3-day unstake
- cooldown. Before this fix, `cooldown_class` read `land_ops._ITEM_STAKE_TYPES`
- directly, which meant Title (`STK-LND-TTL`) -- a real card the internal rules's ruling
- says does NOT cool down, but whose payload shape is still unverified and so is
- absent from `_ITEM_STAKE_TYPES` -- would have been wrongly classified as cooling
- the moment Title op support landed and someone forgot to also touch the cooldown
- table. This test locks in the correct, safer default: adding op-payload support
- for a brand new stake type does NOT silently exempt it from the cooldown: it
- stays "cards" (cooling, fail-closed) until the internal rules explicitly rules on
- it and it is added to `waves._NON_COOLING_STAKE_TYPES`. Op construction itself
- (a purely payload-shape concern) is unaffected by that decoupling."""
+        deliberately DECOUPLED (found while wiring Ceres's browser-side cooldown gate,
+        `ceres-multiplot-batch-checkout-gap.md` W3): `_ITEM_STAKE_TYPES` tracks which
+        stake types have a verified op PAYLOAD shape, nothing about the ~3-day unstake
+        cooldown. Before this fix, `cooldown_class` read `land_ops._ITEM_STAKE_TYPES`
+        directly, which meant Title (`STK-LND-TTL`) -- a real card the internal rules's ruling
+        says does NOT cool down, but whose payload shape is still unverified and so is
+        absent from `_ITEM_STAKE_TYPES` -- would have been wrongly classified as cooling
+        the moment Title op support landed and someone forgot to also touch the cooldown
+        table. This test locks in the correct, safer default: adding op-payload support
+        for a brand new stake type does NOT silently exempt it from the cooldown: it
+        stays "cards" (cooling, fail-closed) until the internal rules explicitly rules on
+        it and it is added to `waves._NON_COOLING_STAKE_TYPES`. Op construction itself
+        (a purely payload-shape concern) is unaffected by that decoupling."""
         hypothetical = "STK-LND-HYP"
         intent = StakeIntent("deed-A", hypothetical, "stake", "ASSET-001", None, None)
         with patch.object(land_ops, "_ITEM_STAKE_TYPES", land_ops._ITEM_STAKE_TYPES | {hypothetical}):

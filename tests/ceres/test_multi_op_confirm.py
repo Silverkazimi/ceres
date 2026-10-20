@@ -1,4 +1,4 @@
-"""one Hive transaction, several Splinterlands game operations -- every operation's own record is read.
+""": one Hive transaction, several Splinterlands game operations -- every operation's own record is read.
 
 The game files the first game operation under the bare Hive id and the following ones under `<id>-1`, `<id>-2` ...
 (measured 2026-10-11 on ddfbacfe8d89f155b1f498e0b017bb63a18f35f8, four `sm_land_operation` harvests; `-4` answered
@@ -182,15 +182,15 @@ def test_board_splits_a_mixed_verdict_per_operation():
         _slice(source, "function firstClearOutcomeChunks", "function markGameRefusedChunk"),
         r"""
 const stake = (deed) => ['custom_json', { id: 'sm_stake_change', json: JSON.stringify({ deed_uid: deed,
- stake: { cards: [{ card_uid: 'C-' + deed }], items: [] }, unstake: { cards: [], items: [] }, n: deed }) }];
+  stake: { cards: [{ card_uid: 'C-' + deed }], items: [] }, unstake: { cards: [], items: [] }, n: deed }) }];
 const chunk = { operations: [stake(''), stake(''), stake('')] };
 const mixed = { op_results: [{ index: 0, success: true }, { index: 1, success: false, error: 'refused' }, { index: 2, success: true }] };
 const split = firstClearOutcomeChunks(mixed, chunk);
 const same = firstClearOutcomeChunks(mixed, { operations: [stake(''), stake(''), stake('')] });
 const allRefused = firstClearOutcomeChunks({ op_results: [{ index: 0, success: false, error: 'x' }] }, { operations: [stake('')] });
 console.log(JSON.stringify({
- accepted: [...chunkDeedDirections(split.accepted)], refused: [...chunkDeedDirections(split.refused)],
- ambiguous: same, allRefused,
+  accepted: [...chunkDeedDirections(split.accepted)], refused: [...chunkDeedDirections(split.refused)],
+  ambiguous: same, allRefused,
 }));
 """,
     ])

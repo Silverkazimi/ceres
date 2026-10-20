@@ -1,4 +1,4 @@
-"""the board's Boost cell lists every single boost and adds them up to the multiplier."""
+""": the board's Boost cell lists every single boost and adds them up to the multiplier."""
 from pathlib import Path
 from tests.ceres.vm_context import run_in_module_context
 STATIC = Path(__file__).parents[2] / 'ceres' / 'static'

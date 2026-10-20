@@ -1,4 +1,4 @@
-"""Voucher and SPS get the wallet pool swap. Every payload is compared field for field
+""": Voucher and SPS get the wallet pool swap. Every payload is compared field for field
 with synthetic transactions in the game's own shape."""
 import json
 from decimal import Decimal
@@ -28,10 +28,10 @@ OWNER = {
                    {"op": "swap_tokens", "region_uid": "", "resource_amount": 1, "shares_out": 8.124, "max_slippage": 2.5, "resource_symbol": "SPS"}),
 }
 # Step 2 of the SPS sale: ACTIVE custom_json id sm_sps (tx 9f708b6a9b079312900596d03c866e88e2782974).
-OWNER_TRANSFER = {"action": "token_transfer", "params": {"to": "player0015", "qty": 1, "token": "SPS", "memo": "lpsid:90001"}}
+OWNER_TRANSFER = {"action": "token_transfer", "params": {"to": "player0016", "qty": 1, "token": "SPS", "memo": "lpsid:90001"}}
 # What transactions/lookup returned for tx <tx id> (result.data).
 OWNER_SPS_SALE_RESULT = {"pending_swap_id": 90001, "pending_external_amount": 1, "external_swap_required": True,
-                         "external_swap_token": "SPS", "external_transfer_account": "player0015"}
+                         "external_swap_token": "SPS", "external_transfer_account": "player0016"}
 
 
 @pytest.mark.parametrize("name,build", [
@@ -177,23 +177,23 @@ def test_owner_sps_swaps_are_reproduced_by_the_pool_maths():
 
 CARD_JS = """
 const wallet = { account: { DEC: 100, SPS: 5, SPSP: 0, VOUCHER: 2 },
- swap: { symbols: ['GRAIN', 'VOUCHER', 'SPS'], account_symbols: ['VOUCHER', 'SPS'], two_step_sell: ['SPS'], directions: ['swap_sell', 'swap_buy'],
- slippage: '2.5', signing_enabled: true, fees: { GRAIN: '10', VOUCHER: '10', SPS: '0.5' },
- rates: { SPS: { swap_sell: { unit: '8.124', inverse: '0.123' }, swap_buy: { unit: '0.122', inverse: '8.2' } },
- VOUCHER: { swap_sell: { unit: '32.3', inverse: '0.031' }, swap_buy: { unit: '0.025', inverse: '40' } } } },
- regions: [{ region_uid: 'PR-CEF-65', plots_owned: 3, balances: { GRAIN: 1, WOOD: 0, STONE: 0, IRON: 0, RESEARCH: 5, AURA: 5 } }] };
+  swap: { symbols: ['GRAIN', 'VOUCHER', 'SPS'], account_symbols: ['VOUCHER', 'SPS'], two_step_sell: ['SPS'], directions: ['swap_sell', 'swap_buy'],
+    slippage: '2.5', signing_enabled: true, fees: { GRAIN: '10', VOUCHER: '10', SPS: '0.5' },
+    rates: { SPS: { swap_sell: { unit: '8.124', inverse: '0.123' }, swap_buy: { unit: '0.122', inverse: '8.2' } },
+             VOUCHER: { swap_sell: { unit: '32.3', inverse: '0.031' }, swap_buy: { unit: '0.025', inverse: '40' } } } },
+  regions: [{ region_uid: 'PR-CEF-65', plots_owned: 3, balances: { GRAIN: 1, WOOD: 0, STONE: 0, IRON: 0, RESEARCH: 5, AURA: 5 } }] };
 """
 
 
 def test_card_on_voucher_and_sps_tabs_has_no_region_and_no_two_step_copy():
     body_js = CARD_JS + """
 for (const symbol of ['VOUCHER', 'SPS']) {
- const html = swapHtml(symbol, wallet, 'player0005', true);
- if (!html.includes(`data-lp-symbol="${symbol}"`) || !html.includes('data-dec="lp:flip"')) throw new Error(symbol + ' card: ' + html);
- if (html.includes('data-lp-region') || html.includes('ch-plot-badge')) throw new Error(symbol + ' must have no region: ' + html);
- if (!html.includes('in your wallet')) throw new Error(symbol + ' pays from the wallet: ' + html);
- // the game does an SPS sale in one click -- no "two signatures" / "Step 2" copy anywhere.
- if (/two signatures|Step 2|Active key/i.test(html)) throw new Error(symbol + ' two-step copy: ' + html);
+  const html = swapHtml(symbol, wallet, 'player0005', true);
+  if (!html.includes(`data-lp-symbol="${symbol}"`) || !html.includes('data-dec="lp:flip"')) throw new Error(symbol + ' card: ' + html);
+  if (html.includes('data-lp-region') || html.includes('ch-plot-badge')) throw new Error(symbol + ' must have no region: ' + html);
+  if (!html.includes('in your wallet')) throw new Error(symbol + ' pays from the wallet: ' + html);
+  // : the game does an SPS sale in one click -- no "two signatures" / "Step 2" copy anywhere.
+  if (/two signatures|Step 2|Active key/i.test(html)) throw new Error(symbol + ' two-step copy: ' + html);
 }
 swapState('player0005', 'SPS').direction = 'buy';
 const buy = swapHtml('SPS', wallet, 'player0005', true);
@@ -206,19 +206,19 @@ if (swapHtml('SPS', { ...wallet, account: { ...wallet.account, SPS: 0 } }, 'play
 
 
 def test_one_swap_click_signs_the_sale_then_the_sps_transfer_and_a_declined_transfer_can_be_retried():
-    """one "Swap SPS -> DEC" click builds the sale (no Review), opens the wallet for the Posting
- swap, reads the game's pending swap and opens the wallet again for the Active transfer -- no second click.
- A declined transfer leaves one "Send SPS to the pool" button (pending id in page memory), no error text.
- The wallet is a stub; nothing is broadcast."""
+    """/: one "Swap SPS -> DEC" click builds the sale (no Review), opens the wallet for the Posting
+    swap, reads the game's pending swap and opens the wallet again for the Active transfer -- no second click.
+    A declined transfer leaves one "Send SPS to the pool" button (pending id in page memory), no error text.
+    The wallet is a stub; nothing is broadcast."""
     source = read_entry_source(STATIC / "wallet-lp.js")
     for name in ("requestBroadcastThroughGate(ctx.player", ):
         assert source.count(name) == 2, name
     source = source.replace("requestBroadcastThroughGate(ctx.player", "__stubGate(ctx.player").replace("walletReady(ctx.player)", "true").replace("walletReady(player)", "true")
     extra = """
 context.__stubGate = async (player, operations, onResponse, authority) => {
- context.__signed.push({ authority, json: JSON.parse(operations[0][1].json), id: operations[0][1].id });
- if (authority === 'Active' && context.__declineActive) { context.__declineActive = false; const e = new Error('user cancel'); e.broadcasted = false; throw e; }
- return { txId: (authority === 'Active' ? 'b' : 'a').repeat(40) };
+  context.__signed.push({ authority, json: JSON.parse(operations[0][1].json), id: operations[0][1].id });
+  if (authority === 'Active' && context.__declineActive) { context.__declineActive = false; const e = new Error('user cancel'); e.broadcasted = false; throw e; }
+  return { txId: (authority === 'Active' ? 'b' : 'a').repeat(40) };
 };
 context.__signed = [];
 context.__declineActive = true;
@@ -233,10 +233,10 @@ VERIFY_SCHEDULE_MS.length = 1;
 const built = {posting};
 const order = [];
 globalThis.fetch = async (url, options) => {{
- const path = url.split('?')[0].split('/').pop(); const body = JSON.parse(options.body); order.push([path, body]);
- const reply = path === 'preview' ? {{ ...built, signing_enabled: true, quote: {{ kind: 'swap_sell', input: '1', output: '8.124', minimum: '7.920', pool_cost: '0.005', slippage: '2.5', fee_percent: '0.5', two_step: true }}, projected: {{ dec_after: '108.124', region_after: '4' }} }}
- : path === 'verify' ? {json.dumps(info)} : {json.dumps(funding)};
- return {{ ok: true, status: 200, json: async () => reply }};
+  const path = url.split('?')[0].split('/').pop(); const body = JSON.parse(options.body); order.push([path, body]);
+  const reply = path === 'preview' ? {{ ...built, signing_enabled: true, quote: {{ kind: 'swap_sell', input: '1', output: '8.124', minimum: '7.920', pool_cost: '0.005', slippage: '2.5', fee_percent: '0.5', two_step: true }}, projected: {{ dec_after: '108.124', region_after: '4' }} }}
+    : path === 'verify' ? {json.dumps(info)} : {json.dumps(funding)};
+  return {{ ok: true, status: 200, json: async () => reply }};
 }};
 const st = swapState('player0005', 'SPS');
 Object.assign(st, {{ direction: 'sell', amount: '1', quoted: '1', stage: 'edit', quote: {{ kind: 'swap_sell', input: '1', output: '8.124', minimum: '7.920', pool_cost: '0.005', fee_percent: '0.5', two_step: true }} }});
@@ -244,35 +244,35 @@ let signing = false;
 const ctx = {{ player: 'player0005', account: () => 'player0005', drawer: () => null, wallet: () => wallet, render: () => {{}}, reload: async () => {{}}, setSigning: v => {{ signing = v; }} }};
 const target = {{ closest: () => ({{ dataset: {{ lpSymbol: 'SPS' }} }}) }};
 (async () => {{
- const card = swapHtml('SPS', wallet, 'player0005', true);
- if (!card.includes('data-dec="lp:swap"') || !card.includes('Swap 1.000 SPS → 8.124 DEC') || /two signatures|Step 2/.test(card)) throw new Error('one Swap button: ' + card);
- // ONE click.
- await swapAction(ctx, 'swap', target);
- for (let i = 0; i < 400 && !(st.stage === 'funding' && !signing); i++) await new Promise(r => setTimeout(r, 2)); // the click returns at once; the check loop runs on
- const paths = order.map(o => o[0]).join(',');
- if (paths !== 'preview,verify,sps-funding') throw new Error('requests in order: ' + paths);
- const preview = order[0][1];
- if (preview.sign !== true || preview.seen_output !== '8.124' || preview.region_uid !== '' || preview.resource_amount !== '1' || 'reviewed_payload' in preview) throw new Error('one-click build: ' + JSON.stringify(preview));
- if (__signed.length !== 2 || __signed[0].authority !== 'Posting' || __signed[1].authority !== 'Active') throw new Error('both wallet requests from one click: ' + JSON.stringify(__signed));
- if (__signed[0].json.resource_symbol !== 'SPS' || __signed[1].id !== 'sm_sps' || __signed[1].json.params.memo !== 'lpsid:90001') throw new Error('ops: ' + JSON.stringify(__signed));
- // The Active prompt was declined: one retry button, no error text, pending swap kept in memory.
- if (st.stage !== 'funding' || !st.funding || st.funding.pending_swap_id !== 90001 || signing) throw new Error('declined: ' + st.stage);
- let retry = swapHtml('SPS', wallet, 'player0005', true);
- if ((retry.match(/data-dec="lp:fund"/g) || []).length !== 1 || !retry.includes('Send SPS to the pool') || /error|failed|rejected|cancel|two signatures|Step 2/i.test(retry)) throw new Error('retry card: ' + retry);
- await swapAction(ctx, 'fund', target);
- if (order.filter(o => o[0] === 'sps-funding').length !== 1) throw new Error('the kept transfer is signed again, not rebuilt');
- // (stuck states): the sale is not "done" at the transfer -- it waits for the pool to settle, no quote shown.
- if (__signed.length !== 3 || __signed[2].authority !== 'Active' || st.stage !== 'settling' || st.receipt.funding_tx !== 'b'.repeat(40) || st.receipt.output !== null) throw new Error('retry settling: ' + st.stage);
- if (!swapHtml('SPS', wallet, 'player0005', true).includes('Waiting for the pool to settle')) throw new Error('receipt');
- process.exit(0); // the settlement loop keeps real timers alive; the checks are done
+  const card = swapHtml('SPS', wallet, 'player0005', true);
+  if (!card.includes('data-dec="lp:swap"') || !card.includes('Swap 1.000 SPS → 8.124 DEC') || /two signatures|Step 2/.test(card)) throw new Error('one Swap button: ' + card);
+  // ONE click.
+  await swapAction(ctx, 'swap', target);
+  for (let i = 0; i < 400 && !(st.stage === 'funding' && !signing); i++) await new Promise(r => setTimeout(r, 2));  // : the click returns at once; the check loop runs on
+  const paths = order.map(o => o[0]).join(',');
+  if (paths !== 'preview,verify,sps-funding') throw new Error('requests in order: ' + paths);
+  const preview = order[0][1];
+  if (preview.sign !== true || preview.seen_output !== '8.124' || preview.region_uid !== '' || preview.resource_amount !== '1' || 'reviewed_payload' in preview) throw new Error('one-click build: ' + JSON.stringify(preview));
+  if (__signed.length !== 2 || __signed[0].authority !== 'Posting' || __signed[1].authority !== 'Active') throw new Error('both wallet requests from one click: ' + JSON.stringify(__signed));
+  if (__signed[0].json.resource_symbol !== 'SPS' || __signed[1].id !== 'sm_sps' || __signed[1].json.params.memo !== 'lpsid:90001') throw new Error('ops: ' + JSON.stringify(__signed));
+  // The Active prompt was declined: one retry button, no error text, pending swap kept in memory.
+  if (st.stage !== 'funding' || !st.funding || st.funding.pending_swap_id !== 90001 || signing) throw new Error('declined: ' + st.stage);
+  let retry = swapHtml('SPS', wallet, 'player0005', true);
+  if ((retry.match(/data-dec="lp:fund"/g) || []).length !== 1 || !retry.includes('Send SPS to the pool') || /error|failed|rejected|cancel|two signatures|Step 2/i.test(retry)) throw new Error('retry card: ' + retry);
+  await swapAction(ctx, 'fund', target);
+  if (order.filter(o => o[0] === 'sps-funding').length !== 1) throw new Error('the kept transfer is signed again, not rebuilt');
+  //  (stuck states): the sale is not "done" at the transfer -- it waits for the pool to settle, no quote shown.
+  if (__signed.length !== 3 || __signed[2].authority !== 'Active' || st.stage !== 'settling' || st.receipt.funding_tx !== 'b'.repeat(40) || st.receipt.output !== null) throw new Error('retry settling: ' + st.stage);
+  if (!swapHtml('SPS', wallet, 'player0005', true).includes('Waiting for the pool to settle')) throw new Error('receipt');
+  process.exit(0);  // : the settlement loop keeps real timers alive; the checks are done
 }})().catch(error => {{ console.error(error); process.exit(1); }});
 """
     run_in_module_context(body_js, entry=STATIC / "wallet-lp.js", source=source, extra_context_js=extra)
 
 
 def test_a_moved_quote_or_a_declined_wallet_leaves_the_card_ready_without_text():
-    """a 409 (quote moved past the shown figure) or a declined Posting prompt returns to the card with the
- Swap button ready again; the only visible change is a fresh "You receive"."""
+    """: a 409 (quote moved past the shown figure) or a declined Posting prompt returns to the card with the
+    Swap button ready again; the only visible change is a fresh "You receive"."""
     source = read_entry_source(STATIC / "wallet-lp.js").replace("requestBroadcastThroughGate(ctx.player", "__stubGate(ctx.player").replace("walletReady(ctx.player)", "true").replace("walletReady(player)", "true")
     extra = """
 context.__stubGate = async () => { const e = new Error('user cancel'); e.broadcasted = false; throw e; };
@@ -282,26 +282,26 @@ context.__stubGate = async () => { const e = new Error('user cancel'); e.broadca
 let mode = 'moved';
 const built = {posting};
 globalThis.fetch = async (url) => {{
- const path = url.split('?')[0].split('/').pop();
- if (path === 'preview' && mode === 'moved') return {{ ok: false, status: 409, json: async () => ({{ detail: 'moved' }}) }};
- const q = {{ kind: 'swap_sell', resource_symbol: 'VOUCHER', input: '0.1', output: '3.100', minimum: '3.022', pool_cost: '0.01', fee_percent: '10', two_step: false }};
- return {{ ok: true, status: 200, json: async () => path === 'quote' ? q : {{ ...built, signing_enabled: true, quote: q }} }};
+  const path = url.split('?')[0].split('/').pop();
+  if (path === 'preview' && mode === 'moved') return {{ ok: false, status: 409, json: async () => ({{ detail: 'moved' }}) }};
+  const q = {{ kind: 'swap_sell', resource_symbol: 'VOUCHER', input: '0.1', output: '3.100', minimum: '3.022', pool_cost: '0.01', fee_percent: '10', two_step: false }};
+  return {{ ok: true, status: 200, json: async () => path === 'quote' ? q : {{ ...built, signing_enabled: true, quote: q }} }};
 }};
 const st = swapState('player0005', 'VOUCHER');
 Object.assign(st, {{ direction: 'sell', amount: '0.1', quoted: '0.1', stage: 'edit', quote: {{ kind: 'swap_sell', resource_symbol: 'VOUCHER', input: '0.1', output: '3.230', minimum: '3.149', pool_cost: '0.01' }} }});
 const ctx = {{ player: 'player0005', account: () => 'player0005', drawer: () => null, wallet: () => wallet, render: () => {{}}, reload: async () => {{}}, setSigning: () => {{}} }};
 const target = {{ closest: () => ({{ dataset: {{ lpSymbol: 'VOUCHER' }} }}) }};
 (async () => {{
- await swapAction(ctx, 'swap', target);
- await new Promise(r => setTimeout(r, 20));
- if (st.stage !== 'edit' || st.quote.output !== '3.100') throw new Error('moved: stays on the card with a fresh figure ' + st.stage + ' ' + st.quote.output);
- let html = swapHtml('VOUCHER', wallet, 'player0005', true);
- if (/moved|error|failed/i.test(html) || !html.includes('3.100 DEC')) throw new Error('moved card: ' + html);
- mode = 'ok';
- await swapAction(ctx, 'swap', target);
- if (st.stage !== 'edit' || st.receipt) throw new Error('declined wallet: back to the card ' + st.stage);
- html = swapHtml('VOUCHER', wallet, 'player0005', true);
- if (/data-dec="lp:swap"[^>]*disabled/.test(html) || /cancel|error|failed/i.test(html)) throw new Error('Swap ready again: ' + html);
+  await swapAction(ctx, 'swap', target);
+  await new Promise(r => setTimeout(r, 20));
+  if (st.stage !== 'edit' || st.quote.output !== '3.100') throw new Error('moved: stays on the card with a fresh figure ' + st.stage + ' ' + st.quote.output);
+  let html = swapHtml('VOUCHER', wallet, 'player0005', true);
+  if (/moved|error|failed/i.test(html) || !html.includes('3.100 DEC')) throw new Error('moved card: ' + html);
+  mode = 'ok';
+  await swapAction(ctx, 'swap', target);
+  if (st.stage !== 'edit' || st.receipt) throw new Error('declined wallet: back to the card ' + st.stage);
+  html = swapHtml('VOUCHER', wallet, 'player0005', true);
+  if (/data-dec="lp:swap"[^>]*disabled/.test(html) || /cancel|error|failed/i.test(html)) throw new Error('Swap ready again: ' + html);
 }})().catch(error => {{ console.error(error); process.exit(1); }});
 """
     run_in_module_context(body_js, entry=STATIC / "wallet-lp.js", source=source, extra_context_js=extra)
@@ -317,7 +317,7 @@ def test_the_games_nested_answer_confirms_and_builds_the_sps_transfer():
     data = {"resource": "SPS", "resource_amount": 1, "dec_amount": 8.115, "region_uid": "", "pending_swap_id": 90002,
             "pending_external_amount": 1, "pending_external_fee_amount": 0.005, "pending_external_swap_amount": 0.995,
             "external_swap_required": True, "external_swap_token": "SPS", "external_swap_player": "player0005",
-            "external_transfer_account": "player0015", "to_player": "player0005", "region_name": None}
+            "external_transfer_account": "player0016", "to_player": "player0005", "region_name": None}
     info = {"id": tx, "type": "land_operation", "player": "player0005", "data": json.dumps(payload), "success": True,
             "result": json.dumps({"success": True, "result": {"success": True, "error": "", "data": data}})}
     body = {"nonce": payload["n"], "kind": "swap_sell", "expected_payload": payload}

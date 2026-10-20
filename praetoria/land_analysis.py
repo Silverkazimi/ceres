@@ -997,7 +997,7 @@ def analyze_bundle(
             card = raw  # the parsed payload is not kept or mutated; a second copy per card was a whale's biggest cost
             classification = classify_card(card, as_of, player, assigned.get(str(card["uid"])), str(card.get("stake_ref_uid")) in assets_by_deed)
             # built at final size. Popping keys from a full copy left every dict at its
-            # original ~70-key table -- 125,097 of them held ~270 MB on player0016.
+            # original ~70-key table -- 125,097 of them held ~270 MB on player0017.
             if DROPPED_COLLECTION_FIELDS.isdisjoint(card):
                 # a stream-parsed row is already at its final key set; one plain copy
                 # keeps the report's facts independent of the ETag memo's rows.
@@ -2205,6 +2205,10 @@ def load_snapshot(path: Path, *, include_cards: bool = True) -> dict[str, Any]:
         expected = (report.get("card_pool") or {}).get("fetched_at")
         sidecar = path.with_name(path.name.replace("-latest.json", "-cards-latest.json"))
         try:
+            if sidecar == path:
+                # A snapshot not named `*-latest.json` has no sidecar name of its own
+                # never read the snapshot back as its own card pool.
+                raise FileNotFoundError(sidecar)
             pool = json.loads(sidecar.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             if isinstance(inline_cards, list) and isinstance(exc, OSError):

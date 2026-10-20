@@ -1,8 +1,8 @@
 """Guards for the routing dead ends reproduced on player0005 on 2026-09-28.
 
 1. A wallet that refuses before signing (Keychain Cancel, 2-minute signing timeout) left the bundle
- attached to a transaction id that was never signed, so the run could only end "unknown" and every
- later routing run was refused ("Resolve the existing routing run before creating another").
+   attached to a transaction id that was never signed, so the run could only end "unknown" and every
+   later routing run was refused ("Resolve the existing routing run before creating another").
 2. After two scheduled chain probes, "Check again" did nothing.
 3. Unticking every sale of a bundle left no way past that bundle.
 4. A stopped run that never reached a wallet blocked routing the same harvest again.
@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from ceres import harvest_routing as routing, routing_plan, routing_runs_v2 as runs
+from ceres import harvest_routing as routing, routing_plan, routing_runs_v2 as runs, routing_safety
 from tests.ceres.vm_context import run_in_module_context
 
 STATIC = Path(__file__).parents[2] / "ceres" / "static"
@@ -84,8 +84,8 @@ def test_manual_check_can_probe_after_the_scheduled_probes(tmp_path):
 
 def test_expired_and_definitively_absent_transaction_stops_instead_of_bricking(tmp_path):
     """An attached transaction the node says it does not know, once past Hive's one-hour expiry,
- can never be included: the bundle stops, reservations are released and the account can route again.
- A lookup failure or a recent miss stays unknown."""
+    can never be included: the bundle stops, reservations are released and the account can route again.
+    A lookup failure or a recent miss stays unknown."""
     with runs.locked(tmp_path, PLAYER) as folder:
         record = runs.create(folder, PLAYER, _preview("p1"), {"sale_dec"})
         bundle_id = record["manifest"]["bundles"][0]["id"]
@@ -123,15 +123,21 @@ def test_stopped_never_sent_run_frees_its_harvest_but_a_sent_one_does_not(tmp_pa
     with runs.locked(tmp_path, PLAYER) as folder:
         first = runs.create(folder, PLAYER, _preview("p1"), {"sale_dec"})
         runs.stop(folder, first)
-        second = runs.create(folder, PLAYER, _preview("p2"), {"sale_dec"})
+        assert routing_safety.overlapping(tmp_path, PLAYER, ["attempt-1"]) == []   # never sent: nothing reserved
+        second =runs.create(folder, PLAYER, _preview("p2"), {"sale_dec"})
         assert second["run_id"] != first["run_id"]
         bundle_id = second["manifest"]["bundles"][0]["id"]
         runs.claim(folder, second, bundle_id, {"sale_dec"}, True)
         runs.attach(folder, second, bundle_id, "a" * 40)
         runs.reconcile(folder, second, bundle_id, "chain", chain_get=lambda _tx: (None, "not_found"))
         runs.stop(folder, second)
-        with pytest.raises(routing.RoutingError):
-            runs.create(folder, PLAYER, _preview("p3"), {"sale_dec"})
+    # A sent run whose outcome is unknown keeps its harvest receipts reserved: the next routing
+    # preview of that harvest checks the one known transaction by id and leaves the receipts out
+    # until it is settled or expired (SECURITY.md, "Routing keeps only what it must").
+    lookups = []
+    assert routing_safety.filter_attempts(tmp_path, PLAYER, ["attempt-1"], lambda tx: lookups.append(tx)) == []
+    assert lookups == ["a" * 40]
+    assert len(routing_safety.overlapping(tmp_path, PLAYER, ["attempt-1"])) == 1
 
 
 def test_wallet_refusal_releases_the_claim_and_allows_signing_again():
@@ -141,34 +147,34 @@ walletCanSignTransaction = () => true;
 navigator.locks = { request: async (_name, fn) => fn() };
 const bundle = { id: 'bundle-1', wave: 0, approval: 1, operations: [{ id: 'op', members: [{ nonce: 'member-1', kind: 'sale_dec', route_id: 'r1' }] }] };
 const record = { run_id: 'a'.repeat(32), state: 'ready', manifest: { bundles: [bundle], approval_counts: { harvest: 1 } },
- bundles: { 'bundle-1': { state: 'planned' } }, operations: {}, call_budget: { stopped: false, total: 0 } };
+  bundles: { 'bundle-1': { state: 'planned' } }, operations: {}, call_budget: { stopped: false, total: 0 } };
 const calls = [];
 const api = async (_player, path, body) => {
- calls.push(path);
- if (path === 'run' || path === 'state') return record;
- if (path === 'claim') { record.bundles['bundle-1'] = { state: 'claimed' }; return {
- authority: 'Posting', member_nonces: ['member-1'], operations: [['custom_json', { id: 'sm_land_operation', json: '{"n":"member-1"}' }]] }; }
- if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-09-28T00:00:00' };
- if (path === 'release') { record.bundles['bundle-1'] = { state: 'planned' }; return record; }
- if (path === 'attach') throw Error('an unsigned transaction was attached');
- throw Error('unexpected endpoint ' + path);
+  calls.push(path);
+  if (path === 'run' || path === 'state') return record;
+  if (path === 'claim') { record.bundles['bundle-1'] = { state: 'claimed' }; return {
+    authority: 'Posting', member_nonces: ['member-1'], operations: [['custom_json', { id: 'sm_land_operation', json: '{"n":"member-1"}' }]] }; }
+  if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-09-28T00:00:00' };
+  if (path === 'release') { record.bundles['bundle-1'] = { state: 'planned' }; return record; }
+  if (path === 'attach') throw Error('an unsigned transaction was attached');
+  throw Error('unexpected endpoint ' + path);
 };
 let signatures = 0;
 const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txId: 'b'.repeat(40) }],
- sign: async () => {
- signatures += 1;
- const error = Error('The wallet did not approve this signature. Nothing was sent.');
- error.txId = 'b'.repeat(40); error.broadcasted = false; error.declined = true; error.signingRejected = true; throw error;
- } });
+  sign: async () => {
+    signatures += 1;
+    const error = Error('The wallet did not approve this signature. Nothing was sent.');
+    error.txId = 'b'.repeat(40); error.broadcasted = false; error.declined = true; error.signingRejected = true; throw error;
+  } });
 (async () => {
- await run.create({ preview_id: 'preview', preview_digest: 'digest' });
- await run.action('sign');
- if (record.bundles['bundle-1'].state !== 'planned') throw Error('refused bundle stayed claimed');
- if (!calls.includes('release')) throw Error('release not requested');
- if (JSON.parse(localStorage.getItem('ceres:routing-v2-members:alice') || '[]').length) throw Error('member stayed reserved');
- if (run.html().includes('did not approve')) throw Error('an error text was shown');
- await run.action('sign');
- if (signatures !== 2) throw Error('the refused bundle could not be signed again');
+  await run.create({ preview_id: 'preview', preview_digest: 'digest' });
+  await run.action('sign');
+  if (record.bundles['bundle-1'].state !== 'planned') throw Error('refused bundle stayed claimed');
+  if (!calls.includes('release')) throw Error('release not requested');
+  if (JSON.parse(localStorage.getItem('ceres:routing-v2-members:alice') || '[]').length) throw Error('member stayed reserved');
+  if (run.html().includes('did not approve')) throw Error('an error text was shown');
+  await run.action('sign');
+  if (signatures !== 2) throw Error('the refused bundle could not be signed again');
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "routing-run.js")
 
@@ -180,32 +186,32 @@ walletCanSignTransaction = () => true;
 navigator.locks = { request: async (_name, fn) => fn() };
 const bundle = { id: 'bundle-1', wave: 0, approval: 1, operations: [{ id: 'op', members: [{ nonce: 'member-1', kind: 'sale_dec', route_id: 'r1' }] }] };
 const record = { run_id: 'a'.repeat(32), state: 'ready', manifest: { bundles: [bundle], approval_counts: { harvest: 1 } },
- bundles: { 'bundle-1': { state: 'planned' } }, operations: {}, call_budget: { stopped: false, total: 0 } };
+  bundles: { 'bundle-1': { state: 'planned' } }, operations: {}, call_budget: { stopped: false, total: 0 } };
 const calls = [];
 const api = async (_player, path, body) => {
- calls.push(path);
- if (path === 'run' || path === 'state') return record;
- if (path === 'claim') { record.bundles['bundle-1'] = { state: 'claimed' }; return {
- authority: 'Posting', member_nonces: ['member-1'], operations: [['custom_json', { id: 'sm_land_operation', json: '{"n":"member-1"}' }]] }; }
- if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-09-28T00:00:00' };
- if (path === 'release') { record.bundles['bundle-1'] = { state: 'planned' }; return record; }
- if (path === 'attach') throw Error('an unsigned transaction was attached');
- throw Error('unexpected endpoint ' + path);
+  calls.push(path);
+  if (path === 'run' || path === 'state') return record;
+  if (path === 'claim') { record.bundles['bundle-1'] = { state: 'claimed' }; return {
+    authority: 'Posting', member_nonces: ['member-1'], operations: [['custom_json', { id: 'sm_land_operation', json: '{"n":"member-1"}' }]] }; }
+  if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-09-28T00:00:00' };
+  if (path === 'release') { record.bundles['bundle-1'] = { state: 'planned' }; return record; }
+  if (path === 'attach') throw Error('an unsigned transaction was attached');
+  throw Error('unexpected endpoint ' + path);
 };
 let signatures = 0;
 const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txId: 'b'.repeat(40) }],
- sign: async () => {
- signatures += 1;
- const error = Error('This transaction exceeds Hive five custom-operation limit. Nothing was sent.');
- error.broadcasted = false; throw error;
- } });
+  sign: async () => {
+    signatures += 1;
+    const error = Error('This transaction exceeds Hive five custom-operation limit. Nothing was sent.');
+    error.broadcasted = false; throw error;
+  } });
 (async () => {
- await run.create({ preview_id: 'preview', preview_digest: 'digest' });
- await run.action('sign');
- if (record.bundles['bundle-1'].state !== 'planned') throw Error('refused bundle stayed claimed');
- if (!calls.includes('release')) throw Error('release not requested');
- if (JSON.parse(localStorage.getItem('ceres:routing-v2-members:alice') || '[]').length) throw Error('member stayed reserved');
- if (!run.html().includes('custom-operation limit')) throw Error('the failure reason was hidden');
+  await run.create({ preview_id: 'preview', preview_digest: 'digest' });
+  await run.action('sign');
+  if (record.bundles['bundle-1'].state !== 'planned') throw Error('refused bundle stayed claimed');
+  if (!calls.includes('release')) throw Error('release not requested');
+  if (JSON.parse(localStorage.getItem('ceres:routing-v2-members:alice') || '[]').length) throw Error('member stayed reserved');
+  if (!run.html().includes('custom-operation limit')) throw Error('the failure reason was hidden');
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "routing-run.js")
 
@@ -213,11 +219,11 @@ const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txI
 def test_window_labels_follow_the_bundle_until_a_share_is_final():
     run_in_module_context(r"""
 const operation = { id: 'op', kind: 'sell', source_region: 'PR-BRL-41', source_symbol: 'WOOD', destination_symbol: 'DEC',
- members: [{ nonce: 'n1', kind: 'sale_dec', route_id: 'r1', source_amount: '10', source_percent: '25', protected_minimum: '1' }] };
+  members: [{ nonce: 'n1', kind: 'sale_dec', route_id: 'r1', source_amount: '10', source_percent: '25', protected_minimum: '1' }] };
 const bundle = { id: 'b1', wave: 0, approval: 1, operations: [operation] };
 const base = state => ({ run_id: 'x', state: 'ready', manifest: { bundles: [bundle], approval_counts: { routing: 1 } },
- bundles: { b1: { state, tx_id: state === 'claimed' ? undefined : 'a'.repeat(40) } },
- operations: { op: { state: 'outcome_unknown', members: { n1: { state: 'outcome_unknown' } } } }, call_budget: { total: 2 } });
+  bundles: { b1: { state, tx_id: state === 'claimed' ? undefined : 'a'.repeat(40) } },
+  operations: { op: { state: 'outcome_unknown', members: { n1: { state: 'outcome_unknown' } } } }, call_budget: { total: 2 } });
 const claimed = routingWindowHtml(base('claimed'), { player: 'alice', busy: true });
 if (claimed.includes('· Unknown')) throw Error('a share waiting for the wallet reads Unknown');
 const checking = routingWindowHtml(base('outcome_unknown'), { player: 'alice', busy: true });
@@ -231,10 +237,10 @@ if (!skip.includes('>Skip this bundle<') || skip.includes('data-r3="sign" disabl
 
 
 def test_every_releasable_v2_step_signs_with_posting_only(tmp_path, monkeypatch):
-    """the Active SPS funding transfer (harvest_routing_operations.build_sps_funding) is only
- reachable from the hidden v1 flow. With every local routing switch on, no v2 kind that could need
- it is enabled, and a claimed v2 bundle carries no Active authority, so the run window's single
- "Posting" label is true for every step it can show."""
+    """: the Active SPS funding transfer (harvest_routing_operations.build_sps_funding) is only
+    reachable from the hidden v1 flow. With every local routing switch on, no v2 kind that could need
+    it is enabled, and a claimed v2 bundle carries no Active authority, so the run window's single
+    "Posting" label is true for every step it can show."""
     from ceres.config import CeresConfig
     for name in ("CERES_ROUTING_SALE_DEC", "CERES_ROUTING_LP_WALLET", "CERES_ROUTING_LP_SELL_HALF"):
         monkeypatch.setenv(name, "1")
@@ -254,30 +260,30 @@ def test_every_releasable_v2_step_signs_with_posting_only(tmp_path, monkeypatch)
 def test_setup_shows_routes_already_bundled_before_sign():
     run_in_module_context(r"""
 const __seed1 = { rules: [
- { id: 'r1', kind: 'sell', destination_symbol: 'DEC', source_region: 'PR-BRL-41', symbol: 'WOOD', quantity_mode: 'percent', quantity: '25', slippage: '2.5' },
- { id: 'r2', kind: 'liquidity', dec_source: 'wallet', source_region: 'PR-BRL-41', symbol: 'WOOD', quantity_mode: 'percent', quantity: '25', slippage: '2.5' },
- { id: 'r3', kind: 'sell', destination_symbol: 'DEC', source_region: 'PR-BRL-41', symbol: 'STONE', quantity_mode: 'percent', quantity: '25', slippage: '2.5' }] };
+  { id: 'r1', kind: 'sell', destination_symbol: 'DEC', source_region: 'PR-BRL-41', symbol: 'WOOD', quantity_mode: 'percent', quantity: '25', slippage: '2.5' },
+  { id: 'r2', kind: 'liquidity', dec_source: 'wallet', source_region: 'PR-BRL-41', symbol: 'WOOD', quantity_mode: 'percent', quantity: '25', slippage: '2.5' },
+  { id: 'r3', kind: 'sell', destination_symbol: 'DEC', source_region: 'PR-BRL-41', symbol: 'STONE', quantity_mode: 'percent', quantity: '25', slippage: '2.5' }] };
 const member = id => ({ route_id: id, kind: id === 'r2' ? 'lp_wallet' : 'sale_dec' });
 const manifest = { bundles: [
- { id: 'b1', approval: 1, operations: [{ kind: 'sell', members: [member('r1')] }, { kind: 'sell', members: [member('r3')] }] },
- { id: 'b2', approval: 2, operations: [{ kind: 'liquidity', members: [member('r2')] }] }] };
+  { id: 'b1', approval: 1, operations: [{ kind: 'sell', members: [member('r1')] }, { kind: 'sell', members: [member('r3')] }] },
+  { id: 'b2', approval: 2, operations: [{ kind: 'liquidity', members: [member('r2')] }] }] };
 let previews = 0;
 fetch = async (url) => { if (String(url).includes('/last-rules') || String(url).includes('/safety')) return { ok: true, json: async () => ({ rules: [] }) }; previews += 1; return { ok: true, json: async () => ({ manifest, steps: [], blocked: false }) }; };
 let renders = 0;
 const setup = createRoutingSetup({ initialRules: __seed1.rules, player: 'alice', scope: { kind: 'all' }, regions: [{ region_uid: 'PR-BRL-41' }],
- receipts: ['attempt-1'], enabledKinds: ['sale_dec', 'lp_wallet'], signingEnabled: true, onRender: () => { renders += 1; }, isCurrent: () => true });
+  receipts: ['attempt-1'], enabledKinds: ['sale_dec', 'lp_wallet'], signingEnabled: true, onRender: () => { renders += 1; }, isCurrent: () => true });
 (async () => {
- const before = setup.html();
- // the very first paint already shows the final bundled layout; the preview never regroups it.
- if (!before.includes('Approval 1 of 2 \u00b7 Sales \u00b7 2 routes') || !before.includes('Approval 2 of 2 \u00b7 LP deposits \u00b7 1 route')) throw Error('first paint is not bundled: ' + before.slice(0, 500));
- if (before.includes('Grouping routes')) throw Error('a grouping placeholder was shown');
- setup.load();
- await new Promise(resolve => setTimeout(resolve, 900));
- const after = setup.html();
- if (previews !== 1) throw Error('expected one automatic preview, got ' + previews);
- const first = after.indexOf('Approval 1 of 2 · Sales · 2 routes');
- const second = after.indexOf('Approval 2 of 2 · LP deposits · 1 route');
- if (first < 0 || second < first) throw Error('routes are not shown in their bundles: ' + after.slice(0, 600));
+  const before = setup.html();
+  // : the very first paint already shows the final bundled layout; the preview never regroups it.
+  if (!before.includes('Approval 1 of 2 \u00b7 Sales \u00b7 2 routes') || !before.includes('Approval 2 of 2 \u00b7 LP deposits \u00b7 1 route')) throw Error('first paint is not bundled: ' + before.slice(0, 500));
+  if (before.includes('Grouping routes')) throw Error('a grouping placeholder was shown');
+  setup.load();
+  await new Promise(resolve => setTimeout(resolve, 900));
+  const after = setup.html();
+  if (previews !== 1) throw Error('expected one automatic preview, got ' + previews);
+  const first = after.indexOf('Approval 1 of 2 · Sales · 2 routes');
+  const second = after.indexOf('Approval 2 of 2 · LP deposits · 1 route');
+  if (first < 0 || second < first) throw Error('routes are not shown in their bundles: ' + after.slice(0, 600));
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "routing-setup.js")
 
@@ -288,17 +294,17 @@ walletCanSignTransaction = () => true;
 navigator.locks = { request: async (_name, fn) => fn() };
 const bundle = { id: 'bundle-1', wave: 0, approval: 1, operations: [{ id: 'op', members: [{ nonce: 'member-1', kind: 'sale_dec', route_id: 'r1' }] }] };
 const record = { run_id: 'a'.repeat(32), state: 'ready', manifest: { bundles: [bundle], approval_counts: { harvest: 1 } },
- bundles: { 'bundle-1': { state: 'planned' } }, operations: {}, call_budget: { stopped: false, total: %(total)s, ceiling: %(ceiling)s } };
+  bundles: { 'bundle-1': { state: 'planned' } }, operations: {}, call_budget: { stopped: false, total: %(total)s, ceiling: %(ceiling)s } };
 const calls = [];
 const api = async (_player, path, body) => {
- calls.push(path);
- if (path === 'run' || path === 'state') return record;
- if (path === 'claim') { record.bundles['bundle-1'] = { state: 'claimed' }; return {
- authority: 'Posting', member_nonces: ['member-1'], operations: [['custom_json', { id: 'sm_land_operation', json: '{"n":"member-1"}' }]] }; }
- if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-09-28T00:00:00' };
- if (path === 'release') { record.bundles['bundle-1'] = { state: 'planned' }; return record; }
- if (path === 'client-report') return {};
- throw Error('unexpected endpoint ' + path);
+  calls.push(path);
+  if (path === 'run' || path === 'state') return record;
+  if (path === 'claim') { record.bundles['bundle-1'] = { state: 'claimed' }; return {
+    authority: 'Posting', member_nonces: ['member-1'], operations: [['custom_json', { id: 'sm_land_operation', json: '{"n":"member-1"}' }]] }; }
+  if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-09-28T00:00:00' };
+  if (path === 'release') { record.bundles['bundle-1'] = { state: 'planned' }; return record; }
+  if (path === 'client-report') return {};
+  throw Error('unexpected endpoint ' + path);
 };
 """
 
@@ -306,13 +312,13 @@ const api = async (_player, path, body) => {
 def test_browser_guard_follows_the_plan_sized_budget_r02():
     run_in_module_context(_RUN_HARNESS % {"total": 130, "ceiling": 500} + r"""
 const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txId: 'b'.repeat(40) }],
- sign: async () => { const error = Error('wallet-said-no-xyz'); error.broadcasted = false; throw error; } });
+  sign: async () => { const error = Error('wallet-said-no-xyz'); error.broadcasted = false; throw error; } });
 (async () => {
- await run.create({ preview_id: 'preview', preview_digest: 'digest' });
- await run.action('sign');
- const html = run.html();
- if (html.includes('call budget')) throw Error('guard stopped at the old fixed 120');
- if (!html.includes('wallet-said-no-xyz')) throw Error('signing did not reach the wallet: ' + html.slice(0, 300));
+  await run.create({ preview_id: 'preview', preview_digest: 'digest' });
+  await run.action('sign');
+  const html = run.html();
+  if (html.includes('call budget')) throw Error('guard stopped at the old fixed 120');
+  if (!html.includes('wallet-said-no-xyz')) throw Error('signing did not reach the wallet: ' + html.slice(0, 300));
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "routing-run.js")
 
@@ -321,13 +327,13 @@ def test_full_browser_storage_still_releases_an_unsigned_claim_r08():
     run_in_module_context(_RUN_HARNESS % {"total": 0, "ceiling": 120} + r"""
 const realSet = localStorage.setItem.bind(localStorage);
 const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txId: 'b'.repeat(40) }],
- sign: async () => { throw Error('never reached'); } });
+  sign: async () => { throw Error('never reached'); } });
 (async () => {
- await run.create({ preview_id: 'preview', preview_digest: 'digest' });
- localStorage.setItem = (key, value) => { if (String(key).startsWith('ceres:routing-v2-members')) throw Error('QuotaExceededError'); return realSet(key, value); };
- await run.action('sign');
- if (!calls.includes('release')) throw Error('the claimed bundle was left claimed');
- if (record.bundles['bundle-1'].state !== 'planned') throw Error('bundle not back to planned');
+  await run.create({ preview_id: 'preview', preview_digest: 'digest' });
+  localStorage.setItem = (key, value) => { if (String(key).startsWith('ceres:routing-v2-members')) throw Error('QuotaExceededError'); return realSet(key, value); };
+  await run.action('sign');
+  if (!calls.includes('release')) throw Error('the claimed bundle was left claimed');
+  if (record.bundles['bundle-1'].state !== 'planned') throw Error('bundle not back to planned');
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "routing-run.js")
 
@@ -335,7 +341,7 @@ const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txI
 def test_sign_stops_when_the_routes_changed_and_shows_a_repriced_plan_first_r06_r07():
     run_in_module_context(r"""
 const __seed2 = { rules: [
- { id: 'r1', kind: 'sell', destination_symbol: 'DEC', source_region: 'PR-BRL-41', symbol: 'WOOD', quantity_mode: 'percent', quantity: '25', slippage: '2.5' }] };
+  { id: 'r1', kind: 'sell', destination_symbol: 'DEC', source_region: 'PR-BRL-41', symbol: 'WOOD', quantity_mode: 'percent', quantity: '25', slippage: '2.5' }] };
 navigator.locks = { request: async (_name, fn) => fn() };
 walletReady = () => true;
 const member = id => ({ route_id: id, kind: 'sale_dec' });
@@ -343,22 +349,22 @@ const manifest = { bundles: [{ id: 'b1', approval: 1, operations: [{ kind: 'sell
 let previews = 0;
 let resolveCreate;
 fetch = async (url) => {
- const path = String(url).split('?')[0];
- if (path.endsWith('/routing/preview')) { previews += 1; return { ok: true, json: async () => ({ manifest, steps: [], blocked: false, preview_id: 'p' + previews, preview_digest: 'd' }) }; }
- if (path.endsWith('/v2/state')) return { ok: true, json: async () => ({ run_id: 'a'.repeat(32), state: 'ready', manifest, bundles: { b1: { state: 'planned' } }, operations: {}, call_budget: { total: 0, ceiling: 120 } }) };
- if (path.endsWith('/v2/run')) return { ok: false, status: 409, json: async () => ({ detail: 'Routing preview expired or changed' }) };
- return { ok: true, json: async () => ({}) };
+  const path = String(url).split('?')[0];
+  if (path.endsWith('/routing/preview')) { previews += 1; return { ok: true, json: async () => ({ manifest, steps: [], blocked: false, preview_id: 'p' + previews, preview_digest: 'd' }) }; }
+  if (path.endsWith('/v2/state')) return { ok: true, json: async () => ({ run_id: 'a'.repeat(32), state: 'ready', manifest, bundles: { b1: { state: 'planned' } }, operations: {}, call_budget: { total: 0, ceiling: 120 } }) };
+  if (path.endsWith('/v2/run')) return { ok: false, status: 409, json: async () => ({ detail: 'Routing preview expired or changed' }) };
+  return { ok: true, json: async () => ({}) };
 };
 const setup = createRoutingSetup({ initialRules: __seed2.rules, player: 'alice', scope: { kind: 'all' }, regions: [{ region_uid: 'PR-BRL-41' }],
- receipts: ['attempt-1'], enabledKinds: ['sale_dec'], signingEnabled: true, onRender: () => {}, isCurrent: () => true });
+  receipts: ['attempt-1'], enabledKinds: ['sale_dec'], signingEnabled: true, onRender: () => {}, isCurrent: () => true });
 (async () => {
- setup.load();
- await new Promise(resolve => setTimeout(resolve, 700));
- const before = previews;
- await setup.action('start');
- if (setup.record) throw Error('a run was created from an expired plan');
- if (previews !== before + 1) throw Error('the expired plan was not re-priced once: ' + (previews - before));
- if (!setup.html().includes('Prices moved while this stayed open')) throw Error('the re-priced plan was not shown before signing: ' + setup.html().slice(0, 200));
+  setup.load();
+  await new Promise(resolve => setTimeout(resolve, 700));
+  const before = previews;
+  await setup.action('start');
+  if (setup.record) throw Error('a run was created from an expired plan');
+  if (previews !== before + 1) throw Error('the expired plan was not re-priced once: ' + (previews - before));
+  if (!setup.html().includes('Prices moved while this stayed open')) throw Error('the re-priced plan was not shown before signing: ' + setup.html().slice(0, 200));
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "routing-setup.js")
 
@@ -367,19 +373,19 @@ def test_queue_evidence_is_posted_once_per_state():
     run_in_module_context(r"""
 const tx = '1'.repeat(40);
 localStorage.setItem('ceres:signed-queue:v1:alice', JSON.stringify([
- { txId: tx, account: 'alice', state: 'included', updatedAt: new Date().toISOString(), context: { harvestAttemptId: 'att-1' } }]));
+  { txId: tx, account: 'alice', state: 'included', updatedAt: new Date().toISOString(), context: { harvestAttemptId: 'att-1' } }]));
 let posts = 0;
 fetch = async () => { posts += 1; return { ok: true }; };
 (async () => {
- await syncQueueHarvestEvidence('alice');
- await syncQueueHarvestEvidence('alice');
- await syncQueueHarvestEvidence('alice');
- if (posts !== 1) throw Error('expected one post, got ' + posts);
- const rows = JSON.parse(localStorage.getItem('ceres:signed-queue:v1:alice'));
- rows[0].state = 'rejected';
- localStorage.setItem('ceres:signed-queue:v1:alice', JSON.stringify(rows));
- await syncQueueHarvestEvidence('alice');
- if (posts !== 2) throw Error('a new state must be posted once more, got ' + posts);
+  await syncQueueHarvestEvidence('alice');
+  await syncQueueHarvestEvidence('alice');
+  await syncQueueHarvestEvidence('alice');
+  if (posts !== 1) throw Error('expected one post, got ' + posts);
+  const rows = JSON.parse(localStorage.getItem('ceres:signed-queue:v1:alice'));
+  rows[0].state = 'rejected';
+  localStorage.setItem('ceres:signed-queue:v1:alice', JSON.stringify(rows));
+  await syncQueueHarvestEvidence('alice');
+  if (posts !== 2) throw Error('a new state must be posted once more, got ' + posts);
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "transaction-queue.js")
 
@@ -398,27 +404,27 @@ def test_rule_count_is_no_longer_capped_at_one_hundred_r01():
 def test_setup_prices_by_itself_even_when_an_old_finished_run_is_stored():
     run_in_module_context(r"""
 const __seed3 = { rules: [
- { id: 'r1', kind: 'sell', destination_symbol: 'DEC', source_region: 'PR-BRL-41', symbol: 'WOOD', quantity_mode: 'percent', quantity: '25', slippage: '2.5' }] };
+  { id: 'r1', kind: 'sell', destination_symbol: 'DEC', source_region: 'PR-BRL-41', symbol: 'WOOD', quantity_mode: 'percent', quantity: '25', slippage: '2.5' }] };
 localStorage.setItem('ceres:routing-v2-run:alice', 'a'.repeat(32));
 navigator.locks = { request: async (_name, fn) => fn() };
 const member = id => ({ route_id: id, kind: 'sale_dec' });
 const manifest = { bundles: [{ id: 'b1', approval: 1, operations: [{ kind: 'sell', members: [member('r1')] }] }] };
 const old = { run_id: 'a'.repeat(32), state: 'complete', harvest_attempt_ids: ['an-older-harvest'], manifest: { bundles: [] },
- bundles: {}, operations: {}, call_budget: { total: 0, ceiling: 120 } };
+  bundles: {}, operations: {}, call_budget: { total: 0, ceiling: 120 } };
 let previews = 0;
 fetch = async (url) => {
- const path = String(url).split('?')[0];
- if (path.endsWith('/routing/preview')) { previews += 1; return { ok: true, json: async () => ({ manifest, steps: [], blocked: false, preview_id: 'p', preview_digest: 'd' }) }; }
- if (path.endsWith('/v2/state')) return { ok: true, json: async () => old };
- return { ok: true, json: async () => ({}) };
+  const path = String(url).split('?')[0];
+  if (path.endsWith('/routing/preview')) { previews += 1; return { ok: true, json: async () => ({ manifest, steps: [], blocked: false, preview_id: 'p', preview_digest: 'd' }) }; }
+  if (path.endsWith('/v2/state')) return { ok: true, json: async () => old };
+  return { ok: true, json: async () => ({}) };
 };
 const setup = createRoutingSetup({ initialRules: __seed3.rules, player: 'alice', scope: { kind: 'all' }, regions: [{ region_uid: 'PR-BRL-41' }],
- receipts: ['this-harvest'], enabledKinds: ['sale_dec'], signingEnabled: true, onRender: () => {}, isCurrent: () => true });
+  receipts: ['this-harvest'], enabledKinds: ['sale_dec'], signingEnabled: true, onRender: () => {}, isCurrent: () => true });
 (async () => {
- await setup.load();
- await new Promise(resolve => setTimeout(resolve, 900));
- if (previews !== 1) throw Error('no automatic preview after an old run was discarded: ' + previews);
- if (!setup.html().includes('Approval 1 of 1')) throw Error('not grouped');
+  await setup.load();
+  await new Promise(resolve => setTimeout(resolve, 900));
+  if (previews !== 1) throw Error('no automatic preview after an old run was discarded: ' + previews);
+  if (!setup.html().includes('Approval 1 of 1')) throw Error('not grouped');
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "routing-setup.js")
 
@@ -426,10 +432,10 @@ const setup = createRoutingSetup({ initialRules: __seed3.rules, player: 'alice',
 def test_sell_to_dec_box_is_two_rows():
     run_in_module_context(r"""
 const operation = { id: 'op', kind: 'sell', source_region: 'PR-BRL-41', source_symbol: 'WOOD', destination_symbol: 'DEC', protected_minimum: '120.43',
- members: [{ nonce: 'n1', kind: 'sale_dec', route_id: 'r1', source_amount: '5746.22', source_percent: '25', protected_minimum: '120.43' }] };
+  members: [{ nonce: 'n1', kind: 'sale_dec', route_id: 'r1', source_amount: '5746.22', source_percent: '25', protected_minimum: '120.43' }] };
 const bundle = { id: 'b1', wave: 0, approval: 1, operations: [operation] };
 const record = { run_id: 'x', state: 'ready', manifest: { bundles: [bundle], approval_counts: { routing: 1 } },
- bundles: { b1: { state: 'planned' } }, operations: {}, call_budget: { total: 0 } };
+  bundles: { b1: { state: 'planned' } }, operations: {}, call_budget: { total: 0 } };
 const html = routingWindowHtml(record, { player: 'alice' });
 const box = html.match(/<div class="r3-destination r3-destination--two">.*?<\/div>/);
 if (!box) throw Error('no two-row sale destination box');
@@ -441,10 +447,10 @@ if (box[0].includes('<b>')) throw Error('a third row is back');
 def test_lp_outcome_box_is_two_rows():
     run_in_module_context(r"""
 const operation = { id: 'op', kind: 'liquidity', source_region: 'PR-BRL-60', source_symbol: 'WOOD', pool: 'WOOD', destination_symbol: 'DEC',
- members: [{ nonce: 'n1', kind: 'lp_wallet', route_id: 'r1', source_amount: '647.23', source_percent: '25', protected_minimum: '631.05', required_wallet_dec: '15.45' }] };
+  members: [{ nonce: 'n1', kind: 'lp_wallet', route_id: 'r1', source_amount: '647.23', source_percent: '25', protected_minimum: '631.05', required_wallet_dec: '15.45' }] };
 const bundle = { id: 'b1', wave: 1, approval: 1, operations: [operation] };
 const record = { run_id: 'x', state: 'ready', manifest: { bundles: [bundle], approval_counts: { routing: 1 } },
- bundles: { b1: { state: 'planned' } }, operations: {}, call_budget: { total: 0 } };
+  bundles: { b1: { state: 'planned' } }, operations: {}, call_budget: { total: 0 } };
 const html = routingWindowHtml(record, { player: 'alice' });
 const box = html.match(/<div class="r3-destination r3-destination--two">.*?<\/div>/);
 if (!box) throw Error('no two-row LP outcome box');

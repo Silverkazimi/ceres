@@ -11,11 +11,12 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Browser, Locator, Page
 
-from .conftest import spawn_live_ceres, wait_for_board
+from .conftest import settle, spawn_live_ceres, wait_for_board
+from . import board_basic_recording as recording
 
 
 SCREEN_DIR = Path(__file__).parents[2] / "work" / "ceres-fr1698-items"
-TITLE_DEEDS = ("I-298-6c3970d55b37f5", "I-294-982768c3d66537")
+TITLE_DEEDS = (recording.ORDINARY.uid,)
 
 
 
@@ -28,7 +29,7 @@ def live_browser() -> tuple[Browser, str]:
 def _page(live_browser: tuple[Browser, str]) -> Page:
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     wait_for_board(page)
     return page
 
@@ -36,10 +37,10 @@ def _page(live_browser: tuple[Browser, str]) -> Page:
 def _row_with(page: Page, mode: str) -> int:
     return page.evaluate(
         """mode => [...document.querySelectorAll('#plot-tbody > tr.plot-row')]
- .findIndex(row => {
- const text = row.querySelector('td:nth-child(12)')?.textContent || ''; // Workers ( added Food/hr before it)
- return mode === 'zero' ? /\\b0\\/0\\b/.test(text) : !/\\b0\\/0\\b/.test(text) && /\\/[1-9]\\d*/.test(text);
- })""",
+        .findIndex(row => {
+          const text = row.querySelector('td:nth-child(12)')?.textContent || '';  // Workers ( added Food/hr before it)
+          return mode === 'zero' ? /\\b0\\/0\\b/.test(text) : !/\\b0\\/0\\b/.test(text) && /\\/[1-9]\\d*/.test(text);
+        })""",
         mode,
     )
 
@@ -54,7 +55,7 @@ def _expand(page: Page, index: int) -> None:
 def _worker_row_index(page: Page) -> int:
     return page.evaluate(
         """() => [...document.querySelectorAll('#plot-tbody > tr.plot-row')]
- .findIndex(row => /\\b[1-9]\\d*\\/[1-9]\\d*(?:\\+R)?\\b/.test(row.children[10]?.textContent || ''))"""
+        .findIndex(row => /\\b[1-9]\\d*\\/[1-9]\\d*(?:\\+R)?\\b/.test(row.children[10]?.textContent || ''))"""
     )
 
 
@@ -100,7 +101,7 @@ def test_reload_rehydrates_workers_in_an_open_plot(live_browser: tuple[Browser, 
     assert detail_request.value.method == "GET"
     page.wait_for_function(
         """index => document.querySelectorAll('tr.expand-row')[index]?.querySelectorAll(
- '.slot-group[data-group-id="worker"] .slot-tile[data-occupied="1"]').length > 0""",
+        '.slot-group[data-group-id="worker"] .slot-tile[data-occupied="1"]').length > 0""",
         arg=index,
         timeout=30_000,
     )
@@ -143,7 +144,7 @@ def test_worker_name_filter_survives_reload(live_browser: tuple[Browser, str]) -
         _reload(page)
     page.wait_for_function(
         """index => document.querySelectorAll('tr.expand-row')[index]?.querySelectorAll(
- '.slot-group[data-group-id="worker"] .slot-tile[data-occupied="1"]').length > 0""",
+        '.slot-group[data-group-id="worker"] .slot-tile[data-occupied="1"]').length > 0""",
         arg=index,
         timeout=30_000,
     )
@@ -174,33 +175,33 @@ def test_stale_detail_response_cannot_merge_after_player_switch(live_browser: tu
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
     page.add_init_script(
         """window.__holdPlotDetail = false;
- window.__releasePlotDetail = null;
- window.__plotDetailQueue = [];
- const ceresFetch = window.fetch.bind(window);
- window.fetch = (input, init) => {
- const url = new URL(String(input), location.href);
- const isDetail = url.pathname.startsWith('/api/plots/')
- && !url.pathname.endsWith('/expand')
- && !url.pathname.includes('/candidates')
- && !url.pathname.includes('/removal-impact')
- && !url.pathname.includes('/op-preview');
- if (isDetail && window.__holdPlotDetail) {
- window.__holdPlotDetail = false;
- return new Promise(resolve => {
- window.__releasePlotDetail = body => {
- window.__oldDetailReleased = true;
- resolve(new Response(JSON.stringify(body), {status: 200, headers: {'Content-Type': 'application/json'}}));
- };
- });
- }
- if (isDetail && window.__plotDetailQueue.length) {
- const body = window.__plotDetailQueue.shift();
- return Promise.resolve(new Response(JSON.stringify(body), {status: 200, headers: {'Content-Type': 'application/json'}}));
- }
- return ceresFetch(input, init);
- };"""
+        window.__releasePlotDetail = null;
+        window.__plotDetailQueue = [];
+        const ceresFetch = window.fetch.bind(window);
+        window.fetch = (input, init) => {
+          const url = new URL(String(input), location.href);
+          const isDetail = url.pathname.startsWith('/api/plots/')
+            && !url.pathname.endsWith('/expand')
+            && !url.pathname.includes('/candidates')
+            && !url.pathname.includes('/removal-impact')
+            && !url.pathname.includes('/op-preview');
+          if (isDetail && window.__holdPlotDetail) {
+            window.__holdPlotDetail = false;
+            return new Promise(resolve => {
+              window.__releasePlotDetail = body => {
+                window.__oldDetailReleased = true;
+                resolve(new Response(JSON.stringify(body), {status: 200, headers: {'Content-Type': 'application/json'}}));
+              };
+            });
+          }
+          if (isDetail && window.__plotDetailQueue.length) {
+            const body = window.__plotDetailQueue.shift();
+            return Promise.resolve(new Response(JSON.stringify(body), {status: 200, headers: {'Content-Type': 'application/json'}}));
+          }
+          return ceresFetch(input, init);
+        };"""
     )
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     index = page.evaluate(
         "uid => [...document.querySelectorAll('#plot-tbody > tr.plot-row')].findIndex(row => row.dataset.deedUid === uid)",
@@ -306,7 +307,7 @@ def test_clear_plot_includes_actionable_title_and_portfolio_preview_returns_200(
 
     page.route("**/api/plots/*/removal-impact*", removal_route)
     page.route("**/api/op-preview*", preview_route)
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     wait_for_board(page)
     _, expanded, _ = _title_plot(page)
 
@@ -332,10 +333,10 @@ def test_clear_plot_includes_actionable_title_and_portfolio_preview_returns_200(
 def test_real_board_slot_editor_contract(live_browser: tuple[Browser, str]) -> None:
     """The worker count must exclude bundled item tiles.
 
- Injection watch: widening the capacity selector to `.slot-grid .slot-tile`
- reproduced the red `8 != 5` count; restoring the `.slot-tile-cell` wrapper
- made the selector assertions green before the unrelated footer assertion at
- line 400 failed.
+    Injection watch: widening the capacity selector to `.slot-grid .slot-tile`
+    reproduced the red `8 != 5` count; restoring the `.slot-tile-cell` wrapper
+    made the selector assertions green before the unrelated footer assertion at
+    line 400 failed.
     """
     page = _page(live_browser)
     powered_index = -1
@@ -413,7 +414,7 @@ def test_real_board_slot_editor_contract(live_browser: tuple[Browser, str]) -> N
     zero_index = page.evaluate(
         """deedUid => [...document.querySelectorAll('#plot-tbody > tr.plot-row')]
  .findIndex(row => row.dataset.deedUid === deedUid)""",
-        "I-290-10b2d21ed7bb77",
+        recording.EMPTY_POWERED.uid,
     )
     assert zero_index >= 0
     _expand(page, zero_index)
@@ -429,15 +430,15 @@ def test_real_board_slot_editor_contract(live_browser: tuple[Browser, str]) -> N
 
     for width in (1920, 1440, 900, 480):
         page.set_viewport_size({"width": width, "height": 900})
-        page.wait_for_timeout(100)
+        settle(page)
         assert page.evaluate(
             """width => {
- if (document.documentElement.scrollWidth <= width) return true;
- const widest = [...document.querySelectorAll('body *')]
- .map(node => ({node, rect: node.getBoundingClientRect()}))
- .sort((a, b) => b.rect.right - a.rect.right)[0];
- throw new Error(JSON.stringify({width, documentWidth: document.documentElement.scrollWidth, widest: widest?.node.className, right: widest?.rect.right}));
- }""",
+              if (document.documentElement.scrollWidth <= width) return true;
+              const widest = [...document.querySelectorAll('body *')]
+                .map(node => ({node, rect: node.getBoundingClientRect()}))
+                .sort((a, b) => b.rect.right - a.rect.right)[0];
+              throw new Error(JSON.stringify({width, documentWidth: document.documentElement.scrollWidth, widest: widest?.node.className, right: widest?.rect.right}));
+            }""",
             width,
         )
     page.set_viewport_size({"width": 1920, "height": 1080})
@@ -477,13 +478,13 @@ def test_preview_requires_explicit_keychain_confirmation(live_browser: tuple[Bro
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(
         """window.__broadcastCalls = [];
- window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
- window.__broadcastCalls.push({account, operations, key});
- callback({success: true, result: {id: 'FAKE-TX-ID'}});
- }};"""
+        window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
+          window.__broadcastCalls.push({account, operations, key});
+          callback({success: true, result: {id: 'FAKE-TX-ID'}});
+        }};"""
     )
     page.route("**/api/op-verify*", lambda route: route.fulfill(status=200, content_type="application/json", body='{"state":"domain-confirmed"}'))
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     wait_for_board(page)
 
     powered_index = -1

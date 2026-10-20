@@ -1,4 +1,4 @@
-""" `/api/op-verify` unconditionally routed every operation through
+""" -- `/api/op-verify` unconditionally routed every operation through
 `LandVerificationSpec`, which requires a `deed_uid` on every non-worksite op. A real
 `sm_combine_cards` payload has no `deed_uid` at all, so a SUCCESSFUL combine was reported
 as `domain-mismatch` -- deterministically, not intermittently. These exercise the fix
@@ -126,8 +126,8 @@ def test_real_combine_payload_is_domain_confirmed_not_mismatch(monkeypatch, tmp_
 
 def test_confirmed_combine_triggers_quick_recapture_not_full(monkeypatch, tmp_path):
     """MUTATION INJECTION: restore `start_refresh_full` in the route -- this goes red
- because `quick_started` stays empty and `full_started` is populated. The guard
- ensures the combine path keeps using the cheap capture."""
+    because `quick_started` stays empty and `full_started` is populated. The guard
+    ensures the combine path keeps using the cheap capture."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     monkeypatch.setattr(routes_op_preview_mod, "verify_chain", _chain_verified_stub)
     monkeypatch.setattr(capture_mod, "latest_snapshot", lambda config, player: (_pre_combine_records(), None))
@@ -176,7 +176,7 @@ def test_combine_refresh_replaces_an_already_running_capture(monkeypatch, tmp_pa
 
 def test_unpropagated_combine_is_pending_not_mismatch(monkeypatch, tmp_path):
     """The consumed copy is still present (propagation lag) -- must be pending, never
- treated as either success or a hard failure."""
+    treated as either success or a hard failure."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     monkeypatch.setattr(routes_op_preview_mod, "verify_chain", _chain_verified_stub)
     monkeypatch.setattr(capture_mod, "latest_snapshot", lambda config, player: (_pre_combine_records(), None))
@@ -219,7 +219,7 @@ def test_missing_pre_combine_snapshot_is_could_not_verify(monkeypatch, tmp_path)
 
 def test_land_ops_still_go_through_land_verification_spec(monkeypatch, tmp_path):
     """Guard against a dispatch that routes everything to the combine checker instead --
- a land op must still resolve via LandVerificationSpec, unchanged from before this fix."""
+    a land op must still resolve via LandVerificationSpec, unchanged from before this fix."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     monkeypatch.setattr(routes_op_preview_mod, "verify_chain", _chain_verified_stub)
     monkeypatch.setattr(capture_mod, "MnemosyneEvidence", _LandEvidence)

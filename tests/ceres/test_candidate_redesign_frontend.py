@@ -1,10 +1,10 @@
-"""Browser coverage for the candidate-picker redesign (row 6c, migration,
+"""Browser coverage for the candidate-picker redesign (row 6c,  migration,
 its three (a) tests -- census row 6c). Was a Node harness that sliced
 `candidateEvaluation`, `renderCandidateRow`/`candidateEvaluation`, and the
 `setIconOnlyHtml`/`editionDisplayLabel` block out of `app.js` by source position
 and hand-stubbed their callees; its own docstring (removed here) already recorded
 a prior stale-stub outage on this exact file (`ReferenceError: isGoldFoil is not
-defined` after v0.5.81's foil chip). Retired per and campaign §3.1 batch C
+defined` after v0.5.81's foil chip). Retired per  and campaign §3.1 batch C
 row 6c, replaced with route-mocked live worker-picker rows (`spawn_live_ceres`,
 real plot fixtures by deed) whose rendered metrics/identity icons are read off
 the real DOM.
@@ -12,7 +12,7 @@ the real DOM.
 `test_worker_controls_and_candidate_layout_contract_are_scoped` was, at this
 ticket's HEAD, still a source/CSS-text-position scan despite campaign §3.1's
 own "Converted ... plus the (b) halves of rows 1, 6c, 9, 22, 34" line implying
-otherwise -- names it directly and instructs conversion to a
+otherwise --  names it directly and instructs conversion to a
 rendered layout read, resolving that plan/code mismatch explicitly rather than
 leaving it open; done below. `test_module_invariants_remain_closed` (the
 `ready(...)` after the last `function` structural guard) stays UNCHANGED --
@@ -21,18 +21,18 @@ entry file, to retarget at M8 and then join `ALLOWED`.
 
 Named injections (/, not performed here -- independent verification only):
 1. `candidateEvaluation()` (app.js:4034): change `evaluation.status` validation
- list to drop `'unknown'`, so a missing-metadata evaluation falls through to a
- fabricated `{status: 'point', value: 0, ...}` shape instead of `unknown`.
- Expected red: `test_missing_construction_metadata_never_falls_back_to_raw_base`
- reads a fabricated `0` where it asserts the real `unknown`/`—` rendering.
+   list to drop `'unknown'`, so a missing-metadata evaluation falls through to a
+   fabricated `{status: 'point', value: 0, ...}` shape instead of `unknown`.
+   Expected red: `test_missing_construction_metadata_never_falls_back_to_raw_base`
+   reads a fabricated `0` where it asserts the real `unknown`/`—` rendering.
 2. `renderCandidateRow()` (app.js:4325): remove the `foilBadgeHtml(candidate, ...)`
- call from the identity span. Expected red:
- `test_worker_row_uses_identity_helpers_and_server_certainty` finds no
- `is-foil`/`>Gold<` chip on its gold-foil candidate.
+   call from the identity span. Expected red:
+   `test_worker_row_uses_identity_helpers_and_server_certainty` finds no
+   `is-foil`/`>Gold<` chip on its gold-foil candidate.
 3. `setIconOnlyHtml()` (app.js:887): change the generic-icon fallback path to
- reuse `MAIN_SET_ICON.alpha` unconditionally. Expected red:
- `test_unknown_edition_uses_neutral_local_icon_with_exact_label` sees
- `alpha.svg` instead of `edition-generic.svg` for an unrecognised card set.
+   reuse `MAIN_SET_ICON.alpha` unconditionally. Expected red:
+   `test_unknown_edition_uses_neutral_local_icon_with_exact_label` sees
+   `alpha.svg` instead of `edition-generic.svg` for an unrecognised card set.
 """
 
 from __future__ import annotations
@@ -141,10 +141,10 @@ def test_missing_construction_metadata_never_falls_back_to_raw_base(live_browser
 
 def test_worker_row_uses_identity_helpers_and_server_certainty(live_browser: tuple[Browser, str]) -> None:
     """Broke on v0.5.81's foil chip addition to the worker row (it now calls
- `isGoldFoil`/`fmtFoil`) with a bare `ReferenceError: isGoldFoil is not
- defined` under the old Node harness -- the harness's stub set was never
- extended for the new call. A real browser render has no stub set to fall
- behind: whatever `renderCandidateRow` actually calls, actually runs."""
+    `isGoldFoil`/`fmtFoil`) with a bare `ReferenceError: isGoldFoil is not
+    defined` under the old Node harness -- the harness's stub set was never
+    extended for the new call. A real browser render has no stub set to fall
+    behind: whatever `renderCandidateRow` actually calls, actually runs."""
     browser, base_url = live_browser
     row = copy.deepcopy(_real_detail_row(base_url))
     row["workers"] = [w for w in row["workers"] if int(w.get("slot") or 0) != 1]
@@ -247,14 +247,14 @@ def test_unknown_edition_uses_neutral_local_icon_with_exact_label(live_browser: 
 
 def test_worker_controls_and_candidate_layout_contract_are_scoped(live_browser: tuple[Browser, str]) -> None:
     """ (row 6c): replaces the source/CSS-text-position scan
- (`_between()`-slicing `renderInlineCandidatePicker`'s source, then
- grepping `ceres.css` for six unrelated selector strings) with a rendered
- read of a REAL worker picker -- the sort chips, filter controls, and
- legend's absence read off the actual DOM; the sticky/container-query/
- is-loss/no-scroll layout claims read off ACTUAL computed style and
- ACTUAL responsive behaviour (resizing the real viewport across the
- 54rem container-query threshold), not the CSS source text that merely
- claims them."""
+    (`_between()`-slicing `renderInlineCandidatePicker`'s source, then
+    grepping `ceres.css` for six unrelated selector strings) with a rendered
+    read of a REAL worker picker -- the sort chips, filter controls, and
+    legend's absence read off the actual DOM; the sticky/container-query/
+    is-loss/no-scroll layout claims read off ACTUAL computed style and
+    ACTUAL responsive behaviour (resizing the real viewport across the
+    54rem container-query threshold), not the CSS source text that merely
+    claims them."""
     browser, base_url = live_browser
     row = copy.deepcopy(_real_detail_row(base_url))
     row["workers"] = [w for w in row["workers"] if int(w.get("slot") or 0) != 1]
@@ -336,6 +336,6 @@ def test_worker_controls_and_candidate_layout_contract_are_scoped(live_browser: 
 
 def test_module_invariants_remain_closed() -> None:
     source = APP_JS.read_text(encoding="utf-8")
-    assert source.count("Number(occupant.current_harvest_pp || 0)") == 0
+    assert source.count("-Number(occupant.current_harvest_pp || 0)") == 0
     assert source.rstrip().endswith("});")
     assert source.rfind("ready(() => {") > source.rfind("function ")

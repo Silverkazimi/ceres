@@ -37,13 +37,13 @@ def test_restore_action_undoes_staged_removal_without_consulting_mixed_guard(
     live_browser: tuple[Browser, str],
 ) -> None:
     """Named injection (watched red by an independent verifier, 2026-09-02): in
- `handleSlotEditorClick()`'s `slotAction === 'restore'` branch, replace
- `if (stagedEntry) await removeCheckoutStage(stagedEntry);` with a call through the
- mixed-guarded removal path instead
- (`await stagePricedRemovals(row, [{group, index, occupant: stagedEntry._previous_asset}], '')`)
- -- the restore click now fires a `/removal-impact` request (the checkout-undo path
- never does) and the ghost tile does not reliably return to its exact previous
- occupant; this test fails on the request-count assertion."""
+    `handleSlotEditorClick()`'s `slotAction === 'restore'` branch, replace
+    `if (stagedEntry) await removeCheckoutStage(stagedEntry);` with a call through the
+    mixed-guarded removal path instead
+    (`await stagePricedRemovals(row, [{group, index, occupant: stagedEntry._previous_asset}], '')`)
+    -- the restore click now fires a `/removal-impact` request (the checkout-undo path
+    never does) and the ghost tile does not reliably return to its exact previous
+    occupant; this test fails on the request-count assertion."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=10) as response:
@@ -95,28 +95,28 @@ def test_restore_action_undoes_staged_removal_without_consulting_mixed_guard(
 
 def test_restore_action_with_no_matching_stage_entry_is_a_silent_noop() -> None:
     """ (row 31): converted from a `_slice`+hand-stub subshell harness to
- `vm_context` -- calls the REAL `handleSlotEditorClick`/`editorGroups` (no
- dependency-stub list to go stale), with `CERES_STAGE` emptied and
- `removeCheckoutStage` overridden only to detect whether it is (wrongly) called.
+    `vm_context` -- calls the REAL `handleSlotEditorClick`/`editorGroups` (no
+    dependency-stub list to go stale), with `CERES_STAGE` emptied and
+    `removeCheckoutStage` overridden only to detect whether it is (wrongly) called.
 
- No live-DOM equivalent exists: the "restore" control only ever renders when
- `renderEditorTile` is already in its `is-pending-removal` branch, which by
- construction always has a matching `CERES_STAGE` entry (proven by the sibling
- test above and by `test_empty_tile_renders_add_when_genuinely_empty_and_restore_when_pending_removal`
- below) -- so a "restore" click with no matching entry has no click path a real
- user session can reach. This stays a defensive-code-path test, same reasoning
- this ticket's own `test_autocapture_frontend.py` G4 deviation documents."""
+    No live-DOM equivalent exists: the "restore" control only ever renders when
+    `renderEditorTile` is already in its `is-pending-removal` branch, which by
+    construction always has a matching `CERES_STAGE` entry (proven by the sibling
+    test above and by `test_empty_tile_renders_add_when_genuinely_empty_and_restore_when_pending_removal`
+    below) -- so a "restore" click with no matching entry has no click path a real
+    user session can reach. This stays a defensive-code-path test, same reasoning
+    this ticket's own `test_autocapture_frontend.py` G4 deviation documents."""
     body_js = """
 CERES_STAGE.length = 0;
 BOARD = { plots: [{ deed_uid: 'plot', capacity: { potential_card_capacity: 1 }, workers: [], bonus: {}, staking_facts: {} }] };
 let undoCalls = 0;
 removeCheckoutStage = async () => { undoCalls += 1; };
 function click(action) {
- return { target: { closest(selector) { return selector === '[data-slot-action]' ? action : null; } }, preventDefault() {}, stopPropagation() {} };
+  return { target: { closest(selector) { return selector === '[data-slot-action]' ? action : null; } }, preventDefault() {}, stopPropagation() {} };
 }
 (async () => {
- await handleSlotEditorClick(click({ dataset: { slotAction: 'restore', deedUid: 'plot', groupId: 'worker', slotIndex: '0' } }));
- if (undoCalls !== 0) throw new Error('handleSlotEditorClick called removeCheckoutStage with no matching staged entry -- undoCalls=' + undoCalls);
+  await handleSlotEditorClick(click({ dataset: { slotAction: 'restore', deedUid: 'plot', groupId: 'worker', slotIndex: '0' } }));
+  if (undoCalls !== 0) throw new Error('handleSlotEditorClick called removeCheckoutStage with no matching staged entry -- undoCalls=' + undoCalls);
 })();
 """
     run_in_module_context(body_js)

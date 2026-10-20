@@ -115,7 +115,7 @@ def test_historical_runs_compile_to_exact_counts_and_members(tmp_path, monkeypat
     config = CeresConfig(root=tmp_path / ".ceres", player="fixtureowner")
     config.routing_kinds = {item["kind"] for item in fixture["model"]["routes"]}
     preview = _preview(TestClient(create_app(config)), monkeypatch, fixture)
-    assert "manifest" in preview, "must add the immutable compiler manifest to preview"
+    assert "manifest" in preview, " must add the immutable compiler manifest to preview"
     manifest = preview["manifest"]
     assert manifest["approval_counts"]["routing"] == forecast
     assert manifest["approval_counts"]["harvest"] == 1
@@ -186,7 +186,7 @@ def test_physical_call_budget_is_exposed_before_a_run(tmp_path, monkeypatch):
 
 
 def test_many_regions_are_never_refused_by_count(tmp_path, monkeypatch):
-    """150 selected regions reach the normal context read; no region-count refusal comes first."""
+    """: 150 selected regions reach the normal context read; no region-count refusal comes first."""
     calls = []
 
     def stop_at_context(request, player):
@@ -205,7 +205,7 @@ def test_many_regions_are_never_refused_by_count(tmp_path, monkeypatch):
 
 
 def test_call_budget_grows_with_the_plan_and_keeps_the_old_floor():
-    """a small plan keeps the old 120-call budget; a 150-bundle plan gets proportionally more."""
+    """: a small plan keeps the old 120-call budget; a 150-bundle plan gets proportionally more."""
     def bundle(lp=False):
         return {"operations": [{"kind": "liquidity" if lp else "sell", "members": [{"kind": "lp_wallet" if lp else "sale_dec"}]}] * 4}
     small = routing_plan.call_budget([bundle() for _ in range(3)])
@@ -217,7 +217,7 @@ def test_call_budget_grows_with_the_plan_and_keeps_the_old_floor():
 
 
 def test_whale_regions_route_and_regions_without_harvest_are_left_out(tmp_path, monkeypatch):
-    """150 extra owned regions that harvested nothing neither block the preview nor enter it."""
+    """: 150 extra owned regions that harvested nothing neither block the preview nor enter it."""
     fixture = _fixture("b")
     harvested = set(fixture["model"]["regions"])
     fixture["model"]["regions"] = fixture["model"]["regions"] + [f"PR-BRL-{900 + index}" for index in range(150)]

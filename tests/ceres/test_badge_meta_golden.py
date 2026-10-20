@@ -121,14 +121,14 @@ EXPECTED_BADGE_META = {
 
 def test_badge_meta_has_exactly_the_expected_keys():
     """A key added or removed without updating this golden file is exactly the
- kind of silent drift this test exists to catch."""
+    kind of silent drift this test exists to catch."""
     actual_keys = set(BADGE_META)
     expected_keys = set(EXPECTED_BADGE_META)
     missing = expected_keys - actual_keys
     unexpected = actual_keys - expected_keys
     assert not missing, f"BADGE_META lost key(s), never silently: {sorted(missing)}"
     assert not unexpected, (
-        f"BADGE_META gained new, un-golden key(s): {sorted(unexpected)} "
+        f"BADGE_META gained new, un-golden key(s): {sorted(unexpected)} -- "
         "add them to EXPECTED_BADGE_META in this test (after checking their "
         "text against a sourced fact) rather than leaving them uncovered."
     )
@@ -139,20 +139,26 @@ def test_badge_meta_entry_matches_golden_text(badge_key):
     actual = BADGE_META[badge_key]
     expected = EXPECTED_BADGE_META[badge_key]
     assert actual.get("label") == expected["label"], (
-        f"BADGE_META[{badge_key!r}]['label'] drifted:\n\"\n f\" expected: {expected['label']!r}\n\"\n f\" actual: {actual.get('label')!r}"
+        f"BADGE_META[{badge_key!r}]['label'] drifted:\n"
+        f"  expected: {expected['label']!r}\n"
+        f"  actual:   {actual.get('label')!r}"
     )
     assert actual.get("kind") == expected["kind"], (
-        f"BADGE_META[{badge_key!r}]['kind'] drifted:\n\"\n f\" expected: {expected['kind']!r}\n\"\n f\" actual: {actual.get('kind')!r}"
+        f"BADGE_META[{badge_key!r}]['kind'] drifted:\n"
+        f"  expected: {expected['kind']!r}\n"
+        f"  actual:   {actual.get('kind')!r}"
     )
     assert actual.get("tooltip") == expected["tooltip"], (
-        f"BADGE_META[{badge_key!r}]['tooltip'] drifted:\n\"\n f\" expected: {expected['tooltip']!r}\n\"\n f\" actual: {actual.get('tooltip')!r}"
+        f"BADGE_META[{badge_key!r}]['tooltip'] drifted:\n"
+        f"  expected: {expected['tooltip']!r}\n"
+        f"  actual:   {actual.get('tooltip')!r}"
     )
 
 
 def test_unpowered_tooltip_names_worker_power_sources_and_no_dec():
     """Power Core/Energized power five slots; a Runi in the Power slot powers four.
 
- DEC is not a power source.
+    DEC is not a power source.
     """
     tooltip = BADGE_META["unpowered"]["tooltip"]
     for must_have in ("Power Core", "Energized", "Runi", "four"):
@@ -160,5 +166,6 @@ def test_unpowered_tooltip_names_worker_power_sources_and_no_dec():
             f"'unpowered' tooltip is missing power source {must_have!r}: {tooltip!r}"
         )
     assert "DEC" not in tooltip, (
-        "'unpowered' tooltip must never claim DEC substitutes for a power \"\n f\"source (project rule: DEC does NOT substitute): {tooltip!r}"
+        "'unpowered' tooltip must never claim DEC substitutes for a power "
+        f"source (project rule: DEC does NOT substitute): {tooltip!r}"
     )

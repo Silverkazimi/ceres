@@ -75,7 +75,7 @@ def _get_json(base_url: str, path: str) -> dict:
 
 
 def _detail(base_url: str, deed_uid: str) -> dict:
-    return _get_json(base_url, f"api/plots/{urllib.parse.quote(deed_uid, safe='')}")
+    return _get_json(base_url, f"/api/plots/{urllib.parse.quote(deed_uid, safe='')}")
 
 
 def _candidate_payload(base_url: str, deed_uid: str, slot_index: int, *, limit: int = 25) -> dict:
@@ -85,7 +85,7 @@ def _candidate_payload(base_url: str, deed_uid: str, slot_index: int, *, limit: 
     })
     return _get_json(
         base_url,
-        f"api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates?{params}",
+        f"/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates?{params}",
     )
 
 
@@ -289,9 +289,9 @@ def _stage_stake(page: Page, candidate: dict, slot_index: int) -> None:
 
 def test_g1_unstake_base_badge_equals_raw_figure_delta(live_browser: tuple[Browser, str]) -> None:
     """G1 injection: app.js:5879 reading ``own_construction_pp`` instead of
- ``own_base_pp`` made this assertion red on the pinned +10% terrain plot: the
- badge used the terrain-adjusted value while the raw figure row dropped by the
- card's Base PP. Restoring ``own_base_pp`` made it green.
+    ``own_base_pp`` made this assertion red on the pinned +10% terrain plot: the
+    badge used the terrain-adjusted value while the raw figure row dropped by the
+    card's Base PP. Restoring ``own_base_pp`` made it green.
     """
     browser, base_url = live_browser
     case = _nonzero_terrain_case(base_url)
@@ -307,9 +307,9 @@ def test_g1_unstake_base_badge_equals_raw_figure_delta(live_browser: tuple[Brows
 
 def test_stake_base_badge_equals_raw_figure_delta(live_browser: tuple[Browser, str]) -> None:
     """Stake-path measurement: the rendered Base chip equals the signed change
- between the worker figure row before and after adding the selected candidate.
- This separately exercises app.js:6087, whose source injection is the stake
- analogue of G2's replace mutation.
+    between the worker figure row before and after adding the selected candidate.
+    This separately exercises app.js:6087, whose source injection is the stake
+    analogue of G2's replace mutation.
     """
     browser, base_url = live_browser
     case = _point_raw_stake_case(base_url)
@@ -325,9 +325,9 @@ def test_stake_base_badge_equals_raw_figure_delta(live_browser: tuple[Browser, s
 
 def test_g2_replace_positive_raw_base_delta(live_browser: tuple[Browser, str]) -> None:
     """G2 injection: app.js:6285 passing ``candidate.construction_pp_delta``
- instead of ``candidate.base_pp_delta`` made the pinned Manticore → Zintar
- case render Base −59 against the +2,941 figure-row delta. Restoring the raw
- candidate field made the assertion red-to-green condition pass.
+    instead of ``candidate.base_pp_delta`` made the pinned Manticore → Zintar
+    case render Base −59 against the +2,941 figure-row delta. Restoring the raw
+    candidate field made the assertion red-to-green condition pass.
     """
     browser, base_url = live_browser
     case = _positive_raw_replace_case(base_url)
@@ -347,10 +347,10 @@ def test_g2_replace_positive_raw_base_delta(live_browser: tuple[Browser, str]) -
 def _unknown_base_badge_assertion_js() -> str:
     return f"""
 const rendered = renderChangeBadges(
- {{status: 'unknown', value: null, low: null, high: null, reason: 'not reported'}},
- 0,
- false,
- 1,
+  {{status: 'unknown', value: null, low: null, high: null, reason: 'not reported'}},
+  0,
+  false,
+  1,
 );
 if (!rendered.includes('Base not calculated')) throw new Error('unknown Base reason-bearing label was not rendered');
 if (!rendered.includes('editor-change-badge is-unknown')) throw new Error('unknown Base badge lost is-unknown');
@@ -363,23 +363,23 @@ if (!rendered.includes('data-tip-foot="Not calculated — depends on which stage
 
 def test_g6_unknown_base_badge_is_reason_bearing() -> None:
     """The REAL ``renderChangeBadges()`` receives a fabricated unknown Base estimate
- and must render ``Base not calculated`` with ``.is-unknown`` and the registry
- tooltip, never a bare ``—``. Full app.js evaluation (via the shared
- `tests/ceres/vm_context.py` sandbox, ) keeps this a non-live
- test without slicing source strings. Before the shared helper existed this
- test built its own context missing ``window`` and was RED on
- ``ReferenceError: window is not defined`` at the module-scope statement
- ``const OPERATION_POLL_SCHEDULE_MS = window.__ceresOperationPollSchedule ||
- ...`` (app.js:2891) -- fixed once, in the helper, not per test.
+    and must render ``Base not calculated`` with ``.is-unknown`` and the registry
+    tooltip, never a bare ``—``. Full app.js evaluation (via the shared
+    `tests/ceres/vm_context.py` sandbox, ) keeps this a non-live
+    test without slicing source strings. Before the shared helper existed this
+    test built its own context missing ``window`` and was RED on
+    ``ReferenceError: window is not defined`` at the module-scope statement
+    ``const OPERATION_POLL_SCHEDULE_MS = window.__ceresOperationPollSchedule ||
+    ...`` (app.js:2891) -- fixed once, in the helper, not per test.
     """
     run_in_module_context(_unknown_base_badge_assertion_js(), entry=ENTRY)
 
 
 def test_g6_unknown_base_badge_mutation_is_red() -> None:
     """Injection: replacing the exact editor.js:676 label expression with the
- unconditional ``Base ${estimateBadge(basePpEstimate)}`` rendered ``Base —``;
- the synthetic harness exited red. Restoring the reason-bearing expression was
- then green, proving this guard reaches the previously unreachable Base branch.
+    unconditional ``Base ${estimateBadge(basePpEstimate)}`` rendered ``Base —``;
+    the synthetic harness exited red. Restoring the reason-bearing expression was
+    then green, proving this guard reaches the previously unreachable Base branch.
     """
     source = read_entry_source()
     mutated = source.replace(
@@ -394,10 +394,10 @@ def test_g6_unknown_base_badge_mutation_is_red() -> None:
 
 def test_g6_harvest_unknown_change_badge_has_visible_reason(live_browser: tuple[Browser, str]) -> None:
     """G6 live guard: the over-cap replacement's unknown Harvest estimate renders
- ``Harvest over cap`` with a visible reason. This deliberately does not claim
- to exercise unknown Base: the 129-plot board scan found zero
- ``base_pp_delta.status == "unknown"`` cases, because Phase 1 moved Base badges
- to the pre-terrain, pre-cap point estimate.
+    ``Harvest over cap`` with a visible reason. This deliberately does not claim
+    to exercise unknown Base: the 129-plot board scan found zero
+    ``base_pp_delta.status == "unknown"`` cases, because Phase 1 moved Base badges
+    to the pre-terrain, pre-cap point estimate.
     """
     browser, base_url = live_browser
     case = _over_cap_replace_case(base_url)
@@ -420,11 +420,11 @@ def test_g6_harvest_unknown_change_badge_has_visible_reason(live_browser: tuple[
 
 def test_g8_over_cap_change_renders_base_and_harvest_badges(live_browser: tuple[Browser, str]) -> None:
     """G8 injection: restoring the ``harvestDelta !== 0`` suppression at
- ``app.js:4339`` removed the unknown-Harvest chip, leaving one badge. The live
- mutation was run and observed red with one chip; restoring the branch made it
- green with two. This test discovers over-cap by raw ``base_pp > 100000`` (or
- a worker whose ``base_pp_after_cap`` is below raw ``base_pp``), never by the
- clamped derived ``over_cap`` flag.
+    ``app.js:4339`` removed the unknown-Harvest chip, leaving one badge. The live
+    mutation was run and observed red with one chip; restoring the branch made it
+    green with two. This test discovers over-cap by raw ``base_pp > 100000`` (or
+    a worker whose ``base_pp_after_cap`` is below raw ``base_pp``), never by the
+    clamped derived ``over_cap`` flag.
     """
     browser, base_url = live_browser
     case = _over_cap_replace_case(base_url)
@@ -448,9 +448,9 @@ def test_g8_over_cap_change_renders_base_and_harvest_badges(live_browser: tuple[
 
 def test_g9_staged_card_base_tooltip_omits_null_terrain(live_browser: tuple[Browser, str]) -> None:
     """G9 injection: removing the null guard around the staged worker terrain
- value at ``app.js:4371`` rendered ``served terrain boost +0%`` in the staged
- card's Base tooltip. The live mutation was run and observed red; restoring the
- guard made it green with neither ``terrain boost`` nor ``+0%``.
+    value at ``app.js:4371`` rendered ``served terrain boost +0%`` in the staged
+    card's Base tooltip. The live mutation was run and observed red; restoring the
+    guard made it green with neither ``terrain boost`` nor ``+0%``.
     """
     browser, base_url = live_browser
     case = _null_terrain_replace_case(base_url)

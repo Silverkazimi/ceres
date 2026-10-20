@@ -1,4 +1,4 @@
-"""the position card under the swap on Grain, Wood, Stone, Iron, Voucher and
+""": the position card under the swap on Grain, Wood, Stone, Iron, Voucher and
 SPS, never on DEC, Research or Aura. Withdraw follows the game's own client maths (Manage view, shares_out = percent/100,
 10 % early-withdrawal fee on shares still inside 30 days). The wallet is a stub; nothing is broadcast."""
 import json
@@ -139,21 +139,21 @@ def test_sps_deposit_funding_pays_the_pending_deposit_with_the_active_key():
 
 CARD_JS = """
 const wallet = { account: { DEC: 1000, SPS: 50, VOUCHER: 5 }, soulbound: ['AURA', 'RESEARCH'],
- regions: [{ region_uid: 'PR-CEF-65', plots_owned: 3, balances: { GRAIN: 300, WOOD: 0, STONE: 0, IRON: 0, RESEARCH: 1, AURA: 1 } }],
- swap: { symbols: ['GRAIN', 'VOUCHER', 'SPS'], directions: ['swap_sell', 'swap_buy'], account_symbols: ['VOUCHER', 'SPS'], two_step_sell: ['SPS'], signing_enabled: true, fees: {}, rates: {} },
- pool: { symbols: ['GRAIN', 'VOUCHER', 'SPS'], account_symbols: ['VOUCHER', 'SPS'], external: ['SPS'],
- reserves: { GRAIN: { resource: '1000', dec: '500', shares: '100' }, VOUCHER: { resource: '10', dec: '400', shares: '50' }, SPS: { resource: '100', dec: '800', shares: '200' } },
- positions: { GRAIN: { shares: '20.000', share_percent: '20', resource_amount: '200.000', dec_amount: '100.000' },
- VOUCHER: { shares: '0.000', share_percent: '0', resource_amount: '0.000', dec_amount: '0.000' },
- SPS: { shares: '0.000', share_percent: '0', resource_amount: '0.000', dec_amount: '0.000' } } } };
+  regions: [{ region_uid: 'PR-CEF-65', plots_owned: 3, balances: { GRAIN: 300, WOOD: 0, STONE: 0, IRON: 0, RESEARCH: 1, AURA: 1 } }],
+  swap: { symbols: ['GRAIN', 'VOUCHER', 'SPS'], directions: ['swap_sell', 'swap_buy'], account_symbols: ['VOUCHER', 'SPS'], two_step_sell: ['SPS'], signing_enabled: true, fees: {}, rates: {} },
+  pool: { symbols: ['GRAIN', 'VOUCHER', 'SPS'], account_symbols: ['VOUCHER', 'SPS'], external: ['SPS'],
+    reserves: { GRAIN: { resource: '1000', dec: '500', shares: '100' }, VOUCHER: { resource: '10', dec: '400', shares: '50' }, SPS: { resource: '100', dec: '800', shares: '200' } },
+    positions: { GRAIN: { shares: '20.000', share_percent: '20', resource_amount: '200.000', dec_amount: '100.000' },
+                 VOUCHER: { shares: '0.000', share_percent: '0', resource_amount: '0.000', dec_amount: '0.000' },
+                 SPS: { shares: '0.000', share_percent: '0', resource_amount: '0.000', dec_amount: '0.000' } } } };
 """
 
 
 def test_position_card_closes_every_pool_tab_and_never_dec_or_soulbound():
     body_js = CARD_JS + """
 for (const tab of ['GRAIN', 'VOUCHER', 'SPS']) {
- const html = positionHtml(tab, wallet, 'player0005');
- if (!html.includes('data-lp-pool') || !html.includes('lp:pool-add') || !html.includes('lp:pool-remove')) throw new Error(tab + ': ' + html);
+  const html = positionHtml(tab, wallet, 'player0005');
+  if (!html.includes('data-lp-pool') || !html.includes('lp:pool-add') || !html.includes('lp:pool-remove')) throw new Error(tab + ': ' + html);
 }
 for (const tab of ['DEC', 'RESEARCH', 'AURA']) if (positionHtml(tab, wallet, 'player0005') !== '') throw new Error('no pool card on ' + tab);
 const grain = positionHtml('GRAIN', wallet, 'player0005');
@@ -175,8 +175,8 @@ def test_one_add_click_signs_the_deposit_and_a_withdraw_click_signs_the_removal(
     source = source.replace("requestBroadcastThroughGate(ctx.player", "__stubGate(ctx.player").replace("walletReady(ctx.player)", "true").replace("walletReady(player)", "true")
     extra = """
 context.__stubGate = async (player, operations, onResponse, authority) => {
- context.__signed.push({ authority, json: JSON.parse(operations[0][1].json) });
- return { txId: 'a'.repeat(40) };
+  context.__signed.push({ authority, json: JSON.parse(operations[0][1].json) });
+  return { txId: 'a'.repeat(40) };
 };
 context.__signed = [];
 """
@@ -186,44 +186,44 @@ context.__signed = [];
 VERIFY_SCHEDULE_MS.length = 1;
 const order = [];
 const builds = {{ add: {{ ...{json.dumps(added)}, deposit: {{ resource_amount: '100.000', dec_amount: '50.000' }} }},
- remove: {{ ...{json.dumps(removed)}, withdraw: {{ resource_amount: '90.000', dec_amount: '45.000' }} }} }};
+                 remove: {{ ...{json.dumps(removed)}, withdraw: {{ resource_amount: '90.000', dec_amount: '45.000' }} }} }};
 globalThis.fetch = async (url, options) => {{
- const path = url.split('?')[0].split('/').pop(); const body = JSON.parse(options.body); order.push([path, body]);
- const reply = path === 'preview' ? builds[body.kind]
- : path === 'position' ? {{ shares: '20.000', locked_shares: '20.000' }}
- : {{ status: 'confirmed', game_result: body.kind === 'add' ? {{ resource_amount: 100, dec_amount: 50 }} : {{ resource_amount: 89.9, dec_amount: 44.9 }} }};
- return {{ ok: true, status: 200, json: async () => reply }};
+  const path = url.split('?')[0].split('/').pop(); const body = JSON.parse(options.body); order.push([path, body]);
+  const reply = path === 'preview' ? builds[body.kind]
+    : path === 'position' ? {{ shares: '20.000', locked_shares: '20.000' }}
+    : {{ status: 'confirmed', game_result: body.kind === 'add' ? {{ resource_amount: 100, dec_amount: 50 }} : {{ resource_amount: 89.9, dec_amount: 44.9 }} }};
+  return {{ ok: true, status: 200, json: async () => reply }};
 }};
 const ctx = {{ player: 'player0005', account: () => 'player0005', drawer: () => null, wallet: () => wallet, render: () => {{}}, reload: async () => {{}}, setSigning: () => {{}} }};
 const target = {{ closest: () => ({{ dataset: {{ lpSymbol: 'GRAIN' }} }}) }};
 const st = swapState('player0005', 'GRAIN');
 (async () => {{
- await swapAction(ctx, 'pool-add', target);
- await swapAction(ctx, 'pool-pct:50', target); // 50 % of what 300 GRAIN and 1000 DEC can pair: 150 GRAIN
- if (st.pool.amount !== '150') throw new Error('add amount: ' + st.pool.amount);
- st.pool.amount = '100';
- let card = positionHtml('GRAIN', wallet, 'player0005');
- if (!card.includes('Add 100.000 Grain + 50.000 DEC')) throw new Error('add button: ' + card);
- await swapAction(ctx, 'pool-sign', target);
- const preview = order.find(o => o[0] === 'preview')[1];
- if (preview.kind !== 'add' || preview.seen_dec !== '50' || preview.resource_amount !== '100' || preview.region_uid !== 'PR-CEF-65') throw new Error('add build: ' + JSON.stringify(preview));
- if (__signed.length !== 1 || __signed[0].authority !== 'Posting' || __signed[0].json.op !== 'add_liquidity') throw new Error('signed: ' + JSON.stringify(__signed));
- if (st.stage !== 'done' || st.receipt.resource !== 100 || st.receipt.dec !== 50) throw new Error('add receipt: ' + st.stage);
- // the result shows in the pool box itself; the swap card stays (and waits), so nothing above it moves.
- const poolBox = positionHtml('GRAIN', wallet, 'player0005'), swapBox = swapHtml('GRAIN', wallet, 'player0005');
- if (!poolBox.includes('Liquidity added') || !poolBox.includes('data-lp-active') || swapBox.includes('Liquidity added') || !/data-dec="lp:swap"[^>]*disabled/.test(swapBox)) throw new Error('receipt in the pool box: ' + poolBox);
- await swapAction(ctx, 'done', target);
- // Withdraw: opening it reads the position (the early-withdrawal fee), then one click signs.
- await swapAction(ctx, 'pool-remove', target);
- if (order.filter(o => o[0] === 'position').length !== 1 || st.pool.locked !== 20) throw new Error('position read');
- await swapAction(ctx, 'pool-pct:50', target);
- card = positionHtml('GRAIN', wallet, 'player0005');
- if (!card.includes('Withdraw 50% → 90.000 Grain + 45.000 DEC') || !card.includes('data-lp-early-fee')) throw new Error('withdraw card: ' + card);
- await swapAction(ctx, 'pool-sign', target);
- const removal = order.filter(o => o[0] === 'preview')[1][1];
- if (removal.shares_out !== '0.500' || removal.seen.resource_amount !== '90.000' || removal.seen.dec_amount !== '45.000') throw new Error('remove build: ' + JSON.stringify(removal));
- if (__signed[1].json.op !== 'remove_liquidity' || st.stage !== 'done' || st.receipt.resource !== 89.9) throw new Error('remove: ' + st.stage);
- if (!positionHtml('GRAIN', wallet, 'player0005').includes('Liquidity withdrawn')) throw new Error('withdraw receipt');
+  await swapAction(ctx, 'pool-add', target);
+  await swapAction(ctx, 'pool-pct:50', target);   // 50 % of what 300 GRAIN and 1000 DEC can pair: 150 GRAIN
+  if (st.pool.amount !== '150') throw new Error('add amount: ' + st.pool.amount);
+  st.pool.amount = '100';
+  let card = positionHtml('GRAIN', wallet, 'player0005');
+  if (!card.includes('Add 100.000 Grain + 50.000 DEC')) throw new Error('add button: ' + card);
+  await swapAction(ctx, 'pool-sign', target);
+  const preview = order.find(o => o[0] === 'preview')[1];
+  if (preview.kind !== 'add' || preview.seen_dec !== '50' || preview.resource_amount !== '100' || preview.region_uid !== 'PR-CEF-65') throw new Error('add build: ' + JSON.stringify(preview));
+  if (__signed.length !== 1 || __signed[0].authority !== 'Posting' || __signed[0].json.op !== 'add_liquidity') throw new Error('signed: ' + JSON.stringify(__signed));
+  if (st.stage !== 'done' || st.receipt.resource !== 100 || st.receipt.dec !== 50) throw new Error('add receipt: ' + st.stage);
+  // : the result shows in the pool box itself; the swap card stays (and waits), so nothing above it moves.
+  const poolBox = positionHtml('GRAIN', wallet, 'player0005'), swapBox = swapHtml('GRAIN', wallet, 'player0005');
+  if (!poolBox.includes('Liquidity added') || !poolBox.includes('data-lp-active') || swapBox.includes('Liquidity added') || !/data-dec="lp:swap"[^>]*disabled/.test(swapBox)) throw new Error('receipt in the pool box: ' + poolBox);
+  await swapAction(ctx, 'done', target);
+  // Withdraw: opening it reads the position (the early-withdrawal fee), then one click signs.
+  await swapAction(ctx, 'pool-remove', target);
+  if (order.filter(o => o[0] === 'position').length !== 1 || st.pool.locked !== 20) throw new Error('position read');
+  await swapAction(ctx, 'pool-pct:50', target);
+  card = positionHtml('GRAIN', wallet, 'player0005');
+  if (!card.includes('Withdraw 50% → 90.000 Grain + 45.000 DEC') || !card.includes('data-lp-early-fee')) throw new Error('withdraw card: ' + card);
+  await swapAction(ctx, 'pool-sign', target);
+  const removal = order.filter(o => o[0] === 'preview')[1][1];
+  if (removal.shares_out !== '0.500' || removal.seen.resource_amount !== '90.000' || removal.seen.dec_amount !== '45.000') throw new Error('remove build: ' + JSON.stringify(removal));
+  if (__signed[1].json.op !== 'remove_liquidity' || st.stage !== 'done' || st.receipt.resource !== 89.9) throw new Error('remove: ' + st.stage);
+  if (!positionHtml('GRAIN', wallet, 'player0005').includes('Liquidity withdrawn')) throw new Error('withdraw receipt');
 }})().catch(error => {{ console.error(error); process.exit(1); }});
 """
     run_in_module_context(body_js, entry=STATIC / "wallet-lp.js", source=source, extra_context_js=extra)
@@ -235,14 +235,14 @@ const ctx = { player: 'player0005', account: () => 'player0005', drawer: () => n
 const st = swapState('player0005', 'GRAIN');
 st.pool.mode = 'add';
 const input = (attr, value) => ({ value, dataset: { lpPoolDec: attr === 'data-lp-pool-dec' ? 'GRAIN' : undefined, lpPoolAmount: attr === 'data-lp-pool-amount' ? 'GRAIN' : undefined }, hasAttribute: a => a === attr });
-poolInput(ctx, input('data-lp-pool-dec', '40')); // pool 1000 GRAIN : 500 DEC -> 80 GRAIN
+poolInput(ctx, input('data-lp-pool-dec', '40'));        // pool 1000 GRAIN : 500 DEC -> 80 GRAIN
 if (st.pool.amount !== '80' || st.pool.dec !== '40' || !st.pool.decTyped) throw new Error('dec typed: ' + JSON.stringify(st.pool));
 let card = positionHtml('GRAIN', wallet, 'player0005');
 if (!card.includes('data-lp-pool-dec') || !card.includes('value="40"') || !card.includes('Add 80.000 Grain + 40.000 DEC')) throw new Error('card: ' + card);
-const big = input('data-lp-pool-dec', '99999'); // capped at what 300 GRAIN (and 1000 DEC) can pair: 150 DEC
+const big = input('data-lp-pool-dec', '99999');          // capped at what 300 GRAIN (and 1000 DEC) can pair: 150 DEC
 poolInput(ctx, big);
 if (big.value !== '150' || st.pool.amount !== '300') throw new Error('cap: ' + big.value + ' ' + st.pool.amount);
-poolInput(ctx, input('data-lp-pool-amount', '10')); // typing the resource again: the DEC follows it
+poolInput(ctx, input('data-lp-pool-amount', '10'));      // typing the resource again: the DEC follows it
 if (st.pool.decTyped || !positionHtml('GRAIN', wallet, 'player0005').includes('value="5"')) throw new Error('resource typed again');
 """
     run_in_module_context(body_js, entry=STATIC / "wallet-lp.js")

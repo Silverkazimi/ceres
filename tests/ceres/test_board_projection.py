@@ -54,8 +54,8 @@ def test_terrain_deed_stats_tax_rate_time_crystal_survive(report, details_by_id)
 
 def test_deed_stats_flags_surface_as_badges(report, details_by_id):
     """unstable_totem/building_in_box moved from the worker sub-table's plain-text
- deed_stats note into the Badges column (board-polish batch 15) -- both are
- PROPERTIES, same badge_meta-driven system as sole_ability_holder/over_cap."""
+    deed_stats note into the Badges column (board-polish batch 15) -- both are
+    PROPERTIES, same badge_meta-driven system as sole_ability_holder/over_cap."""
     board = project_board(report, details_by_id)
     row = next(r for r in board["plots"] if r["deed_uid"] == "I-296-b0dbc1ebc5ef75")
     assert "unstable_totem" in row["badges"]
@@ -193,12 +193,12 @@ def _idle_card(asset_ref, card_detail_id, bucket="unstaked_apparent"):
 
 def test_idle_cards_carry_skin(report, details_by_id):
     """build_idle_cards() must ship `skin` on idle-card rows the same way staked
- worker rows already do (v0.7.82) -- editorCardImage() in app.js reads
- `asset.skin` to resolve the skinned CDN art path, and without this field the
- combine-arrival dialog silently falls back to unskinned art. The fixture's
- "Spooky" skin (collection_sample.json) survives the classification pipeline
- into an idle-card row with a non-null bucket, proving the field flows through
- for a genuinely idle card, not just a staked one."""
+    worker rows already do (v0.7.82) -- editorCardImage() in app.js reads
+    `asset.skin` to resolve the skinned CDN art path, and without this field the
+    combine-arrival dialog silently falls back to unskinned art. The fixture's
+    "Spooky" skin (collection_sample.json) survives the classification pipeline
+    into an idle-card row with a non-null bucket, proving the field flows through
+    for a genuinely idle card, not just a staked one."""
     board = project_board(report, details_by_id)
     skinned = [c for c in board["idle_cards"] if c.get("skin")]
     assert skinned, "fixture must produce at least one skinned idle card"
@@ -207,11 +207,11 @@ def test_idle_cards_carry_skin(report, details_by_id):
 
 def test_idle_card_skin_mutation_is_red(report, details_by_id):
     """Injected defect: delete the `"skin": facts.get("skin"),` line from the real
- ceres/board.py source (revert to the pre-fix shape), exec the mutated module
- under a throwaway name, and re-run the guard's own assertion against ITS
- build_idle_cards() -- the guard must fail because no idle card carries a skin
- any more. Mutating the live source (not the output dict) is what makes this
- an admissible mutation test rather than a tautology."""
+    ceres/board.py source (revert to the pre-fix shape), exec the mutated module
+    under a throwaway name, and re-run the guard's own assertion against ITS
+    build_idle_cards() -- the guard must fail because no idle card carries a skin
+    any more. Mutating the live source (not the output dict) is what makes this
+    an admissible mutation test rather than a tautology."""
     import types
     from pathlib import Path
 
@@ -251,8 +251,8 @@ def test_unassigned_items_families_render_capturable_and_uncapturable(report, de
 
 def test_unassigned_runi_family_ignores_source_a_and_uses_idle_cards(report, details_by_id):
     """report["unassigned_items"]["runi"] is always uncapturable (STK-LND-RUNI's
- documented P0001 failure) -- the board's Runi family must come from idle_cards
- regardless of what Source A says, never rendered as "not captured" itself."""
+    documented P0001 failure) -- the board's Runi family must come from idle_cards
+    regardless of what Source A says, never rendered as "not captured" itself."""
     report = dict(report)
     report["unassigned_items"] = {
         "totem": {"capturable": False, "count": None, "items": [], "reason": "unused in this test"},
@@ -279,7 +279,7 @@ def test_unassigned_runi_family_ignores_source_a_and_uses_idle_cards(report, det
 
 def test_unassigned_items_missing_entirely_reports_not_captured(report, details_by_id):
     """A report with no unassigned_items key at all (e.g. a pre-2026-08-21 snapshot)
- must render every item family as explicitly unfetchable, never silently zero."""
+    must render every item family as explicitly unfetchable, never silently zero."""
     report = dict(report)
     report.pop("unassigned_items", None)
     board = project_board(report, details_by_id)

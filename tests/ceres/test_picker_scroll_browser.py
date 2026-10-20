@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 
 import pytest
+from .conftest import settle
 
 SET = Path(__file__).resolve().parents[1] / "fixtures" / "upstream" / "board-basic"
 PLAYER = "sample01"
@@ -19,14 +20,14 @@ PLAYER = "sample01"
 pytestmark = [pytest.mark.browser, pytest.mark.skipif(not (SET / "fixture-manifest.json").is_file(), reason="board-basic set not recorded")]
 
 MEASURE = r"""(uid) => {
- const row = document.querySelector(`tr.plot-row[data-deed-uid="${CSS.escape(uid)}"]`);
- const line = Math.max(0, ...['header.board-header', '#table-head-sticky'].map((s) => document.querySelector(s)?.getBoundingClientRect().bottom || 0));
- const flow = [...document.body.children].filter((e) => !['fixed', 'sticky', 'absolute'].includes(getComputedStyle(e).position) && e.getBoundingClientRect().height > 0);
- return { scrollY, line, vh: innerHeight, contentBottom: Math.max(0, ...flow.map((e) => e.getBoundingClientRect().bottom)) + scrollY, rowTop: row ? row.getBoundingClientRect().top : null, minH: document.body.style.minHeight,
- picker: !!document.querySelector('.inline-picker[data-picker="1"]'),
- maxScroll: document.documentElement.scrollHeight - innerHeight };
+  const row = document.querySelector(`tr.plot-row[data-deed-uid="${CSS.escape(uid)}"]`);
+  const line = Math.max(0, ...['header.board-header', '#table-head-sticky'].map((s) => document.querySelector(s)?.getBoundingClientRect().bottom || 0));
+  const flow = [...document.body.children].filter((e) => !['fixed', 'sticky', 'absolute'].includes(getComputedStyle(e).position) && e.getBoundingClientRect().height > 0);
+  return { scrollY, line, vh: innerHeight, contentBottom: Math.max(0, ...flow.map((e) => e.getBoundingClientRect().bottom)) + scrollY, rowTop: row ? row.getBoundingClientRect().top : null, minH: document.body.style.minHeight,
+    picker: !!document.querySelector('.inline-picker[data-picker="1"]'),
+    maxScroll: document.documentElement.scrollHeight - innerHeight };
 }"""
-TILE = ('tr.expand-row[data-deed-uid="{uid}"] [data-group-id="worker"][data-slot-action="add"] '
+TILE = ('tr.expand-row[data-deed-uid="{uid}"] [data-group-id="worker"][data-slot-action="add"], '
         'tr.expand-row[data-deed-uid="{uid}"] [data-group-id="worker"][data-slot-action="replace"]')
 
 
@@ -49,8 +50,8 @@ def _recorded_plots() -> set[str]:
 def _settle(page) -> None:
     """Wait until the window scroll has not moved for 250 ms (the 300 ms glides are over)."""
     page.wait_for_function("""() => new Promise((done) => { let last = scrollY, still = 0;
- const tick = () => { if (Math.abs(scrollY - last) < 0.5) still += 50; else { still = 0; last = scrollY; }
- if (still >= 250) done(true); else setTimeout(tick, 50); }; tick(); })""", timeout=10_000)
+      const tick = () => { if (Math.abs(scrollY - last) < 0.5) still += 50; else { still = 0; last = scrollY; }
+        if (still >= 250) done(true); else setTimeout(tick, 50); }; tick(); })""", timeout=10_000)
 
 
 def _open_plot(page, uid: str) -> None:
@@ -76,7 +77,7 @@ def _cycle(page, uid: str, park: str, close: str) -> dict:
         page.evaluate("(sel) => document.querySelector(sel).click()", TILE.format(uid=uid))
     page.wait_for_function("!document.querySelector('.inline-picker[data-picker=\"1\"]')", timeout=10_000)
     _settle(page)
-    page.wait_for_timeout(100)
+    settle(page)
     closed = page.evaluate(MEASURE, uid)
     return {"before": before, "opened": opened, "closed": closed}
 
@@ -101,14 +102,14 @@ def _run(width: int, height: int, motion: str) -> dict:
             # plots with worker slots (the Workers cell reads "n/m", m > 0) whose assets the set recorded, in board order
             recorded = _recorded_plots()
             uids = [u for u in page.eval_on_selector_all("#plot-tbody > tr.plot-row", "els => els.filter((e) => [...e.children].some((td) => "
-                                                         "^\\s*\\d+\\/[1-9]\\d*(\\+R)?\\s*$/.test(td.textContent))).map((e) => e.dataset.deedUid)")
+                                                         "/^\\s*\\d+\\/[1-9]\\d*(\\+R)?\\s*$/.test(td.textContent))).map((e) => e.dataset.deedUid)")
                     if u in recorded]
             assert len(uids) >= 3, uids
             # a plot from the middle, parked 300 px below the header line; closed with the picker's Close
             middle = uids[len(uids) // 2]
             _open_plot(page, middle)
             mid = _cycle(page, middle, f"scrollY + document.querySelector('tr.plot-row[data-deed-uid=\"{middle}\"]').getBoundingClientRect().top - 300 "
-                                       "Math.max(0, ...['header.board-header', '#table-head-sticky'].map((s) => document.querySelector(s)?.getBoundingClientRect().bottom || 0))",
+                                       "- Math.max(0, ...['header.board-header', '#table-head-sticky'].map((s) => document.querySelector(s)?.getBoundingClientRect().bottom || 0))",
                          "button")
             page.locator(f'tr.plot-row[data-deed-uid="{middle}"]').click()  # close that plot again
             _settle(page)
@@ -119,7 +120,7 @@ def _run(width: int, height: int, motion: str) -> dict:
                 if page.evaluate("[...document.querySelectorAll('#plot-tbody > tr.plot-row')].at(-1).dataset.deedUid") == last:
                     break
                 page.evaluate("document.querySelector('th[data-key=\"harvest_pp\"]').click()")
-                page.wait_for_timeout(300)
+                settle(page)
             assert page.evaluate("[...document.querySelectorAll('#plot-tbody > tr.plot-row')].at(-1).dataset.deedUid") == last
             _open_plot(page, last)
             end = _cycle(page, last, "document.documentElement.scrollHeight", "tile")

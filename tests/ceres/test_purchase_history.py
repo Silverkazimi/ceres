@@ -452,7 +452,7 @@ const button = { dataset: { cpAction: 'load' }, disabled: false };
 root.handler({ target: { closest: () => button } });
 await new Promise((r) => setTimeout(r, 20));
 console.log(JSON.stringify({ before, after: calls, hasLoad: html.includes('Load my purchases'), hasList: root.innerHTML.includes('cp-list'),
- ready: root.dataset.cpReady, leak: /C3-81-T|PSEUDO|player_0/.test(root.innerHTML) }));
+  ready: root.dataset.cpReady, leak: /C3-81-T|PSEUDO|player_0/.test(root.innerHTML) }));
 """)
     assert got["before"] == 0 and got["hasLoad"]
     assert got["after"] == ["/api/cards/purchases?player=player_owner&days=30"]
@@ -476,10 +476,10 @@ def test_other_total_remains_visible_when_there_are_no_card_purchases():
 const root = { innerHTML: '', dataset: {}, addEventListener: () => {} };
 initPurchases(root, { player: () => 'p' });
 _cpForTests.body = { days: 30, purchases: [], summary: { count: 0, transactions: 0, usd: 0, paid: {},
- other_purchases: { count: 1, usd: 12, dec: 24000, note: 'Limited feed' } }, going: {} };
+  other_purchases: { count: 1, usd: 12, dec: 24000, note: 'Limited feed' } }, going: {} };
 renderPurchases();
 console.log(JSON.stringify({ other: root.innerHTML.includes('Other purchases'), amount: root.innerHTML.includes('$12.00'),
- empty: root.innerHTML.includes('No card purchases') }));
+  empty: root.innerHTML.includes('No card purchases') }));
 """)
     assert got == {"other": True, "amount": True, "empty": True}
 
@@ -488,12 +488,12 @@ def test_page_helpers():
     got = _js(r"""
 const rows = [{ name: 'b', date: '2026-10-02', pp_per_usd: 5 }, { name: 'a', date: '2026-10-03', pp_per_usd: null }, { name: 'c', date: '2026-10-01', pp_per_usd: 9 }];
 console.log(JSON.stringify({
- rateDesc: cpSorted(rows, 'pp_per_usd', 'desc').map((r) => r.name),
- rateAsc: cpSorted(rows, 'pp_per_usd', 'asc').map((r) => r.name),
- name: cpSorted(rows, 'name', 'asc').map((r) => r.name),
- date: cpSorted(rows, 'date', 'desc').map((r) => r.name),
- url: cpUrl('player_owner', 90), usd: [cpUsd(9.15), cpUsd(0.048), cpUsd(null)], vs: [cpVsText(2.1), cpVsText(0.8), cpVsText(1)],
- month: cpMonth('2026-10'),
+  rateDesc: cpSorted(rows, 'pp_per_usd', 'desc').map((r) => r.name),
+  rateAsc: cpSorted(rows, 'pp_per_usd', 'asc').map((r) => r.name),
+  name: cpSorted(rows, 'name', 'asc').map((r) => r.name),
+  date: cpSorted(rows, 'date', 'desc').map((r) => r.name),
+  url: cpUrl('player_owner', 90), usd: [cpUsd(9.15), cpUsd(0.048), cpUsd(null)], vs: [cpVsText(2.1), cpVsText(0.8), cpVsText(1)],
+  month: cpMonth('2026-10'),
 }));
 """)
     assert got["rateDesc"] == ["c", "b", "a"] and got["rateAsc"] == ["b", "c", "a"]  # unknown last both ways
@@ -506,10 +506,11 @@ console.log(JSON.stringify({
 
 def test_page_rows_colour_pp_per_usd_and_put_dec_after_the_amount():
     got = _js(r"""
-const body = """ + SAMPLE + r"""const list = cpListHtml(body.purchases, 'pp_per_usd', 'desc');
+const body = """ + SAMPLE + r""";
+const list = cpListHtml(body.purchases, 'pp_per_usd', 'desc');
 const summary = cpSummaryHtml(body);
 console.log(JSON.stringify({ tiers: (list.match(/cp-rate is-(top|good|fair|dear)/g) || []).length,
- dec: /\d<img class="cp-dec-icon"/.test(list), summaryDec: summary.includes('cp-dec-icon'), today: summary.includes('not the rate on the day you bought'),
- noLand: (list.match(/No Land PP/g) || []).length >= 8, combined: list.includes('Combined later') }));
+  dec: /\d<img class="cp-dec-icon"/.test(list), summaryDec: summary.includes('cp-dec-icon'), today: summary.includes('not the rate on the day you bought'),
+  noLand: (list.match(/No Land PP/g) || []).length >= 8, combined: list.includes('Combined later') }));
 """)
     assert got["tiers"] == 6 and got["dec"] and got["summaryDec"] and got["today"] and got["noLand"] and got["combined"]

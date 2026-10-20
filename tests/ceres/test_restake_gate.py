@@ -1,4 +1,4 @@
-""" a nonexistent card is kept but never signed, even at expiry."""
+""" : a nonexistent card is kept but never signed, even at expiry."""
 from pathlib import Path
 from tests.ceres.vm_context import run_in_module_context
 STATIC = Path(__file__).parents[2] / 'ceres' / 'static'

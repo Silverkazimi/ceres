@@ -11,19 +11,19 @@ SOURCE = read_entry_source(ENTRY).replace("await requestBroadcastThroughGate(ctx
 FLOW = r"""
 const calls = [];
 const realSetTimeout = globalThis.setTimeout;
-globalThis.setTimeout = (fn, ms, ...rest) => realSetTimeout(fn, 0, ...rest); // the verify schedule (about a minute) runs instantly
+globalThis.setTimeout = (fn, ms, ...rest) => realSetTimeout(fn, 0, ...rest);   // the verify schedule (about a minute) runs instantly
 globalThis.fetch = async (url, init) => {
- const path = String(url);
- calls.push(path);
- if (path.includes('/verify')) return { ok: true, status: 200, json: async () => ({ status: 'pending' }) };
- return { ok: true, status: 200, json: async () => ({ operations: [['custom_json', { id: 'x', json: '{}' }]], quote: { input: 10, output: 5, two_step: false } }) };
+  const path = String(url);
+  calls.push(path);
+  if (path.includes('/verify')) return { ok: true, status: 200, json: async () => ({ status: 'pending' }) };
+  return { ok: true, status: 200, json: async () => ({ operations: [['custom_json', { id: 'x', json: '{}' }]], quote: { input: 10, output: 5, two_step: false } }) };
 };
 const symbol = 'WOOD';
 const st = swapState('alice', symbol);
 Object.assign(st, { direction: 'sell', amount: '10', quoted: '10', region: 'PR-AAA-1',
- quote: { kind: 'swap_sell', input: 10, output: 5, minimum: 4.9, fee_percent: '1', pool_cost: 0.1 } });
+  quote: { kind: 'swap_sell', input: 10, output: 5, minimum: 4.9, fee_percent: '1', pool_cost: 0.1 } });
 const wallet = { account: { DEC: '100' }, swap: { symbols: ['WOOD'], directions: ['swap_sell', 'swap_buy'], signing_enabled: true, rates: {}, fees: {} },
- regions: [{ region_uid: 'PR-AAA-1', balances: { WOOD: '50' } }] };
+  regions: [{ region_uid: 'PR-AAA-1', balances: { WOOD: '50' } }] };
 const target = { closest: () => ({ dataset: { lpSymbol: 'WOOD' } }) };
 const ctx = { player: 'alice', account: () => 'alice', drawer: () => null, wallet: () => wallet, render: () => {}, setSigning: () => {}, reload: async () => {} };
 """
@@ -157,7 +157,7 @@ def test_l2_04_a_small_move_within_the_tolerance_still_signs(tmp_path, monkeypat
 def test_l2_08_two_step_sale_is_disclosed_before_the_first_signature():
     run_in_module_context(r"""
 const wallet = { account: { DEC: '100', SPS: '500' }, swap: { symbols: ['SPS'], account_symbols: ['SPS'], two_step_sell: ['SPS'], directions: ['swap_sell'],
- signing_enabled: true, rates: {}, fees: {} }, regions: [] };
+  signing_enabled: true, rates: {}, fees: {} }, regions: [] };
 const html = swapHtml('SPS', wallet, 'alice');
 if (!html.includes('data-lp-two-step') || !html.includes('Active') || !html.includes('two wallet approvals')) throw Error('no disclosure: ' + html.slice(0, 200));
 const single = { ...wallet, swap: { ...wallet.swap, two_step_sell: [] } };
@@ -170,12 +170,12 @@ def test_l2_01_only_stated_outcomes_release_a_claim():
     run_in_module_context(r"""
 const unknown = [walletFailure(null), walletFailure(undefined), walletFailure({ success: false, error: 'network timeout' }), walletFailure({ success: false })];
 for (const error of unknown) {
- if (!error.ambiguousBroadcast || !error.broadcasted || error.retryable) throw Error('an unknown failure was treated as unsent: ' + error.message);
+  if (!error.ambiguousBroadcast || !error.broadcasted || error.retryable) throw Error('an unknown failure was treated as unsent: ' + error.message);
 }
 const stated = [walletFailure({ declined: true }), walletFailure({ notSent: true }), walletFailure({ success: false, error: 'user_cancel' }),
- walletFailure({ success: false, error: 'Assert Exception: tx rejected' })];
+  walletFailure({ success: false, error: 'Assert Exception: tx rejected' })];
 for (const error of stated) {
- if (error.ambiguousBroadcast || error.broadcasted !== false) throw Error('a stated not-sent outcome was kept as unknown: ' + error.message);
+  if (error.ambiguousBroadcast || error.broadcasted !== false) throw Error('a stated not-sent outcome was kept as unknown: ' + error.message);
 }
 if (!walletFailure({ success: false, ambiguousBroadcast: true }).ambiguousBroadcast) throw Error('an explicit ambiguous flag must survive');
 """, entry=STATIC / "broadcast-gate.js")
@@ -187,11 +187,11 @@ def test_l2_02_an_open_swap_is_restored_by_a_new_page_and_cleared_when_settled()
 const first = swapState('alice', 'WOOD');
 Object.assign(first, { stage: 'confirming', receipt: { kind: 'swap_sell', pay: 'WOOD', receive: 'DEC', nonce: 'abcdef0123456789', input: 10, unknownOutcome: true } });
 syncStoredIntent('alice', 'WOOD', first);
-states.clear(); // a reload / second tab: the page memory is gone
+states.clear();                                                  // a reload / second tab: the page memory is gone
 const again = swapState('alice', 'WOOD');
 if (again.stage !== 'confirming' || !again.receipt || again.receipt.nonce !== 'abcdef0123456789' || again.receipt.unknownOutcome !== true) throw Error('the open swap was not restored: ' + again.stage);
 if (swapState('alice', 'STONE').stage !== 'edit' || swapState('bob', 'WOOD').stage !== 'edit') throw Error('another symbol or player must not inherit it');
-again.stage = 'done'; syncStoredIntent('alice', 'WOOD', again); // settled: nothing is kept
+again.stage = 'done'; syncStoredIntent('alice', 'WOOD', again);   // settled: nothing is kept
 states.clear();
 if (swapState('alice', 'WOOD').stage !== 'edit') throw Error('a settled swap came back');
 localStorage.setItem('ceres:wallet-lp-intent:v1:alice:IRON', '{damaged');
@@ -207,8 +207,8 @@ if (swapState('alice', 'GRAIN').stage !== 'confirming') throw Error('elapsed tim
 def test_r2_l2_01_a_duplicate_transaction_assertion_is_not_proof_of_not_sent():
     run_in_module_context(r"""
 for (const text of ['assert_exception: duplicate transaction', 'Assert Exception: transaction already applied']) {
- const error = walletFailure({ success: false, error: text });
- if (!error.ambiguousBroadcast || error.broadcasted !== true) throw Error('a duplicate assertion must stay unknown: ' + text);
+  const error = walletFailure({ success: false, error: text });
+  if (!error.ambiguousBroadcast || error.broadcasted !== true) throw Error('a duplicate assertion must stay unknown: ' + text);
 }
 const plain = walletFailure({ success: false, error: 'Assert Exception: tx rejected' });
 if (plain.ambiguousBroadcast) throw Error('an ordinary chain rejection is still a stated not-sent outcome');
@@ -240,7 +240,7 @@ def test_r2_l4_02_03_an_unknown_sps_transfer_is_not_offered_again_and_close_keep
 
 def test_r3_l2_01_02_03_funding_prompt_cross_tab_reservation_and_owner_discard():
     run_in_module_context(r"""
-01: an Active transfer interrupted at the wallet prompt comes back as an unknown settlement, never as "send it again"
+// 01: an Active transfer interrupted at the wallet prompt comes back as an unknown settlement, never as "send it again"
 const f = swapState('alice', 'SPS');
 Object.assign(f, { stage: 'funding-signing', receipt: { kind: 'swap_sell', pay: 'SPS', receive: 'DEC', nonce: 'abcdef0123456789', twoStep: true } });
 syncStoredIntent('alice', 'SPS', f);
@@ -291,9 +291,9 @@ let wrote = false;
 const realSet = localStorage.setItem.bind(localStorage);
 localStorage.setItem = (key, value) => { realSet(key, value); if (String(key).includes('wallet-lp-intent')) wrote = true; };
 localStorage.getItem = (key) => {
- const value = realGet(key);
- if (wrote && String(key).includes('wallet-lp-intent') && value) return JSON.stringify({ ...JSON.parse(value), token: 'another-tab' }); // the other tab's token won the race
- return value;
+  const value = realGet(key);
+  if (wrote && String(key).includes('wallet-lp-intent') && value) return JSON.stringify({ ...JSON.parse(value), token: 'another-tab' });   // the other tab's token won the race
+  return value;
 };
 await swapAction(ctx, 'swap', target);
 if (prompts !== 0) throw Error('two tabs both reached the wallet: ' + prompts);
@@ -323,7 +323,7 @@ def test_r5_a01_a_stale_verifier_never_funds_a_sale_another_tab_settled():
 let prompts = 0; globalThis.__gate = async () => { prompts += 1; return { txId: 'b'.repeat(40) }; };
 globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ status: 'ready', operations: [['custom_json', { id: 'sm_sps', json: '{}' }]] }) });
 Object.assign(st, { stage: 'funding', token: 'mine', receipt: { kind: 'swap_sell', pay: 'WOOD', receive: 'DEC', twoStep: true, tx_id: 'c'.repeat(40), nonce: 'n1', payload: {} } });
-localStorage.removeItem('ceres:wallet-lp-intent:v1:alice:WOOD'); // the other tab settled the sale and removed the record
+localStorage.removeItem('ceres:wallet-lp-intent:v1:alice:WOOD');   // the other tab settled the sale and removed the record
 await swapAction(ctx, 'fund', target);
 if (prompts !== 0) throw Error('a stale result funded a settled sale: ' + prompts);
 if (st.stage !== 'edit') throw Error('a settled sale must leave this tab on the card, got ' + st.stage);

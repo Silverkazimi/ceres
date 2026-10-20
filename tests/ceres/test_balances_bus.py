@@ -1,4 +1,4 @@
-"""mocked confirmations and visible amount propagation; no wallet calls."""
+""": mocked confirmations and visible amount propagation; no wallet calls."""
 import json
 import subprocess
 from pathlib import Path

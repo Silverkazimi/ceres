@@ -1,6 +1,6 @@
 """Sandbox-runnable direct guards for tooltip icon helper wiring.
 
-/: v0.9.60 (cf83a58e, "tooltips rebuilt to the approved gate
+/: v0.9.60 (cf83a58e,  "tooltips rebuilt to the approved gate
 document") deliberately dropped the tooltip icon from `terrainCellHtml()` ("Gate
 document #70: no tooltip -- the terrain name is printed beside the emblem").
 `terrain` moved out of the required "positive" (has-icon) set into `gaps`
@@ -52,32 +52,32 @@ class _FragmentParser(HTMLParser):
 
 _BODY_JS = r"""
 const positive = [
- {kind: 'rarity', html: rarityGemHtml('rare')},
- {kind: 'splinter', html: splinterIconHtml('Fire')},
- {kind: 'terrain-affinity', html: terrainAffinityHtml({terrain: 'Mountain', plot: '1-1-1', biome: {red: 0.1, blue: 0, green: -0.1}}, 'editor')},
- {kind: 'set', html: setIconOnlyHtml('chaos')},
- {kind: 'type', html: typeMarkHtml('natural')},
- {kind: 'totem', html: totemIconHtml('rare')},
- {kind: 'named title', html: titleIconHtml('The Proven', 'The Proven')},
- {kind: 'individual ability', html: abilityIconHtml('GRAIN')},
- {kind: 'ability fallback', html: abilityIconHtml('RESEARCH')},
- {kind: 'resource', html: resourceIconHtml('grain')},
- {kind: 'DEC', html: resourceIconHtml('dec')},
+  {kind: 'rarity', html: rarityGemHtml('rare')},
+  {kind: 'splinter', html: splinterIconHtml('Fire')},
+  {kind: 'terrain-affinity', html: terrainAffinityHtml({terrain: 'Mountain', plot: '1-1-1', biome: {red: 0.1, blue: 0, green: -0.1}}, 'editor')},
+  {kind: 'set', html: setIconOnlyHtml('chaos')},
+  {kind: 'type', html: typeMarkHtml('natural')},
+  {kind: 'totem', html: totemIconHtml('rare')},
+  {kind: 'named title', html: titleIconHtml('The Proven', 'The Proven')},
+  {kind: 'individual ability', html: abilityIconHtml('GRAIN')},
+  {kind: 'ability fallback', html: abilityIconHtml('RESEARCH')},
+  {kind: 'resource', html: resourceIconHtml('grain')},
+  {kind: 'DEC', html: resourceIconHtml('dec')},
 ];
 const gaps = [
- {kind: 'mythic rarity gap', html: rarityGemHtml('mythic')},
- {kind: 'unknown totem gap', html: totemIconHtml('mythic')},
- {kind: 'static charge ability gap', html: abilityIconHtml('STATIC_CHARGE')},
+  {kind: 'mythic rarity gap', html: rarityGemHtml('mythic')},
+  {kind: 'unknown totem gap', html: totemIconHtml('mythic')},
+  {kind: 'static charge ability gap', html: abilityIconHtml('STATIC_CHARGE')},
 ];
 // Not an asset gap (it renders its own emblem <img>) -- a deliberate no-tooltip
 // design (Gate document #70) -- checked separately below, never lumped in with
 // the text-led asset-gap fallbacks above.
 const terrainCell = terrainCellHtml('Mountain').html;
 for (const record of positive) {
- const paths = [...record.html.matchAll(/data-tip-icon="([^"]*)"/g)].map((match) => match[1]);
- if (!paths.length || paths.some((path) => !ICON_PATH.test(path))) {
- throw new Error(`required tooltip icon missing or invalid for ${record.kind}`);
- }
+  const paths = [...record.html.matchAll(/data-tip-icon="([^"]*)"/g)].map((match) => match[1]);
+  if (!paths.length || paths.some((path) => !ICON_PATH.test(path))) {
+    throw new Error(`required tooltip icon missing or invalid for ${record.kind}`);
+  }
 }
 console.log('__TOOLTIP_ICON_RECORDS__' + JSON.stringify({positive, gaps, terrainCell}));
 """
@@ -152,7 +152,7 @@ _TOOLTIP_SOURCE = (STATIC / "tooltip.js").read_text(encoding="utf-8")
 
 
 def test_focusin_only_shows_for_keyboard_focus() -> None:
-    focusin_match = re.search(r"document\.addEventListener\('focusin', \(event\) => \{.*?\n \}\);", _TOOLTIP_SOURCE, re.S)
+    focusin_match = re.search(r"document\.addEventListener\('focusin', \(event\) => \{.*?\n  \}\);", _TOOLTIP_SOURCE, re.S)
     assert focusin_match, "focusin handler not found in its expected shape"
     body = focusin_match.group(0)
     assert "trigger.matches(':focus-visible')" in body
@@ -162,14 +162,14 @@ def test_focusin_only_shows_for_keyboard_focus() -> None:
 def test_focusin_ignores_a_window_refocus_window() -> None:
     assert "let WINDOW_REFOCUSED_AT = 0;" in _TOOLTIP_SOURCE
     assert "const WINDOW_REFOCUS_IGNORE_MS = 400;" in _TOOLTIP_SOURCE
-    focusin_match = re.search(r"document\.addEventListener\('focusin', \(event\) => \{.*?\n \}\);", _TOOLTIP_SOURCE, re.S)
+    focusin_match = re.search(r"document\.addEventListener\('focusin', \(event\) => \{.*?\n  \}\);", _TOOLTIP_SOURCE, re.S)
     assert focusin_match
     assert "Date.now() - WINDOW_REFOCUSED_AT < WINDOW_REFOCUS_IGNORE_MS" in focusin_match.group(0)
 
 
 def test_window_focus_and_visibility_restore_stamp_the_refocus_window() -> None:
     assert "window.addEventListener('focus', () => { WINDOW_REFOCUSED_AT = Date.now(); });" in _TOOLTIP_SOURCE
-    visibility_match = re.search(r"document\.addEventListener\('visibilitychange', \(\) => \{.*?\n \}\);", _TOOLTIP_SOURCE, re.S)
+    visibility_match = re.search(r"document\.addEventListener\('visibilitychange', \(\) => \{.*?\n  \}\);", _TOOLTIP_SOURCE, re.S)
     assert visibility_match, "visibilitychange handler not found in its expected shape"
     body = visibility_match.group(0)
     assert "document.visibilityState === 'visible'" in body
@@ -177,8 +177,8 @@ def test_window_focus_and_visibility_restore_stamp_the_refocus_window() -> None:
 
 
 def test_window_blur_and_hidden_visibility_hide_the_tooltip() -> None:
-    visibility_match = re.search(r"document\.addEventListener\('visibilitychange', \(\) => \{.*?\n \}\);", _TOOLTIP_SOURCE, re.S)
-    blur_match = re.search(r"window\.addEventListener\('blur', \(\) => \{.*?\n \}\);", _TOOLTIP_SOURCE, re.S)
+    visibility_match = re.search(r"document\.addEventListener\('visibilitychange', \(\) => \{.*?\n  \}\);", _TOOLTIP_SOURCE, re.S)
+    blur_match = re.search(r"window\.addEventListener\('blur', \(\) => \{.*?\n  \}\);", _TOOLTIP_SOURCE, re.S)
     assert visibility_match and blur_match, "visibilitychange/blur handlers not found in their expected shape"
     for body in (visibility_match.group(0), blur_match.group(0)):
         assert "hideTooltip();" in body

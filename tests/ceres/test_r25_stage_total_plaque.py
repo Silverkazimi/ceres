@@ -11,12 +11,13 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
+from . import board_basic_recording as recording
 
 
-ORDINARY = "I-298-6c3970d55b37f5"
-CASCADE = "I-294-99ed4b7a4d170e"
-RUNI = "I-290-d05b84f1965811"
+ORDINARY = recording.ORDINARY.uid
+CASCADE = recording.OVERCAP.uid
+RUNI = recording.RUNI_SLOT5.uid
 THEMES = ("alchemical", "dark", "light", "wood")
 VIEWPORTS = (1920, 1745, 1536)
 PLAQUE_DEED = ORDINARY
@@ -81,7 +82,7 @@ def _stage_slot_removal(page: Page, slot: int) -> None:
     assert tile.count() == 1
     tile.hover()
     tile.locator(".slot-remove").click()
-    page.wait_for_timeout(1500)
+    settle(page)
     _assert_three_badges(page)
 
 
@@ -117,10 +118,10 @@ def test_t8_plaque_is_staged_only_and_bounded(live_browser: tuple[Browser, str])
     _assert_three_badges(page)
     after = page.evaluate(
         """() => ({
- factsHeight: document.querySelector('.editor-facts').getBoundingClientRect().height,
- documentScroll: document.documentElement.scrollWidth,
- viewport: document.documentElement.clientWidth,
- })"""
+            factsHeight: document.querySelector('.editor-facts').getBoundingClientRect().height,
+            documentScroll: document.documentElement.scrollWidth,
+            viewport: document.documentElement.clientWidth,
+        })"""
     )
     assert abs(after["factsHeight"] - before_facts_height) <= 1
     assert after["documentScroll"] <= after["viewport"]
@@ -155,25 +156,25 @@ def test_t8c_formula_and_synthetic_runi_branch(live_browser: tuple[Browser, str]
     page = _page(live_browser)
     result = page.evaluate(
         """async () => {
- const payload = await (await fetch('/api/board')).json();
- const rows = payload?.plots || [];
- const payloadRows = rows.map(row => ({
- base_pp: Number(row?.base_pp),
- base_pp_cap: Number(row?.base_pp_cap),
- base_pp_after_cap: Number(row?.base_pp_after_cap),
- })).filter(row => Number.isFinite(row.base_pp) && Number.isFinite(row.base_pp_cap));
- const rowsFromAttributes = payloadRows.length ? payloadRows : [];
- const effective = (raw, runi, cap) => Math.min(raw - runi, cap) + runi;
- const overCap = rowsFromAttributes.filter(row => row.base_pp > row.base_pp_cap);
- const derived = overCap.map(row => ({effectiveNow: effective(row.base_pp, 0, row.base_pp_cap), served: row.base_pp_after_cap}));
- const source = overCap[0] || {base_pp: 107641.176, base_pp_cap: 100000};
- const synthetic = {
- effectiveAfter: effective(source.base_pp + 1500, 1500, source.base_pp_cap),
- loss: Math.max(0, source.base_pp - source.base_pp_cap),
- runiAfter: 1500,
- };
- return {derived, floor: overCap.length > 0, synthetic};
- }"""
+            const payload = await (await fetch('/api/board')).json();
+            const rows = payload?.plots || [];
+            const payloadRows = rows.map(row => ({
+                base_pp: Number(row?.base_pp),
+                base_pp_cap: Number(row?.base_pp_cap),
+                base_pp_after_cap: Number(row?.base_pp_after_cap),
+            })).filter(row => Number.isFinite(row.base_pp) && Number.isFinite(row.base_pp_cap));
+            const rowsFromAttributes = payloadRows.length ? payloadRows : [];
+            const effective = (raw, runi, cap) => Math.min(raw - runi, cap) + runi;
+            const overCap = rowsFromAttributes.filter(row => row.base_pp > row.base_pp_cap);
+            const derived = overCap.map(row => ({effectiveNow: effective(row.base_pp, 0, row.base_pp_cap), served: row.base_pp_after_cap}));
+            const source = overCap[0] || {base_pp: 107641.176, base_pp_cap: 100000};
+            const synthetic = {
+                effectiveAfter: effective(source.base_pp + 1500, 1500, source.base_pp_cap),
+                loss: Math.max(0, source.base_pp - source.base_pp_cap),
+                runiAfter: 1500,
+            };
+            return {derived, floor: overCap.length > 0, synthetic};
+        }"""
     )
     assert result["floor"]
     assert all(abs(item["effectiveNow"] - item["served"]) <= 0.01 for item in result["derived"])
@@ -196,11 +197,11 @@ def test_t8_geometry_all_themes_and_viewports(
     _stage_slot_removal(page, slot)
     rects = page.evaluate(
         """() => {
- const q = s => document.querySelector(s).getBoundingClientRect();
- const badge = document.querySelector('.editor-change-badges .editor-change-badge:nth-child(2)');
- const facts = document.querySelector('.editor-facts');
- return {badge: badge.getBoundingClientRect(), facts: facts.getBoundingClientRect(), band: q('.editor-band'), client: document.documentElement.clientWidth, documentScroll: document.documentElement.scrollWidth};
- }"""
+            const q = s => document.querySelector(s).getBoundingClientRect();
+            const badge = document.querySelector('.editor-change-badges .editor-change-badge:nth-child(2)');
+            const facts = document.querySelector('.editor-facts');
+            return {badge: badge.getBoundingClientRect(), facts: facts.getBoundingClientRect(), band: q('.editor-band'), client: document.documentElement.clientWidth, documentScroll: document.documentElement.scrollWidth};
+        }"""
     )
     assert rects["badge"]["left"] >= rects["facts"]["left"]
     assert rects["badge"]["right"] <= rects["facts"]["right"] + 1
@@ -219,25 +220,25 @@ def test_t8e_unknown_stake_candidate(live_browser: tuple[Browser, str]) -> None:
     _open_deed(page, deed_uid)
     page.evaluate(
         """() => {
- window.__r25_unknown_candidate = true;
- const original = window.fetch;
- window.fetch = async (...args) => {
- const response = await original(...args);
- if (String(args[0]).includes('/candidates')) {
- const payload = await response.json();
- if (payload?.candidates?.[0]) payload.candidates[0].base_pp_delta = {status: 'unknown', value: null, low: null, high: null, reason: 'target_roster_unknown'};
- return new Response(JSON.stringify(payload), {status: response.status, headers: {'content-type': 'application/json'}});
- }
- return response;
- };
- }"""
+            window.__r25_unknown_candidate = true;
+            const original = window.fetch;
+            window.fetch = async (...args) => {
+                const response = await original(...args);
+                if (String(args[0]).includes('/candidates')) {
+                    const payload = await response.json();
+                    if (payload?.candidates?.[0]) payload.candidates[0].base_pp_delta = {status: 'unknown', value: null, low: null, high: null, reason: 'target_roster_unknown'};
+                    return new Response(JSON.stringify(payload), {status: response.status, headers: {'content-type': 'application/json'}});
+                }
+                return response;
+            };
+        }"""
     )
     _stage_slot_removal(page, slot)
-    page.wait_for_timeout(1000)
+    settle(page)
     if page.locator('.slot-editor-body .slot-tile.is-empty').count() == 0:
         pytest.skip("pinned fixture has no empty worker slot for candidate injection")
     page.locator('.slot-editor-body .slot-tile.is-empty').first.click()
-    page.wait_for_timeout(1500)
+    settle(page)
     badge = page.locator(CHANGE_BADGES).filter(has_text="Total Base")
     assert badge.count() == 1
     assert "is-unknown" in (badge.get_attribute("class") or "")

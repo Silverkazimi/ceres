@@ -9,7 +9,7 @@ def test_names_and_addresses_become_stable_tags_and_nothing_else_changes():
     clean = logging_setup.redact(line)
     for secret in ("player0005", "bob", "203.0.113.9", "2001:db8::7"):
         assert secret not in clean
-    assert "2026-10-02T12:30:45+0200" in clean and "v0.15.2" in clean and "ratio 3:4" in clean and "> 200 in 5ms" in clean
+    assert "2026-10-02T12:30:45+0200" in clean and "v0.15.2" in clean and "ratio 3:4" in clean and "-> 200 in 5ms" in clean
     assert logging_setup.redact("player=player0005") == logging_setup.redact("player=player0005") != "player=player0005"      # stable inside one run, case-insensitive
     assert logging_setup.redact("player=player0005") != logging_setup.redact("player=bob")
 

@@ -71,10 +71,10 @@ class BundleRoundTripTests(unittest.TestCase):
 
     def test_mixed_tier_wave_splits_into_per_unit_homogeneous_chunks_with_own_tier(self):
         """FINDING B (Aletheia MEDIUM): the signer page must know each UNIT's own tier, not
- just the bundle-wide `header.key_tier` (which escalates to Active the moment ANY op
- anywhere needs it -- `fides/op.py`'s `required_key_tier`). A mixed-tier wave must
- split into tier-homogeneous chunks, and each chunk must carry its OWN `key_tier`
- alongside `header.key_tier`'s bundle-wide figure."""
+        just the bundle-wide `header.key_tier` (which escalates to Active the moment ANY op
+        anywhere needs it -- `fides/op.py`'s `required_key_tier`). A mixed-tier wave must
+        split into tier-homogeneous chunks, and each chunk must carry its OWN `key_tier`
+        alongside `header.key_tier`'s bundle-wide figure."""
         posting_op = Op(operation_id="generic_op", required_auths=[], required_posting_auths=["player0005"], json_payload={"i": 0})
         active_op = Op(operation_id="generic_op", required_auths=["player0005"], required_posting_auths=[], json_payload={"i": 1})
         body = build_bundle([("wave-1", [posting_op, active_op])], consumer="generic-test", renderer=stub_renderer, allowlist=STUB_ALLOWLIST)

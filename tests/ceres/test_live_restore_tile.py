@@ -90,7 +90,7 @@ def _expand_deed(page: Page, deed_uid: str):
     return expand
 
 
-@pytest.mark.xfail(strict=True, reason="removal-impact bloodline notice absent since v0.8.61; held by his")
+@pytest.mark.xfail(strict=True, reason=": removal-impact bloodline notice absent since v0.8.61; held by his /")
 def test_restore_bloodline_pair_break(live_browser: tuple[Browser, str]) -> None:
     page = _page(live_browser)
     fixture = _bloodline_pair_fixture(page)

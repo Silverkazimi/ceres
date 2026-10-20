@@ -36,25 +36,25 @@ def test_picker_view_toggle_and_list_branch_are_explicit() -> None:
     assert 'data-picker-action="select"' in CANDIDATES
     assert 'data-picker-action="choose"' in CANDIDATES
     assert "picker.viewMode === 'grid'" in CANDIDATES
-    assert " renderCandidateRow(candidate" in CANDIDATES
+    assert " : renderCandidateRow(candidate" in CANDIDATES
     assert "savePickerViewPreference(next)" in ACTIONS
     assert 'data-picker-view="list"' not in CANDIDATES
-    assert " ' class=\"candidate-list\"';" in CANDIDATES
+    assert " : ' class=\"candidate-list\"';" in CANDIDATES
 
 
 def test_picker_view_preference_defaults_to_list_and_survives_storage() -> None:
     run_in_module_context(
         """
         BOARD = { player: 's7640' };
- if (readPickerViewPreference() !== 'list') process.exit(10);
- localStorage.setItem('ceres:picker-view:v1:s7640', 'grid');
- if (readPickerViewPreference() !== 'grid') process.exit(11);
- localStorage.setItem('ceres:picker-view:v1:s7640', 'bad');
- if (readPickerViewPreference() !== 'list') process.exit(12);
- localStorage.getItem = () => { throw new Error('storage unavailable'); };
- if (readPickerViewPreference() !== 'list') process.exit(13);
- localStorage.setItem = () => { throw new Error('storage unavailable'); };
- savePickerViewPreference('grid');
+        if (readPickerViewPreference() !== 'list') process.exit(10);
+        localStorage.setItem('ceres:picker-view:v1:s7640', 'grid');
+        if (readPickerViewPreference() !== 'grid') process.exit(11);
+        localStorage.setItem('ceres:picker-view:v1:s7640', 'bad');
+        if (readPickerViewPreference() !== 'list') process.exit(12);
+        localStorage.getItem = () => { throw new Error('storage unavailable'); };
+        if (readPickerViewPreference() !== 'list') process.exit(13);
+        localStorage.setItem = () => { throw new Error('storage unavailable'); };
+        savePickerViewPreference('grid');
         """,
         entry=ROOT / "ceres/static/picker-actions.js",
         source=PREFERENCE_SOURCE,
@@ -70,7 +70,7 @@ def test_card_grid_default_fills_available_width_without_column_cap() -> None:
     # (maintainer clarification 2026-09-16, commit 4c633f5d: "remove arbitrary layout
     # ceilings while preserving container boundaries") dropped the cqi-scaled clamp for a
     # flat minimum, so auto-fit alone decides the column count.
-    assert "candidate-grid-card-min: 13.5rem;" in CSS
+    assert "--candidate-grid-card-min: 13.5rem;" in CSS
     assert "html.ceres-lw-le-1919.ceres-lw-le-1659 .candidate-list.is-card-grid" not in CSS
     assert "html.ceres-lw-le-1919.ceres-lw-le-1439 .candidate-list.is-card-grid" not in CSS
     assert "1fr)); align-items: start; gap: var(--candidate-grid-gap)" in CSS
@@ -108,8 +108,8 @@ def test_grid_loading_reserves_one_responsive_row_with_official_spinner() -> Non
     assert "\n.candidate-card.is-ghost .cand-ghost-body { min-block-size" not in CSS
     assert ".candidate-list:not(.is-card-grid) .candidate-card.is-ghost .cand-ghost-body { min-block-size: 8.4rem; }" in CSS
     # the phase C block became the fluid open-plot block plus the panel rules.
-    for start, end in (("* FLUID OPEN PLOT START", "* FLUID OPEN PLOT END *"),
-                       ("* PHASE C LOW-RES PANELS START", "* PHASE C LOW-RES PANELS END *")):
+    for start, end in (("/*  FLUID OPEN PLOT START", "/*  FLUID OPEN PLOT END */"),
+                       ("/*  PHASE C LOW-RES PANELS START", "/*  PHASE C LOW-RES PANELS END */")):
         low_res = CSS.split(start, 1)[1].split(end, 1)[0]
         assert ".candidate-grid-card.is-ghost" not in low_res
     assert "function trimPickerGridLoadingRow" in ACTIONS
@@ -123,16 +123,16 @@ def test_grid_loading_trims_ghosts_to_the_live_computed_track_count() -> None:
     run_in_module_context(
         """
         const removed = [];
- const ghosts = Array.from({ length: 7 }, (_, index) => ({ remove() { removed.push(index); } }));
- const grid = {
- matches: (selector) => selector === '.candidate-list.is-card-grid',
- querySelectorAll: (selector) => selector === '.candidate-grid-card.is-ghost' ? ghosts : [],
- };
- getComputedStyle = () => ({
- gridTemplateColumns: 'minmax(0px, 1fr) minmax(0px, 1fr) minmax(0px, 1fr) minmax(0px, 1fr) minmax(0px, 1fr)',
- });
- trimPickerGridLoadingRow(grid);
- if (removed.join(',') !== '5,6') process.exit(44);
+        const ghosts = Array.from({ length: 7 }, (_, index) => ({ remove() { removed.push(index); } }));
+        const grid = {
+          matches: (selector) => selector === '.candidate-list.is-card-grid',
+          querySelectorAll: (selector) => selector === '.candidate-grid-card.is-ghost' ? ghosts : [],
+        };
+        getComputedStyle = () => ({
+          gridTemplateColumns: 'minmax(0px, 1fr) minmax(0px, 1fr) minmax(0px, 1fr) minmax(0px, 1fr) minmax(0px, 1fr)',
+        });
+        trimPickerGridLoadingRow(grid);
+        if (removed.join(',') !== '5,6') process.exit(44);
         """,
         entry=ROOT / "ceres/static/picker-actions.js",
     )
@@ -387,113 +387,113 @@ def test_grid_renderers_cover_readiness_terrain_native_stage_and_item_rarity_but
     run_in_module_context(
         """
         const picker = { groupId: 'worker', selectedKey: null };
- const ready = {
- asset_ref: 'ready', uid: 'ready', card_detail_id: 1001, name: 'Ready Worker',
- base_pp: 100, terrain_boost: 0.25, bcx: 1, bcx_max: 400, foil: false,
- construction_pp: { status: 'point', value: 125 }, cooldown: { state: 'idle' },
- level: 3, edition: 3, splinter: 'fire', rarity: 'common', card_set: 'chaos',
- };
- S.IDLE_CARDS_CACHE = [
- ready,
- { ...ready, asset_ref: 'ready-copy', uid: 'ready-copy' },
- ];
- const cooling = {
- asset_ref: 'cooling', name: 'Cooling Worker', base_pp: 100, terrain_boost: -0.25,
- construction_pp: { status: 'point', value: 75 },
- cooldown: { state: 'cooling', ready_at: '2026-09-18T00:00:00Z' },
- level: 3, edition: 3, splinter: 'fire', rarity: 'common', card_set: 'chaos',
- };
- const survival = {
- asset_ref: 'survival', name: 'Survival Worker', base_pp: 100, terrain_boost: 0,
- construction_pp: { status: 'point', value: 100 },
- cooldown: { state: 'survival_locked', ready_at: '2026-09-18T00:00:00Z' },
- level: 3, edition: 3, splinter: 'fire', rarity: 'common', card_set: 'chaos',
- };
- const gold = { ...ready, asset_ref: 'gold', foil: 1 };
- const black = { ...ready, asset_ref: 'black', foil: 3 };
- const readyHtml = renderCandidateGridCard(ready, 0, picker, false);
- const coolingHtml = renderCandidateGridCard(cooling, 1, picker, false);
- const survivalHtml = renderCandidateGridCard(survival, 2, picker, false);
- const goldHtml = renderCandidateGridCard(gold, 3, picker, false);
- const blackHtml = renderCandidateGridCard(black, 4, picker, false);
- if (!readyHtml.includes('<button type="button" class="candidate-grid-select candidate-grid-stage" data-picker-action="choose"') || readyHtml.includes('candidate-readiness-overlay')) process.exit(20);
- if (!readyHtml.includes('candidate-grid-boostable is-positive')) process.exit(21);
- if (!coolingHtml.includes('candidate-readiness-overlay is-danger') || !coolingHtml.includes('<span>Ready in</span><span class="candidate-readiness-badge">')) process.exit(22);
- if (!coolingHtml.includes('candidate-grid-boostable is-negative')) process.exit(23);
- if (!survivalHtml.includes('<button type="button" class="candidate-grid-select candidate-grid-stage" data-picker-action="choose"') || !survivalHtml.includes(' disabled')) process.exit(24);
- if (!survivalHtml.includes('candidate-readiness-overlay is-danger') || !survivalHtml.includes('<span>Ready in</span>') || survivalHtml.includes('Revives in') || !survivalHtml.includes('candidate-readiness-badge')) process.exit(25);
- const stageEnd = readyHtml.indexOf('</button>');
- const toolsStart = readyHtml.indexOf('<div class="candidate-grid-tools">');
- const combineAt = readyHtml.indexOf('data-picker-action="combine"');
- if (stageEnd < 0 || toolsStart <= stageEnd || combineAt <= toolsStart || readyHtml.slice(0, stageEnd).includes('data-picker-action="combine"')) process.exit(26);
- if ([readyHtml, coolingHtml, survivalHtml].some((html) => /Details|Stake here|Replace|Terrain|Total PP change|Harvest \/hr|Bloodline/.test(html))) process.exit(27);
- if (!readyHtml.includes('aria-label="Set: Chaos. Edition: Reward"') || !readyHtml.includes('data-tip-body="Edition: Reward"') || readyHtml.includes('<span>Reward</span>')) process.exit(41);
- if (!goldHtml.includes('candidate-grid-art-foil">Gold</span>') || !blackHtml.includes('candidate-grid-art-foil">Black Foil</span>')) process.exit(42);
- if (goldHtml.indexOf('candidate-grid-art-foil') > goldHtml.indexOf('</span>')) process.exit(43);
- const totems = renderItemRarityGridCards({
- groupId: 'totem',
- rarityGroups: {
- common: { count: 2, candidate: { asset_ref: 'common' } },
- rare: { count: 0, candidate: null },
- epic: { count: 1, candidate: { asset_ref: 'epic' } },
- legendary: { count: 0, candidate: null },
- },
- }, false);
- if ((totems.match(/<button\\b/g) || []).length !== 4) process.exit(28);
- if ((totems.match(/<button[^>]* disabled/g) || []).length !== 2) process.exit(29);
- if (totems.includes('candidate-grid-totem-boost')) process.exit(30);
- const unavailableTotems = totems.match(/<button[^>]*is-unavailable[^>]*>/g) || [];
- if (unavailableTotems.length !== 2) process.exit(45);
- if (unavailableTotems.some((tag) => !tag.includes(' disabled aria-disabled="true"') || !tag.includes(', 0 available'))) process.exit(46);
- const titles = renderItemRarityGridCards({
- groupId: 'title',
- rarityGroups: {
- rare: { count: 2, candidate: { asset_ref: 'rare-title' } },
- epic: { count: 1, candidate: { asset_ref: 'epic-title' } },
- legendary: { count: 0, candidate: null },
- },
- }, true);
- if ((titles.match(/<button\\b/g) || []).length !== 3) process.exit(36);
- if ((titles.match(/<button[^>]* disabled/g) || []).length !== 1) process.exit(37);
- if (!titles.includes('Rare Title') || !titles.includes('Epic Title') || !titles.includes('Legendary Title')) process.exit(38);
- if (!titles.includes('2 available') || !titles.includes('1 available') || !titles.includes('0 available')) process.exit(39);
- if (!titles.includes('rarity-gem') || titles.includes('candidate-grid-detail')) process.exit(40);
- const unavailableTitles = titles.match(/<button[^>]*is-unavailable[^>]*>/g) || [];
- if (unavailableTitles.length !== 1) process.exit(47);
- if (unavailableTitles.some((tag) => !tag.includes(' disabled aria-disabled="true"') || !tag.includes(', 0 available'))) process.exit(48);
+        const ready = {
+          asset_ref: 'ready', uid: 'ready', card_detail_id: 1001, name: 'Ready Worker',
+          base_pp: 100, terrain_boost: 0.25, bcx: 1, bcx_max: 400, foil: false,
+          construction_pp: { status: 'point', value: 125 }, cooldown: { state: 'idle' },
+          level: 3, edition: 3, splinter: 'fire', rarity: 'common', card_set: 'chaos',
+        };
+        S.IDLE_CARDS_CACHE = [
+          ready,
+          { ...ready, asset_ref: 'ready-copy', uid: 'ready-copy' },
+        ];
+        const cooling = {
+          asset_ref: 'cooling', name: 'Cooling Worker', base_pp: 100, terrain_boost: -0.25,
+          construction_pp: { status: 'point', value: 75 },
+          cooldown: { state: 'cooling', ready_at: '2026-09-18T00:00:00Z' },
+          level: 3, edition: 3, splinter: 'fire', rarity: 'common', card_set: 'chaos',
+        };
+        const survival = {
+          asset_ref: 'survival', name: 'Survival Worker', base_pp: 100, terrain_boost: 0,
+          construction_pp: { status: 'point', value: 100 },
+          cooldown: { state: 'survival_locked', ready_at: '2026-09-18T00:00:00Z' },
+          level: 3, edition: 3, splinter: 'fire', rarity: 'common', card_set: 'chaos',
+        };
+        const gold = { ...ready, asset_ref: 'gold', foil: 1 };
+        const black = { ...ready, asset_ref: 'black', foil: 3 };
+        const readyHtml = renderCandidateGridCard(ready, 0, picker, false);
+        const coolingHtml = renderCandidateGridCard(cooling, 1, picker, false);
+        const survivalHtml = renderCandidateGridCard(survival, 2, picker, false);
+        const goldHtml = renderCandidateGridCard(gold, 3, picker, false);
+        const blackHtml = renderCandidateGridCard(black, 4, picker, false);
+        if (!readyHtml.includes('<button type="button" class="candidate-grid-select candidate-grid-stage" data-picker-action="choose"') || readyHtml.includes('candidate-readiness-overlay')) process.exit(20);
+        if (!readyHtml.includes('candidate-grid-boostable is-positive')) process.exit(21);
+        if (!coolingHtml.includes('candidate-readiness-overlay is-danger') || !coolingHtml.includes('<span>Ready in</span><span class="candidate-readiness-badge">')) process.exit(22);
+        if (!coolingHtml.includes('candidate-grid-boostable is-negative')) process.exit(23);
+        if (!survivalHtml.includes('<button type="button" class="candidate-grid-select candidate-grid-stage" data-picker-action="choose"') || !survivalHtml.includes(' disabled')) process.exit(24);
+        if (!survivalHtml.includes('candidate-readiness-overlay is-danger') || !survivalHtml.includes('<span>Ready in</span>') || survivalHtml.includes('Revives in') || !survivalHtml.includes('candidate-readiness-badge')) process.exit(25);
+        const stageEnd = readyHtml.indexOf('</button>');
+        const toolsStart = readyHtml.indexOf('<div class="candidate-grid-tools">');
+        const combineAt = readyHtml.indexOf('data-picker-action="combine"');
+        if (stageEnd < 0 || toolsStart <= stageEnd || combineAt <= toolsStart || readyHtml.slice(0, stageEnd).includes('data-picker-action="combine"')) process.exit(26);
+        if ([readyHtml, coolingHtml, survivalHtml].some((html) => /Details|Stake here|Replace|Terrain|Total PP change|Harvest \/hr|Bloodline/.test(html))) process.exit(27);
+        if (!readyHtml.includes('aria-label="Set: Chaos. Edition: Reward"') || !readyHtml.includes('data-tip-body="Edition: Reward"') || readyHtml.includes('<span>Reward</span>')) process.exit(41);
+        if (!goldHtml.includes('candidate-grid-art-foil">Gold</span>') || !blackHtml.includes('candidate-grid-art-foil">Black Foil</span>')) process.exit(42);
+        if (goldHtml.indexOf('candidate-grid-art-foil') > goldHtml.indexOf('</span>')) process.exit(43);
+        const totems = renderItemRarityGridCards({
+          groupId: 'totem',
+          rarityGroups: {
+            common: { count: 2, candidate: { asset_ref: 'common' } },
+            rare: { count: 0, candidate: null },
+            epic: { count: 1, candidate: { asset_ref: 'epic' } },
+            legendary: { count: 0, candidate: null },
+          },
+        }, false);
+        if ((totems.match(/<button\\b/g) || []).length !== 4) process.exit(28);
+        if ((totems.match(/<button[^>]* disabled/g) || []).length !== 2) process.exit(29);
+        if (totems.includes('candidate-grid-totem-boost')) process.exit(30);
+        const unavailableTotems = totems.match(/<button[^>]*is-unavailable[^>]*>/g) || [];
+        if (unavailableTotems.length !== 2) process.exit(45);
+        if (unavailableTotems.some((tag) => !tag.includes(' disabled aria-disabled="true"') || !tag.includes(', 0 available'))) process.exit(46);
+        const titles = renderItemRarityGridCards({
+          groupId: 'title',
+          rarityGroups: {
+            rare: { count: 2, candidate: { asset_ref: 'rare-title' } },
+            epic: { count: 1, candidate: { asset_ref: 'epic-title' } },
+            legendary: { count: 0, candidate: null },
+          },
+        }, true);
+        if ((titles.match(/<button\\b/g) || []).length !== 3) process.exit(36);
+        if ((titles.match(/<button[^>]* disabled/g) || []).length !== 1) process.exit(37);
+        if (!titles.includes('Rare Title') || !titles.includes('Epic Title') || !titles.includes('Legendary Title')) process.exit(38);
+        if (!titles.includes('2 available') || !titles.includes('1 available') || !titles.includes('0 available')) process.exit(39);
+        if (!titles.includes('rarity-gem') || titles.includes('candidate-grid-detail')) process.exit(40);
+        const unavailableTitles = titles.match(/<button[^>]*is-unavailable[^>]*>/g) || [];
+        if (unavailableTitles.length !== 1) process.exit(47);
+        if (unavailableTitles.some((tag) => !tag.includes(' disabled aria-disabled="true"') || !tag.includes(', 0 available'))) process.exit(48);
         """,
         entry=ROOT / "ceres/static/candidates.js",
         extra_context_js="""
           context.BOARD = { plots: [] };
- context.ASSET_BASE = '';
- context.esc = (value) => String(value ?? '').replace(/[&<>\"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[char]));
- context.num = (value) => String(value);
- context.terrainValue = (value) => value === null || value === undefined ? null : Number(value);
- context.editorCardImageHtml = () => '<img alt="card art">';
- context.editionDisplayLabel = (value) => `Edition ${value}`;
- context.foilBadgeHtml = (candidate, extraClass = '') => {
- const label = candidate.foil === 1 ? 'Gold' : candidate.foil === 3 ? 'Black Foil' : '';
- return label ? `<span class="foil-badge ${extraClass}">${label}</span>` : '';
- };
- context.splinterIconHtml = () => '<span>splinter</span>';
- context.rarityGemHtml = () => '<span class="rarity-gem">rarity</span>';
- context.setIconOnlyHtml = (cardSet, edition, detail) => `<span data-edition-tooltip="${detail}">set</span>`;
- context.totemIconHtml = (rarity) => `<span>${rarity}</span>`;
- context.titleIconHtml = () => '';
- context.titleRarityGem = () => '';
- context.humanizeInstant = () => ({ relative: '3d', absolute: 'later' });
- context.countdownText = () => '3d';
- context.abilityTipModel = () => ({ icon: '', title: '' });
- context.abilityRowText = () => '';
- context.tipAttrs = () => '';
- context.tooltipIconPath = () => '';
- context.workerSubType = () => '';
- context.abilityIconHtml = () => '';
- context.bloodlineOutranked = () => false;
- context.combineTipModel = () => ({});
- context.EDITION_LABEL = {};
- context.S = {};
- context.FOIL_BADGE = '';
+          context.ASSET_BASE = '';
+          context.esc = (value) => String(value ?? '').replace(/[&<>\"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[char]));
+          context.num = (value) => String(value);
+          context.terrainValue = (value) => value === null || value === undefined ? null : Number(value);
+          context.editorCardImageHtml = () => '<img alt="card art">';
+          context.editionDisplayLabel = (value) => `Edition ${value}`;
+          context.foilBadgeHtml = (candidate, extraClass = '') => {
+            const label = candidate.foil === 1 ? 'Gold' : candidate.foil === 3 ? 'Black Foil' : '';
+            return label ? `<span class="foil-badge ${extraClass}">${label}</span>` : '';
+          };
+          context.splinterIconHtml = () => '<span>splinter</span>';
+          context.rarityGemHtml = () => '<span class="rarity-gem">rarity</span>';
+          context.setIconOnlyHtml = (cardSet, edition, detail) => `<span data-edition-tooltip="${detail}">set</span>`;
+          context.totemIconHtml = (rarity) => `<span>${rarity}</span>`;
+          context.titleIconHtml = () => '';
+          context.titleRarityGem = () => '';
+          context.humanizeInstant = () => ({ relative: '3d', absolute: 'later' });
+          context.countdownText = () => '3d';
+          context.abilityTipModel = () => ({ icon: '', title: '' });
+          context.abilityRowText = () => '';
+          context.tipAttrs = () => '';
+          context.tooltipIconPath = () => '';
+          context.workerSubType = () => '';
+          context.abilityIconHtml = () => '';
+          context.bloodlineOutranked = () => false;
+          context.combineTipModel = () => ({});
+          context.EDITION_LABEL = {};
+          context.S = {};
+          context.FOIL_BADGE = '';
         """,
     )
 
@@ -516,91 +516,91 @@ def test_item_rarity_choose_stages_totem_and_replaces_title() -> None:
     run_in_module_context(
         """
         (async () => {
- const candidate = {
- asset_ref: 'totem-rare-1', name: 'Rare Totem', source_deed_uid: null,
- base_pp_delta: null, cooldown: {}, plot_impact: { status: 'not_applicable' },
- };
- const picker = {
- deedUid: 'deed-1', groupId: 'totem', slotIndex: 2, mode: 'stake',
- currentOccupant: null, candidates: [{ combine_info: { key: 'ready-worker', copies: [] } }],
- rarityGroups: { rare: { count: 3, candidate } }, filters: {}, chain: false,
- };
- S.CERES_PICKER = picker;
- const pickerAction = {
- dataset: { pickerAction: 'choose', pickerRarity: 'rare' },
- closest: () => null,
- };
- const event = {
- target: {
- closest: (selector) => selector === '[data-picker-action]' ? pickerAction : null,
- },
- preventDefault() {}, stopPropagation() {},
- };
- await handleSlotEditorClick(event);
- if (stageEvents.length !== 1) process.exit(31);
- if (stageEvents[0][0] !== 'deed-1' || stageEvents[0][1] !== 'totem' || stageEvents[0][2] !== 2) process.exit(32);
- if (stageEvents[0][4] !== 'totem-rare-1') process.exit(33);
- if (S.CERES_PICKER !== null) process.exit(34);
- const titleCandidate = {
- asset_ref: 'title-epic-1', name: 'Epic Title', source_deed_uid: null,
- base_pp_delta: null, cooldown: {}, plot_impact: { status: 'not_applicable' },
- };
- const titlePicker = {
- deedUid: 'deed-1', groupId: 'title', slotIndex: 0, mode: 'replace',
- currentOccupant: { asset_ref: 'old-title', name: 'Old Title' }, candidates: [],
- rarityGroups: { epic: { count: 2, candidate: titleCandidate } }, filters: {}, chain: false,
- };
- S.CERES_PICKER = titlePicker;
- const titleAction = {
- dataset: { pickerAction: 'choose', pickerRarity: 'epic' },
- closest: () => null,
- };
- const titleEvent = {
- target: {
- closest: (selector) => selector === '[data-picker-action]' ? titleAction : null,
- },
- preventDefault() {}, stopPropagation() {},
- };
- await handleSlotEditorClick(titleEvent);
- if (stageEvents.length !== 2) process.exit(36);
- if (stageEvents[1][1] !== 'title' || stageEvents[1][3] !== 'replace') process.exit(37);
- if (stageEvents[1][4] !== 'title-epic-1' || stageEvents[1][6] !== 'old-title') process.exit(38);
- if (S.CERES_PICKER !== null) process.exit(39);
- S.CERES_PICKER = picker;
- const combineAction = { dataset: { pickerAction: 'combine', candidateIndex: '0' }, closest: () => null };
- const combineEvent = {
- target: {
- closest: (selector) => selector === '[data-picker-action]' ? combineAction : null,
- },
- preventDefault() {}, stopPropagation() {},
- };
- await handleSlotEditorClick(combineEvent);
- if (combineEvents !== 1 || combineDialogKey !== 'ready-worker' || stageEvents.length !== 2) process.exit(35);
- })();
+        const candidate = {
+          asset_ref: 'totem-rare-1', name: 'Rare Totem', source_deed_uid: null,
+          base_pp_delta: null, cooldown: {}, plot_impact: { status: 'not_applicable' },
+        };
+        const picker = {
+          deedUid: 'deed-1', groupId: 'totem', slotIndex: 2, mode: 'stake',
+          currentOccupant: null, candidates: [{ combine_info: { key: 'ready-worker', copies: [] } }],
+          rarityGroups: { rare: { count: 3, candidate } }, filters: {}, chain: false,
+        };
+        S.CERES_PICKER = picker;
+        const pickerAction = {
+          dataset: { pickerAction: 'choose', pickerRarity: 'rare' },
+          closest: () => null,
+        };
+        const event = {
+          target: {
+            closest: (selector) => selector === '[data-picker-action]' ? pickerAction : null,
+          },
+          preventDefault() {}, stopPropagation() {},
+        };
+        await handleSlotEditorClick(event);
+        if (stageEvents.length !== 1) process.exit(31);
+        if (stageEvents[0][0] !== 'deed-1' || stageEvents[0][1] !== 'totem' || stageEvents[0][2] !== 2) process.exit(32);
+        if (stageEvents[0][4] !== 'totem-rare-1') process.exit(33);
+        if (S.CERES_PICKER !== null) process.exit(34);
+        const titleCandidate = {
+          asset_ref: 'title-epic-1', name: 'Epic Title', source_deed_uid: null,
+          base_pp_delta: null, cooldown: {}, plot_impact: { status: 'not_applicable' },
+        };
+        const titlePicker = {
+          deedUid: 'deed-1', groupId: 'title', slotIndex: 0, mode: 'replace',
+          currentOccupant: { asset_ref: 'old-title', name: 'Old Title' }, candidates: [],
+          rarityGroups: { epic: { count: 2, candidate: titleCandidate } }, filters: {}, chain: false,
+        };
+        S.CERES_PICKER = titlePicker;
+        const titleAction = {
+          dataset: { pickerAction: 'choose', pickerRarity: 'epic' },
+          closest: () => null,
+        };
+        const titleEvent = {
+          target: {
+            closest: (selector) => selector === '[data-picker-action]' ? titleAction : null,
+          },
+          preventDefault() {}, stopPropagation() {},
+        };
+        await handleSlotEditorClick(titleEvent);
+        if (stageEvents.length !== 2) process.exit(36);
+        if (stageEvents[1][1] !== 'title' || stageEvents[1][3] !== 'replace') process.exit(37);
+        if (stageEvents[1][4] !== 'title-epic-1' || stageEvents[1][6] !== 'old-title') process.exit(38);
+        if (S.CERES_PICKER !== null) process.exit(39);
+        S.CERES_PICKER = picker;
+        const combineAction = { dataset: { pickerAction: 'combine', candidateIndex: '0' }, closest: () => null };
+        const combineEvent = {
+          target: {
+            closest: (selector) => selector === '[data-picker-action]' ? combineAction : null,
+          },
+          preventDefault() {}, stopPropagation() {},
+        };
+        await handleSlotEditorClick(combineEvent);
+        if (combineEvents !== 1 || combineDialogKey !== 'ready-worker' || stageEvents.length !== 2) process.exit(35);
+        })();
         """,
         entry=ROOT / "ceres/static/picker-actions.js",
         source=CHOOSE_VM_SOURCE,
         extra_context_js="""
           context.S = { CERES_PICKER: null };
- context.BOARD = { plots: [{ deed_uid: 'deed-1' }] };
- context.stageEvents = [];
- context.combineEvents = 0;
- context.combineDialogKey = null;
- context.IDLE_COMBINE_GROUPS = new Map();
- context.editorGroups = () => [{ id: context.S.CERES_PICKER.groupId }];
- context.candidateDelta = () => 12;
- context.editorOccupant = (candidate) => ({ asset_ref: candidate.asset_ref, name: candidate.name });
- context.stageForSlot = (...args) => context.stageEvents.push(args);
- context.candidateCombineInfo = (candidate) => candidate.combine_info || null;
- context.openCombineGroupDialog = (key) => { context.combineEvents += 1; context.combineDialogKey = key; };
- context.mutateEditorSlot = () => {};
- context.stageToast = () => {};
- context.editorSlotLabel = () => 'Totem';
- context.stageDeltaToastText = (delta) => String(delta);
- context.releaseFillRunHeight = () => {};
- context.unbindCountdowns = () => {};
- context.abortWorkerUpgradeOptions = () => {};
- context.updateMountedRow = () => {};
- context.scrollPlotAfterSlotAdd = () => {};
+          context.BOARD = { plots: [{ deed_uid: 'deed-1' }] };
+          context.stageEvents = [];
+          context.combineEvents = 0;
+          context.combineDialogKey = null;
+          context.IDLE_COMBINE_GROUPS = new Map();
+          context.editorGroups = () => [{ id: context.S.CERES_PICKER.groupId }];
+          context.candidateDelta = () => 12;
+          context.editorOccupant = (candidate) => ({ asset_ref: candidate.asset_ref, name: candidate.name });
+          context.stageForSlot = (...args) => context.stageEvents.push(args);
+          context.candidateCombineInfo = (candidate) => candidate.combine_info || null;
+          context.openCombineGroupDialog = (key) => { context.combineEvents += 1; context.combineDialogKey = key; };
+          context.mutateEditorSlot = () => {};
+          context.stageToast = () => {};
+          context.editorSlotLabel = () => 'Totem';
+          context.stageDeltaToastText = (delta) => String(delta);
+          context.releaseFillRunHeight = () => {};
+          context.unbindCountdowns = () => {};
+          context.abortWorkerUpgradeOptions = () => {};
+          context.updateMountedRow = () => {};
+          context.scrollPlotAfterSlotAdd = () => {};
         """,
     )

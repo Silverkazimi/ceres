@@ -1,4 +1,4 @@
-"""Source guards for (board scrollbar), (Terrain inset) and (badge pulse sync)."""
+"""Source guards for  (board scrollbar),  (Terrain inset) and  (badge pulse sync)."""
 import re
 from pathlib import Path
 
@@ -69,7 +69,7 @@ def test_wallet_window_has_the_iris_glow_on_an_opacity_layer():
 def test_ability_losses_are_priced_over_the_whole_current_roster():
     # Verified live on 065-09-083: Toil and Kin -27,187.5 and abilities -87,000 whatever else is removed.
     src = (STATIC.parent / "candidates.py").read_text()
-    assert '"pp_delta": bloodline_pp_delta' in src
+    assert '"pp_delta": bloodline_pp_delta,' in src
     assert 'context={"deed_uid": deed_uid, "pp_delta": ability_pp_delta}' in src
     for name in ("bloodline_pp_delta = -sum(", "ability_pp_delta = -sum("):
         body = src.split(name, 1)[1][:400]
@@ -82,7 +82,7 @@ def test_changes_window_states_and_invalid_removed_on_close():
     js = (STATIC / "checkout.js").read_text()
     assert 'ch-status is-waiting">Waiting · ' in js
     assert "It is removed from Changes when you close this window." in js
-    assert 'ch-status is-bad">Refused by the game' in js  # refused is red
+    assert 'ch-status is-bad">Refused by the game:' in js  # refused is red
     assert "queueMicrotask(dropInvalidChanges)" in js
     assert "item._plan_invalid_reason && !item.txId" in js
     assert ".ch-status.is-waiting { color: var(--warn); }" in (STATIC / "ceres.css").read_text()  # maintainer-approved state matrix (waiting = warning) replaces the gold
@@ -122,7 +122,7 @@ def test_duplicate_route_choice_moves_to_a_free_combination():
 
 def test_only_the_route_list_scrolls_in_routing_setup():
     css = (STATIC / "ceres.css").read_text()
-    rule = css.split("@media (min-width:761px) {\n .r3-setup .r3-flow-layout { align-items:stretch; }", 1)[1].split("}\n}", 1)[0]
+    rule = css.split("@media (min-width:761px) {\n  .r3-setup .r3-flow-layout { align-items:stretch; }", 1)[1].split("}\n}", 1)[0]
     assert "align-self:stretch" in rule and "contain:size" in rule and "overflow-y:auto" in rule and "scrollbar-width:none" in rule
     assert "margin:-4px -16px -4px -4px; padding:4px 16px 4px 4px;" in rule
     modal = (STATIC / "harvest-modal.js").read_text()
@@ -160,7 +160,7 @@ def test_phone_board_is_art_cards_with_the_building_centred():
     # "wide pops more", "Align the
     # center of the building with the center of the wide plot box", badges "as an opt-in overlay", wallet in the bar.
     rows = (STATIC / "rows.js").read_text()
-    assert "export function plotCardHtml(row, rowIndex) {" in rows and 'class="plot-card plot-tile rarity' in rows
+    assert "export function plotCardHtml(row, rowIndex) {" in rows and 'class="plot-card plot-tile rarity-' in rows
     assert "const plate = tilePlateLayers(row);" in rows
     art = (STATIC / "art.js").read_text()
     assert "const PLATE_GEOMETRY = {" in art and "export function tilePlateLayers(row) {" in art
@@ -176,10 +176,10 @@ def test_phone_wallet_scroll_lock_slider_swaps_and_header_art():
     # Owner: wallet scrolling "scrolls the board behind it"; "Activate LPs for mobile"; "use the wallet slider inside the
     # wallet"; "Remove the wallet button from the filter page"; landing artwork for the phone header, smaller file.
     css = (STATIC / "mobile-plot.css").read_text()
-    assert "has(#regional-dec-drawer[open]) body { overflow: hidden; overscroll-behavior: none; }" in css
+    assert ":has(#regional-dec-drawer[open]) body { overflow: hidden; overscroll-behavior: none; }" in css
     assert "#regional-dec-drawer .wallet-tabs--icons { display: flex; flex-wrap: nowrap;" in css
     assert "html.ceres-lw-le-1919.ceres-lw-le-1279 #regional-dec-button { display: none; }" in css
-    assert "hdr-scene: url('assets/ui/ceres-header-phone.webp')" in css
+    assert "--hdr-scene: url('assets/ui/ceres-header-phone.webp')" in css
     assert (STATIC / "assets" / "ui" / "ceres-header-phone.webp").stat().st_size < 80_000
     assert "if (!player) return '';" in (STATIC / "wallet-lp.js").read_text()
     assert ".dec-region h3 .ch-plot-badge { display: inline-flex; align-items: center;" in (STATIC / "ceres.css").read_text()

@@ -1,4 +1,4 @@
-"""missing mutation gates and lifecycle regressions, entirely offline."""
+""": missing mutation gates and lifecycle regressions, entirely offline."""
 import json
 from copy import deepcopy
 from types import SimpleNamespace
@@ -39,7 +39,8 @@ def test_client_rejects_wrong_operation_inputs_and_active_auth(mutation):
     run_in_module_context(SETUP + r"""
 (async()=>{
 const b=makeBuild(p);
-""" + mutation + r"""fetch=async()=>({ok:true,json:async()=>b});
+""" + mutation + r""";
+fetch=async()=>({ok:true,json:async()=>b});
 let refused=false;try{await buildPlanCombine(p)}catch(_){refused=true}
 if(!refused)throw Error('unsafe operation accepted');
 })().catch(e=>{console.error(e);process.exitCode=1});
@@ -286,7 +287,7 @@ def test_next_write_deletes_expired_prepared_and_verified_cache(monkeypatch,tmp_
 
 def test_reference_opens_with_current_contract_and_labels_history():
     text=(STATIC.parents[1]/'library/ceres-combine-chain.md').read_text()
-    assert text.startswith('# Ceres combine chain — contract')
+    assert text.startswith('# Ceres combine chain —  contract')
     assert '## Historical – implementation notes' in text
     assert 'OWNER DECISION' in text
 

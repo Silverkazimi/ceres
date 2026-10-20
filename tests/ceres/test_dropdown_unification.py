@@ -48,7 +48,7 @@ def _page(live_browser: tuple[Browser, str]) -> Page:
 
 def _open_worker_picker(page: Page) -> int:
     """Expand rows until one with an empty, staffable worker slot is found and
- open its picker. Returns the row index."""
+    open its picker. Returns the row index."""
     page.on("pageerror", lambda error: print(f"pageerror: {error}\n{error.stack}"))
     page.on("requestfailed", lambda request: print(f"requestfailed: {request.url} :: {request.failure}"))
     for index in range(page.locator("#plot-tbody > tr.plot-row").count()):
@@ -149,8 +149,8 @@ def test_dynamic_edition_list_trigger_is_never_blank(live_browser: tuple[Browser
 
 def test_picker_survives_rerender_without_stale_or_leaked_dropdown(live_browser: tuple[Browser, str]) -> None:
     """Filter/sort/staging actions rebuild the picker's filter-bar DOM from
- scratch (renderSlotEditor() output). Confirm the NEW <select> is wrapped
- again (not left as a raw unstyled control) and remains interactive."""
+    scratch (renderSlotEditor() output). Confirm the NEW <select> is wrapped
+    again (not left as a raw unstyled control) and remains interactive."""
     page = _page(live_browser)
     _open_worker_picker(page)
     picker = page.locator(".inline-picker")

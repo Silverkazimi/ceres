@@ -1,4 +1,4 @@
-"""the DEC stake cell names what makes the stake 0 or lower, on lean rows too.
+""": the DEC stake cell names what makes the stake 0 or lower, on lean rows too.
 
 Sandbox-runnable VM guards (no browser) for format.js decStakeCell().
 """
@@ -15,11 +15,11 @@ from .vm_context import run_in_module_context
 _JS = r"""
 const lean = {dec: {needed: 9000, needed_discount: -0.99}, capacity: {runi_staked: false}, workers: [], dec_discount_cards: ['Kinbound Druid']};
 const records = {
- lowered: decStakeCell(lean),
- runi: decStakeCell({dec: {needed: 0, needed_discount: -0.5}, capacity: {runi_staked: true}, workers: [], dec_discount_cards: ['Tireless Farmhand']}),
- idle: decStakeCell({dec: {needed: 0, needed_discount: 0}, capacity: {runi_staked: false}, workers: [], dec_discount_cards: []}),
- plain: decStakeCell({dec: {needed: 331, needed_discount: 0}, capacity: {runi_staked: false}, workers: [], dec_discount_cards: []}),
- missing: decStakeCell({dec: {needed: null}, capacity: {}, workers: []}),
+  lowered: decStakeCell(lean),
+  runi: decStakeCell({dec: {needed: 0, needed_discount: -0.5}, capacity: {runi_staked: true}, workers: [], dec_discount_cards: ['Tireless Farmhand']}),
+  idle: decStakeCell({dec: {needed: 0, needed_discount: 0}, capacity: {runi_staked: false}, workers: [], dec_discount_cards: []}),
+  plain: decStakeCell({dec: {needed: 331, needed_discount: 0}, capacity: {runi_staked: false}, workers: [], dec_discount_cards: []}),
+  missing: decStakeCell({dec: {needed: null}, capacity: {}, workers: []}),
 };
 console.log('__DEC__' + JSON.stringify(records));
 """

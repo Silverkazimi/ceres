@@ -1,9 +1,8 @@
-"""Regression guards for the worker picker filters."""
+"""Regression guards for the  worker picker filters."""
 
 from __future__ import annotations
 
 import re
-import subprocess
 
 from .vm_context import STATIC
 
@@ -11,6 +10,17 @@ from .vm_context import STATIC
 CANDIDATES = (STATIC / "candidates.js").read_text(encoding="utf-8")
 CSS = (STATIC / "ceres.css").read_text(encoding="utf-8")
 HTML = (STATIC / "index.html").read_text(encoding="utf-8")
+
+# Historical picker state is recorded here because the public tree omits the base commit.
+BASE_MIN_MAX_INLINE_SIZE_REM = 4.5
+BASE_FILTER_KEYS = {"${key}", "edition", "keep_open", "max_pp", "min_pp", "q", "rarity", "splinter"}
+BASE_IDS = {"${candidateDomId(key)}"}
+BASE_DATA_ATTRIBUTES = {
+    "data-candidate-index", "data-candidate-key", "data-control-case", "data-control-density",
+    "data-control-mode", "data-countdown-until", "data-detail-key", "data-mobile-context", "data-picker",
+    "data-picker-action", "data-picker-filter", "data-picker-group", "data-picker-rarity", "data-picker-view",
+    "data-sort", "data-tip",
+}
 
 
 def _worker_fields(source: str) -> str:
@@ -52,7 +62,8 @@ def test_worker_filter_groups_follow_splinter_inputs_dropdowns_toggles() -> None
 
 def test_worker_text_fields_reuse_the_board_filter_field_class() -> None:
     board_search = re.search(
-        r'<label class="([^"]+)"[^>]*>\s*<span class="sr-only">Filter</span>\'\n r\'\s*<input[^>]*id="text-filter"',
+        r'<label class="([^"]+)"[^>]*>\s*<span class="sr-only">Filter</span>'
+        r'\s*<input[^>]*id="text-filter"',
         HTML,
     )
     assert board_search
@@ -63,7 +74,8 @@ def test_worker_text_fields_reuse_the_board_filter_field_class() -> None:
     fields = name_field + _worker_fields(CANDIDATES)
     for key in ("q", "min_pp", "max_pp"):
         label = re.search(
-            rf'<label class="([^"]+)"[^>]*>\'\n rf\'(?:(?!</label>).)*data-picker-filter="{key}"',
+            rf'<label class="([^"]+)"[^>]*>'
+            rf'(?:(?!</label>).)*data-picker-filter="{key}"',
             fields,
             re.DOTALL,
         )
@@ -72,13 +84,10 @@ def test_worker_text_fields_reuse_the_board_filter_field_class() -> None:
 
 
 def test_worker_min_max_widths_exceed_the_base_commit() -> None:
-    base_css = subprocess.check_output(
-        ["git", "show", "d23c685a:ceres/static/ceres.css"], text=True
-    )
-
     def width(css: str) -> float:
         rule = re.search(
-            r'\.picker-filters input\[data-picker-filter="min_pp"\]\'\n r\'[^{}]*\{([^}]+)\}',
+            r'\.picker-filters input\[data-picker-filter="min_pp"\]'
+            r'[^{}]*\{([^}]+)\}',
             css,
         )
         assert rule
@@ -86,7 +95,7 @@ def test_worker_min_max_widths_exceed_the_base_commit() -> None:
         assert value
         return float(value.group(1))
 
-    assert width(CSS) > width(base_css)
+    assert width(CSS) > BASE_MIN_MAX_INLINE_SIZE_REM
 
 
 def test_worker_groups_have_three_board_style_separators() -> None:
@@ -103,11 +112,8 @@ def test_worker_groups_have_three_board_style_separators() -> None:
 
 
 def test_picker_filter_keys_ids_and_data_attributes_match_the_base_commit() -> None:
-    base_candidates = subprocess.check_output(
-        ["git", "show", "91ec2d56a:ceres/static/candidates.js"], text=True
-    )
     actual_keys, actual_ids, actual_attrs = _attribute_contract(CANDIDATES)
-    base_keys, base_ids, base_attrs = _attribute_contract(base_candidates)
+    base_keys, base_ids, base_attrs = BASE_FILTER_KEYS, BASE_IDS, BASE_DATA_ATTRIBUTES
     # adds exactly Ability; IDs and action attributes stay at this queue's base.
     assert actual_keys == base_keys | {"ability"}
     assert actual_ids == base_ids

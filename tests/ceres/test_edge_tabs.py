@@ -1,4 +1,4 @@
-"""a Wallet edge tab, a slimmer/translucent slide-out badge panel, and
+""": a Wallet edge tab, a slimmer/translucent slide-out badge panel, and
 's Changes-modal tile row filling the plot group's width instead of leaving bare
 space beside it. See library/ceres-edge-tabs.md and the v2/v3 sections of
 library/ceres-badge-overlay.md for the full design and rationale.
@@ -159,17 +159,17 @@ def test_edge_tabs_positioned_from_the_same_picker_measurement_as_the_dock():
 
 def test_edge_tabs_tracks_the_sticky_controls_row_with_no_extra_frame_lag():
     """. `.controls-row` (the filter row #edge-tabs centres
- on) is now itself `position: sticky` under the page header (same `top` var
- `thead.table-head-sticky` uses) -- 's old "wallet scrolls away with the
- row" design is superseded. `#edge-tabs` moved from `position: absolute`
- (document coordinates, `rect.top + window.scrollY`) to `position: fixed` with a
- plain viewport-relative `top` read directly off `.controls-row`'s live
- `getBoundingClientRect()`, the same pattern already established for
- `#badge-flag` against the sticky thead -- a document-coordinate `top` would keep
- drifting past the row once it sticks, since `rect.top` stops changing while
- `scrollY` keeps climbing. `updateEdgeTabsPosition()` must therefore be called
- directly from the `scroll` listener, with no `requestAnimationFrame` hop
- in between (same measured 1-frame-lag class of bug fixed for the flag)."""
+    on) is now itself `position: sticky` under the page header (same `top` var
+    `thead.table-head-sticky` uses) -- 's old "wallet scrolls away with the
+    row" design is superseded. `#edge-tabs` moved from `position: absolute`
+    (document coordinates, `rect.top + window.scrollY`) to `position: fixed` with a
+    plain viewport-relative `top` read directly off `.controls-row`'s live
+    `getBoundingClientRect()`, the same pattern  already established for
+    `#badge-flag` against the sticky thead -- a document-coordinate `top` would keep
+    drifting past the row once it sticks, since `rect.top` stops changing while
+    `scrollY` keeps climbing. `updateEdgeTabsPosition()` must therefore be called
+    directly from the `scroll` listener, with no `requestAnimationFrame` hop
+    in between (same measured 1-frame-lag class of bug  fixed for the flag)."""
     js = APP_JS.read_text(encoding="utf-8")
     fn_match = re.search(r"function updateEdgeTabsPosition\(\) \{.*?\n\}\n", js, re.S)
     assert fn_match, "updateEdgeTabsPosition source shape changed -- update this test's slice"
@@ -187,14 +187,14 @@ def test_edge_tabs_tracks_the_sticky_controls_row_with_no_extra_frame_lag():
     assert "requestAnimationFrame(" not in sync_body
     assert "updateEdgeTabsPosition();" in sync_body
     assert "{ passive: true }" in sync_body
-    assert "initEdgeTabsScrollSync()" in js
+    assert "initEdgeTabsScrollSync(); // " in js
 
 
 def test_controls_row_is_sticky_under_the_page_header_on_desktop():
-    """`.controls-row` sticks at the same `--ceres-header-height` offset
- `thead.table-head-sticky` already uses, so the two rows always stick at the
- identical band with no gap and no overlap. Desktop only -- mobile keeps its own
- `.is-mobile-open` fixed-sheet override, untouched."""
+    """: `.controls-row` sticks at the same `--ceres-header-height` offset
+    `thead.table-head-sticky` already uses, so the two rows always stick at the
+    identical band with no gap and no overlap. Desktop only -- mobile keeps its own
+    `.is-mobile-open` fixed-sheet override, untouched."""
     css = CERES_CSS.read_text(encoding="utf-8")
     assert "html:not(.ceres-lw-le-1279) .controls-row {" in css
     rule = css.split("html:not(.ceres-lw-le-1279) .controls-row {", 1)[1].split("}", 1)[0]
@@ -295,11 +295,11 @@ def test_edge_tab_geometry_and_z_index_css_guards():
 
 def test_wallet_stack_paints_below_the_page_header():
     """. The wallet stack (#edge-tabs and its
- floating desktop panel, .dec-drawer) used to sit at z-index 40/39, ABOVE the
- sticky page header's z-index 10, so it painted over the header once the filter
- row scrolled under it. header.board-header is 50; the wallet stack (:
- back up to 40/39, see test_controls_row_and_wallet_z_ladder for why) is
- still below the header, and still above the sticky table head (9)."""
+    floating desktop panel, .dec-drawer) used to sit at z-index 40/39, ABOVE the
+    sticky page header's z-index 10, so it painted over the header once the filter
+    row scrolled under it. header.board-header is 50; the wallet stack (:
+    back up to 40/39, see test_controls_row_and_wallet_z_ladder for why) is
+    still below the header, and still above the sticky table head (9)."""
     css = CERES_CSS.read_text(encoding="utf-8")
     header_rule = css.split("header.board-header {", 1)[1].split("}", 1)[0]
     assert "z-index: 50;" in header_rule
@@ -311,13 +311,13 @@ def test_wallet_stack_paints_below_the_page_header():
 
 
 def test_controls_row_and_wallet_z_ladder():
-    """once `.controls-row` (the filter row) became
- sticky at z-index 30, 's z-index 20 for the wallet stack was no longer
- enough -- MEASURED, the sticky row painted over the fixed wallet pill and
- intercepted its clicks (elementFromPoint on the toggle returned the row, not
- the toggle). The wallet stack moved back up to 40/39 (its pre- values),
- still below the header (50) and the Iris dock (1250), now also above the
- filter row (30) it sits inside."""
+    """: once `.controls-row` (the filter row) became
+    sticky at z-index 30, 's z-index 20 for the wallet stack was no longer
+    enough -- MEASURED, the sticky row painted over the fixed wallet pill and
+    intercepted its clicks (elementFromPoint on the toggle returned the row, not
+    the toggle). The wallet stack moved back up to 40/39 (its pre- values),
+    still below the header (50) and the Iris dock (1250), now also above the
+    filter row (30) it sits inside."""
     css = CERES_CSS.read_text(encoding="utf-8")
     row_rule = css.split("html:not(.ceres-lw-le-1279) .controls-row {", 1)[1].split("}", 1)[0]
     assert "z-index: 30;" in row_rule
@@ -331,18 +331,18 @@ def test_controls_row_and_wallet_z_ladder():
 
 def test_badge_flag_tracks_the_sticky_thead_with_no_extra_frame_lag():
     """. MEASURED: wrapping the flag's per-scroll
- position update in its own `requestAnimationFrame` (the pattern
- `scheduleCenterThemePicker()` uses elsewhere in this file) delayed the write to
- the frame AFTER the one the browser's compositor already used to paint
- `#table-head-sticky`'s new sticky position, so the fixed flag trailed the real
- thead by a steady one scroll-step through the whole approach into the sticky
- band (a Playwright measurement stepping scrollY by 10px found a consistent
- ~10px `flag.top` vs `thead.top` gap at every step, closing only once the thead
- reached its clamped `top`). Calling the position update directly inside the
- `scroll` listener -- no extra rAF hop -- removed the gap entirely (same
- measurement: 0px diff at every step). `initBadgeFlag()` must therefore call
- `updateBadgeFlagPosition()` synchronously, with no `requestAnimationFrame` in
- between."""
+    position update in its own `requestAnimationFrame` (the pattern
+    `scheduleCenterThemePicker()` uses elsewhere in this file) delayed the write to
+    the frame AFTER the one the browser's compositor already used to paint
+    `#table-head-sticky`'s new sticky position, so the fixed flag trailed the real
+    thead by a steady one scroll-step through the whole approach into the sticky
+    band (a Playwright measurement stepping scrollY by 10px found a consistent
+    ~10px `flag.top` vs `thead.top` gap at every step, closing only once the thead
+    reached its clamped `top`). Calling the position update directly inside the
+    `scroll` listener -- no extra rAF hop -- removed the gap entirely (same
+    measurement: 0px diff at every step). `initBadgeFlag()` must therefore call
+    `updateBadgeFlagPosition()` synchronously, with no `requestAnimationFrame` in
+    between."""
     js = APP_JS.read_text(encoding="utf-8")
     fn_match = re.search(r"function initBadgeFlag\(\) \{.*?\n\}\n", js, re.S)
     assert fn_match, "initBadgeFlag source shape changed -- update this test's slice"
@@ -353,19 +353,19 @@ def test_badge_flag_tracks_the_sticky_thead_with_no_extra_frame_lag():
 
 
 def test_badge_bar_rule_is_a_real_top_level_cssom_rule_with_position_absolute(_css_browser):
-    """Review-fail regression guard (2026-09-20, comment-editing incident):
- a stray early `*/` inside the Z-LADDER comment above `.badge-bar` (ceres.css
- ~2309-2350) once closed that comment early, spilling the ROUND 1 history prose
- out as raw CSS tokens. A browser's CSS parser then folded that unparseable
- prose into the SELECTOR of the next rule it could reach (`.badge-bar {`),
- making the whole selector invalid and dropping the rule entirely --
- `.badge-bar` fell back to the UA default (`position: static`), losing its
- absolute right-edge positioning and its pre-reveal hidden state, while
- `_brace_depth()` (test_penalised_mark.py) stayed balanced throughout
- (the swallowed prose never itself contained a brace, so a brace-counting
- guard alone cannot catch this class of bug). Only a REAL CSS parser -- a real
- browser's CSSOM, here -- catches it: `.badge-bar` must exist as its own
- top-level rule whose declarations set `position: absolute`."""
+    """Review-fail regression guard (2026-09-20,  comment-editing incident):
+    a stray early `*/` inside the Z-LADDER comment above `.badge-bar` (ceres.css
+    ~2309-2350) once closed that comment early, spilling the ROUND 1 history prose
+    out as raw CSS tokens. A browser's CSS parser then folded that unparseable
+    prose into the SELECTOR of the next rule it could reach (`.badge-bar {`),
+    making the whole selector invalid and dropping the rule entirely --
+    `.badge-bar` fell back to the UA default (`position: static`), losing its
+    absolute right-edge positioning and its pre-reveal hidden state, while
+    `_brace_depth()` (test_penalised_mark.py) stayed balanced throughout
+    (the swallowed prose never itself contained a brace, so a brace-counting
+    guard alone cannot catch this class of bug). Only a REAL CSS parser -- a real
+    browser's CSSOM, here -- catches it: `.badge-bar` must exist as its own
+    top-level rule whose declarations set `position: absolute`."""
     page = _css_browser.new_page()
 
     def route_local(route):
@@ -390,20 +390,20 @@ def test_badge_bar_rule_is_a_real_top_level_cssom_rule_with_position_absolute(_c
         )
         info = page.evaluate(
             """() => {
- const sheet = [...document.styleSheets].find(item => item.href?.endsWith('/static/ceres.css'));
- const rules = [...sheet.cssRules].filter(item => item.selectorText === '.badge-bar');
- return {
- count: rules.length,
- positions: rules.map(item => item.style.position),
- };
- }"""
+              const sheet = [...document.styleSheets].find(item => item.href?.endsWith('/static/ceres.css'));
+              const rules = [...sheet.cssRules].filter(item => item.selectorText === '.badge-bar');
+              return {
+                count: rules.length,
+                positions: rules.map(item => item.style.position),
+              };
+            }"""
         )
     assert info["count"] > 0, ".badge-bar must be a top-level CSSOM rule (not merged into a broken selector)"
     assert "absolute" in info["positions"], f".badge-bar must set position: absolute somewhere in its top-level rules, found {info['positions']}"
 
 
 def test_badge_bar_row_paints_the_opaque_chip_and_keeps_flagged_dots_visible(_css_browser):
-    """the row chip and its single status glyph remain visible."""
+    """: the row chip and its single status glyph remain visible."""
     page = _css_browser.new_page()
 
     def route_local(route):
@@ -490,13 +490,13 @@ def test_badge_status_glyph_centers_on_the_visible_chip(_css_browser):
         page.locator(".badge-status-glyph.is-critical").wait_for()
         centers = page.evaluate(
             """() => {
- const row = document.querySelector('.badge-bar-row');
- const box = row.getBoundingClientRect(), before = getComputedStyle(row, '::before');
- const chip = {left: box.left + parseFloat(before.left), right: box.right - parseFloat(before.right)};
- const glyph = row.querySelector('.badge-status-glyph').getBoundingClientRect();
- return {chipCenter: (chip.left + chip.right) / 2, glyphCenter: (glyph.left + glyph.right) / 2,
- glyphWidth: glyph.width, glyphHeight: glyph.height, dots: row.querySelectorAll('.badge-dot').length};
- }"""
+              const row = document.querySelector('.badge-bar-row');
+              const box = row.getBoundingClientRect(), before = getComputedStyle(row, '::before');
+              const chip = {left: box.left + parseFloat(before.left), right: box.right - parseFloat(before.right)};
+              const glyph = row.querySelector('.badge-status-glyph').getBoundingClientRect();
+              return {chipCenter: (chip.left + chip.right) / 2, glyphCenter: (glyph.left + glyph.right) / 2,
+                glyphWidth: glyph.width, glyphHeight: glyph.height, dots: row.querySelectorAll('.badge-dot').length};
+            }"""
         )
     assert abs(centers["glyphCenter"] - centers["chipCenter"]) <= 1
     assert centers["glyphWidth"] > 0 and centers["glyphHeight"] > 0
@@ -505,16 +505,16 @@ def test_badge_status_glyph_centers_on_the_visible_chip(_css_browser):
 
 def test_thead_sticks_below_the_now_sticky_filter_row():
     """ review-caught regression (own investigation, real-account run):
- once `.controls-row` also stuck at `--ceres-header-height` (the same offset
- the real thead already used), the two collided once both were stuck
- simultaneously -- MEASURED at a deep scroll on the real board (player=player0005,
- scrollY 5000): the filter row (z-index 30) painted OVER the sticky thead's own
- column-label row (z-index 9), hiding "Plot/Rarity/Type/..." entirely.
- `thead.table-head-sticky` must stick to the COMBINED header+filter-row height
- (`--ceres-header-row-height`, table.js updateHeaderHeightVar()), not the bare
- header height alone -- re-measured after the fix: filter row bottom (127px)
- exactly equals thead top (127px) at that same scroll depth, flush and
- non-overlapping."""
+    once `.controls-row` also stuck at `--ceres-header-height` (the same offset
+    the real thead already used), the two collided once both were stuck
+    simultaneously -- MEASURED at a deep scroll on the real board (player=player0005,
+    scrollY 5000): the filter row (z-index 30) painted OVER the sticky thead's own
+    column-label row (z-index 9), hiding "Plot/Rarity/Type/..." entirely.
+    `thead.table-head-sticky` must stick to the COMBINED header+filter-row height
+    (`--ceres-header-row-height`, table.js updateHeaderHeightVar()), not the bare
+    header height alone -- re-measured after the fix: filter row bottom (127px)
+    exactly equals thead top (127px) at that same scroll depth, flush and
+    non-overlapping."""
     css = CERES_CSS.read_text(encoding="utf-8")
     thead_rule = css.split("thead.table-head-sticky {", 1)[1].split("}", 1)[0]
     assert "top: var(--ceres-header-row-height, 6.5rem);" in thead_rule
@@ -587,16 +587,16 @@ def test_badge_bar_geometry_css_guards():
 
 def test_badge_bar_head_backdrop_filter_matches_wallet_picker():
     """ review follow-up:
- `#badge-flag` is `position: fixed` on the body, its own independent
- stacking context already -- none of `.badge-bar`'s own "backdrop-filter
- traps a sticky descendant" caveat applies, so the glass filter is safe to
- copy verbatim like every other Wallet/Iris recipe value already is."""
+    `#badge-flag` is `position: fixed` on the body, its own independent
+    stacking context already -- none of `.badge-bar`'s own "backdrop-filter
+    traps a sticky descendant" caveat applies, so the glass filter is safe to
+    copy verbatim like every other Wallet/Iris recipe value already is."""
     css = CERES_CSS.read_text(encoding="utf-8")
     wallet_rule = css.split(".edge-picker {", 1)[1].split("\n}\n", 1)[0]
     assert "backdrop-filter: saturate(120%) blur(2px);" in wallet_rule
     head_rule = css.split(".badge-bar-head {", 1)[1].split("\n}\n", 1)[0]
     assert "backdrop-filter: saturate(120%) blur(2px);" in head_rule
-    assert "webkit-backdrop-filter: saturate(120%) blur(2px);" in head_rule
+    assert "-webkit-backdrop-filter: saturate(120%) blur(2px);" in head_rule
 
 
 def test_edge_style_source_guards():
@@ -615,24 +615,24 @@ def test_edge_style_source_guards():
     css_rules = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
     assert not re.search(r"\.badge-bar-head:hover\s*\{", css_rules)
     assert ".badge-bar-head:focus-visible { outline: 2px solid var(--accent);" in css
-    assert '.badge-bar-head[aria-expanded="true"] { box-shadow' not in css
+    assert '.badge-bar-head[aria-expanded="true"] { box-shadow:' not in css
     js = APP_JS.read_text(encoding="utf-8")
     badge_js = BADGE_OVERLAY_JS.read_text(encoding="utf-8")
     assert "flag.style.height = `${flagHeight}px`;" not in js
     # (maintainer) replaces the copied wallet inset: 2px above the flag, header shadow + 2px below, whole pixels.
     assert "const flagTop = Math.round(theadRect.top) + 2;" in js
     assert "Math.round(theadRect.bottom) - 3 - flagTop" in js
-    assert "top: `${trRect.top - scrollerRect.top + 1}px`" in badge_js
-    assert "height: `${Math.max(0, trRect.height - 2)}px`" in badge_js
+    assert "top: `${trRect.top - scrollerRect.top + 1}px`," in badge_js
+    assert "height: `${Math.max(0, trRect.height - 2)}px`," in badge_js
 
 
 def test_table_scroll_reserves_space_for_the_bar_desktop_only():
-    """the
- scroller no longer reserves end space -- the table is 100% of the scroller
- again and runs under #badge-bar. `--table-end-reserve` ( -> 's
- DEC gap, lifted to a shared property by ) is kept, but its consumer
- moved to the last column's own padding (see
- test_last_column_carries_the_reserve_gap below)."""
+    """: the
+    scroller no longer reserves end space -- the table is 100% of the scroller
+    again and runs under #badge-bar. `--table-end-reserve` ( -> 's
+    DEC gap, lifted to a shared property by ) is kept, but its consumer
+    moved to the last column's own padding (see
+    test_last_column_carries_the_reserve_gap below)."""
     css = CERES_CSS.read_text(encoding="utf-8")
     assert "html:not(.ceres-lw-le-1279) .table-scroll {" in css
     rule = css.split("html:not(.ceres-lw-le-1279) .table-scroll {", 1)[1].split("}", 1)[0]
@@ -640,17 +640,17 @@ def test_table_scroll_reserves_space_for_the_bar_desktop_only():
     # page edge, so the reserve now also folds in the measured `--page-gutter` gap
     # (the bar's own containing block no longer coincides with the table's), keeping
     # the DEC numbers' visible clearance from the bar the same as before.
-    assert "table-end-reserve: calc(var(--badge-bar-w) + var(--page-gutter, 0px) + .75rem);" in rule
+    assert "--table-end-reserve: calc(var(--badge-bar-w) + var(--page-gutter, 0px) + .75rem);" in rule
     assert "padding-inline-end: var(--table-end-reserve);" not in rule
 
 
 def test_last_column_carries_the_reserve_gap():
-    """the DEC gap moved from the scroller's own end padding into the
- last column's cell padding, so the row background/zebra/border keep running
- under the bar while the DEC value itself keeps its exact prior clearance.
- Full coverage (including the th half's chevron-preserving formula) lives in
- tests/ceres/test_table_under_bar.py; this just confirms the td rule
- exists here too, next to the reserve property it consumes."""
+    """: the DEC gap moved from the scroller's own end padding into the
+    last column's cell padding, so the row background/zebra/border keep running
+    under the bar while the DEC value itself keeps its exact prior clearance.
+    Full coverage (including the th half's chevron-preserving formula) lives in
+    tests/ceres/test_table_under_bar.py; this just confirms the td rule
+    exists here too, next to the reserve property it consumes."""
     css = CERES_CSS.read_text(encoding="utf-8")
     assert "html:not(.ceres-lw-le-1279) table.plot-table tbody tr.plot-row td:last-child {" in css
     rule = css.split(
@@ -669,10 +669,10 @@ def test_start_page_and_no_land_also_hide_edge_tabs():
 
 
 def test_changes_panel_power_tile_no_longer_stretches():
-    """ reverted the stretch this test used to guard -- the
- Power/Totem/Title tile is back to the base fixed `var(--slot-w)` (107x150),
- no `width: 100%` override. See test_changes_panel_tile_row_is_content_sized_again
- for the full revert + the .ch-plot content-sizing replacement."""
+    """ reverted the  stretch this test used to guard -- the
+    Power/Totem/Title tile is back to the base fixed `var(--slot-w)` (107x150),
+    no `width: 100%` override. See test_changes_panel_tile_row_is_content_sized_again
+    for the full revert + the .ch-plot content-sizing replacement."""
     css = CERES_CSS.read_text(encoding="utf-8")
     assert ".changes-panel .fp-tiles.slot-grid .slot-power .slot-tile { width: 100%; }" not in css
 
@@ -688,9 +688,9 @@ def test_badge_bar_head_height_is_measured_next_to_the_header_height():
 
 
 def test_badge_overlay_container_paints_nothing_and_row_carries_the_slide_recipe():
-    """`#badge-overlay` itself is a bare positioning container now -- the old
- shared panel's fill/tint/slide moved onto each `.badge-overlay-row`, which is sized
- to its own badges only (`max-content`), not a width shared across every row."""
+    """: `#badge-overlay` itself is a bare positioning container now -- the old
+    shared panel's fill/tint/slide moved onto each `.badge-overlay-row`, which is sized
+    to its own badges only (`max-content`), not a width shared across every row."""
     css = CERES_CSS.read_text(encoding="utf-8")
     assert ".badge-overlay {" in css
     container_rule = css.split(".badge-overlay {", 1)[1].split("\n}\n", 1)[0]
@@ -734,10 +734,10 @@ def test_badge_overlay_container_paints_nothing_and_row_carries_the_slide_recipe
 
 def test_center_theme_picker_aligns_dock_and_edge_tabs_to_the_table_gutter():
     """ ("wallet slider totally displaced"), pre-landing review fix: the gutter
- read must be guarded on the scroller having a REAL (non-zero-width) box -- a
- `display: none` element's getBoundingClientRect() still returns an all-zero rect,
- and an unguarded read computed a bogus gutter that pushed the picker off-screen
- below 1280px and on the start/no-land page (both hide #plot-table-scroll)."""
+    read must be guarded on the scroller having a REAL (non-zero-width) box -- a
+    `display: none` element's getBoundingClientRect() still returns an all-zero rect,
+    and an unguarded read computed a bogus gutter that pushed the picker off-screen
+    below 1280px and on the start/no-land page (both hide #plot-table-scroll)."""
     app = APP_JS.read_text(encoding="utf-8")
     fn_match = re.search(r"function centerThemePicker\(\) \{.*?\n\}\n", app, re.S)
     assert fn_match, "centerThemePicker source shape changed -- update this test's slice"
@@ -804,13 +804,13 @@ def test_regional_dec_exports_open_wallet_drawer_and_wires_the_edge_tab():
 
 def test_changes_modal_tile_row_is_content_sized_again():
     """ ( -- tiles stretched to 122-196px instead of their base 107x150):
- reverts 's stretch entirely. The tile row is back to the base
- `.fp-tiles.slot-grid { ... inline-size: max-content ... }` rule (no
- `.changes-panel`-scoped `inline-size: 100%` override, and no `flex: 1 1 ...`
- on its tiles/power-slot/badge-row cells). 's own intent (no empty
- space beside a short tile row) is kept a different way: `.changes-panel
- .ch-plot` (the per-plot card) sizes to its own content instead of the
- modal's full `min-width: 68rem` -- see that rule's own comment."""
+    reverts 's stretch entirely. The tile row is back to the base
+    `.fp-tiles.slot-grid { ... inline-size: max-content ... }` rule (no
+    `.changes-panel`-scoped `inline-size: 100%` override, and no `flex: 1 1 ...`
+    on its tiles/power-slot/badge-row cells). 's own intent (no empty
+    space beside a short tile row) is kept a different way: `.changes-panel
+    .ch-plot` (the per-plot card) sizes to its own content instead of the
+    modal's full `min-width: 68rem` -- see that rule's own comment."""
     css = CERES_CSS.read_text(encoding="utf-8")
     assert ".changes-panel .fp-tiles.slot-grid { inline-size: 100%; }" not in css
     assert ".changes-panel .fp-tiles.slot-grid .slot-tile, .changes-panel .fp-tiles.slot-grid .slot-power { flex: 1 1 6.5rem; max-inline-size: none; }" not in css

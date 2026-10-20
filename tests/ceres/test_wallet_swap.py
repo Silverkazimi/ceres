@@ -1,4 +1,4 @@
-"""the wallet pool swap card (option B) -- where it renders, what it never shows."""
+""": the wallet pool swap card (option B) -- where it renders, what it never shows."""
 import re
 from pathlib import Path
 
@@ -10,9 +10,9 @@ ROOT = Path(__file__).parents[2]
 def test_swap_card_renders_on_every_tier_for_the_four_resources_with_a_balance():
     body_js = """
 const wallet = { account: { DEC: 12, SPS: 1, SPSP: 0, VOUCHER: 0 },
- swap: { symbols: ['GRAIN', 'WOOD', 'STONE', 'IRON'], directions: ['swap_sell'], slippage: '2.5', signing_enabled: false },
- regions: [{ region_uid: 'PR-CEF-65', plots_owned: 3, balances: { GRAIN: 2500, WOOD: 0, STONE: 7, IRON: 1, RESEARCH: 5, AURA: 5 } },
- { region_uid: 'PR-GLL-41', plots_owned: 2, balances: { GRAIN: 9000, WOOD: 0, STONE: 0, IRON: 0, RESEARCH: 0, AURA: 0 } }] };
+  swap: { symbols: ['GRAIN', 'WOOD', 'STONE', 'IRON'], directions: ['swap_sell'], slippage: '2.5', signing_enabled: false },
+  regions: [{ region_uid: 'PR-CEF-65', plots_owned: 3, balances: { GRAIN: 2500, WOOD: 0, STONE: 7, IRON: 1, RESEARCH: 5, AURA: 5 } },
+            { region_uid: 'PR-GLL-41', plots_owned: 2, balances: { GRAIN: 9000, WOOD: 0, STONE: 0, IRON: 0, RESEARCH: 0, AURA: 0 } }] };
 const grain = swapHtml('GRAIN', wallet, 'player0005', true);
 if (!grain.includes('data-lp-symbol="GRAIN"') || !grain.includes('You pay') || !grain.includes('You receive')) throw new Error('grain card missing: ' + grain);
 // The richest region is the default source; the shared dropdown lists every region with a balance.
@@ -25,8 +25,8 @@ if (/Illustrative|unavailable|expired|Custom/i.test(grain)) throw new Error('for
 if (!grain.includes('ceres-wide-input')) throw new Error('amount must use the shared input: ' + grain);
 if (swapHtml('WOOD', wallet, 'player0005', true) !== '') throw new Error('no card without a balance to sell');
 for (const tab of ['DEC', 'SPS', 'VOUCHER', 'RESEARCH', 'AURA'])
- if (swapHtml(tab, wallet, 'player0005', true) !== '') throw new Error(tab + ' must not get a swap card');
-// the phone shows the same swap card (was hidden by ).
+  if (swapHtml(tab, wallet, 'player0005', true) !== '') throw new Error(tab + ' must not get a swap card');
+// : the phone shows the same swap card (was hidden by ).
 if (!swapHtml('GRAIN', wallet, 'player0005').includes('class="wallet-card wallet-swap"')) throw new Error('phone gets the swap card');
 if (swapHtml('GRAIN', { ...wallet, swap: null }, 'player0005', true) !== '') throw new Error('unreadable pools hide the card silently');
 
@@ -40,13 +40,13 @@ const st = swapState('player0005', 'STONE');
 st.amount = '5'; st.quoted = '5';
 st.quote = { kind: 'swap_sell', input: '5', output: '0.4', minimum: '0.39', pool_cost: '0.5', slippage: '2.5', resource_symbol: 'STONE' };
 const stone = swapHtml('STONE', wallet, 'player0005', true);
-// (maintainer-approved simplification): the big receive figure; fee, minimum and balances-after sit behind Details.
+//  (maintainer-approved simplification): the big receive figure; fee, minimum and balances-after sit behind Details.
 if (!stone.includes('0.400 DEC') || !stone.includes('Swap 5.000 Stone → 0.400 DEC')) throw new Error('receive figure / action: ' + stone);
 st.moreOpen = true;
 const stoneOpen = swapHtml('STONE', wallet, 'player0005', true);
 if (!stoneOpen.includes('Pool fee · 10%') || !stoneOpen.includes('0.500 Stone') || !stoneOpen.includes('You get at least') || !stoneOpen.includes('0.390 DEC')) throw new Error('details: ' + stoneOpen);
 if (!stoneOpen.includes('Wallet DEC after') || !stoneOpen.includes('12.400') || !stoneOpen.includes('Region 65 Stone after') || !stoneOpen.includes('2.000')) throw new Error('after rows: ' + stoneOpen);
-// one Swap button, no Review/Edit anywhere.
+// : one Swap button, no Review/Edit anywhere.
 if (/lp:review|lp:edit|lp:sign|Check and sign/.test(stoneOpen)) throw new Error('no review stage: ' + stoneOpen);
 // No wallet ready: the chooser sits left of Swap (OM:6100) and Swap waits for it.
 const noWallet = swapHtml('STONE', { ...wallet, swap: { ...wallet.swap, signing_enabled: true } }, 'player0005', true);
@@ -68,7 +68,7 @@ if (swapLocked('player0005') !== 'STONE') throw new Error('an open wallet prompt
 
 def test_swap_css_is_scoped_and_uses_shared_controls():
     css = (ROOT / "ceres" / "static" / "ceres.css").read_text()
-    start = css.index("* : the wallet pool swap card")
+    start = css.index("/* : the wallet pool swap card")
     block = css[start:css.index(".wallet-swap .dec-receipt-amount > img", start)]
     for line in block.splitlines():
         if line.startswith(".") or line.startswith("#"):
@@ -93,11 +93,11 @@ def test_regional_dec_wires_the_swap_card_after_the_wallet_resource_view():
 def test_flip_turns_the_card_into_dec_to_resource_with_receive_into_a_region():
     body_js = """
 const wallet = { account: { DEC: 12, SPS: 1, SPSP: 0, VOUCHER: 0 },
- swap: { symbols: ['GRAIN', 'WOOD', 'STONE', 'IRON'], directions: ['swap_sell', 'swap_buy'], slippage: '2.5', signing_enabled: false,
- rates: { GRAIN: { swap_sell: { unit: '0.008', inverse: '128.643' }, swap_buy: { unit: '104.201', inverse: '0.010' } },
- WOOD: { swap_sell: { unit: '0.1', inverse: '10' }, swap_buy: { unit: '8', inverse: '0.125' } } } },
- regions: [{ region_uid: 'PR-CEF-65', plots_owned: 3, balances: { GRAIN: 2500, WOOD: 0, STONE: 7, IRON: 1, RESEARCH: 5, AURA: 5 } },
- { region_uid: 'PR-BRL-41', plots_owned: 2, balances: { GRAIN: 9000, WOOD: 0, STONE: 0, IRON: 0, RESEARCH: 0, AURA: 0 } }] };
+  swap: { symbols: ['GRAIN', 'WOOD', 'STONE', 'IRON'], directions: ['swap_sell', 'swap_buy'], slippage: '2.5', signing_enabled: false,
+    rates: { GRAIN: { swap_sell: { unit: '0.008', inverse: '128.643' }, swap_buy: { unit: '104.201', inverse: '0.010' } },
+             WOOD: { swap_sell: { unit: '0.1', inverse: '10' }, swap_buy: { unit: '8', inverse: '0.125' } } } },
+  regions: [{ region_uid: 'PR-CEF-65', plots_owned: 3, balances: { GRAIN: 2500, WOOD: 0, STONE: 7, IRON: 1, RESEARCH: 5, AURA: 5 } },
+            { region_uid: 'PR-BRL-41', plots_owned: 2, balances: { GRAIN: 9000, WOOD: 0, STONE: 0, IRON: 0, RESEARCH: 0, AURA: 0 } }] };
 const sell = swapHtml('GRAIN', wallet, 'player0005', true);
 if (!sell.includes('data-lp-direction="sell"') || !sell.includes('Grain</span>→<span>') || !sell.includes('data-dec="lp:flip"')) throw new Error('sell card with flip: ' + sell);
 // The game's per-unit lines, exactly as the Trade Hub words them.
@@ -117,12 +117,12 @@ st.amount = '1'; st.quoted = '1';
 st.quote = { kind: 'swap_sell', input: '1', output: '0.008', minimum: '0.007', pool_cost: '0.1', slippage: '2.5', resource_symbol: 'GRAIN' };
 if (/value="0\.008"/.test(swapHtml('GRAIN', wallet, 'player0005', true))) throw new Error('sell quote leaked into buy side');
 st.quote = { kind: 'swap_buy', input: '1', output: '104.201', minimum: '101.595', pool_cost: '0.1', slippage: '2.5', resource_symbol: 'GRAIN',
- rates: { unit: '104.201', inverse: '0.010' } };
+  rates: { unit: '104.201', inverse: '0.010' } };
 const quoted = swapHtml('GRAIN', wallet, 'player0005', true);
 st.moreOpen = true;
 const quotedOpen = swapHtml('GRAIN', wallet, 'player0005', true);
-if (!quoted.includes('data-lp-receive="GRAIN"') || !quoted.includes('value="104.201"') || // "You receive" is an input
- !quotedOpen.includes('101.595 Grain') || !quotedOpen.includes('0.100 DEC')) throw new Error('buy figures: ' + quotedOpen);
+if (!quoted.includes('data-lp-receive="GRAIN"') || !quoted.includes('value="104.201"') ||  // : "You receive" is an input
+    !quotedOpen.includes('101.595 Grain') || !quotedOpen.includes('0.100 DEC')) throw new Error('buy figures: ' + quotedOpen);
 if (!quotedOpen.includes('11.000') || !quotedOpen.includes('Region 41 Grain after') || !quotedOpen.includes('9,104.201')) throw new Error('buy after rows: ' + quotedOpen);
 // No resource anywhere: the card still offers the buy side (nothing to sell, so no flip).
 const wood = swapHtml('WOOD', wallet, 'player0005', true);

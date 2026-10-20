@@ -24,7 +24,7 @@ def _response(data):
 
 class CountingLandClient:
     """Duck-types LandClient.bundle/assets/owned_deed_counts. Counts every call so
- tests can prove a resumed capture skips deeds already served from cache."""
+    tests can prove a resumed capture skips deeds already served from cache."""
 
     def __init__(self, deed_uids, fail_assets_for=()):
         self.deed_uids = deed_uids
@@ -133,8 +133,8 @@ class ResumeTests(unittest.TestCase):
 
     def test_resume_false_still_refetches_every_deed(self):
         """resume=True is opt-in -- the default (resume=False) preserves the original
- always-fetch behavior, so nothing else in Praetoria that relies on `capture()`
- always reflecting live data changes silently."""
+        always-fetch behavior, so nothing else in Praetoria that relies on `capture()`
+        always reflecting live data changes silently."""
         with TemporaryDirectory() as tmp:
             deed_uids = ["I-1-a", "I-1-b"]
             land_client = CountingLandClient(deed_uids)
@@ -151,8 +151,8 @@ class ResumeTests(unittest.TestCase):
 
 class QuickCaptureTests(unittest.TestCase):
     """`capture_quick()` -- the bulk-only path (2026-08-21 correction: the board's main
- table needs no per-deed fan-out at all). Proves it never touches `assets()` and its
- cost stays flat regardless of deed count."""
+    table needs no per-deed fan-out at all). Proves it never touches `assets()` and its
+    cost stays flat regardless of deed count."""
 
     def _capture(self, land_client, cache_dir, collection_client=None):
         return LandCapture(
@@ -179,9 +179,9 @@ class QuickCaptureTests(unittest.TestCase):
 
     def test_quick_capture_fetches_collection_and_marks_coverage_complete(self):
         """ regression: deleting the quick-path collection fetch made this
- assertion fail because the report contained no cards and
- `coverage.collection.complete` was false; the injected deletion was observed
- red before restoring the fetch."""
+        assertion fail because the report contained no cards and
+        `coverage.collection.complete` was false; the injected deletion was observed
+        red before restoring the fetch."""
         with TemporaryDirectory() as tmp:
             collection_client = FakeCollectionClient(cards=[{"uid": "CARD-1", "card_detail_id": 1, "bcx": 1}])
             capture = self._capture(CountingLandClient(["I-1-a"]), tmp, collection_client)
@@ -192,9 +192,9 @@ class QuickCaptureTests(unittest.TestCase):
 
     def test_quick_capture_uses_collection_roster_without_asset_fanout(self):
         """The two bulk reads provide the complete current roster; `/assets` remains
- untouched. Injecting a per-deed asset loop into `capture_quick()` makes the
- zero-asset-call assertion fail; replacing its `collection` argument to
- `analyze_bundle()` with `None` makes the roster assertion fail."""
+        untouched. Injecting a per-deed asset loop into `capture_quick()` makes the
+        zero-asset-call assertion fail; replacing its `collection` argument to
+        `analyze_bundle()` with `None` makes the roster assertion fail."""
         with TemporaryDirectory() as tmp:
             collection_client = FakeCollectionClient(cards=[
                 {"uid": "worker-a", "card_detail_id": 998, "stake_ref_uid": "I-1-a", "stake_end_date": None},
@@ -213,8 +213,8 @@ class QuickCaptureTests(unittest.TestCase):
 
     def test_quick_capture_collection_failure_is_soft_and_marked_incomplete(self):
         """A collection endpoint failure must not abort the board capture; removing
- the quick-path exception handling made this test raise instead of returning an
- incomplete report, and that mutation was observed red before restoration."""
+        the quick-path exception handling made this test raise instead of returning an
+        incomplete report, and that mutation was observed red before restoration."""
         with TemporaryDirectory() as tmp:
             collection_client = FakeCollectionClient(fail=True)
             capture = self._capture(CountingLandClient(["I-1-a"]), tmp, collection_client)
@@ -225,7 +225,7 @@ class QuickCaptureTests(unittest.TestCase):
 
     def test_quick_capture_still_carries_staking_pp_and_worker_counts(self):
         """staking_details supplies every PP field and worker_count/max_workers_allowed --
- the main table's real content -- from the bulk call alone."""
+        the main table's real content -- from the bulk call alone."""
         with TemporaryDirectory() as tmp:
             land_client = CountingLandClient(["I-1-a"])
 
@@ -275,7 +275,8 @@ class ExpandDeedTests(unittest.TestCase):
             land_client = CountingLandClient(deed_uids)
             capture = self._capture(land_client, tmp)
             capture.capture_quick("player0005", as_of=AS_OF)
-            capture.expand_deed("I-1-a", "player0005")
+            # A positive TTL allows expand_deed to reuse the quick capture's bundle.
+            capture.expand_deed("I-1-a", "player0005", bundle_ttl=300)
             # One bundle fetch total -- expand_deed's own bundle read is a cache hit.
             self.assertEqual(land_client.bundle_calls, 1)
 

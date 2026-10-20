@@ -10,6 +10,7 @@ from playwright.sync_api import Browser, Page
 from ceres.notices import NOTICE_REGISTRY
 from tests.ceres.conftest import spawn_live_ceres, wait_for_board
 from tests.ceres.test_live_checkout import _expand, _stage_worker
+from .conftest import settle, wait_ready
 
 
 @pytest.fixture(scope="module")
@@ -20,9 +21,9 @@ def live_browser() -> tuple[Browser, str]:
 
 STUB = """
 window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
- const count = Number(sessionStorage.getItem('__ir1882BroadcastCount') || '0') + 1;
- sessionStorage.setItem('__ir1882BroadcastCount', String(count));
- callback({success: true, result: {id: 'FAKE-IR1882-TX-' + count}});
+  const count = Number(sessionStorage.getItem('__ir1882BroadcastCount') || '0') + 1;
+  sessionStorage.setItem('__ir1882BroadcastCount', String(count));
+  callback({success: true, result: {id: 'FAKE-IR1882-TX-' + count}});
 }};
 """
 
@@ -38,7 +39,7 @@ def _open(live_browser: tuple[Browser, str], *, schedule: bool = False) -> Page:
         page.add_init_script("if (sessionStorage.getItem('__ir1882ShrinkPoll') === '1') window.__ceresOperationPollSchedule = [100, 200, 300];")
     page.add_init_script(STUB)
     page.route("**/api/op-verify*", _pending)
-    page.goto(f"{base_url}?player=player0005&ir1882-guard=1")
+    page.goto(f"{base_url}?player=sample01&ir1882-guard=1")
     wait_for_board(page)
     return page
 
@@ -47,7 +48,7 @@ def _stage_first_available(page: Page) -> tuple[int, str, str]:
     for index in range(page.locator("#plot-tbody > tr.plot-row").count()):
         try:
             deed_uid, name, delta = _stage_worker(page, index)
-            print("STAGED DEED", deed_uid)
+            print("STAGED DEED:", deed_uid)
             assert deed_uid
             return index, name, delta
         except AssertionError:
@@ -63,7 +64,7 @@ def _stage_two_slot_plot(page: Page) -> tuple[int, str, str]:
             if worker.locator(".slot-grid .slot-tile.is-empty").count() < 2:
                 continue
             deed_uid, name, delta = _stage_worker(page, index)
-            print("STAGED DEED", deed_uid)
+            print("STAGED DEED:", deed_uid)
             assert deed_uid
             return index, name, delta
         except AssertionError:
@@ -85,7 +86,7 @@ def _count(page: Page) -> int:
 
 
 def _test_url(base_url: str) -> str:
-    return f"{base_url}?player=player0005&ir1882-guard=1"
+    return f"{base_url}?player=sample01&ir1882-guard=1"
 
 
 def _dismiss_banner(page: Page) -> None:
@@ -116,7 +117,8 @@ def test_g1_reload_does_not_allow_second_signature(live_browser: tuple[Browser, 
     page.locator("#checkout-btn").dispatch_event("click")
     assert page.locator(".checkout-prepare").is_disabled()
     page.evaluate("async () => { await requestOperationPreview({scope: 'portfolio'}); await confirmOperationBroadcast({scope: 'portfolio'}); }")
-    page.wait_for_timeout(200)
+    wait_ready(page)
+    settle(page)
     assert _count(page) == 1
     page.close()
 
@@ -128,11 +130,11 @@ def test_g2_marker_is_written_before_verification_io(live_browser: tuple[Browser
     page.add_init_script("""
 window.__ir1882G2 = {seen: false};
 window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
- const count = Number(sessionStorage.getItem('__ir1882BroadcastCount') || '0') + 1;
- sessionStorage.setItem('__ir1882BroadcastCount', String(count));
- callback({success: true, result: {id: 'FAKE-IR1882-TX-G2'}});
- const data = JSON.parse(localStorage.getItem('ceres:in-flight:v1:player0005') || '{}');
- window.__ir1882G2.seen = !!data.records?.['FAKE-IR1882-TX-G2'];
+  const count = Number(sessionStorage.getItem('__ir1882BroadcastCount') || '0') + 1;
+  sessionStorage.setItem('__ir1882BroadcastCount', String(count));
+  callback({success: true, result: {id: 'FAKE-IR1882-TX-G2'}});
+  const data = JSON.parse(localStorage.getItem('ceres:in-flight:v1:player0005') || '{}');
+  window.__ir1882G2.seen = !!data.records?.['FAKE-IR1882-TX-G2'];
 }};
 """)
     page.route("**/api/op-verify*", lambda route: None)
@@ -151,13 +153,13 @@ def test_g3_marker_uses_operation_identity(live_browser: tuple[Browser, str]) ->
     first_index, first_name, _ = _stage_two_slot_plot(page)
     _sign(page)
     identity = page.evaluate("""() => {
- const entry = CERES_STAGE[0];
- return {
- record: inFlightRecordForEntry(entry)?.txId || null,
- otherSlot: inFlightRecordForEntry({...entry, slot_index: entry.slot_index + 1})?.txId || null,
- otherAsset: inFlightRecordForEntry({...entry, asset_ref: String(entry.asset_ref) + '-other'})?.txId || null,
- };
- }""")
+      const entry = CERES_STAGE[0];
+      return {
+        record: inFlightRecordForEntry(entry)?.txId || null,
+        otherSlot: inFlightRecordForEntry({...entry, slot_index: entry.slot_index + 1})?.txId || null,
+        otherAsset: inFlightRecordForEntry({...entry, asset_ref: String(entry.asset_ref) + '-other'})?.txId || null,
+      };
+    }""")
     assert identity == {"record": "FAKE-IR1882-TX-1", "otherSlot": None, "otherAsset": None}
     page.reload()
     wait_for_board(page)
@@ -176,11 +178,11 @@ def test_g4_expired_marker_is_swept_and_announced(live_browser: tuple[Browser, s
     _stage_first_available(page)
     _sign(page)
     page.evaluate("""() => {
- const key = 'ceres:in-flight:v1:player0005';
- const data = JSON.parse(localStorage.getItem(key));
- Object.values(data.records).forEach(record => { record.broadcast_at = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(); });
- localStorage.setItem(key, JSON.stringify(data));
- }""")
+      const key = 'ceres:in-flight:v1:player0005';
+      const data = JSON.parse(localStorage.getItem(key));
+      Object.values(data.records).forEach(record => { record.broadcast_at = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(); });
+      localStorage.setItem(key, JSON.stringify(data));
+    }""")
     page.reload()
     wait_for_board(page)
     assert not page.locator("#checkout-btn").is_visible()
@@ -238,7 +240,8 @@ def test_g6_restored_poll_resumes_and_clears_confirmed_marker(live_browser: tupl
     assert payload["tx_id"] == "FAKE-IR1882-TX-1"
     state["value"] = "domain-confirmed"
     with page.expect_request("**/api/op-verify*", timeout=10_000):
-        page.wait_for_timeout(3_500)
+        wait_ready(page)
+        settle(page)
     page.wait_for_function("CERES_STAGE.length === 0", timeout=10_000)
     assert page.evaluate("Object.keys(JSON.parse(localStorage.getItem(inFlightStoreKey())).records).length") == 0
     assert "Confirmed in game" in page.locator("#ceres-confirmation-banner").inner_text()
@@ -255,12 +258,15 @@ def test_g6b_restored_poll_is_bounded(live_browser: tuple[Browser, str]) -> None
     page.on("request", lambda request: requests.append(request) if "/api/op-verify" in request.url else None)
     page.reload()
     wait_for_board(page)
-    page.wait_for_timeout(1_500)
+    # the restored poller runs its (shrunk) schedule to the end and stops
+    page.wait_for_function("""() => { const poller = [...OPERATION_POLLERS.values()][0];
+ return !!poller && poller.timer === null && poller.index === OPERATION_POLL_SCHEDULE_MS.length; }""", timeout=30_000)
+    settle(page)
     assert len(requests) == 4
     poller = page.evaluate("""() => {
- const values = [...OPERATION_POLLERS.values()];
- return {size: OPERATION_POLLERS.size, timer: values[0]?.timer, index: values[0]?.index ?? -1, length: OPERATION_POLL_SCHEDULE_MS.length};
- }""")
+      const values = [...OPERATION_POLLERS.values()];
+      return {size: OPERATION_POLLERS.size, timer: values[0]?.timer, index: values[0]?.index ?? -1, length: OPERATION_POLL_SCHEDULE_MS.length};
+    }""")
     assert poller == {"size": 1, "timer": None, "index": 3, "length": 3}
     page.close()
 
@@ -283,7 +289,8 @@ def test_g7_confirmed_and_mismatched_verdicts_clear_store(live_browser: tuple[Br
     page.reload()
     wait_for_board(page)
     state["value"] = "domain-confirmed"
-    page.wait_for_timeout(3_500)
+    wait_ready(page)
+    settle(page)
     page.wait_for_function("CERES_STAGE.length === 0", timeout=10_000)
     assert page.evaluate("Object.keys(JSON.parse(localStorage.getItem(inFlightStoreKey())).records).length") == 0
     state["value"] = "domain-pending"
@@ -293,7 +300,8 @@ def test_g7_confirmed_and_mismatched_verdicts_clear_store(live_browser: tuple[Br
     page.reload()
     wait_for_board(page)
     state["value"] = "domain-mismatch"
-    page.wait_for_timeout(3_500)
+    wait_ready(page)
+    settle(page)
     page.wait_for_function("CERES_STAGE.length === 1 && !CERES_STAGE[0].txId", timeout=10_000)
     assert page.evaluate("Object.keys(JSON.parse(localStorage.getItem(inFlightStoreKey())).records).length") == 0
     assert page.locator("#ceres-confirmation-banner.tone-danger").is_visible()
@@ -327,8 +335,8 @@ def test_g9_store_failure_does_not_break_signing(live_browser: tuple[Browser, st
     page.add_init_script("""
 const ir1882SetItem = Storage.prototype.setItem;
 Storage.prototype.setItem = function(key, value) {
- if (this === window.localStorage && String(key).startsWith('ceres:in-flight:v1:')) throw new Error('storage disabled');
- return ir1882SetItem.call(this, key, value);
+  if (this === window.localStorage && String(key).startsWith('ceres:in-flight:v1:')) throw new Error('storage disabled');
+  return ir1882SetItem.call(this, key, value);
 };
 """)
     page.add_init_script(STUB)
@@ -340,6 +348,7 @@ Storage.prototype.setItem = function(key, value) {
     page.locator("#ceres-stage-toast").wait_for()
     assert "could not save the signed-change marker" in page.locator("#ceres-stage-toast").inner_text()
     page.evaluate("async () => { await requestOperationPreview({scope: 'portfolio'}); await confirmOperationBroadcast({scope: 'portfolio'}); }")
-    page.wait_for_timeout(200)
+    wait_ready(page)
+    settle(page)
     assert _count(page) == 1
     page.close()

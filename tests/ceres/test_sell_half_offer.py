@@ -1,4 +1,4 @@
-"""sell-half is hidden from the route-kind list, but offered (and allowed) when the wallet DEC cannot fund an LP route."""
+""": sell-half is hidden from the route-kind list, but offered (and allowed) when the wallet DEC cannot fund an LP route."""
 from pathlib import Path
 
 from fastapi.testclient import TestClient

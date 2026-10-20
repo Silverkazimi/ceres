@@ -51,4 +51,4 @@ process.exit(0);
     picker = (STATIC / "picker-actions.js").read_text()
     assert picker.count("updateMountedRow(row.deed_uid);") >= 2
     assert "if (row && togglePlotLock(row)) { updateMountedRow(row.deed_uid); renderCheckoutSurface(); }" in picker
-    assert "if (!togglePlotLock(row)) throw new Error('This signed change cannot be undone.');\n updateMountedRow(row.deed_uid);" in picker
+    assert "if (!togglePlotLock(row)) throw new Error('This signed change cannot be undone.');\n        updateMountedRow(row.deed_uid);" in picker

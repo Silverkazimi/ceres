@@ -137,8 +137,9 @@ def test_edge_picker_css_values_replicate_iris():
     # remains inside the unchanged outer wallet pill.
     assert "inline-size: var(--edge-chip-w, 32px);" in toggle_rule
     assert "block-size: min(var(--edge-chip-h, 32px), calc(40px - 2 * var(--edge-pad-left, 4px)));" in toggle_rule
-    assert "flex: 0 0 var(--edge-w);" in toggle_rule
-    assert "margin-inline-start: calc(-1 * var(--edge-pad-left, 4px));" in toggle_rule
+    # the chip sits at the inline end of the pill at its measured size; it never grows to fill the pill.
+    assert "margin-inline-start: auto;" in toggle_rule
+    assert "flex-grow" not in toggle_rule and not re.search(r"flex:\s*[1-9]", toggle_rule)
     assert "inline-size: calc(var(--edge-w) - 4px);" not in toggle_rule
     assert "block-size: 40px;" not in toggle_rule
     # Pre-landing review fix: replicates canonical.css's `.theme-toggle` chip look
@@ -205,10 +206,10 @@ def test_badge_bar_resting_state_has_no_ambient_box_shadow():
     # on .badge-bar or .badge-bar-head ( reinstated the head, see
     # test_edge_stack.py for its own geometry/style guard).
     css = CERES_CSS.read_text(encoding="utf-8")
-    resting_match = re.search(r"(?:^|\n)\.badge-bar \{\n border: 0;.*?\n\}\n", css, re.S)
+    resting_match = re.search(r"(?:^|\n)\.badge-bar \{\n  border: 0;.*?\n\}\n", css, re.S)
     assert resting_match, "badge-bar resting-state chrome rule not found in its expected shape"
     assert "box-shadow" not in resting_match.group(0)
-    geometry_match = re.search(r"(?:^|\n)\.badge-bar \{\n position: absolute;.*?\n\}\n", css, re.S)
+    geometry_match = re.search(r"(?:^|\n)\.badge-bar \{\n  position: absolute;.*?\n\}\n", css, re.S)
     assert geometry_match, "badge-bar geometry rule not found in its expected shape"
     head_match = re.search(r"(?:^|\n)\.badge-bar-head \{.*?\n\}\n", css, re.S)
     assert head_match, "badge-bar-head rule not found in its expected shape"
@@ -286,7 +287,7 @@ def test_open_wallet_drawer_has_a_symbol_parameter_before_pending_overrides():
 
 def test_tray_option_click_selects_focuses_then_opens_the_drawer_on_that_symbol():
     js = REGIONAL_DEC_JS.read_text(encoding="utf-8")
-    listener_match = re.search(r"walletTray\.addEventListener\('click', \(event\) => \{(.*?)\n \}\);", js, re.S)
+    listener_match = re.search(r"walletTray\.addEventListener\('click', \(event\) => \{(.*?)\n    \}\);", js, re.S)
     assert listener_match, "wallet tray click listener not found in its expected shape"
     body = listener_match.group(1)
     option_body = body.split("const opt = event.target.closest('.edge-opt');", 1)[1]
@@ -298,12 +299,12 @@ def test_tray_option_click_selects_focuses_then_opens_the_drawer_on_that_symbol(
 
 
 def test_toggle_opens_and_closes_the_tray_and_wallet_together():
-    """the edge handle and wallet drawer share one open/closed target.
- aria-expanded is set centrally in setWalletSurfaceTarget() (the one place that
- also writes walletPicker.dataset.open and drawer.dataset.walletMotion) rather
- than duplicated inline in toggleWalletPicker() itself -- every path this
- function takes (close(), closeWalletPicker(), openWalletDrawer()) routes
- through that single target-state writer."""
+    """: the edge handle and wallet drawer share one open/closed target.
+    aria-expanded is set centrally in setWalletSurfaceTarget() (the one place that
+    also writes walletPicker.dataset.open and drawer.dataset.walletMotion) rather
+    than duplicated inline in toggleWalletPicker() itself -- every path this
+    function takes (close(), closeWalletPicker(), openWalletDrawer()) routes
+    through that single target-state writer."""
     js = REGIONAL_DEC_JS.read_text(encoding="utf-8")
     assert "walletToggleBtn.addEventListener('click', () => toggleWalletPicker());" in js
     assert "function toggleWalletPicker() {" in js
@@ -317,7 +318,7 @@ def test_toggle_opens_and_closes_the_tray_and_wallet_together():
     assert "closeWalletPicker();" in open_branch
     assert "openWalletDrawer(getWalletSelection());" not in open_branch
     assert toggle_fn.count("openWalletDrawer") == 1
-    closed_branch = toggle_fn.rsplit("\n }\n", 1)[1]
+    closed_branch = toggle_fn.rsplit("\n  }\n", 1)[1]
     assert "openWalletDrawer(getWalletSelection());" in closed_branch
 
 
@@ -352,14 +353,14 @@ def test_node_check_touched_js_files():
 
 
 def test_selected_resource_carries_the_iris_chip_everywhere():
-    """the exact chip canonical.css's `.theme-toggle` uses
- (`color-mix(in srgb, var(--primary) 22%, transparent)` plus its box-shadow) must
- mark the selected resource on all three surfaces: the edge toggle (already, since
- /pre-landing fix 4), the active tray option, and the active drawer tab.
- Pre-landing review fix: only the TOGGLE keeps the toggle's own asymmetric radius
- (`5px 0 0 5px`, matching its edge-flush position) -- the mid-tray option and the
- mid-row drawer tab get a symmetric `5px` instead. Non-selected options stay flat
- at .4 opacity (`.edge-opt`/`.wallet-tab--icon` base rules, unchanged)."""
+    """: the exact chip canonical.css's `.theme-toggle` uses
+    (`color-mix(in srgb, var(--primary) 22%, transparent)` plus its box-shadow) must
+    mark the selected resource on all three surfaces: the edge toggle (already, since
+    /pre-landing fix 4), the active tray option, and the active drawer tab.
+    Pre-landing review fix: only the TOGGLE keeps the toggle's own asymmetric radius
+    (`5px 0 0 5px`, matching its edge-flush position) -- the mid-tray option and the
+    mid-row drawer tab get a symmetric `5px` instead. Non-selected options stay flat
+    at .4 opacity (`.edge-opt`/`.wallet-tab--icon` base rules, unchanged)."""
     css = CERES_CSS.read_text(encoding="utf-8")
     chip_bg = "background: color-mix(in srgb, var(--primary) 22%, transparent);"
     chip_shadow = "box-shadow: 0 8px 22px color-mix(in srgb, var(--shadow) 35%, transparent), inset 0 1px 0 color-mix(in srgb, var(--hi) 6%, transparent);"
@@ -373,7 +374,7 @@ def test_selected_resource_carries_the_iris_chip_everywhere():
     # live measurement (--edge-chip-shadow/--edge-radius-inner) -- the tray/drawer
     # active-option chips (out of 's scope, wallet handles only) keep the
     # literal, hand-typed value unchanged.
-    chip_shadow_value = chip_shadow[len("box-shadow "):-1]  # strip the property name and trailing
+    chip_shadow_value = chip_shadow[len("box-shadow: "):-1]  # strip the property name and trailing
     assert f"box-shadow: var(--edge-chip-shadow, {chip_shadow_value});" in toggle_rule
     assert chip_shadow in active_opt_rule
     assert chip_shadow in active_tab_rule
@@ -391,10 +392,10 @@ def test_selected_resource_carries_the_iris_chip_everywhere():
 
 def test_edge_tabs_is_a_direct_child_of_body_not_controls_row():
     """Pre-landing review fix: `.controls-row` is `overflow-x: auto` on desktop (its
- filter controls can outgrow the viewport), which clipped `#edge-tabs` and scrolled
- it sideways with the row's own content when it lived inside that row. It moved to
- a direct child of `<body>`, right after `.controls-row` closes, so it is no longer
- inside any scrolling/clipping box."""
+    filter controls can outgrow the viewport), which clipped `#edge-tabs` and scrolled
+    it sideways with the row's own content when it lived inside that row. It moved to
+    a direct child of `<body>`, right after `.controls-row` closes, so it is no longer
+    inside any scrolling/clipping box."""
     html = INDEX_HTML.read_text(encoding="utf-8")
     controls_row_match = re.search(r'<div class="controls-row">.*?\n</div>\n', html, re.S)
     assert controls_row_match, "could not find .controls-row markup"
@@ -427,12 +428,12 @@ def test_edge_tabs_recomputed_on_resize_and_after_first_board_render():
 
 def test_edge_tabs_recomputed_on_layout_shifts_above_the_controls_row():
     """Pre-landing review fix, round 3: notices/totals above the filter row change
- height on every render() (a new notice line, the totals strip filling in) without
- firing `resize`, which shifted `.controls-row`'s own position and left
- `#edge-tabs`'s `top` stale. The existing ResizeObserver that watches
- `.controls-row` (for `syncControlsDividers()`) is reused to also recompute
- `#edge-tabs`, and now also watches `#board-notices`/`.totals-strip`; table.js's
- render() dispatches `ceres:table-layout`, caught here as a third trigger."""
+    height on every render() (a new notice line, the totals strip filling in) without
+    firing `resize`, which shifted `.controls-row`'s own position and left
+    `#edge-tabs`'s `top` stale. The existing ResizeObserver that watches
+    `.controls-row` (for `syncControlsDividers()`) is reused to also recompute
+    `#edge-tabs`, and now also watches `#board-notices`/`.totals-strip`; table.js's
+    render() dispatches `ceres:table-layout`, caught here as a third trigger."""
     app = (STATIC / "app.js").read_text(encoding="utf-8")
     assert "const onControlsAreaResize = () => { syncControlsDividers(); scheduleCenterThemePicker(); };" in app
     assert "const controlsAreaObserver = new ResizeObserver(onControlsAreaResize);" in app
@@ -450,25 +451,25 @@ def _rule_block(css: str, selector_open: str) -> str:
     return css.split(selector_open, 1)[1].split("\n}\n", 1)[0]
 
 
-def test_edge_tray_and_edge_opt_are_byte_identical_to_master():
+def test_edge_tray_and_edge_opt_match_the_frozen_master_copy():
     """ freezes `.edge-tray`/`.edge-opt` (the base rule,
- not `.edge-opt--active`, which explicitly asked to change -- see
- test_edge_picker_css_values_replicate_iris) -- this diffs their exact text
- against master, so any future accidental edit to the tray/option's own layout,
- chip, spacing or transition fails loudly instead of silently drifting."""
-    master_css = subprocess.run(
-        ["git", "show", "master:ceres/static/ceres.css"],
-        cwd=ROOT, capture_output=True, text=True, check=True,
-    ).stdout
+    not `.edge-opt--active`, which  explicitly asked to change -- see
+    test_edge_picker_css_values_replicate_iris). The fixture replaces a moving master
+    lookup and preserves the frozen declarations."""
+    frozen_css = (Path(__file__).parent / "fixtures" / "wallet-tray-frozen.css").read_text(encoding="utf-8")
     current_css = CERES_CSS.read_text(encoding="utf-8")
+
+    def declarations(css: str, selector_open: str) -> list[str]:
+        body = re.sub(r"/\*.*?\*/", "", _rule_block(css, selector_open), flags=re.S)
+        return [line.strip() for line in body.splitlines() if line.strip()]
+
     for selector_open in (".edge-tray {", ".edge-opt {"):
-        assert _rule_block(current_css, selector_open) == _rule_block(master_css, selector_open), (
-            f"{selector_open} drifted from master -- froze it"
+        assert declarations(frozen_css, selector_open), selector_open
+        assert declarations(current_css, selector_open) == declarations(frozen_css, selector_open), (
+            f"{selector_open} drifted from the  frozen copy"
         )
-    # .edge-picker[data-open="true"] .edge-tray { max-width: 20rem; } and .edge-opt:hover
-    # are the tray/option's own one-liners -- frozen the same way.
     for one_liner in (
         '.edge-picker[data-open="true"] .edge-tray { max-width: 20rem; }',
         ".edge-opt:hover { opacity: .8; }",
     ):
-        assert one_liner in master_css and one_liner in current_css
+        assert one_liner in frozen_css and one_liner in current_css

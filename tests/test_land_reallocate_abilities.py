@@ -198,10 +198,10 @@ def _idle_card_row(card_detail_id: int, base_pp: float, level: int | None, asset
 
 def _level_lookup_row(card_detail_id: int, base_pp: float, level: int | None, asset_ref: str) -> dict:
     """The collection-row twin of an already-staked worker -- present only so `_level_by_asset_ref`
- can resolve its level (mirrors how `report["cards"]` covers every staked asset_ref too, see
- `_level_by_asset_ref`'s docstring). Bucket is `assigned_active`, NOT one of `IDLE_BUCKETS`, so
- `gather_idle_cards` correctly excludes it -- exactly like Praetoria's real classifier would for
- a card that's simultaneously present in `workers[]`."""
+    can resolve its level (mirrors how `report["cards"]` covers every staked asset_ref too, see
+    `_level_by_asset_ref`'s docstring). Bucket is `assigned_active`, NOT one of `IDLE_BUCKETS`, so
+    `gather_idle_cards` correctly excludes it -- exactly like Praetoria's real classifier would for
+    a card that's simultaneously present in `workers[]`."""
     return _collection_row(card_detail_id, base_pp, level, asset_ref, bucket="assigned_active")
 
 
@@ -213,18 +213,18 @@ DETAILS[NEB_SENI] = {"id": NEB_SENI, "name": "Neb Seni", "color": "Gold", "sub_t
 
 class EndToEndAbilityAwareEvictionTests(unittest.TestCase):
     """Reproduces the real 2026-08-19 incident using Tireless Farmhand's ACTUAL plot (65-9-83,
- a sample deed) and its co-occupants Manticore/Neb Seni (base PP, colors,
- and multiplier facts all taken verbatim from `~/.praetoria/snapshots/player0005-2026-08-19.json` and
- cross-checked to reproduce the exact live `total_harvest_pp` values -- Manticore 160,050.0 and
- Neb Seni 213,400.0 -- confirming the fixture matches the real API's own math).
+    a sample deed) and its co-occupants Manticore/Neb Seni (base PP, colors,
+    and multiplier facts all taken verbatim from `~/.praetoria/snapshots/player0005-2026-08-19.json` and
+    cross-checked to reproduce the exact live `total_harvest_pp` values -- Manticore 160,050.0 and
+    Neb Seni 213,400.0 -- confirming the fixture matches the real API's own math).
 
- The real bug was never really about Farmhand's OWN `cur` value (that's always been correct --
- it's the server's own observed field, untouched by the planner's `_harvest` bug). It's that
- Farmhand is the PLOT's sole `card_abilities_boost` holder (0.6, GRAIN) -- evicting Farmhand
- doesn't just cost Farmhand's modest 4,850pp, it silently strips the SAME 0.6 broadcast from
- every other occupant sharing that plot. The old code never modeled the boost as a plot-wide
- broadcast, so it never priced that collateral loss at all -- `net = gain - lost - card.cur`
- with no side-effect term. This reproduces that exact shape of mistake."""
+    The real bug was never really about Farmhand's OWN `cur` value (that's always been correct --
+    it's the server's own observed field, untouched by the planner's `_harvest` bug). It's that
+    Farmhand is the PLOT's sole `card_abilities_boost` holder (0.6, GRAIN) -- evicting Farmhand
+    doesn't just cost Farmhand's modest 4,850pp, it silently strips the SAME 0.6 broadcast from
+    every other occupant sharing that plot. The old code never modeled the boost as a plot-wide
+    broadcast, so it never priced that collateral loss at all -- `net = gain - lost - card.cur`
+    with no side-effect term. This reproduces that exact shape of mistake."""
 
     DEED_UID = "I-290-d05b84f1965811"
     PLOT_CODE = "65-9-83"
@@ -297,7 +297,7 @@ class EndToEndAbilityAwareEvictionTests(unittest.TestCase):
 
 class SideEffectPropagationTests(unittest.TestCase):
     """A move's effect on OTHER cards left on the source/destination plot -- the architectural
- change this fix required beyond just adding the two boost terms to the mover's own harvest."""
+    change this fix required beyond just adding the two boost terms to the mover's own harvest."""
 
     DEST_DEED = "I-298-6c3970d55b37f5"
     DEST_PLOT = "41-8-13"

@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .vm_context import read_entry_source
 
 APP_JS = Path(__file__).parents[2] / "ceres" / "static" / "app.js"
@@ -66,10 +66,10 @@ def _plot_with_worker_occupant(base_url: str, *, exclude: frozenset[str] = froze
 
 def _real_worker_candidate(base_url: str, deed_uid: str) -> dict:
     """A REAL worker candidate for `deed_uid`, straight from `/api/plots/{deed}/
- candidates` -- every field (name, base_pp, construction_pp_delta, plot_impact,
- ...) is exactly what candidates.py produced, so callers overriding only
- `cooldown`/`foil`/`name` still exercise the real renderCandidateRow() code path
- unmodified for everything else."""
+    candidates` -- every field (name, base_pp, construction_pp_delta, plot_impact,
+    ...) is exactly what candidates.py produced, so callers overriding only
+    `cooldown`/`foil`/`name` still exercise the real renderCandidateRow() code path
+    unmodified for everything else."""
     params = urllib.parse.urlencode({
         "group_id": "worker", "limit": 5, "offset": 0, "sort": "construction_pp",
         "bucket": "all", "preset": "net_gain_default",
@@ -102,9 +102,9 @@ def _goto_board(page: Page, base_url: str) -> None:
 
 def _stage_add_into_open_slot(page: Page, deed_uid: str, candidate: dict) -> None:
     """Opens `deed_uid`'s editor, mocks its candidate list down to a single entry,
- stages that one candidate into the first empty worker slot, waits for the
- checkout panel to become reachable (proof the stage actually landed), then
- collapses the row again so only one `.slot-editor` is ever in the DOM at once."""
+    stages that one candidate into the first empty worker slot, waits for the
+    checkout panel to become reachable (proof the stage actually landed), then
+    collapses the row again so only one `.slot-editor` is ever in the DOM at once."""
     pattern = _mock_candidates_route(page, candidate)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
     page.locator(".slot-editor:visible").wait_for(timeout=30_000)
@@ -122,8 +122,8 @@ def _stage_add_into_open_slot(page: Page, deed_uid: str, candidate: dict) -> Non
 
 def _stage_remove_existing_occupant(page: Page, deed_uid: str) -> None:
     """Opens `deed_uid`'s editor and clicks the remove control on its (real, already
- staked) worker occupant -- a pure `unstake`, staged without any incoming move on
- this plot, then collapses the row again."""
+    staked) worker occupant -- a pure `unstake`, staged without any incoming move on
+    this plot, then collapses the row again."""
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
     page.locator(".slot-editor:visible").wait_for(timeout=30_000)
     worker = page.locator(".slot-editor:visible .slot-group[data-group-id='worker']")
@@ -212,21 +212,21 @@ def test_staged_cooling_card_marks_tile_warns_checkout_and_disables_prepare(live
     page.on("request", lambda request: op_preview_requests.append(request.url) if "/api/op-preview" in request.url else None)
     with pytest.raises(Exception):
         prepare.click(timeout=2_000)
-    page.wait_for_timeout(200)
+    settle(page)
     assert not op_preview_requests
     page.close()
 
 
 def test_prepare_transaction_disable_guard_actually_guards(live_browser: tuple[Browser, str]) -> None:
     """MUTATION TEST for the item-3 gate itself, run against the REAL server and a
- REAL staged move (not a slice). Injection performed: a multiline regex anchors
- the single `const prepareDisabled = ...;` declaration and replaces only its
- expression with `false`, so future edits to that expression do not deaden setup.
- The injected `/static/app.js` response is supplied through `page.route` and never
- changes the checked-in file. Injection run, watched red: the sibling disabled-
- button assertion observed Prepare enabled, reproducing the guard failure.
- Restored: the route was removed and the checked-in source was used again; watched
- green: the sibling assertion observed Prepare disabled."""
+    REAL staged move (not a slice). Injection performed: a multiline regex anchors
+    the single `const prepareDisabled = ...;` declaration and replaces only its
+    expression with `false`, so future edits to that expression do not deaden setup.
+    The injected `/static/app.js` response is supplied through `page.route` and never
+    changes the checked-in file. Injection run, watched red: the sibling disabled-
+    button assertion observed Prepare enabled, reproducing the guard failure.
+    Restored: the route was removed and the checked-in source was used again; watched
+    green: the sibling assertion observed Prepare disabled."""
     browser, base_url = live_browser
     real_source = read_entry_source()
     prepare_disabled = re.compile(r"(?m)^(?P<prefix>\s*const prepareDisabled\s*=\s*)[^;\n]+(?P<suffix>;\s*)$")
@@ -278,14 +278,14 @@ def test_prepare_transaction_disable_guard_actually_guards(live_browser: tuple[B
 
 def test_cooldown_reason_fragment_never_invents_a_verdict(live_browser: tuple[Browser, str]) -> None:
     """The three fallback texts `cooldownReasonFragment()` produces for states the real
- server rarely/never emits with `ready: false` (`unknown`, `unverified`) plus the
- ordinary `cooling` text, each read off the REAL rendered tile badge
- (`.slot-cooldown-badge`'s `aria-label`, `ceres/static/app.js:3782-3784`) for a
- synthetic candidate staged through the real picker -- not a direct function call.
- `cooldownReasonFragment(null)` (the fourth branch) has NO reachable rendered call
- site at all: both call sites (`ceres/static/app.js:3782`, `:4260`) require a
- truthy `cooldown` before invoking it, so that branch is unrenderable and is not
- asserted here -- reported to the dispatcher rather than faked."""
+    server rarely/never emits with `ready: false` (`unknown`, `unverified`) plus the
+    ordinary `cooling` text, each read off the REAL rendered tile badge
+    (`.slot-cooldown-badge`'s `aria-label`, `ceres/static/app.js:3782-3784`) for a
+    synthetic candidate staged through the real picker -- not a direct function call.
+    `cooldownReasonFragment(null)` (the fourth branch) has NO reachable rendered call
+    site at all: both call sites (`ceres/static/app.js:3782`, `:4260`) require a
+    truthy `cooldown` before invoking it, so that branch is unrenderable and is not
+    asserted here -- reported to the dispatcher rather than faked."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     _goto_board(page, base_url)
@@ -353,10 +353,10 @@ def _mixed_stage_deeds(base_url: str) -> tuple[str, str, str]:
 
 def _stage_mixed_cooldown_scenario(page: Page, base_url: str) -> dict:
     """Stages three entries across three plots: a normal ready add (must never be
- blocked), a cooling add (must be the only blocked entry) and a pure unstake
- removal on an unrelated plot (must never be blocked either) --
- `refuseIncomingWithRemovals`/`deedHasIncomingStage` (app.js:3051-3061, :6240)
- refuse mixing add+remove on the SAME plot, which is why this needs three."""
+    blocked), a cooling add (must be the only blocked entry) and a pure unstake
+    removal on an unrelated plot (must never be blocked either) --
+    `refuseIncomingWithRemovals`/`deedHasIncomingStage` (app.js:3051-3061, :6240)
+    refuse mixing add+remove on the SAME plot, which is why this needs three."""
     _goto_board(page, base_url)
     ready_deed, cooling_deed, remove_deed = _mixed_stage_deeds(base_url)
     ready_candidate = _worker_candidate_with_cooldown(
@@ -395,15 +395,15 @@ def test_checkout_blocked_cooldown_filter_never_blocks_ready_or_unstake_in_a_mix
 
 def test_checkout_blocked_cooldown_filter_guard_actually_guards(live_browser: tuple[Browser, str]) -> None:
     """MUTATION TEST: `checkoutBlockedCooldownEntries`'s `entry.cooldown.ready === false`
- is replaced with `entry.cooldown.ready !== undefined` -- the literal shape of the
- original bug (a cooling candidate looked the same as a ready one because nothing
- distinguished them). In the SAME 3-entry mixed stage as the sibling test, the ready
- add's `cooldown.ready` is defined (`true`), so the mutated filter blocks it too --
- proving the sibling test's single-warning assertion is genuinely sensitive to this
- line. `action !== 'unstake'` is untouched by this injection, so the removal entry
- (which carries no `cooldown` at all -- `stageForSlot`'s own comment) stays excluded
- either way; that half of the ruling's claim is what the sibling (intact) test
- proves, not this one."""
+    is replaced with `entry.cooldown.ready !== undefined` -- the literal shape of the
+    original bug (a cooling candidate looked the same as a ready one because nothing
+    distinguished them). In the SAME 3-entry mixed stage as the sibling test, the ready
+    add's `cooldown.ready` is defined (`true`), so the mutated filter blocks it too --
+    proving the sibling test's single-warning assertion is genuinely sensitive to this
+    line. `action !== 'unstake'` is untouched by this injection, so the removal entry
+    (which carries no `cooldown` at all -- `stageForSlot`'s own comment) stays excluded
+    either way; that half of the ruling's claim is what the sibling (intact) test
+    proves, not this one."""
     real_source = read_entry_source()
     real_line = "return CERES_STAGE.filter((entry) => entry.action !== 'unstake' && entry.cooldown && entry.cooldown.ready === false);"
     assert real_source.count(real_line) == 1, "checkoutBlockedCooldownEntries's exact filter line moved; update this test's injection string"

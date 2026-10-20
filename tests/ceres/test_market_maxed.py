@@ -1,4 +1,4 @@
-"""the Maxed filter (both modes), the combined max-level market offer, and the market price badge. No live network: the upstream is a synthetic getter."""
+""": the Maxed filter (both modes), the combined max-level market offer, and the market price badge. No live network: the upstream is a synthetic getter."""
 
 from __future__ import annotations
 
@@ -167,7 +167,7 @@ if (cbView(cards, f).tiles.length !== 3) throw Error('off');
 const max = cbView(cards, { ...f, level: ['maxed'] }).tiles.map((t) => t.card.name);
 const notMax = cbView(cards, { ...f, level: ['not_maxed'] }).tiles.map((t) => t.card.name);
 if (JSON.stringify(max) !== '["A"]') throw Error('max: ' + max);
-if (JSON.stringify(notMax) !== '["B"]') throw Error('not max: ' + notMax); // unknown max state is not "not max"
+if (JSON.stringify(notMax) !== '["B"]') throw Error('not max: ' + notMax);  // unknown max state is not "not max"
 """, entry=STATIC / "card-browser-model.js")
 
 
@@ -179,8 +179,8 @@ const on = document.body.dataset.cbMaxed;
 state.filters.maxed = false; syncMaxed();
 const off = 'cbMaxed' in document.body.dataset;
 const row = { name: 'Gargoya Lion', card_detail_id: 349, edition: 3, card_set: 'chaos', rarity: 'common', foil: 0, level: 10, max_level: 10,
- bcx: 400, bcx_max: 400, maxed: true, land_base_pp: 1000, max_level_pp: 1000, price_usd: 1.364, price_dec: 2785.4, combined: 4,
- parts_cc: [338, 60, 1, 1], splinters: ['Neutral'], market_url: 'https://splinterlands.com/card-detail/349/regular/3?tab=for-sale', own: true };
+  bcx: 400, bcx_max: 400, maxed: true, land_base_pp: 1000, max_level_pp: 1000, price_usd: 1.364, price_dec: 2785.4, combined: 4,
+  parts_cc: [338, 60, 1, 1], splinters: ['Neutral'], market_url: 'https://splinterlands.com/card-detail/349/regular/3?tab=for-sale', own: true };
 console.log(JSON.stringify({ on, off, html: cmTileHtml(cmTiles([row])[0], tileHtml) }));
 """, entry=STATIC / "card-browser.js").stdout
     got = json.loads(out.strip().splitlines()[-1])

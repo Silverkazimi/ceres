@@ -105,8 +105,14 @@ def test_signed_terrain_and_card_set_are_serialized_with_stage_one_pp() -> None:
         "asset_ref": "zintar", "classification": {"bucket": "unstaked_apparent"},
         "facts": {"card_detail_id": 3, "land_base_pp": 11_000, "level": 1, "edition": 3, "card_set": "alpha"},
     }])
-    body = rank_candidates(
+    # Black is a -50 % terrain here; terrain-penalised cards are hidden until requested.
+    hidden = rank_candidates(
         report, "deed", "worker", player="player0005", now=NOW,
+        details_by_id={3: {"name": "Zintar Mortalis", "color": "Black"}},
+    )
+    assert hidden["candidates"] == [] and hidden["excluded_counts"]["terrain_penalty"] == 1
+    body = rank_candidates(
+        report, "deed", "worker", player="player0005", now=NOW, include_terrain_penalised=True,
         details_by_id={3: {"name": "Zintar Mortalis", "color": "Black"}},
     )
     row = body["candidates"][0]

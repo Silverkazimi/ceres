@@ -607,7 +607,7 @@ def _pending_id(effects: dict, key: str):
     return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else None
 
 
-SPS_BRIDGE_ACCOUNT = "player0015"  # the game's SPS/DEC pool account (a tx <tx id>: params.to)
+SPS_BRIDGE_ACCOUNT = "player0016"  # the game's SPS/DEC pool account (a tx <tx id>: params.to)
 
 
 def sps_funding_operation(player: str, info, tx: str, body: dict) -> dict:

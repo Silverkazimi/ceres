@@ -1,4 +1,4 @@
-"""a fourth change badge shows the staged effect on the plot's production.
+""": a fourth change badge shows the staged effect on the plot's production.
 
 Sandbox-runnable VM guards (no browser). Production is linear in Total PP on a plot,
 so the staged rate is the measured rate scaled by the Total PP ratio.
@@ -15,13 +15,16 @@ _JS = r"""
 const row = {work_per_hour: 120, harvest_pp: 60000, resource: 'iron'};
 const estimate = {status: 'unknown'};
 const records = {
- up: stagedProduction(row, 90000),
- sps: stagedProduction({...row, resource: 'sps'}, 90000),
- noResource: stagedProduction({...row, resource: null}, 90000),
- zeroHarvest: stagedProduction({...row, harvest_pp: 0}, 90000),
- htmlUp: renderChangeBadges(estimate, 30000, 2, null, 90000, row),
- htmlDown: renderChangeBadges(estimate, -15000, 1, null, 45000, row),
- htmlNoRow: renderChangeBadges(estimate, 30000, 2, null, 90000, null),
+  up: stagedProduction(row, 90000),
+  sps: stagedProduction({...row, resource: 'sps'}, 90000),
+  spsNoRate: stagedProduction({...row, resource: 'sps', harvest_pp: 0}, 90000),
+  noHarvestFact: stagedProduction({...row, harvest_pp: undefined}, 90000),
+  projected: stagedProduction({...row, harvest_pp: 0, work_per_hour: 0}, 90000, 45),
+  noResource: stagedProduction({...row, resource: null}, 90000),
+  zeroHarvest: stagedProduction({...row, harvest_pp: 0}, 90000),
+  htmlUp: renderChangeBadges(estimate, 30000, 2, null, 90000, row),
+  htmlDown: renderChangeBadges(estimate, -15000, 1, null, 45000, row),
+  htmlNoRow: renderChangeBadges(estimate, 30000, 2, null, 90000, null),
 };
 console.log('__FR1941__' + JSON.stringify(records));
 """
@@ -37,7 +40,11 @@ def _run() -> dict:
 def test_production_scales_with_total_pp_and_refuses_unscalable_plots() -> None:
     records = _run()
     assert records['up'] == {'resource': 'iron', 'now': 120, 'after': 180, 'delta': 60}
-    assert records['sps'] is None
+    # SPS is a resource too; missing rate and projection still produces no badge.
+    assert records['sps'] == {'resource': 'sps', 'now': 120, 'after': 180, 'delta': 60}
+    assert records['spsNoRate'] is None
+    assert records['noHarvestFact'] is None
+    assert records['projected'] == {'resource': 'iron', 'now': 0, 'after': 45, 'delta': 45}
     assert records['noResource'] is None
     assert records['zeroHarvest'] is None
 

@@ -66,7 +66,8 @@ assert(guidance.includes('data-wallet-select="hiveauth"'), 'guidance must offer 
         entry=STATIC / "checkout.js",
     )
     assert "const mobileKeychainMissing = mobileBoardTier() && !keychainReady;" in CHECKOUT_JS
-    assert "const note = mobileKeychainMissing ? 'Wallet not connected.'" in CHECKOUT_JS
+    note_line = next(line for line in CHECKOUT_JS.splitlines() if line.lstrip().startswith("const note ="))
+    assert ": mobileKeychainMissing ? 'Wallet not connected.'" in note_line  # after the upgrade-plan-only branch
     assert "navigator.clipboard.writeText(window.location.href)" in PICKER_JS
 
 
@@ -78,8 +79,8 @@ def test_changes_links_route_back_to_the_mobile_plot_sheet() -> None:
 
 
 def test_phase_f_css_is_mobile_tier_scoped_and_keeps_scale_guards_flat() -> None:
-    block = CSS.split("* PHASE F MOBILE STAGING START *", 1)[1].split(
-        "* PHASE F MOBILE STAGING END *", 1
+    block = CSS.split("/*  PHASE F MOBILE STAGING START */", 1)[1].split(
+        "/*  PHASE F MOBILE STAGING END */", 1
     )[0]
     selectors = re.findall(r"([^{}]+)\{", re.sub(r"/\*.*?\*/", "", block, flags=re.S))
     assert selectors

@@ -32,7 +32,7 @@ def test_l3_06_concurrent_writers_of_one_key_never_fail_or_mix(tmp_path):
 def test_l3_04_quick_capture_reads_spare_items_live():
     source = (ROOT / "praetoria" / "land_analysis.py").read_text(encoding="utf-8")
     assert "ttl=300," not in source.split("def _capture_unassigned_after_catalogue")[1].split("bundle_error: ResponseTooLarge")[0]
-    assert source.count("include_asset_ids, catalogue_lookup, ttl=0") == 2
+    assert source.count("include_asset_ids, catalogue_lookup, ttl=0,") == 2
 
 
 # L3-08: a temporary metadata failure must not become a permanent "no artwork"

@@ -15,6 +15,7 @@ from praetoria.land_reallocate import build_plots
 
 
 DEED_UID = "deed-name-guard"
+OTHER_DEED_UID = "deed-name-guard-2"
 WORKER_UID = "worker-name-guard"
 DETAIL_ID = 40001
 DETAILS = {DETAIL_ID: {"id": DETAIL_ID, "color": "Red"}}
@@ -114,6 +115,13 @@ def _raise_internal_keyerror(*args, **kwargs):
 def test_name_less_producer_worker_keeps_all_three_endpoints_alive(monkeypatch, endpoint):
     """Injection: restore ``worker["name"]``; the silent failure is an unrelated server error from each endpoint."""
     report = _report_with_name_less_worker()
+    if endpoint == "candidates":
+        # A worker is never a candidate for the plot it already works on, so the name-less worker is offered
+        # to a second, empty plot of the same player (it is staked elsewhere: On land, not ready).
+        other = json.loads(json.dumps(report["plots"][0]))
+        other["deed_uid"] = OTHER_DEED_UID
+        other["facts"]["plot"] = "1-1-2"
+        report["plots"].append(other)
     _install_snapshot(monkeypatch, report)
     request = _request()
     asset_ref = report["workers"][0]["asset_ref"]
@@ -125,8 +133,10 @@ def test_name_less_producer_worker_keeps_all_three_endpoints_alive(monkeypatch, 
         app.state.ceres_config = request.app.state.ceres_config
         app.include_router(routes_candidates.router)
         with TestClient(app) as client:
-            response = client.get(f"/api/plots/{DEED_UID}/candidates", params={"group_id": "worker"})
+            response = client.get(f"/api/plots/{OTHER_DEED_UID}/candidates",
+                                  params={"group_id": "worker", "include_cooling": "true", "include_on_land": "true"})
         assert response.json()["pool_size"] > 0
+        assert asset_ref in {candidate["asset_ref"] for candidate in response.json()["candidates"]}
     elif endpoint == "removal":
         response = routes_candidates.post_removal_impact(DEED_UID, {"asset_refs": [asset_ref]}, request)
     else:

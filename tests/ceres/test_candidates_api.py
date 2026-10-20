@@ -94,7 +94,7 @@ def _idle_worker(asset_ref: str) -> dict:
 def test_worker_ready_at_uses_stake_end_without_an_extra_cooldown():
     """A worker is ready at its observed stake_end_date, not 78 hours later.
 
- Mutation check: injected ``ready_at = ended + timedelta(hours=78)``; the exact ready_at assertion went red.
+    Mutation check: injected ``ready_at = ended + timedelta(hours=78)``; the exact ready_at assertion went red.
     """
     report = _report(powered=True)
     report["cards"].append({
@@ -117,7 +117,7 @@ def test_worker_ready_at_uses_stake_end_without_an_extra_cooldown():
 def test_active_unconfirmed_cards_are_visible_only_in_all_as_cooling_rows():
     """An active-but-unconfirmed card is constructed for all, never idle or staked, and uses the normal cooling gate.
 
- Mutation check: removed ``stake_active_unconfirmed`` from the card-bucket iteration; the all-bucket visibility assertion went red.
+    Mutation check: removed ``stake_active_unconfirmed`` from the card-bucket iteration; the all-bucket visibility assertion went red.
     """
     report = _report(powered=True)
     report["cards"].append({
@@ -160,11 +160,11 @@ def test_active_unconfirmed_cards_are_visible_only_in_all_as_cooling_rows():
 def test_card_uid_twin_dedupe_keeps_unconfirmed_cards_without_staked_twins():
     """Only a non-staked row with a staked card_uid twin is removed.
 
- The frozen snapshot contains one card emitted by both `_eligible_card_rows` loops,
- one active-unconfirmed card deliberately absent from `report["workers"]`, and two
- rows with no card_uid. Injection 1 (remove the dedupe) returns three non-null rows;
- injection 2 (dedupe by the cooling bucket) removes the twin-free active-unconfirmed
- row. Neither mutation may pass, and missing IDs remain separate rows.
+    The frozen snapshot contains one card emitted by both `_eligible_card_rows` loops,
+    one active-unconfirmed card deliberately absent from `report["workers"]`, and two
+    rows with no card_uid. Injection 1 (remove the dedupe) returns three non-null rows;
+    injection 2 (dedupe by the cooling bucket) removes the twin-free active-unconfirmed
+    row. Neither mutation may pass, and missing IDs remain separate rows.
     """
     report = _report(powered=True)
     report["workers"] = [{
@@ -213,7 +213,7 @@ def test_card_uid_twin_dedupe_keeps_unconfirmed_cards_without_staked_twins():
 def test_real_foil_enum_is_exposed_unchanged_in_candidate_payload(foil):
     """A collection card's real foil enum is exposed without collapsing its values.
 
- Mutation check: replaced ``return source[\"foil\"]`` with ``return 1 if _true(source[\"foil\"]) else 0``; the enum-preservation assertion went red.
+    Mutation check: replaced ``return source[\"foil\"]`` with ``return 1 if _true(source[\"foil\"]) else 0``; the enum-preservation assertion went red.
     """
     card = MovableCard("Card", "Red", 1000.0, 0.0, "idle", None, card_uid="G-CONFLICTING-UID")
     assert _foil({}, {"foil": foil}, card) == foil
@@ -222,7 +222,7 @@ def test_real_foil_enum_is_exposed_unchanged_in_candidate_payload(foil):
 def test_missing_foil_is_unknown_even_when_uid_prefix_suggests_gold():
     """A missing enum is unknown because UID-prefix inference is unsound on real data.
 
- Mutation check: restored the old ``G``-UID fallback; the unknown-foil assertion went red.
+    Mutation check: restored the old ``G``-UID fallback; the unknown-foil assertion went red.
     """
     card = MovableCard("Card", "Red", 1000.0, 0.0, "idle", None, card_uid="G-CONFLICTING-UID")
     assert _foil({}, {}, card) is None
@@ -448,15 +448,15 @@ def test_staked_runi_donor_loses_power_gate_and_runi_multiplier():
 
 def test_runi_idle_picker_never_returns_ordinary_worker_cards():
     """ finding 2: `_eligible_card_rows`'s idle-cards loop iterated
- `report["cards"]` once for BOTH `worker` and `runi` groups and called `add(facts,
- None, bucket)` unconditionally -- since `worker is None` for every idle card, the
- `group_id == "runi" and stake_type_uid != wanted_type` filter never applied (it was
- gated on `worker is not None`), and `add()` itself defaulted the unknown
- `stake_type_uid` to whatever the CALLER asked for. So an ordinary idle monster card
- (no `card_detail_id` identifying it as the real Runi, 505) leaked into the `runi`
- picker's pool and was labelled `STK-LND-RUNI`. This fixture has ONE idle card and it
- is NOT a Runi -- the `runi` picker must return zero candidates for it, while the
- `worker` picker still returns it."""
+    `report["cards"]` once for BOTH `worker` and `runi` groups and called `add(facts,
+    None, bucket)` unconditionally -- since `worker is None` for every idle card, the
+    `group_id == "runi" and stake_type_uid != wanted_type` filter never applied (it was
+    gated on `worker is not None`), and `add()` itself defaulted the unknown
+    `stake_type_uid` to whatever the CALLER asked for. So an ordinary idle monster card
+    (no `card_detail_id` identifying it as the real Runi, 505) leaked into the `runi`
+    picker's pool and was labelled `STK-LND-RUNI`. This fixture has ONE idle card and it
+    is NOT a Runi -- the `runi` picker must return zero candidates for it, while the
+    `worker` picker still returns it."""
     report = _report()
     report["cards"].append({
         "asset_ref": "idle-ordinary", "classification": {"bucket": "unstaked_apparent"},
@@ -776,7 +776,7 @@ def test_route_passes_valid_staged_plan_and_plain_none_defaults(monkeypatch, rep
 
     def fake_rank(report_arg, deed_uid, group_id, **kwargs):
         calls.append((report_arg, deed_uid, group_id, kwargs))
-        return {"candidates": []}
+        return {"candidates": [], "returned": 0}  # shape rank_candidates returns
 
     monkeypatch.setattr(routes_candidates_mod, "rank_candidates", fake_rank)
     get_candidates(deed_uid, _request(), group_id="worker", limit=25, offset=0)
@@ -805,7 +805,7 @@ def test_route_passes_valid_staged_plan_and_plain_none_defaults(monkeypatch, rep
 
 @pytest.mark.parametrize("group_id", ["worker", "runi", "title", "totem"])
 def test_every_candidate_picker_accepts_the_account_staged_plan(monkeypatch, group_id):
-    """a picker must tolerate staged entries for the other asset groups."""
+    """: a picker must tolerate staged entries for the other asset groups."""
     report = _report(powered=True)
     report.pop("cards")
     if group_id in {"worker", "runi"}:

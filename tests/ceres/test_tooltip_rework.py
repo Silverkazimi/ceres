@@ -1,4 +1,4 @@
-"""census rows 35/36 (batch B) -- FILE/ROW MISMATCH REPORTED: the
+"""/census rows 35/36 (batch B) -- FILE/ROW MISMATCH REPORTED: the
 census's row-36 guard description ("clear_plot renders a structured danger
 warning model; badge warnings keep dynamic severity...; fractional-PP
 provenance...") does not match this file's actual content, which is instead
@@ -41,16 +41,16 @@ def test_rendered_tooltip_builds_structured_head_body_foot_children_on_hover(
     live_browser: tuple[Browser, str],
 ) -> None:
     """Census row 35 (by content -- see module docstring): replaces the
- source-text scan of `renderTooltip()` (`.tip-inner`/`.tip-head`/`.tip-body`/
- `.tip-foot`, `TOOLTIP_INNER_EL.replaceChildren()`, legacy string-model
- support) with a real hover on a real element carrying `data-tip-body`/
- `data-tip-foot`, reading the actual built DOM.
+    source-text scan of `renderTooltip()` (`.tip-inner`/`.tip-head`/`.tip-body`/
+    `.tip-foot`, `TOOLTIP_INNER_EL.replaceChildren()`, legacy string-model
+    support) with a real hover on a real element carrying `data-tip-body`/
+    `data-tip-foot`, reading the actual built DOM.
 
- Named injection (not applied here; independently watched red/green per
- ): `renderTooltip()`'s `bodyEl.textContent = body;` changed to
- `bodyEl.textContent = '';` (drops the body text). Expected red: the
- rendered `.tip-body` text is empty where this test asserts the real body
- string."""
+    Named injection (not applied here; independently watched red/green per
+    ): `renderTooltip()`'s `bodyEl.textContent = body;` changed to
+    `bodyEl.textContent = '';` (drops the body text). Expected red: the
+    rendered `.tip-body` text is empty where this test asserts the real body
+    string."""
     browser, base_url = live_browser
     page = browser.new_page(viewport=VIEWPORT)
     page.goto(base_url)
@@ -73,15 +73,15 @@ def test_rendered_tooltip_clamps_on_screen_and_uses_peer_depth(
 ) -> None:
     """A Full HD hover stays inside the viewport and inherits its peer depth.
 
- requires one shared visual system with peer-assigned brief/extended
- depths; requires the live "Reload plots" surface to remain usable
- while this guard reads the rendered tooltip. Named injection (not applied
- here; independently watched red/green per ): `positionTooltip()`'s
- `top = Math.max(margin, Math.min(top, window.innerHeight - tipRect.height - margin));`
- changed to drop the `Math.max(margin, ...)` floor. Expected red: hovering
- the near-top target renders the tooltip with a negative or sub-margin
- `top`, clipped off the top of the viewport. R-138's phased reveal rule is
- why the board is settled before these synthetic peer triggers are read."""
+     requires one shared visual system with peer-assigned brief/extended
+    depths;  requires the live "Reload plots" surface to remain usable
+    while this guard reads the rendered tooltip. Named injection (not applied
+    here; independently watched red/green per ): `positionTooltip()`'s
+    `top = Math.max(margin, Math.min(top, window.innerHeight - tipRect.height - margin));`
+    changed to drop the `Math.max(margin, ...)` floor. Expected red: hovering
+    the near-top target renders the tooltip with a negative or sub-margin
+    `top`, clipped off the top of the viewport. R-138's phased reveal rule is
+    why the board is settled before these synthetic peer triggers are read."""
     browser, base_url = live_browser
     page = browser.new_page(viewport=VIEWPORT)
     page.goto(base_url)
@@ -89,19 +89,19 @@ def test_rendered_tooltip_clamps_on_screen_and_uses_peer_depth(
     page.evaluate(
         """
         () => {
- for (const [peer, depth, top] of [
- ['icons_identity', 'brief', 400],
- ['plot_metrics', 'extended', 20],
- ]) {
- const trigger = document.createElement('button');
- trigger.dataset.tip = `${peer} tooltip`;
- trigger.dataset.tipPeer = peer;
- trigger.dataset.tipDepth = depth;
- trigger.dataset.tipBody = 'A useful explanation.';
- trigger.style.cssText = `position:fixed;z-index:2147483647;left:400px;top:${top}px;width:40px;height:20px;`;
- document.body.append(trigger);
- }
- }
+          for (const [peer, depth, top] of [
+            ['icons_identity', 'brief', 400],
+            ['plot_metrics', 'extended', 20],
+          ]) {
+            const trigger = document.createElement('button');
+            trigger.dataset.tip = `${peer} tooltip`;
+            trigger.dataset.tipPeer = peer;
+            trigger.dataset.tipDepth = depth;
+            trigger.dataset.tipBody = 'A useful explanation.';
+            trigger.style.cssText = `position:fixed;z-index:2147483647;left:400px;top:${top}px;width:40px;height:20px;`;
+            document.body.append(trigger);
+          }
+        }
         """
     )
     for peer, depth in (("icons_identity", "brief"), ("plot_metrics", "extended")):
@@ -121,8 +121,8 @@ def test_rendered_tooltip_clamps_on_screen_and_uses_peer_depth(
 
 
 def test_tooltip_css_declares_full_hd_bounds_brief_depth_and_warning_variant() -> None:
-    """ fixes the two peer depths and keeps one non-zooming shell;
- this guard checks their rendered CSS contract and warning accent."""
+    """ fixes the two peer depths and  keeps one non-zooming shell;
+    this guard checks their rendered CSS contract and warning accent."""
     css = CSS.read_text(encoding="utf-8")
     tooltip_css = css[css.index("#ceres-tooltip {") : css.index("[data-tip] { cursor: help; }")]
     assert "max-width: min(24rem, calc(100vw - 20px));" in tooltip_css

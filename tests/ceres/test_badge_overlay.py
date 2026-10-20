@@ -1,4 +1,4 @@
-"""badges leave the table's own sizing -- a fixed strip replaces the resizing
+""": badges leave the table's own sizing -- a fixed strip replaces the resizing
 Badges column, and an overlay panel (badge-overlay.js) shows the full per-row badge
 list aligned with the table while scrolling. See library/ceres-badge-overlay.md and
 work/notes/PLAN-S13840-badge-overlay-2026-09-19.md for the maintainer-approved design.
@@ -125,7 +125,7 @@ def test_app_wires_the_overlay_and_table_dispatches_layout_events():
 
 def test_plot_table_scroll_is_the_overlay_containing_block():
     css = CERES_CSS.read_text(encoding="utf-8")
-    assert "  container: ceres-table / inline-size;\n position: relative; /* containing block for #badge-overlay */\n}" in css
+    assert "  container: ceres-table / inline-size;\n  position: relative; /* : containing block for #badge-overlay */\n}" in css
 
 
 def test_badge_overlay_module_exports_init_and_sync():
@@ -224,9 +224,9 @@ const warning = badgeStripHtml({deed_uid:'w', assets_loaded:true, badges:['under
 const loading = badgeStripHtml({deed_uid:'l', assets_loaded:false, badges:[], capacity:{}, workers:[], bonus:{}});
 const clean = badgeStripHtml({deed_uid:'n', assets_loaded:true, badges:[], capacity:{}, workers:[], bonus:{}});
 for (const [html, state] of [[pending,'pending'],[critical,'critical'],[warning,'warning'],[loading,'loading'],[clean,'clean']]) {
- assert(html.includes(`badge-status-glyph is-${state}`), `${state} status glyph expected`);
- assert(html.includes('aria-label='), `${state} status must be accessible`);
- assert(!html.includes('badge-dot'), 'status must use one glyph, not dots');
+  assert(html.includes(`badge-status-glyph is-${state}`), `${state} status glyph expected`);
+  assert(html.includes('aria-label='), `${state} status must be accessible`);
+  assert(!html.includes('badge-dot'), 'status must use one glyph, not dots');
 }
 """,
         entry=BADGES_JS,

@@ -76,6 +76,10 @@ def test_badge_sidebar_does_not_restore_open_state_and_flag_tracks_state():
     assert "aria-expanded" in INDEX
     assert 'data-state="unused"' in INDEX
     assert "flag.dataset.state = allOpen ? 'used' : 'unused';" in OVERLAY
-    assert '.badge-bar-head[data-state="used"]::before' in CERES_CSS
+    # The flag's used/unused state is shown on its icon stroke (the former
+    # before marker is gone); the two states must stay visually distinct.
+    assert '.badge-bar-head[data-state="used"]::before' not in CERES_CSS
+    assert '#badge-flag[data-state="unused"] .hdr-ic .a.h { stroke: var(--meta);' in CERES_CSS
+    assert '#badge-flag[data-state="used"] .hdr-ic .a.h { stroke: var(--gold);' in CERES_CSS
     assert '#badge-flag[data-state="unused"] .hdr-ic .a.h' in CERES_CSS
     assert '#badge-flag[data-state="used"] .hdr-ic .a.h' in CERES_CSS

@@ -29,23 +29,29 @@ def test_center_theme_picker_measures_and_publishes_the_full_geometry_set():
     body = fn_match.group(0)
     assert "const toggle = document.querySelector('.theme-picker .theme-toggle');" in body
     assert "const toggleRect = toggle?.getBoundingClientRect();" in body
-    assert "if (toggleRect && toggleRect.width > 0 && !picker.classList.contains('is-open')) {" in body
+    assert "if (toggleRect && toggleRect.width > 0) {" in body
+    # The geometry is published only once Iris's pill has settled at its closed width
+    # (never mid-open or mid-close): every write sits inside that gate.
+    gate = "if (Math.abs(pickerLayout.width - closedPickerWidth) <= 0.5) {"
+    assert gate in body
+    gated = body.split(gate, 1)[1]
     for prop in (
         "--edge-w", "--edge-chip-w", "--edge-chip-h", "--edge-chip-font", "--edge-pad-left", "--edge-pad-right",
         "--edge-radius-outer", "--edge-radius-inner", "--edge-chip-shadow",
     ):
-        assert f"root.setProperty('{prop}'" in body
+        assert body.count(f"root.setProperty('{prop}'") == 1, prop
+        assert f"root.setProperty('{prop}'" in gated, prop
 
 
 def test_edge_picker_is_border_box_so_edge_w_means_the_whole_pill():
     """ measured bug: `min-inline-size`/`inline-size` on a `content-box`
- element apply to the content area only, excluding padding -- with the
- picker's own 4px left padding, `min-inline-size: var(--edge-w)` produced a
- TOTAL width 4px wider than Iris's own real pill. `#badge-flag` (a real
- `<button>`) already got `box-sizing: border-box` for free from the
- browser's own UA default stylesheet (form controls default to
- border-box); `.edge-picker` (a plain `<div>`) does not, and needs it
- declared explicitly."""
+    element apply to the content area only, excluding padding -- with the
+    picker's own 4px left padding, `min-inline-size: var(--edge-w)` produced a
+    TOTAL width 4px wider than Iris's own real pill. `#badge-flag` (a real
+    `<button>`) already got `box-sizing: border-box` for free from the
+    browser's own UA default stylesheet (form controls default to
+    border-box); `.edge-picker` (a plain `<div>`) does not, and needs it
+    declared explicitly."""
     css = CERES_CSS.read_text(encoding="utf-8")
     picker_rule = _rule(css, ".edge-picker {")
     assert "box-sizing: border-box;" in picker_rule
@@ -90,8 +96,8 @@ def test_all_three_handles_consume_the_same_geometry_vars():
 
 def test_badge_bar_own_strip_width_is_unaffected_by():
     """The bar's own vertical-strip body keeps its dedicated, deliberately
- thinner `--badge-bar-w` () -- only widened the FLAG's own
- outer box to match the Wallet/Iris handles, not the strip itself."""
+    thinner `--badge-bar-w` () --  only widened the FLAG's own
+    outer box to match the Wallet/Iris handles, not the strip itself."""
     css = CERES_CSS.read_text(encoding="utf-8")
     bar_rule = next(
         (m.group(1) for m in re.finditer(r"(?:^|\n)\.badge-bar \{(.*?)\n\}\n", css, re.S) if "position: absolute;" in m.group(1)),

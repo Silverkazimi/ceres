@@ -102,9 +102,9 @@ def test_preview_refuses_staked_or_unstaking_card_with_reason(client, monkeypatc
 def test_preview_allows_card_with_ended_land_stake(client, monkeypatch):
     """stake_ref_uid persists after a stake ends -- a past stake_end_date must not block.
 
- Injection run: reverting `_state_reasons` to `elif record.get("stake_ref_uid"):`
- (bare presence, no stake_end_date check) made this go red -- combine was refused
- for both cards. Restored after observing red.
+    Injection run: reverting `_state_reasons` to `elif record.get("stake_ref_uid"):`
+    (bare presence, no stake_end_date check) made this go red -- combine was refused
+    for both cards. Restored after observing red.
     """
     cards = [
         card("G-TESTCARD01", 14, stake_ref_uid="I-294-a2b30476977796", stake_end_date="2026-02-25T00:00:00Z"),
@@ -122,9 +122,9 @@ def test_preview_allows_card_with_ended_land_stake(client, monkeypatch):
 def test_preview_still_refuses_live_land_stake_with_no_end_date(client, monkeypatch):
     """A live stake (stake_ref_uid present, stake_end_date unset) must still block.
 
- Injection run: dropping the `stake_ref_uid` block entirely (removing the `elif`
- branch from `_state_reasons`) made this go red -- the live-staked card was
- silently accepted. Restored after observing red.
+    Injection run: dropping the `stake_ref_uid` block entirely (removing the `elif`
+    branch from `_state_reasons`) made this go red -- the live-staked card was
+    silently accepted. Restored after observing red.
     """
     cards = [card("C-ZKE52WCJ40", 6, stake_ref_uid="I-294-5d33fb0c6734d1", stake_end_date=None), card("C-FREE", 2)]
     set_snapshot(monkeypatch, cards)

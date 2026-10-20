@@ -73,8 +73,8 @@ def _live_ceres(player: str):
 
 
 @pytest.fixture(scope="module")
-def player0016_browser() -> tuple[Browser, str]:
-    with _live_ceres("player0016") as value:
+def player0017_browser() -> tuple[Browser, str]:
+    with _live_ceres("player0017") as value:
         yield value
 
 
@@ -115,31 +115,31 @@ def _in_window_mutations(page: Page) -> dict:
     return page.evaluate(
         """
         async () => {
- window.scrollTo(0, 0);
- await new Promise(resolve => requestAnimationFrame(resolve));
- const tbody = document.querySelector('#plot-tbody');
- const before = [...tbody.querySelectorAll('tr.plot-row')].map(row => row.dataset.deedUid);
- let mutations = 0;
- const observer = new MutationObserver(records => { mutations += records.length; });
- observer.observe(tbody, {subtree: true, childList: true, attributes: true, characterData: true});
- window.scrollTo(0, 1);
- await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
- await new Promise(resolve => setTimeout(resolve, 50));
- observer.disconnect();
- const after = [...tbody.querySelectorAll('tr.plot-row')].map(row => row.dataset.deedUid);
- return {mutations, before, after, scrollY: window.scrollY};
- }
+          window.scrollTo(0, 0);
+          await new Promise(resolve => requestAnimationFrame(resolve));
+          const tbody = document.querySelector('#plot-tbody');
+          const before = [...tbody.querySelectorAll('tr.plot-row')].map(row => row.dataset.deedUid);
+          let mutations = 0;
+          const observer = new MutationObserver(records => { mutations += records.length; });
+          observer.observe(tbody, {subtree: true, childList: true, attributes: true, characterData: true});
+          window.scrollTo(0, 1);
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          await new Promise(resolve => setTimeout(resolve, 50));
+          observer.disconnect();
+          const after = [...tbody.querySelectorAll('tr.plot-row')].map(row => row.dataset.deedUid);
+          return {mutations, before, after, scrollY: window.scrollY};
+        }
         """
     )
 
 
-def test_small_in_window_scroll_has_zero_plot_tbody_mutations(player0016_browser: tuple[Browser, str]) -> None:
+def test_small_in_window_scroll_has_zero_plot_tbody_mutations(player0017_browser: tuple[Browser, str]) -> None:
     """Injection: replace the unchanged-window return with tbody.innerHTML = tbody.innerHTML; this went RED, then the unmodified source went GREEN.
- G1 (campaign plan revision 3, §2.3): anchor asserted present and unique before
- mutating; injection_seen asserted after, so a routing miss (e.g. the anchor
- moving to a post-split module this glob no longer covers) fails loudly instead
- of silently serving the real, unmutated file."""
-    browser, base_url = player0016_browser
+    G1 (campaign plan revision 3, §2.3): anchor asserted present and unique before
+    mutating; injection_seen asserted after, so a routing miss (e.g. the anchor
+    moving to a post-split module this glob no longer covers) fails loudly instead
+    of silently serving the real, unmutated file."""
+    browser, base_url = player0017_browser
     source = read_entry_source()
     anchor = "if (!force && start === MOUNTED_START && end === MOUNTED_END) return false;"
     assert source.count(anchor) == 1, "renderVirtualWindow()'s unchanged-window guard moved or is no longer unique"
@@ -169,11 +169,11 @@ def test_small_in_window_scroll_has_zero_plot_tbody_mutations(player0016_browser
     assert reverted["before"] == reverted["after"], reverted
 
 
-def test_player0016_mounted_window_is_bounded(player0016_browser: tuple[Browser, str]) -> None:
+def test_player0017_mounted_window_is_bounded(player0017_browser: tuple[Browser, str]) -> None:
     """Injection: replace tableWindow()'s range with [0, CURRENT_ROWS.length]; this went RED, then the unmodified source went GREEN.
- G1 (campaign plan revision 3, §2.3): anchor asserted present and unique before
- mutating; injection_seen asserted after."""
-    browser, base_url = player0016_browser
+    G1 (campaign plan revision 3, §2.3): anchor asserted present and unique before
+    mutating; injection_seen asserted after."""
+    browser, base_url = player0017_browser
     source = read_entry_source()
     anchor = "if (!force && start === MOUNTED_START && end === MOUNTED_END) return false;"
     assert source.count(anchor) == 1, "renderVirtualWindow()'s unchanged-window guard moved or is no longer unique"
@@ -220,30 +220,30 @@ def _rewindow_count_over_scroll(page: Page, *, step_px: int = 29, steps: int = 6
     return page.evaluate(
         f"""
         async () => {{
- window.scrollTo(0, 0);
- await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
- const tbody = document.querySelector('#plot-tbody');
- let rewindows = 0;
- const observer = new MutationObserver(() => {{ rewindows++; }});
- observer.observe(tbody, {{childList: true}});
- for (let i = 0; i < {steps}; i++) {{
- window.scrollBy(0, {step_px});
- await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
- }}
- observer.disconnect();
- return {{rewindows, scrollY: window.scrollY}};
- }}
+          window.scrollTo(0, 0);
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          const tbody = document.querySelector('#plot-tbody');
+          let rewindows = 0;
+          const observer = new MutationObserver(() => {{ rewindows++; }});
+          observer.observe(tbody, {{childList: true}});
+          for (let i = 0; i < {steps}; i++) {{
+            window.scrollBy(0, {step_px});
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          }}
+          observer.disconnect();
+          return {{rewindows, scrollY: window.scrollY}};
+        }}
         """
     )
 
 
-def test_player0016_row_window_is_quantized_not_per_frame(player0016_browser: tuple[Browser, str]) -> None:
+def test_player0017_row_window_is_quantized_not_per_frame(player0017_browser: tuple[Browser, str]) -> None:
     """Injection: set VIRTUAL_WINDOW_BLOCK to 1 (the pre-fix behaviour, re-window on
- nearly every scroll frame); this went RED (many more re-windows over the same
- 60-row scroll), then the unmodified source (VIRTUAL_WINDOW_BLOCK = 50) went GREEN.
- G1 (campaign plan revision 3, §2.3): anchor asserted present and unique before
- mutating (upgraded from a bare membership check); injection_seen asserted after."""
-    browser, base_url = player0016_browser
+    nearly every scroll frame); this went RED (many more re-windows over the same
+    60-row scroll), then the unmodified source (VIRTUAL_WINDOW_BLOCK = 50) went GREEN.
+    G1 (campaign plan revision 3, §2.3): anchor asserted present and unique before
+    mutating (upgraded from a bare membership check); injection_seen asserted after."""
+    browser, base_url = player0017_browser
     source = read_entry_source()
     anchor = "const VIRTUAL_WINDOW_BLOCK = 50;"
     assert source.count(anchor) == 1, "VIRTUAL_WINDOW_BLOCK declaration moved or is no longer unique"

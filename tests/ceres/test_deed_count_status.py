@@ -1,4 +1,4 @@
-"""the quick read publishes the plot count and a measured-rate time estimate on
+""": the quick read publishes the plot count and a measured-rate time estimate on
 the status payload as soon as the deeds bundle is in (`ceres.capture.record_quick_timing`
 / `estimate_quick_seconds`). The model is seeded from measured reads (`QUICK_TIMING_SEED`)
 and persisted to `quick-timing.json` under the Ceres data directory."""

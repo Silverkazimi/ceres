@@ -1,4 +1,4 @@
-"""a staged, unsigned lock change shows its target padlock in warn orange, pulsing like the badge clock, in the board cell."""
+"""/: a staged, unsigned lock change shows its target padlock in warn orange, pulsing like the badge clock, in the board cell."""
 from pathlib import Path
 
 STATIC = Path(__file__).parents[2] / "ceres" / "static"

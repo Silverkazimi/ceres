@@ -1,4 +1,4 @@
-"""staged workers that wait carry a Waiting badge with a live timer on their tile; the Changes rows count down too."""
+""": staged workers that wait carry a Waiting badge with a live timer on their tile; the Changes rows count down too."""
 
 from __future__ import annotations
 

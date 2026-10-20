@@ -7,7 +7,7 @@ import json
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres, wait_for_board
+from .conftest import settle, spawn_live_ceres, wait_for_board
 
 
 @pytest.fixture(scope="module")
@@ -119,19 +119,19 @@ def _one_chunk_preview(deed_uid: str) -> dict:
 def _counting_keychain() -> str:
     return """
         window.__hkRefusalBroadcastCount = 0;
- window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
- window.__hkRefusalBroadcastCount += 1;
- callback({success: true, result: {id: `HK-REFUSED-TX-${window.__hkRefusalBroadcastCount}`}});
- }};
+        window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
+          window.__hkRefusalBroadcastCount += 1;
+          callback({success: true, result: {id: `HK-REFUSED-TX-${window.__hkRefusalBroadcastCount}`}});
+        }};
     """
 
 
 def test_game_refusal_aborts_later_checkout_chunks(live_browser: tuple[Browser, str]) -> None:
     """A first-chunk game refusal is terminal for this checkout sequence.
 
- Mutation evidence for a separate verifier: replace the terminal throw in
- `verifyBroadcast()`'s `game-refused` branch with `return result`. This test then
- goes red because the integer Keychain count becomes 2 instead of 1.
+    Mutation evidence for a separate verifier: replace the terminal throw in
+    `verifyBroadcast()`'s `game-refused` branch with `return result`. This test then
+    goes red because the integer Keychain count becomes 2 instead of 1.
     """
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
@@ -224,7 +224,7 @@ def test_polled_game_refusal_is_handled_without_an_unhandled_rejection(
     panel.locator("button[data-op-action='confirm']").click()
     page.wait_for_function("window.__hkRefusalBroadcastCount === 1", timeout=30_000)
     page.wait_for_function("document.querySelector('#ceres-confirmation-banner')?.textContent.includes('A later game check refused this operation.')", timeout=30_000)
-    page.wait_for_timeout(50)
+    settle(page)
     assert attempts["count"] == 2
     assert page.evaluate("window.__hkRefusalBroadcastCount") == 1
     assert page_errors == []

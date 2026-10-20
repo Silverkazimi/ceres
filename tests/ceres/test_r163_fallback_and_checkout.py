@@ -33,12 +33,12 @@ def _fallback_body() -> str:
 
 def test_the_eos_art_fallback_does_not_print_the_card_name():
     """RED MUTATION: restore the `.card-art-fallback-name` span and re-add it to
- `card.append(...)` in eos.js's fallback(). This must turn red.
+    `card.append(...)` in eos.js's fallback(). This must turn red.
 
- The fix's own explanatory comment names the removed class for documentation (why no
- CSS change belongs here -- `.card-art-fallback-name` stays live for editor.js's
- separate non-Eos path), so the guard checks for the class actually being BUILT
- (`className = '...'`/`classList.add('...')`), not merely mentioned in prose."""
+    The fix's own explanatory comment names the removed class for documentation (why no
+    CSS change belongs here -- `.card-art-fallback-name` stays live for editor.js's
+    separate non-Eos path), so the guard checks for the class actually being BUILT
+    (`className = '...'`/`classList.add('...')`), not merely mentioned in prose."""
     body = _fallback_body()
     assert not re.search(r"(?:className\s*=|classList\.add\()\s*['\"][^'\"]*card-art-fallback-name", body), (
         "the Eos fallback builds a card-name span again; that is the duplicate the maintainer "
@@ -51,7 +51,7 @@ def test_the_eos_art_fallback_does_not_print_the_card_name():
 
 def test_the_bottom_caption_name_is_untouched():
     """RED MUTATION: delete `.slot-name` from editor.js's caption. Removing the BOTTOM
- occurrence would satisfy the defect report and violate R-163 in the same commit."""
+    occurrence would satisfy the defect report and violate R-163 in the same commit."""
     editor = (ROOT / "ceres" / "static" / "editor.js").read_text(encoding="utf-8")
     assert "slot-name" in editor, "the bottom caption name is the one his ruling keeps"
 
@@ -74,20 +74,20 @@ HTML = (ROOT / "ceres" / "static" / "index.html").read_text(encoding="utf-8")
 
 def test_the_word_carrying_header_buttons_outrank_the_square_family_rule():
     """The checkout button now carries the shared `.ceres-btn` contract rather than a
- bespoke square rule, so its width is the shared token's `auto` default, not a fixed
- square that would clip a "Checkout 3" label.
+    bespoke square rule, so its width is the shared token's `auto` default, not a fixed
+    square that would clip a "Checkout 3" label.
 
- RED MUTATION: give `.ceres-btn` a fixed `--ceres-control-min-inline` (drop the
- `auto` default). This must turn red."""
+    RED MUTATION: give `.ceres-btn` a fixed `--ceres-control-min-inline` (drop the
+    `auto` default). This must turn red."""
     assert 'class="checkout-btn ceres-btn ceres-btn--primary"' in HTML, (
         "the checkout button must carry the shared ceres-btn contract, not a bespoke rule"
     )
-    assert "ceres-control-min-inline: auto;" in BUTTONS_CSS
+    assert "--ceres-control-min-inline: auto;" in BUTTONS_CSS
 
 
 def test_the_count_and_the_label_share_one_row():
     """RED MUTATION: change `.ceres-btn`'s display to `inline-grid` with rows (drop the
- row-flow layout), reintroducing the two-line rendering reported."""
+    row-flow layout), reintroducing the two-line rendering  reported."""
     start = BUTTONS_CSS.index("\n.ceres-btn {\n")
     block = BUTTONS_CSS[start:BUTTONS_CSS.index("}", start) + 1]
     assert re.search(r"display:\s*inline-flex", block), (
@@ -98,8 +98,8 @@ def test_the_count_and_the_label_share_one_row():
 
 def test_the_hidden_state_guard_survives():
     """RED MUTATION: drop the `.ceres-btn[hidden] { display: none }` reinforcement. That
- qualifier is what stops the old specificity war (a `display` declaration outranking
- the UA `[hidden] { display: none }`) from ever recurring under the shared button
- system -- without it a future density/variant rule could again outrank `[hidden]`
- and paint "Checkout 0" on every empty board, under the Iris picker."""
+    qualifier is what stops the old specificity war (a `display` declaration outranking
+    the UA `[hidden] { display: none }`) from ever recurring under the shared button
+    system -- without it a future density/variant rule could again outrank `[hidden]`
+    and paint "Checkout 0" on every empty board, under the Iris picker."""
     assert re.search(r"\.ceres-btn\[hidden\],\s*\n\.ceres-btn-group\[hidden\]\s*\{\s*\n\s*display:\s*none;", BUTTONS_CSS)

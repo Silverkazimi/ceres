@@ -26,7 +26,7 @@ def test_fill_tooltips_use_the_approved_copy() -> None:
 
 
 def test_fill_style_and_alchemical_arrow_override_are_scoped() -> None:
-    styles = CSS[CSS.index("button.slot-bulk.fill-action") : CSS.index("*")]
+    styles = CSS[CSS.index("button.slot-bulk.fill-action") : CSS.index("/* :")]
     assert ".picker-bar-end .picker-keep-open.fill-action" in styles
     assert "background: color-mix(in srgb, var(--primary) 18%, var(--bg3))" in styles
     assert "border-color: var(--primary)" in styles
@@ -34,5 +34,5 @@ def test_fill_style_and_alchemical_arrow_override_are_scoped() -> None:
     assert ".fill-action .hdr-ic .f { fill: color-mix(in srgb, var(--hi) 84%, var(--primary)); }" in styles
     assert ".fill-action .hdr-ic .d { fill: none; stroke: color-mix(in srgb, var(--primary) 62%, var(--shadow));" in styles
     assert ".fill-action .hdr-ic .a.h { fill: none; stroke: var(--gold);" in styles
-    assert "root:not([data-theme]) .fill-action .hdr-ic .a.h" in styles
+    assert ":root:not([data-theme]) .fill-action .hdr-ic .a.h" in styles
     assert '[data-theme="alchemical"] .fill-action .hdr-ic .a.h { stroke: var(--hi); }' in styles

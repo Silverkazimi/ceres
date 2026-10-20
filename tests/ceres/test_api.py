@@ -20,9 +20,9 @@ from ceres.config import CeresConfig
 @pytest.fixture(autouse=True)
 def block_real_sockets(monkeypatch):
     """Block outbound network connections without breaking TestClient's own in-process
- AF_UNIX socketpair (used internally by its anyio event-loop plumbing, not the
- network) -- patching `socket.socket` itself blocks that plumbing too, so this
- patches `create_connection` (the actual outbound-connect path urllib/httpx use)."""
+    AF_UNIX socketpair (used internally by its anyio event-loop plumbing, not the
+    network) -- patching `socket.socket` itself blocks that plumbing too, so this
+    patches `create_connection` (the actual outbound-connect path urllib/httpx use)."""
     def _raise(*args, **kwargs):
         raise AssertionError("test_api.py must not open a real outbound network connection")
 
@@ -139,7 +139,7 @@ def test_capture_refresh_reports_stale_generation_as_superseded_noop(client, mon
 def test_capture_refresh_rejects_partial_or_unbounded_load_identity(client):
     assert client.post("/api/capture/refresh?load_id=tab-1").status_code == 400
     assert client.post("/api/capture/refresh?load_generation=1").status_code == 400
-    assert client.post(f"api/capture/refresh?load_id={'x' * 129}&load_generation=1").status_code == 400
+    assert client.post(f"/api/capture/refresh?load_id={'x' * 129}&load_generation=1").status_code == 400
 
 
 def test_capture_estimate_reports_deed_count_and_cost(client, monkeypatch):
@@ -147,10 +147,10 @@ def test_capture_estimate_reports_deed_count_and_cost(client, monkeypatch):
         capture_mod, "estimate_capture",
         lambda player: {"player": player, "deeds": 6303, "requests_estimated": 6970, "estimated_seconds": 2091.0, "estimated_minutes": 34.9},
     )
-    resp = client.get("/api/capture/estimate", params={"player": "player0016"})
+    resp = client.get("/api/capture/estimate", params={"player": "player0017"})
     assert resp.status_code == 200
     body = resp.json()
-    assert body["player"] == "player0016"
+    assert body["player"] == "player0017"
     assert body["deeds"] == 6303
     assert body["estimated_minutes"] == 34.9
 
@@ -160,7 +160,7 @@ def test_capture_estimate_502_when_preflight_fails(client, monkeypatch):
         raise RuntimeError("upstream down")
 
     monkeypatch.setattr(capture_mod, "estimate_capture", boom)
-    resp = client.get("/api/capture/estimate", params={"player": "player0016"})
+    resp = client.get("/api/capture/estimate", params={"player": "player0017"})
     assert resp.status_code == 502
 
 

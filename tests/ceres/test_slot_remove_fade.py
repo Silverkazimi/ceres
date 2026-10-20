@@ -33,7 +33,8 @@ def test_slot_remove_uses_red_glyph_on_dark_surface_and_fades():
     )
 
     assert re.search(
-        r"@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*\"\n r\"\.ceres-btn\.slot-remove\s*\{[^}]*\btransition\s*:\s*none\s*;",
+        r"@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*"
+        r"\.ceres-btn\.slot-remove\s*\{[^}]*\btransition\s*:\s*none\s*;",
         buttons,
     )
 

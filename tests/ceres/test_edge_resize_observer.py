@@ -44,9 +44,9 @@ def test_observer_callback_skips_while_the_tray_is_open():
 
 def test_observer_reuses_the_existing_raf_debounce_not_a_second_one():
     """`scheduleCenterThemePicker()` is already rAF-debounced -- the observer
- must call that, not `centerThemePicker()` directly (which would skip the
- debounce and could run synchronously inside the observer's own callback,
- a context browsers restrict layout work in)."""
+    must call that, not `centerThemePicker()` directly (which would skip the
+    debounce and could run synchronously inside the observer's own callback,
+    a context browsers restrict layout work in)."""
     js = APP_JS.read_text(encoding="utf-8")
     body = _fn(js, "initEdgeGeometryObserver")
     assert "centerThemePicker();" not in body
@@ -55,9 +55,9 @@ def test_observer_reuses_the_existing_raf_debounce_not_a_second_one():
 
 def test_toggle_img_load_listener_is_defensive_future_proofing():
     """theme.js's own vendored toggle carries only emoji text today (no
- <img>) -- this listener attaches to zero elements and does nothing until
- a future Iris release or project-local change mounts an image into it,
- matching the maintainer's own screenshot description."""
+    <img>) -- this listener attaches to zero elements and does nothing until
+    a future Iris release or project-local change mounts an image into it,
+    matching the maintainer's own screenshot description."""
     js = APP_JS.read_text(encoding="utf-8")
     body = _fn(js, "initEdgeGeometryObserver")
     assert "toggle.querySelectorAll('img').forEach((img) => {" in body
@@ -70,21 +70,24 @@ def test_toggle_img_load_listener_is_defensive_future_proofing():
 def test_initEdgeGeometryObserver_is_wired_into_init():
     js = APP_JS.read_text(encoding="utf-8")
     assert "mountThemePicker({ storageKey: 'ceres:theme', defaultTheme: 'dark' });" in js
-    assert "initEdgeGeometryObserver()" in js
+    assert "initEdgeGeometryObserver(); // " in js
     # Wired right after mountThemePicker() -- .theme-picker/.theme-toggle must
     # already exist in the DOM before the observer tries to select them.
     idx_mount = js.index("mountThemePicker({ storageKey: 'ceres:theme', defaultTheme: 'dark' });")
-    idx_observer = js.index("initEdgeGeometryObserver()")
+    # The top-level call in ready() has a unique two-space indent; definition and watcher calls differ.
+    observer_call = re.compile(r"(?m)^  initEdgeGeometryObserver\(\);(?:\s*//[^\n]*)?$")
+    assert len(observer_call.findall(js)) == 1
+    idx_observer = observer_call.search(js).start()
     assert idx_observer > idx_mount
     assert idx_observer - idx_mount < 200  # adjacent lines, not buried elsewhere
 
 
 def test_observer_disconnects_the_old_resize_observer_on_remount():
     """theme.js's mountThemePicker() calls its own `_unmount()` first, which removes
- the `.theme-picker`/`.theme-toggle` nodes this file's ResizeObserver watches. Since
- theme.js is vendored Iris canonical code (see its own header) and must not be
- edited here, app.js instead disconnects and rebuilds its own observer, and watches
- the picker's host for childList changes to know when to do so."""
+    the `.theme-picker`/`.theme-toggle` nodes this file's ResizeObserver watches. Since
+    theme.js is vendored Iris canonical code (see its own header) and must not be
+    edited here, app.js instead disconnects and rebuilds its own observer, and watches
+    the picker's host for childList changes to know when to do so."""
     js = APP_JS.read_text(encoding="utf-8")
     body = _fn(js, "initEdgeGeometryObserver")
     assert "if (EDGE_GEOMETRY_OBSERVER) {" in body
@@ -106,9 +109,12 @@ def test_watch_remount_is_wired_right_after_the_observer():
     assert "new MutationObserver(" in body
     assert "initEdgeGeometryObserver();" in body
     assert ".observe(host, { childList: true });" in body
-    assert "watchThemePickerRemount()" in js
-    idx_observer = js.index("initEdgeGeometryObserver()")
-    idx_watch = js.index("watchThemePickerRemount()")
+    assert "watchThemePickerRemount(); // " in js
+    # The top-level call in ready() has a unique two-space indent; definition and watcher calls differ.
+    observer_call = re.compile(r"(?m)^  initEdgeGeometryObserver\(\);(?:\s*//[^\n]*)?$")
+    assert len(observer_call.findall(js)) == 1
+    idx_observer = observer_call.search(js).start()
+    idx_watch = js.index("watchThemePickerRemount(); // ")
     assert idx_watch > idx_observer
     assert idx_watch - idx_observer < 100
 

@@ -42,9 +42,9 @@ def test_filled_unpowered_worker_emits_explicit_slot_warning_and_live_pp():
 def test_unpowered_worker_badge_is_union_of_worker_fact_and_bulk_deficit():
     """Injection: make either evidence source overrule the other.
 
- The first case injects an unpowered worker while the bulk pair is healthy;
- the second injects a bulk deficit while no per-worker rows are available.
- Both independent facts must emit the same badge.
+    The first case injects an unpowered worker while the bulk pair is healthy;
+    the second injects a bulk deficit while no per-worker rows are available.
+    Both independent facts must emit the same badge.
     """
     worker_fact_report = build_report()
     deed_uid = "I-295-eb4b408d045087"

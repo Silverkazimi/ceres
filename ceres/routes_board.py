@@ -76,7 +76,7 @@ _board_cache_lock = threading.Lock()
 _board_cache_bytes: dict[tuple[str, str, bool, str], int] = {}
 _board_cache_total_bytes = 0
 # Byte budget alongside the entry cap above: `BOARD_CACHE_MAXSIZE` bounds ENTRY COUNT
-# not size -- a whale (player0016) lean board alone retains 67.0 MB, so 64 entries is
+# not size -- a whale (player0017) lean board alone retains 67.0 MB, so 64 entries is
 # nominally gigabytes on a shared deployment. 150MB fits roughly two whale-sized boards
 # at once, the realistic worst case for a small public deployment ().
 BOARD_CACHE_MAX_BYTES = 150 * 1024 * 1024
@@ -275,7 +275,7 @@ def _cached_project_board(report, ref, details_by_id, lean, player):
     return dict(board), key, token, details_mtime_ns
 
 
-# (2026-09-20 speed audit, F4): a whale account's board (`player0016`, 6,303
+# (2026-09-20 speed audit, F4): a whale account's board (`player0017`, 6,303
 # plots) paid ~3s of CPU on EVERY `/api/board` read of the SAME snapshot -- build
 # JSON-serialize and gzip -- even though `_cached_project_board` above already
 # cached the built board OBJECT. The cost this cache removes is the serialize+gzip

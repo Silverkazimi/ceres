@@ -93,7 +93,7 @@ def test_an_unanswered_or_incomplete_live_read_leaves_the_report_as_it_was(monke
 
 
 def test_the_live_slot_read_stores_nothing():
-    """the reader behind read_plot_live refuses any cache read or write."""
+    """: the reader behind read_plot_live refuses any cache read or write."""
     from pathlib import Path
 
     source = Path(capture_mod.__file__).read_text()

@@ -482,8 +482,8 @@ def test_g12_board_loading_copy_uses_plot_progress_without_request_fallback():
 
     result = run_in_module_context("""
       const absent = boardLoadingMessage({requests_made: 99});
- const progress = boardLoadingMessage({fetched_deeds: 2, total_deeds: 3, requests_made: 99});
- console.log(JSON.stringify({absent, progress}));
+      const progress = boardLoadingMessage({fetched_deeds: 2, total_deeds: 3, requests_made: 99});
+      console.log(JSON.stringify({absent, progress}));
     """)
     rendered = json.loads(result.stdout)
     assert rendered["absent"] == "Reading your plots…"

@@ -1,4 +1,4 @@
-"""the living style guide at /styleguide.
+""": the living style guide at /styleguide.
 
 The page is read only: served like /cards (version tokens, revalidated document, CSP), links every real Ceres stylesheet
 with the served-version cache key, reads no data (no fetch, no /api), never shows a UID, and names rule ids that exist
@@ -79,15 +79,22 @@ def test_every_real_stylesheet_is_linked_with_the_served_cache_key():
     assert links[:-1] == ["ceres.css", "buttons.css", "badge-colours.css", "mobile-plot.css", "card-browser.css", "card-checkout.css"]
 
 
+HEADER_ICONS_JS = STATIC / "header-icons.js"  # the header switcher's icons (plain script, no reads)
+
+
 def test_no_data_reads():
-    for path in (HTML, JS, CSS):
+    for path in (HTML, JS, CSS, HEADER_ICONS_JS):
         source = path.read_text(encoding="utf-8")
         assert "fetch(" not in source, path.name
         assert "XMLHttpRequest" not in source and "EventSource" not in source and "WebSocket" not in source, path.name
         assert "/api" not in source, path.name
     html = HTML.read_text(encoding="utf-8")
     scripts = re.findall(r'<script[^>]*\bsrc="([^"]+)"', html)
-    assert scripts == ["/static/styleguide.js?v={{CERES_VERSION}}"], "no other script (version-banner.js polls /api/dev/watch)"
+    assert scripts == [
+        "/static/header-icons.js?v={{CERES_VERSION}}",
+        "/static/styleguide.js?v={{CERES_VERSION}}",
+    ], "no other script (version-banner.js polls /api/dev/watch)"
+    assert "import " not in HEADER_ICONS_JS.read_text(encoding="utf-8")
     imports = set(re.findall(r"""^import\s.*?from\s+['"]([^'"]+)['"];""", JS.read_text(encoding="utf-8"), re.M | re.S))
     assert imports and imports <= ALLOWED_IMPORTS, imports - ALLOWED_IMPORTS
 

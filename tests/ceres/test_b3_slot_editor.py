@@ -1,6 +1,6 @@
 """Ceres B3 Phase 1 browser guards for the per-card Base PP ghost grid.
 
-The mutation observations in the test docstrings are part of the record.
+The mutation observations in the test docstrings are part of the  record.
 """
 
 from __future__ import annotations
@@ -110,58 +110,58 @@ def _expanded_with_button(page: Page) -> Page:
 def _geometry(expanded: Page) -> dict:
     return expanded.locator(".slot-editor").evaluate(
         """root => {
- const grid = root.querySelector('.slot-grid');
- const row = root.querySelector('.editor-base-pp-row');
- const rects = node => [...node.children].map(child => {
- const rect = child.getBoundingClientRect();
- return {left: rect.left, right: rect.right, center: (rect.left + rect.right) / 2, width: rect.width};
- });
- return {
- gridScrollWidth: grid.scrollWidth,
- gridClientWidth: grid.clientWidth,
- rowBox: {left: row.getBoundingClientRect().left, width: row.getBoundingClientRect().width,
- scrollWidth: row.scrollWidth, clientWidth: row.clientWidth,
- flex: getComputedStyle(row).flex, minWidth: getComputedStyle(row).minWidth},
- grid: rects(grid),
- row: rects(row),
- firstGridLeft: grid.children[0].getBoundingClientRect().left,
- firstRowLeft: row.children[0].getBoundingClientRect().left,
- };
- }"""
+          const grid = root.querySelector('.slot-grid');
+          const row = root.querySelector('.editor-base-pp-row');
+          const rects = node => [...node.children].map(child => {
+            const rect = child.getBoundingClientRect();
+            return {left: rect.left, right: rect.right, center: (rect.left + rect.right) / 2, width: rect.width};
+          });
+          return {
+            gridScrollWidth: grid.scrollWidth,
+            gridClientWidth: grid.clientWidth,
+            rowBox: {left: row.getBoundingClientRect().left, width: row.getBoundingClientRect().width,
+              scrollWidth: row.scrollWidth, clientWidth: row.clientWidth,
+              flex: getComputedStyle(row).flex, minWidth: getComputedStyle(row).minWidth},
+            grid: rects(grid),
+            row: rects(row),
+            firstGridLeft: grid.children[0].getBoundingClientRect().left,
+            firstRowLeft: row.children[0].getBoundingClientRect().left,
+          };
+        }"""
     )
 
 
 def _footer_measurements(expanded: Page) -> dict:
     return expanded.locator(".slot-editor").evaluate(
         """root => {
- const footer = root.querySelector('.slot-editor-footer');
- const band = root.querySelector('.editor-band');
- const footerRect = footer.getBoundingClientRect();
- const style = getComputedStyle(footer);
- const borderLeft = parseFloat(style.borderLeftWidth) || 0;
- const borderRight = parseFloat(style.borderRightWidth) || 0;
- const paddingLeft = parseFloat(style.paddingLeft) || 0;
- const paddingRight = parseFloat(style.paddingRight) || 0;
- const contentLeft = footerRect.left + borderLeft + paddingLeft;
- const contentWidth = footer.clientWidth - borderLeft - borderRight - paddingLeft - paddingRight;
- const children = [...footer.children].map(child => {
- const rect = child.getBoundingClientRect();
- const childStyle = getComputedStyle(child);
- return {node: child, top: rect.top, bottom: rect.bottom, height: rect.height,
- left: rect.left, width: rect.width, position: childStyle.position};
- }).filter(item => item.position !== 'absolute' && item.width > 0 && item.height > 0);
- const lineTops = [];
- for (const item of children.sort((a, b) => a.top - b.top)) {
- if (!lineTops.some(top => Math.abs(top - item.top) <= 0.5)) lineTops.push(item.top);
- }
- return {
- footer: footerRect.height,
- band: band.getBoundingClientRect().height,
- contentLeft,
- contentWidth,
- lineTops,
- };
- }"""
+          const footer = root.querySelector('.slot-editor-footer');
+          const band = root.querySelector('.editor-band');
+          const footerRect = footer.getBoundingClientRect();
+          const style = getComputedStyle(footer);
+          const borderLeft = parseFloat(style.borderLeftWidth) || 0;
+          const borderRight = parseFloat(style.borderRightWidth) || 0;
+          const paddingLeft = parseFloat(style.paddingLeft) || 0;
+          const paddingRight = parseFloat(style.paddingRight) || 0;
+          const contentLeft = footerRect.left + borderLeft + paddingLeft;
+          const contentWidth = footer.clientWidth - borderLeft - borderRight - paddingLeft - paddingRight;
+          const children = [...footer.children].map(child => {
+            const rect = child.getBoundingClientRect();
+            const childStyle = getComputedStyle(child);
+            return {node: child, top: rect.top, bottom: rect.bottom, height: rect.height,
+              left: rect.left, width: rect.width, position: childStyle.position};
+          }).filter(item => item.position !== 'absolute' && item.width > 0 && item.height > 0);
+          const lineTops = [];
+          for (const item of children.sort((a, b) => a.top - b.top)) {
+            if (!lineTops.some(top => Math.abs(top - item.top) <= 0.5)) lineTops.push(item.top);
+          }
+          return {
+            footer: footerRect.height,
+            band: band.getBoundingClientRect().height,
+            contentLeft,
+            contentWidth,
+            lineTops,
+          };
+        }"""
     )
 
 
@@ -220,9 +220,9 @@ def _composited_contrast(cell, foreground: str) -> dict:
 
 def test_t1_figure_cells_align_with_every_tile_column(live_browser: tuple[Browser, str]) -> None:
     """Injection: `.editor-base-pp-divider { margin: 0; }` made the divider itself miss by
- 14.39px and later columns drift by 28.78px, turning this red; removing it restored green. The live
- precondition also observed `scrollWidth == clientWidth` at 1920px before comparing
- the eight shared columns."""
+    14.39px and later columns drift by 28.78px, turning this red; removing it restored green. The live
+    precondition also observed `scrollWidth == clientWidth` at 1920px before comparing
+    the eight shared columns."""
     page = _page(live_browser)
     _, expanded = _fixture_expanded(page)
     if os.environ.get("B3_INJECTION") == "t1_divider":
@@ -238,8 +238,8 @@ def test_t1_figure_cells_align_with_every_tile_column(live_browser: tuple[Browse
 
 def test_t2_change_worksite_button_stays_at_head_position(live_browser: tuple[Browser, str]) -> None:
     """Injection: moving `.editor-base-pp-row` before `.worksite-change-btn` moved the
- button right by the row width plus the footer gap and turned this red; restoring the
- `${worksiteChange}${basePpRow}` order made it green. HEAD measured 115.59375px."""
+    button right by the row width plus the footer gap and turned this red; restoring the
+    `${worksiteChange}${basePpRow}` order made it green. HEAD measured 115.59375px."""
     page = _page(live_browser)
     expanded = _expanded_with_button(page)
     if os.environ.get("B3_INJECTION") == "t2_before_button":
@@ -253,8 +253,8 @@ def test_t2_change_worksite_button_stays_at_head_position(live_browser: tuple[Br
 
 def test_t3_footer_and_band_heights_match_head(live_browser: tuple[Browser, str]) -> None:
     """Injection: adding a second rendered line with `.editor-base-pp-cell::after` grew
- the footer by 9.27px and turned this red; removing the stacked-line injection
- restored green. HEAD measured footer 30.921875px and band 282px."""
+    the footer by 9.27px and turned this red; removing the stacked-line injection
+    restored green. HEAD measured footer 30.921875px and band 282px."""
     page = _page(live_browser)
     expanded = _expanded_with_button(page)
     if os.environ.get("B3_INJECTION") == "t3_stacked":
@@ -269,19 +269,19 @@ def test_t3_footer_and_band_heights_match_head(live_browser: tuple[Browser, str]
 
 def test_t4_figures_use_served_worker_runi_and_item_values(live_browser: tuple[Browser, str]) -> None:
     """Injection: deleting power/item descriptors removed `1,500`, `+50%`, and `+10%`
- and turned this red; restoring the shared descriptor array made it green. The named
- fixture observed worker strings `32,941` twice, Runi `1,500`, Totem `+50%`, Title
- `+10%`, and the clipped worker's approved cap-shortfall sentence in its tooltip.
- The re-recorded P3 injection remains `B3_INJECTION=t4_descriptors`; it still turns
- this assertion red without changing the clipped-cell assertion itself."""
+    and turned this red; restoring the shared descriptor array made it green. The named
+    fixture observed worker strings `32,941` twice, Runi `1,500`, Totem `+50%`, Title
+    `+10%`, and the clipped worker's approved cap-shortfall sentence in its tooltip.
+    The re-recorded P3 injection remains `B3_INJECTION=t4_descriptors`; it still turns
+    this assertion red without changing the clipped-cell assertion itself."""
     page = _page(live_browser)
     _, expanded = _fixture_expanded(page)
     row = expanded.locator(".editor-base-pp-row")
     if os.environ.get("B3_INJECTION") == "t4_descriptors":
         page.evaluate("""root => {
- const row = root.querySelector('.editor-base-pp-row');
- [...row.children].filter(node => node.matches('.editor-base-pp-cell')).slice(6).forEach(node => node.remove());
- }""", expanded.locator(".slot-editor").element_handle())
+          const row = root.querySelector('.editor-base-pp-row');
+          [...row.children].filter(node => node.matches('.editor-base-pp-cell')).slice(6).forEach(node => node.remove());
+        }""", expanded.locator(".slot-editor").element_handle())
     text = row.inner_text()
     assert text.count("32,941") == 2
     assert "1,500" in text
@@ -294,11 +294,11 @@ def test_t4_figures_use_served_worker_runi_and_item_values(live_browser: tuple[B
 
 def test_t5_figure_text_contrast_clears_wcag_in_all_themes(live_browser: tuple[Browser, str]) -> None:
     """Injection: changing filled-cell text to `var(--meta)` failed alchemical and wood
- at 2.97:1 and 3.16:1 and turned this red; restoring `var(--heading)` made it green.
- This guard hides the glyph, screenshots the actual composited pixels behind its box,
- and asserts the chosen themed `--bg3` mix against `--heading` in all four themes.
- It samples one worksite's art; other artwork is not covered. The measured minimum
- contrast table on the real busy worksite art is recorded by the guarded run below.
+    at 2.97:1 and 3.16:1 and turned this red; restoring `var(--heading)` made it green.
+    This guard hides the glyph, screenshots the actual composited pixels behind its box,
+    and asserts the chosen themed `--bg3` mix against `--heading` in all four themes.
+    It samples one worksite's art; other artwork is not covered. The measured minimum
+    contrast table on the real busy worksite art is recorded by the guarded run below.
     """
     assert f"var(--bg3) {BADGE_BG_ALPHA}%, transparent" in CSS.read_text(encoding="utf-8")
     page = _page(live_browser)
@@ -309,16 +309,16 @@ def test_t5_figure_text_contrast_clears_wcag_in_all_themes(live_browser: tuple[B
     scene_background = scene.evaluate("node => getComputedStyle(node, '::before').backgroundImage")
     assert "url(" in scene_background
     page.evaluate("""() => {
- const style = document.createElement('style');
- style.id = 'b3-alpha-probe';
- document.head.append(style);
- }""")
+      const style = document.createElement('style');
+      style.id = 'b3-alpha-probe';
+      document.head.append(style);
+    }""")
     measured = {}
     for alpha in (70, 60, 50, 80, BADGE_BG_ALPHA):
         page.evaluate("""alpha => {
- document.querySelector('#b3-alpha-probe').textContent =
- `.editor-base-pp-cell.is-filled { background: color-mix(in srgb, var(--bg3) ${alpha}%, transparent) !important; }`;
- }""", alpha)
+          document.querySelector('#b3-alpha-probe').textContent =
+            `.editor-base-pp-cell.is-filled { background: color-mix(in srgb, var(--bg3) ${alpha}%, transparent) !important; }`;
+        }""", alpha)
         measured[alpha] = {}
         for theme in ("alchemical", "dark", "light", "wood"):
             page.evaluate("theme => document.documentElement.setAttribute('data-theme', theme)", theme)
@@ -328,7 +328,7 @@ def test_t5_figure_text_contrast_clears_wcag_in_all_themes(live_browser: tuple[B
             assert max(sample["unique_pixels"] for sample in samples) >= 4, (alpha, theme, samples)
             assert max(sample["luminance_span"] for sample in samples) >= 0.01, (alpha, theme, samples)
             measured[alpha][theme] = min(sample["min"] for sample in samples)
-    print("T-5 composited contrast table " + json.dumps(measured, sort_keys=True))
+    print("T-5 composited contrast table: " + json.dumps(measured, sort_keys=True))
     for theme in ("alchemical", "dark", "light", "wood"):
         assert measured[BADGE_BG_ALPHA][theme] >= WCAG_AA_MIN, (theme, measured)
     page.close()
@@ -336,26 +336,26 @@ def test_t5_figure_text_contrast_clears_wcag_in_all_themes(live_browser: tuple[B
 
 def test_t12_filled_cell_inner_b_is_transparent(live_browser: tuple[Browser, str]) -> None:
     """The filled cell owns the semi-transparent badge; its inner `<b>` is not a second
- chip. Injection removes the winning `.slot-editor-footer .editor-base-pp-cell b`
- selector and prepends the original plain `.editor-base-pp-cell b` rule. That equal-
- specificity rule loses to the later frozen `.slot-editor-footer b`, and this assertion
- turns red after observing the nested themed background, 3.2px horizontal padding, and
- themed radius; the higher-specificity selector restores transparent/0/0. """
+    chip. Injection removes the winning `.slot-editor-footer .editor-base-pp-cell b`
+    selector and prepends the original plain `.editor-base-pp-cell b` rule. That equal-
+    specificity rule loses to the later frozen `.slot-editor-footer b`, and this assertion
+    turns red after observing the nested themed background, 3.2px horizontal padding, and
+    themed radius; the higher-specificity selector restores transparent/0/0. """
     page = _page(live_browser)
     _, expanded = _fixture_expanded(page)
     if os.environ.get("B3_INJECTION") == "t12_plain_selector":
         page.evaluate("""() => {
- for (const sheet of document.styleSheets) {
- for (const rule of [...sheet.cssRules || []]) {
- if (rule.selectorText === '.slot-editor-footer .editor-base-pp-cell b') {
- sheet.deleteRule([...sheet.cssRules].indexOf(rule));
- }
- }
- }
- const style = document.createElement('style');
- style.textContent = '.editor-base-pp-cell b { padding: 0; border-radius: 0; background: none; }';
- document.head.prepend(style);
- }""")
+          for (const sheet of document.styleSheets) {
+            for (const rule of [...sheet.cssRules || []]) {
+              if (rule.selectorText === '.slot-editor-footer .editor-base-pp-cell b') {
+                sheet.deleteRule([...sheet.cssRules].indexOf(rule));
+              }
+            }
+          }
+          const style = document.createElement('style');
+          style.textContent = '.editor-base-pp-cell b { padding: 0; border-radius: 0; background: none; }';
+          document.head.prepend(style);
+        }""")
     styles = expanded.locator(".editor-base-pp-cell.is-filled b").first.evaluate(
         "node => { const s = getComputedStyle(node); return {background: s.backgroundColor, padding: s.padding, radius: s.borderRadius}; }"
     )
@@ -373,7 +373,7 @@ def _css_rule(source: str, selector: str) -> str:
 
 def test_t11_frozen_css_rules_remain_byte_identical() -> None:
     """Injection: changing any frozen rule made the byte comparison red; reverting the
- edit made it green. This is the CI-adjacent source-byte guard required by T-11."""
+    edit made it green. This is the CI-adjacent source-byte guard required by T-11."""
     source = CSS.read_text(encoding="utf-8")
     expected = {
         ".editor-facts": ".editor-facts { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.2rem 0.9rem; margin-bottom: 0.3rem; min-height: 1.15rem; font-size: 0.69rem; color: var(--hi); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85); }",

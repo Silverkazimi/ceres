@@ -1,4 +1,4 @@
-""" Soulkeep (edition 9) art folder, and Soulkeep is never shown as soulbound."""
+""" / : Soulkeep (edition 9) art folder, and Soulkeep is never shown as soulbound."""
 import re
 from pathlib import Path
 

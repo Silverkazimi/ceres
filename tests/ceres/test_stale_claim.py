@@ -1,4 +1,4 @@
-"""an old SPS claim never resurfaces; the claim intent lives only in page memory (, )."""
+""": an old SPS claim never resurfaces; the claim intent lives only in page memory (, )."""
 from ceres import routes_wallet as wallet
 
 from .vm_context import STATIC, run_in_module_context
@@ -26,13 +26,13 @@ globalThis.localStorage = { getItem: () => null, setItem: () => { throw new Erro
 const realNow = Date.now; let offset = 0; Date.now = () => realNow() + offset;
 let timers = 0; globalThis.setTimeout = (fn) => { timers++; offset += 30000; if (timers <= 3) fn(); return timers; };
 const D = { player: 'player0005', generation: 0, error: '', signing: false, busy: false,
- claim: { busy: false, review: null, pending: { nonce: 'n'.repeat(16), total: '1', status: 'pending', tx_id: 'a'.repeat(40) }, checking: false } };
+  claim: { busy: false, review: null, pending: { nonce: 'n'.repeat(16), total: '1', status: 'pending', tx_id: 'a'.repeat(40) }, checking: false } };
 let reloads = 0;
 (async () => {
- await claimAction(D, 'verify', () => {}, () => 'player0005', async () => { reloads += 1; });
- if (D.claim.pending?.tx_id !== 'a'.repeat(40) || D.claim.pending?.phase !== 'retried') throw new Error('known claim must keep checking the same id');
- if (D.error) throw new Error('no error text: ' + D.error);
- if (reloads !== 0) throw new Error('unconfirmed claim must not reload a balance');
+  await claimAction(D, 'verify', () => {}, () => 'player0005', async () => { reloads += 1; });
+  if (D.claim.pending?.tx_id !== 'a'.repeat(40) || D.claim.pending?.phase !== 'retried') throw new Error('known claim must keep checking the same id');
+  if (D.error) throw new Error('no error text: ' + D.error);
+  if (reloads !== 0) throw new Error('unconfirmed claim must not reload a balance');
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """
     extra_context_js = """
@@ -47,10 +47,10 @@ def test_confirmation_after_a_not_found_poll_still_confirms():
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 globalThis.setTimeout = (fn) => { fn(); return 0; };
 const D = { player: 'player0005', generation: 0, error: '', signing: false, busy: false,
- claim: { busy: false, review: null, pending: { nonce: 'n'.repeat(16), total: '1', status: 'pending', tx_id: 'a'.repeat(40) }, checking: false } };
+  claim: { busy: false, review: null, pending: { nonce: 'n'.repeat(16), total: '1', status: 'pending', tx_id: 'a'.repeat(40) }, checking: false } };
 (async () => {
- await claimAction(D, 'verify', () => {}, () => 'player0005', async () => { throw new Error('must not reload on confirm'); });
- if (D.claim.pending?.status !== 'confirmed') throw new Error('expected confirmed, got ' + JSON.stringify(D.claim.pending));
+  await claimAction(D, 'verify', () => {}, () => 'player0005', async () => { throw new Error('must not reload on confirm'); });
+  if (D.claim.pending?.status !== 'confirmed') throw new Error('expected confirmed, got ' + JSON.stringify(D.claim.pending));
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """
     extra_context_js = """

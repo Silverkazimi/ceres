@@ -43,7 +43,7 @@ def test_multiplier_breakdown_has_no_tooltip():
 
 
 def test_dec_efficiency_flags_are_name_tooltips():
-    """title-only peer content uses the explain contract."""
+    """: title-only peer content uses the explain contract."""
     with spawn_live_ceres() as (browser, base_url):
         page = _loaded_page(browser, base_url)
         for element in page.locator("span.dec-efficiency-flag").all():

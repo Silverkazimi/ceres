@@ -61,7 +61,8 @@ def test_sole_ability_holder_gets_the_badge():
 
     board = project_board(report, DETAILS)
     row = board["plots"][0]
-    assert "sole_ability_holder" in row["badges"]
+    # The badge key was renamed sole_ability_holder -> land_ability_card (neutral wording; the board filter maps the old key).
+    assert "land_ability_card" in row["badges"]
     assert row["ability_holders"], "the DD/BLOODLINE/WOOD holder must be listed"
     holder_row = row["ability_holders"][0]
     assert set(holder_row["sole_holder_for"]) == {"DD", "BLOODLINE", "WOOD"}

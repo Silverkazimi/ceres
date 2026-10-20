@@ -33,7 +33,7 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .test_combine_joint_flow import _find_real_combine_candidate, _expand_plot
 from .vm_context import read_entry_source
 
@@ -92,14 +92,14 @@ def test_panel_click_never_closes_the_combine_dialog(live_browser: tuple[Browser
     # Click INSIDE the panel (its header title, well away from the close/cancel
     # buttons so this is testing the backdrop listener, not a button handler).
     page.locator("#combine-dialog-title").click()
-    page.wait_for_timeout(300)
+    settle(page)
     assert overlay.is_visible(), "a click inside the panel must never close the overlay"
     page.close()
 
 
 def test_escape_still_closes_the_combine_dialog(live_browser: tuple[Browser, str]) -> None:
     """The pre-existing Escape/focus-trap contract must survive the backdrop-click
- addition, not be replaced by it."""
+    addition, not be replaced by it."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1600, "height": 1000})
     page.goto(base_url)
@@ -134,7 +134,7 @@ def _backdrop_listener_pattern(overlay_id: str, close_fn: str) -> str:
 def _assert_all_overlays_have_backdrop_close(source: str) -> None:
     for overlay_id, close_fn in _OVERLAY_CLOSE_FN.items():
         assert _backdrop_listener_pattern(overlay_id, close_fn) in source, (
-            f"#{overlay_id} is missing the backdrop-click-closes listener \"\n f\"(event.target === overlay -> {close_fn}())"
+            f"#{overlay_id} is missing the backdrop-click-closes listener " f"(event.target === overlay -> {close_fn}())"
         )
 
 
@@ -144,8 +144,8 @@ def test_every_overlay_has_the_backdrop_close_listener() -> None:
 
 def test_backdrop_listener_missing_on_one_overlay_mutation_is_red() -> None:
     """Injected defect: remove the backdrop-click listener from
- #combine-stake-prompt-overlay only -- the guard above must fail because it
- checks EVERY overlay individually, not "at least one exists somewhere"."""
+    #combine-stake-prompt-overlay only -- the guard above must fail because it
+    checks EVERY overlay individually, not "at least one exists somewhere"."""
     source = read_entry_source()
     target = _backdrop_listener_pattern("combine-stake-prompt-overlay", "closeCombineStakePrompt")
     assert target in source  # sanity
@@ -156,17 +156,17 @@ def test_backdrop_listener_missing_on_one_overlay_mutation_is_red() -> None:
 
 def test_backdrop_listener_bound_to_panel_too_mutation_is_red() -> None:
     """Injected defect: bind the SAME naive handler to the panel as well as the
- backdrop (the exact failure mode named in the brief: 'a naive listener on
- the overlay catches both') -- simulated here by checking that the panel
- click test above (test_panel_click_never_closes_the_combine_dialog) is the
- guard that would catch this, since a source-level check cannot distinguish
- 'listener on overlay only' from 'listener on overlay AND panel' -- both
- produce the same `addEventListener` line on the overlay. This test instead
- verifies the INVARIANT the live test depends on: the click handler checks
- `event.target === overlay`, not `event.currentTarget` or unconditional --
- a naive `() => closeCombineDialog()` with no target check would make EVERY
- click (panel included) close the dialog. Removing the target check here
- reproduces exactly that regression."""
+    backdrop (the exact failure mode named in the brief: 'a naive listener on
+    the overlay catches both') -- simulated here by checking that the panel
+    click test above (test_panel_click_never_closes_the_combine_dialog) is the
+    guard that would catch this, since a source-level check cannot distinguish
+    'listener on overlay only' from 'listener on overlay AND panel' -- both
+    produce the same `addEventListener` line on the overlay. This test instead
+    verifies the INVARIANT the live test depends on: the click handler checks
+    `event.target === overlay`, not `event.currentTarget` or unconditional --
+    a naive `() => closeCombineDialog()` with no target check would make EVERY
+    click (panel included) close the dialog. Removing the target check here
+    reproduces exactly that regression."""
     source = read_entry_source()
     naive = "overlay.addEventListener('click', (event) => { if (event.target === overlay) closeCombineDialog(); });"
     assert naive in source  # sanity
@@ -192,7 +192,7 @@ def test_confirmation_toast_and_settle_are_never_gated_on_overlay_visibility() -
     source = read_entry_source()
     verifier_start = source.index("async function verifyCombineBroadcast")
     confirmed_start = source.index("if (result.state === 'domain-confirmed') {", verifier_start)
-    next_branch = source.index("\n } else", confirmed_start)
+    next_branch = source.index("\n    } else", confirmed_start)
     confirmed_branch = source[confirmed_start:next_branch]
     assert "stageToast(" in confirmed_branch
     assert "settleCombineRefresh(" in confirmed_branch

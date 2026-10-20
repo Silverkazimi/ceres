@@ -1,0 +1,1 @@
+{"body":{"data":{"ids":[{"uid":"I-322-SYNPCR0001"},{"uid":"I-322-SYNPCR0002"},{"uid":"I-322-SYNPCR0003"}]},"status":"success"},"headers":{"Content-Type":"application/json"},"request":{"host":"vapi.splinterlands.com","method":"GET","path":"/land/stake/items/STK-LND-PCR/available","query":"deedUid=I-290-c72dc03613c4bf&player=sample01&offset=0&limit=100"},"status":200}

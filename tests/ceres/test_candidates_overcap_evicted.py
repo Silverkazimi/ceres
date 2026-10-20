@@ -162,9 +162,21 @@ def _assert_g4(report: dict, rows: list[dict]) -> None:
     assert all(row["evicted"]["asset_ref"] in roster_refs for row in rows)
 
 
-def test_g4_whole_roster_selection_never_guesses_an_eviction() -> None:
+def _full_plot_report(monkeypatch) -> dict:
+    """The fixture plot holds four worker cards. A worksite's picker capacity is its structural
+    slot count (``ceres.capacity.WORKSITE_WORKER_CAPACITY``), not the live ``max_workers_allowed``,
+    so the plot is made full by giving the structure four slots; a whole-roster (slot-less) pick
+    then has to choose a real occupant to evict."""
+    import ceres.capacity as capacity_module
+
+    monkeypatch.setattr(capacity_module, "WORKSITE_WORKER_CAPACITY", 4)
     report = _fixture()
     report["plots"][0]["staking_facts"]["max_workers_allowed"] = 4
+    return report
+
+
+def test_g4_whole_roster_selection_never_guesses_an_eviction(monkeypatch) -> None:
+    report = _full_plot_report(monkeypatch)
     rows = _rows(report, slot=None)
     _assert_g4(report, rows)
 
@@ -178,8 +190,7 @@ def test_g4_whole_roster_guess_mutation_is_red(monkeypatch) -> None:
         breakdown["evicted"] = evicted
         return replace(evaluation, plot_impact_breakdown=breakdown)
 
-    report = _fixture()
-    report["plots"][0]["staking_facts"]["max_workers_allowed"] = 4
+    report = _full_plot_report(monkeypatch)
     seen = _patch_evaluator(monkeypatch, guess_eviction)
     with pytest.raises(AssertionError):
         _assert_g4(report, _rows(report, slot=None))

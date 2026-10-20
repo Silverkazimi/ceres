@@ -1,7 +1,7 @@
-""" plot card-top room for the land-ability icons.
+""" / : plot card-top room for the land-ability icons.
 
  gave plots with a single row of abilities extra card-top room because the row sat ABOVE the
-tile. moved that row (and the Toil & Kin / Companion pill) INSIDE the tile, bottom-anchored in
+tile.  moved that row (and the Toil & Kin / Companion pill) INSIDE the tile, bottom-anchored in
 `.slot-foot`, so the row needs no room above the card any more; only the Energized / six-ability arcs,
 which still sit around the tile's top edge, keep theirs."""
 from pathlib import Path

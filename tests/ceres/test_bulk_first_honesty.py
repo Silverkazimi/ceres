@@ -14,8 +14,8 @@ from ceres.board import project_board
 
 def _strip_asset_coverage(report: dict) -> dict:
     """Simulate a bulk-only (`capture_quick()`) report from the full-coverage fixture:
- no plot has retrieved assets, and the per-deed-sourced `bonus_assets` list is empty.
- The worker roster remains because it is joined from the complete collection."""
+    no plot has retrieved assets, and the per-deed-sourced `bonus_assets` list is empty.
+    The worker roster remains because it is joined from the complete collection."""
     quick = copy.deepcopy(report)
     for plot in quick["plots"]:
         plot["asset_fetch"] = {"status": "not_requested"}
@@ -34,7 +34,7 @@ def test_quick_board_preserves_loading_state_without_badge(report, details_by_id
 
 def test_full_board_has_no_assets_not_loaded_badge(report, details_by_id):
     """Sanity check the badge is genuinely conditional -- the full-coverage fixture
- (every deed's assets retrieved, even if empty) never fires it."""
+    (every deed's assets retrieved, even if empty) never fires it."""
     board = project_board(report, details_by_id)
     assert all(row["assets_loaded"] is True for row in board["plots"])
     assert all("assets_not_loaded" not in row["badges"] for row in board["plots"])
@@ -63,8 +63,8 @@ def test_quick_board_unassigned_runi_and_land_card_not_capturable(report, detail
 
 def test_quick_board_totem_title_power_core_still_capturable(report, details_by_id):
     """Source A (totem/title/power_core) is an account-scoped /available call,
- independent of per-deed asset coverage -- must NOT be gated by idle_cards_loaded,
- unlike runi/land_card (Source B, which genuinely does need it)."""
+    independent of per-deed asset coverage -- must NOT be gated by idle_cards_loaded,
+    unlike runi/land_card (Source B, which genuinely does need it)."""
     quick = _strip_asset_coverage(report)
     quick["unassigned_items"] = {
         "totem": {"capturable": True, "count": 5, "items": [{"item_detail_id": 1, "name": "Totem", "count": 5}]},
@@ -102,7 +102,7 @@ def test_partial_expand_updates_only_that_deed_loading_state(report, details_by_
 
 def test_quick_board_derives_totem_identity_and_title_class_from_bulk(report, details_by_id):
     """G04/G05 mutation trial: swapping a ladder entry or naming a 0.50 title exactly
- made this assertion RED; the restored bulk projection is GREEN."""
+    made this assertion RED; the restored bulk projection is GREEN."""
     quick = _strip_asset_coverage(report)
     source = quick["plots"][0]
     quick["plots"] = []
@@ -126,7 +126,7 @@ def test_quick_board_derives_totem_identity_and_title_class_from_bulk(report, de
 
 def test_bulk_asset_mismatch_is_explicit_conflict(report, details_by_id):
     """G08 mutation trial: suppressing the conflict marker made this assertion RED;
- the restored mismatch output is GREEN."""
+    the restored mismatch output is GREEN."""
     quick = _strip_asset_coverage(report)
     target = quick["plots"][0]
     target["staking_facts"]["totem_boost"] = 0.25

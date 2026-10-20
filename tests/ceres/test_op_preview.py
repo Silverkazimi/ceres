@@ -73,8 +73,8 @@ def _stale_stake_report() -> tuple[dict, str]:
 
 
 def _as_live_read(expand):
-    """the preview's slot check now reads through capture.read_plots_live (in memory, no
- store); adapt the old single-deed expand fakes to that contract so their assertions stay as-is."""
+    """: the preview's slot check now reads through capture.read_plots_live (in memory, no
+    store); adapt the old single-deed expand fakes to that contract so their assertions stay as-is."""
     def read(config, account, deed_uids, report):
         return {"report": expand(config, account, list(deed_uids)[0], include_collection=False), "failed": []}
     return read
@@ -84,8 +84,8 @@ def _as_live_read(expand):
 def test_worker_with_unknown_slot_refuses_before_signing(slot_state):
     """G1: a present worker without slot evidence must fail closed as UNKNOWN.
 
- Mutation injection: make the unknown case fall through to permission; this must
- go red because the preview would emit a signable operation.
+    Mutation injection: make the unknown case fall through to permission; this must
+    go red because the preview would emit a signable operation.
     """
     report = _report()
     if slot_state == "absent":
@@ -106,8 +106,8 @@ def test_worker_with_unknown_slot_refuses_before_signing(slot_state):
 def test_known_worker_slot_refuses_taken_and_allows_free():
     """G2: known occupancy still refuses a taken slot while a genuinely free slot stays allowed.
 
- Mutation injection: refuse every claimed worker slot; the free-slot preview must
- still produce one operation and go red.
+    Mutation injection: refuse every claimed worker slot; the free-slot preview must
+    still produce one operation and go red.
     """
     report = _report()
     with pytest.raises(PreviewValidationError) as caught:
@@ -282,14 +282,19 @@ def test_missing_worker_count_on_source_deed_does_not_permit_capacity_fallback()
             account="player0005",
         )
 
-    assert caught.value.errors[0]["notice"]["code"] == "worker_count_unknown"
+    # A worker staked on another deed can no longer move straight across: it must go through the unstake
+    # cooldown first, so the move is refused before any capacity is computed -- the unknown source count
+    # still never lets a capacity fallback through.
+    errors = caught.value.errors
+    assert [error["notice"]["code"] for error in errors] == ["cooldown_refusal"]
+    assert "currently staked" in errors[0]["reason"]
 
 
 def test_worker_slot_unknown_and_taken_have_distinct_payload_messages():
     """G3: UNKNOWN and TAKEN remain distinct in both reason code and user-visible message.
 
- Mutation injection: reuse the occupied-slot notice for the unknown case; the two
- structured notices and their rendered messages must no longer compare equal.
+    Mutation injection: reuse the occupied-slot notice for the unknown case; the two
+    structured notices and their rendered messages must no longer compare equal.
     """
     messages = []
     for slot in (None, 1):
@@ -315,10 +320,10 @@ def test_worker_slot_unknown_and_taken_have_distinct_payload_messages():
 def test_quick_capture_roster_coverage_refuses_unknown_occupancy(roster):
     """G4: quick-capture-shaped rows and an empty quick roster cannot open the gate.
 
- The quick row is produced by `normalize_collection_worker`, including its default
- worker stake type and its absent slot. Injection 1: remove that producer default;
- the explicit shape assertion goes red. Injection 2: remove the bulk-count coverage
- refusal; the empty-roster case emits a signable operation and goes red.
+    The quick row is produced by `normalize_collection_worker`, including its default
+    worker stake type and its absent slot. Injection 1: remove that producer default;
+    the explicit shape assertion goes red. Injection 2: remove the bulk-count coverage
+    refusal; the empty-roster case emits a signable operation and goes red.
     """
     quick_worker = normalize_collection_worker({
         "uid": "QUICK-CARD",
@@ -352,8 +357,8 @@ def test_quick_capture_roster_coverage_refuses_unknown_occupancy(roster):
 def test_runi_is_subtracted_from_bulk_worker_count_before_slot_comparison():
     """G5: a staked Runi contributes to bulk `worker_count` but not numbered worker slots.
 
- Mutation injection: compare the filtered roster directly with bulk `worker_count`;
- this valid Runi plot would falsely refuse its free numbered slot.
+    Mutation injection: compare the filtered roster directly with bulk `worker_count`;
+    this valid Runi plot would falsely refuse its free numbered slot.
     """
     report = _report()
     report["plots"][0]["staking_facts"].update(is_runi_staked=True, worker_count=2)
@@ -368,7 +373,7 @@ def test_runi_is_subtracted_from_bulk_worker_count_before_slot_comparison():
 def test_ended_stake_ref_on_real_card_does_not_emit_unstake_for_empty_slot():
     """The fixture is a real collection row whose stake ended before the snapshot.
 
- Mutation injection: restore unconditional `bool(facts.get("stake_ref_uid"))` trust; the expected one-operation preview goes red.
+    Mutation injection: restore unconditional `bool(facts.get("stake_ref_uid"))` trust; the expected one-operation preview goes red.
     """
     report, asset_ref = _stale_stake_report()
     result = build_preview(
@@ -427,19 +432,19 @@ def test_replace_builds_split_custom_json_operations():
 
 def test_title_unstake_is_now_accepted():
     """the internal rules's 2026-08-27 ruling ("titles must not be locked ... behave like all other
- assets") -- `UNVERIFIED_TYPES` in `ceres/op_preview.py` is now empty, so `build_preview`
- must no longer refuse a Title move for being a Title. Inverts the old
- `test_unverified_title_is_rejected`, which this ruling supersedes.
+    assets") -- `UNVERIFIED_TYPES` in `ceres/op_preview.py` is now empty, so `build_preview`
+    must no longer refuse a Title move for being a Title. Inverts the old
+    `test_unverified_title_is_rejected`, which this ruling supersedes.
 
- KNOWN GAP (reported to the dispatching session, not fixed here -- `fides_land/ops.py` is
- outside this agent's `tests/`-only scope): `build_preview` still fails at its final
- `intents_to_ops(...)` call (`ceres/op_preview.py:436`) because `fides_land/ops.py:59`'s
- `_ITEM_STAKE_TYPES` frozenset was never given STAKE_TYPE_TITLE, so `_intent_class` raises
- `LandOpError("unknown stake_type_uid 'STK-LND-TTL'; refusing to emit")` -- a DIFFERENT
- exception, from a DIFFERENT module, than the `UNVERIFIED` refusal this test used to
- check for. This test is therefore currently RED against real master (it still raises,
- just not "UNVERIFIED" any more) -- verified locally by adding STAKE_TYPE_TITLE to
- `_ITEM_STAKE_TYPES`, confirming this test passes end to end, then reverting."""
+    KNOWN GAP (reported to the dispatching session, not fixed here -- `fides_land/ops.py` is
+    outside this agent's `tests/`-only scope): `build_preview` still fails at its final
+    `intents_to_ops(...)` call (`ceres/op_preview.py:436`) because `fides_land/ops.py:59`'s
+    `_ITEM_STAKE_TYPES` frozenset was never given STAKE_TYPE_TITLE, so `_intent_class` raises
+    `LandOpError("unknown stake_type_uid 'STK-LND-TTL'; refusing to emit")` -- a DIFFERENT
+    exception, from a DIFFERENT module, than the `UNVERIFIED` refusal this test used to
+    check for. This test is therefore currently RED against real master (it still raises,
+    just not "UNVERIFIED" any more) -- verified locally by adding STAKE_TYPE_TITLE to
+    `_ITEM_STAKE_TYPES`, confirming this test passes end to end, then reverting."""
     report = _report()
     report["bonus_assets"] = [{
         "asset_ref": "title-ref", "uid": "title-uid", "stake_type_uid": "STK-LND-TTL",
@@ -457,13 +462,13 @@ def test_title_unstake_is_now_accepted():
 
 def _runi_worker(deed_uid: str, *, asset_ref: str = "runi-ref", uid: str = "runi-uid", delegated_to: str | None = "player0005") -> dict:
     """The REAL live shape (board.py:465-467's own comment, corroborated by the live
- snapshot): a staked Runi arrives in `report["workers"]` as `runi_worker_card`, not
- in `bonus_assets`. Crucially it carries a real `delegated_to` -- a Runi is an
- Ethereum NFT delegated to the HIVE account BY CONSTRUCTION, so `delegated_to`
- matching the querying player ("player0005" here, matching `account=` in every call
- below) is the normal, permanent state, not an absent field. finding 1's
- fixtures instead set `delegated_to: None`, which never exercised the self-
- delegation misread that made every real Runi move fail with a 409."""
+    snapshot): a staked Runi arrives in `report["workers"]` as `runi_worker_card`, not
+    in `bonus_assets`. Crucially it carries a real `delegated_to` -- a Runi is an
+    Ethereum NFT delegated to the HIVE account BY CONSTRUCTION, so `delegated_to`
+    matching the querying player ("player0005" here, matching `account=` in every call
+    below) is the normal, permanent state, not an absent field.  finding 1's
+    fixtures instead set `delegated_to: None`, which never exercised the self-
+    delegation misread that made every real Runi move fail with a 409."""
     return {
         "asset_ref": asset_ref, "uid": uid, "stake_type_uid": "STK-LND-RUNI",
         "stake_ref_uid": deed_uid, "slot": 0, "asset_kind": "runi_worker_card",
@@ -496,7 +501,7 @@ def test_runi_stake_emits_null_slot_in_cards_shape():
     report["cards"].append({
         "asset_ref": "runi-new-ref", "uid": "RUNI-NEW",
         "facts": {  # noqa: keep uid duplicated top-level + facts, matching _report()'s CARD-NEW fixture shape
-            "uid": "RUNI-NEW", "player": "player0014", "market_id": None, "delegated_to": "player0005",
+            "uid": "RUNI-NEW", "player": "player0015", "market_id": None, "delegated_to": "player0005",
             "rental_type": None, "unlock_date": None, "card_detail_id": 505,
         },
     })
@@ -511,11 +516,11 @@ def test_runi_stake_emits_null_slot_in_cards_shape():
 
 def test_ordinary_worker_card_cannot_be_staged_as_runi():
     """ finding 2, the payload-lie bug: before the fix, `_asset_record`'s cards-
- bucket lookup defaulted an unknown `stake_type_uid` to whichever group the CALLER
- asked for (`wanted`) rather than the card's own identity, so an ordinary monster
- card (here `new-ref`, `_report()`'s plain CARD-NEW fixture, no `card_detail_id`
- identifying it as the real Runi 505) could be staged and signed as a Runi. This
- must now be refused with a stake-type mismatch."""
+    bucket lookup defaulted an unknown `stake_type_uid` to whichever group the CALLER
+    asked for (`wanted`) rather than the card's own identity, so an ordinary monster
+    card (here `new-ref`, `_report()`'s plain CARD-NEW fixture, no `card_detail_id`
+    identifying it as the real Runi 505) could be staged and signed as a Runi. This
+    must now be refused with a stake-type mismatch."""
     report = _report()
     with pytest.raises(PreviewValidationError) as caught:
         build_preview(report, [{
@@ -527,10 +532,10 @@ def test_ordinary_worker_card_cannot_be_staged_as_runi():
 
 def test_self_delegated_runi_is_not_refused_as_delegated():
     """ finding 1: every Runi carries `delegated_to` pointing at the querying
- player themselves (the normal, permanent state of a Runi delegation), and the old
- `classify_idle_availability` refused ANY `delegated_to`, misreading delegation-to-
- self as delegation-away. Staging this Runi's unstake must reach a real op, not a
- 'delegated to player0005' validation error."""
+    player themselves (the normal, permanent state of a Runi delegation), and the old
+    `classify_idle_availability` refused ANY `delegated_to`, misreading delegation-to-
+    self as delegation-away. Staging this Runi's unstake must reach a real op, not a
+    'delegated to player0005' validation error."""
     report = _report()
     report["plots"][0]["staking_facts"].update({"is_runi_staked": True, "worker_count": 2})
     report["workers"].append(_runi_worker("deed-1", delegated_to="player0005"))
@@ -594,11 +599,11 @@ def test_current_snapshot_eligibility_is_rechecked(mutator, expected):
 
 def test_sole_power_source_removal_is_a_hazard_not_a_refusal():
     """Ruling from live multi-transaction testing (2026-08-24): a warning is fine
- but never a blocker. Staging an unstake of a plot's sole power source must
- always be ALLOWED -- Ceres stages only, and Review -> Sign -> Verify is the deliberate
- confirmation the internal rules's "never one-click" rule calls for. `_report()`'s deed-1 carries
- one seated worker, so the hazard fires (there is something at risk); the zero-workers/
- zero-PP no-hazard case is covered in `tests/ceres/test_cooldown_gate.py`."""
+    but never a blocker. Staging an unstake of a plot's sole power source must
+    always be ALLOWED -- Ceres stages only, and Review -> Sign -> Verify is the deliberate
+    confirmation the internal rules's "never one-click" rule calls for. `_report()`'s deed-1 carries
+    one seated worker, so the hazard fires (there is something at risk); the zero-workers/
+    zero-PP no-hazard case is covered in `tests/ceres/test_cooldown_gate.py`."""
     report = _report()
     report["bonus_assets"] = [{
         "asset_ref": "core-ref", "uid": "ITEM-CORE", "stake_type_uid": "STK-LND-PCR",
@@ -621,14 +626,14 @@ def test_sole_power_source_removal_is_a_hazard_not_a_refusal():
 
 def test_orphan_origin_deed_is_a_validation_error_not_a_500():
     """Aletheia finding 5 (2026-08-24): `worker_count_delta`/`core_delta` can be keyed by
- a staked-origin deed pulled straight from the snapshot (an asset's own
- `stake_ref_uid`) that was never checked against `plots` -- only a move's own target
- `deed_uid` is. A snapshot whose `bonus_assets[]` references a `stake_ref_uid` absent
- from `plots[]` (a data-integrity edge case with no known live path, but defended
- anyway) must raise `PreviewValidationError`, never an unhandled `KeyError` -> HTTP
- 500. Uses a Power Core (an `items[]` class, no cooldown) rather than a worker card so
- the cooldown gate -- which would otherwise refuse this exact cross-plot move first,
- for an unrelated reason -- doesn't mask the guard actually under test."""
+    a staked-origin deed pulled straight from the snapshot (an asset's own
+    `stake_ref_uid`) that was never checked against `plots` -- only a move's own target
+    `deed_uid` is. A snapshot whose `bonus_assets[]` references a `stake_ref_uid` absent
+    from `plots[]` (a data-integrity edge case with no known live path, but defended
+    anyway) must raise `PreviewValidationError`, never an unhandled `KeyError` -> HTTP
+    500. Uses a Power Core (an `items[]` class, no cooldown) rather than a worker card so
+    the cooldown gate -- which would otherwise refuse this exact cross-plot move first,
+    for an unrelated reason -- doesn't mask the guard actually under test."""
     report = _report()
     report["bonus_assets"] = [{
         "asset_ref": "orphan-core-ref", "uid": "ORPHAN-CORE", "stake_type_uid": "STK-LND-PCR",
@@ -677,7 +682,7 @@ def test_first_clear_signs_power_workers_runi_items_and_build_in_one_four_op_tra
     report["cards"].append({
         "asset_ref": "runi-ref", "uid": "RUNI-UID",
         "facts": {
-            "uid": "RUNI-UID", "name": "Runi Alpha", "player": "player0014",
+            "uid": "RUNI-UID", "name": "Runi Alpha", "player": "player0015",
             "market_id": None, "delegated_to": "player0005", "rental_type": None,
             "unlock_date": None, "card_detail_id": 505,
         },
@@ -768,7 +773,7 @@ def test_first_clear_allows_a_runi_as_the_staged_power_source():
     report["cards"].append({
         "asset_ref": "runi-ref", "uid": "RUNI-UID",
         "facts": {
-            "uid": "RUNI-UID", "name": "Runi Alpha", "player": "player0014",
+            "uid": "RUNI-UID", "name": "Runi Alpha", "player": "player0015",
             "market_id": None, "delegated_to": "player0005", "rental_type": None,
             "unlock_date": None, "card_detail_id": 505,
         },
@@ -1450,11 +1455,11 @@ def test_malformed_unresolved_energized_removal_never_removes_structural_slots(m
 
 def test_browser_preview_path_refuses_an_op_the_allowlist_rejects(monkeypatch):
     """FINDING A: `/op-preview` -- the only path Ceres actually signs through -- must run
- the same `fides_land/render.py:allowlist_rules()` the CLI's `emit` path already used,
- not just build ops from `intents_to_ops` and hand them straight to `requests_for_
- broadcast`. Patches `intents_to_ops` itself (rather than relying on some future gap in
- the intent builder) so this test proves the allowlist is WIRED into build_preview,
- independent of whether the intent builder itself stays bug-free."""
+    the same `fides_land/render.py:allowlist_rules()` the CLI's `emit` path already used,
+    not just build ops from `intents_to_ops` and hand them straight to `requests_for_
+    broadcast`. Patches `intents_to_ops` itself (rather than relying on some future gap in
+    the intent builder) so this test proves the allowlist is WIRED into build_preview,
+    independent of whether the intent builder itself stays bug-free."""
     from fides.op import Op
 
     def bad_intents_to_ops(intents, *, account, app):
@@ -1476,7 +1481,7 @@ def test_browser_preview_path_refuses_an_op_the_allowlist_rejects(monkeypatch):
 
 def test_browser_preview_path_permits_a_legitimate_op(monkeypatch):
     """Counterpart to the refusal test above: the allowlist call added to `build_preview`
- must not reject the ordinary, real-shaped op the existing suite already exercises."""
+    must not reject the ordinary, real-shaped op the existing suite already exercises."""
     result = build_preview(_report(), [{
         "deed_uid": "deed-1", "group_id": "worker", "slot_index": 0,
         "action": "unstake", "asset_ref": "old-ref",

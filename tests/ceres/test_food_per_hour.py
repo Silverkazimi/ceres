@@ -1,4 +1,4 @@
-"""the Food/hr column and food cost line share one tooltip, one line per fact.
+""": the Food/hr column and food cost line share one tooltip, one line per fact.
 
 Sandbox-runnable VM guards (no browser) for badges.js foodCostTip()/foodPerHourCell().
 """
@@ -18,12 +18,12 @@ const lite = {grain_cost_per_hour: 1.455, food_discount: -0.03, food_discount_ca
 const unnamed = {grain_cost_per_hour: 672, food_discount: -0.3, food_discount_cards: []};
 const plain = {grain_cost_per_hour: 1015, food_discount: 0, food_discount_cards: []};
 const records = {
- named: foodPerHourCell(named),
- lite: foodPerHourCell(lite),
- unnamed: foodPerHourCell(unnamed),
- plain: foodPerHourCell(plain),
- missing: foodPerHourCell({grain_cost_per_hour: null}),
- line: costLineHtml(named),
+  named: foodPerHourCell(named),
+  lite: foodPerHourCell(lite),
+  unnamed: foodPerHourCell(unnamed),
+  plain: foodPerHourCell(plain),
+  missing: foodPerHourCell({grain_cost_per_hour: null}),
+  line: costLineHtml(named),
 };
 console.log('__FOOD__' + JSON.stringify(records));
 """

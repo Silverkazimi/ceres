@@ -26,4 +26,4 @@ def test_capture_entry_points_refuse_a_missing_player(call) -> None:
 
 def test_land_cli_requires_player_for_a_live_capture(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["land", "status", "--offline"]) == 7
-    assert "player is required" in capsys.readouterr().err
+    assert "--player is required" in capsys.readouterr().err

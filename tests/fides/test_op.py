@@ -93,10 +93,10 @@ class OpTests(unittest.TestCase):
 
     def test_chunk_ops_never_mixes_tiers_in_one_chunk(self):
         """FINDING B (Aletheia MEDIUM): `requestBroadcast` signs one chunk with one key, so a
- chunk containing both a Posting-only op and an Active-required op would silently sign
- the Posting op under Active authority it never asked for. A tier change must force a
- new chunk exactly like either size ceiling already does -- even with ceilings generous
- enough that count/bytes alone would have kept everything in one chunk."""
+        chunk containing both a Posting-only op and an Active-required op would silently sign
+        the Posting op under Active authority it never asked for. A tier change must force a
+        new chunk exactly like either size ceiling already does -- even with ceilings generous
+        enough that count/bytes alone would have kept everything in one chunk."""
         ops = [make_op(0, posting=True), make_op(1, posting=True), make_op(2, posting=False), make_op(3, posting=True)]
         chunks = chunk_ops(ops, max_ops_per_tx=100, max_bytes_per_tx=10_000_000)
         self.assertEqual([len(c) for c in chunks], [2, 1, 1])

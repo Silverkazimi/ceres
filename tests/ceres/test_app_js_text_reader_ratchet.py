@@ -239,14 +239,14 @@ def _mentions_a_node_subprocess_route(tree: ast.AST) -> bool:
 
 def _imports_vm_context_entry(tree: ast.AST) -> bool:
     """The indirection blind spot (found by a verifier, this queue's job 1): a file
- can obtain the app.js path WITHOUT ever naming a `ceres/static/*.js` string
- itself, by importing `ENTRY` / `read_entry_source` / an `APP_JS`-like alias
- FROM `vm_context` (any of `tests.ceres.vm_context`, `.vm_context`,
- `vm_context`), then slicing or mutating the source by position -- the same
- coupling `_names_a_static_js_file` exists to catch, just one indirection
- removed. Importing `run_in_module_context` alone does NOT count here: that
- is the sanctioned whole-module loader (vm_context.py's own reason for
- being, plan §15.6b), not a name for the raw path or source text."""
+    can obtain the app.js path WITHOUT ever naming a `ceres/static/*.js` string
+    itself, by importing `ENTRY` / `read_entry_source` / an `APP_JS`-like alias
+    FROM `vm_context` (any of `tests.ceres.vm_context`, `.vm_context`,
+    `vm_context`), then slicing or mutating the source by position -- the same
+    coupling `_names_a_static_js_file` exists to catch, just one indirection
+    removed. Importing `run_in_module_context` alone does NOT count here: that
+    is the sanctioned whole-module loader (vm_context.py's own reason for
+    being, plan §15.6b), not a name for the raw path or source text."""
     target_names = {"ENTRY", "read_entry_source"}
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.module and node.module.split(".")[-1] == "vm_context":
@@ -301,8 +301,8 @@ def _reads_a_static_js_file_by_position(path: Path, js_names: set[str]) -> bool:
 
 def test_vm_context_entry_import_and_position_read_is_flagged() -> None:
     """Offender-injection self-test for this queue's blind-spot fix: a dummy file
- that never names a `ceres/static/*.js` string itself, but imports `ENTRY`
- from `vm_context` and reads it by position, must be caught (RED)."""
+    that never names a `ceres/static/*.js` string itself, but imports `ENTRY`
+    from `vm_context` and reads it by position, must be caught (RED)."""
     src = (
         "from tests.ceres.vm_context import ENTRY\n\n"
         "def test_something():\n"
@@ -316,9 +316,9 @@ def test_vm_context_entry_import_and_position_read_is_flagged() -> None:
 
 def test_vm_context_whole_module_loader_only_is_not_flagged() -> None:
     """The honest exemption: a dummy file that only calls
- `run_in_module_context(...)` -- the sanctioned whole-module loader, no
- positional slicing -- must NOT be flagged (GREEN), even though it imports
- from `vm_context`."""
+    `run_in_module_context(...)` -- the sanctioned whole-module loader, no
+    positional slicing -- must NOT be flagged (GREEN), even though it imports
+    from `vm_context`."""
     src = (
         "from tests.ceres.vm_context import run_in_module_context\n\n"
         "def test_something():\n"
@@ -346,17 +346,17 @@ def _collect_offenders() -> set[str]:
 
 def test_no_test_reads_a_static_js_file_by_source_position() -> None:
     """E2 (campaign plan §3, "The bottleneck, re-measured"): no file under
- tests/ may locate code in any ceres/static/*.js by string position -- name a
- static JS file AND read/exec it, in Python or via a Node subprocess. Walks
- every *.py under tests/, not just test_*.py (plan §2.2's correction), so
- tests/ceres/conftest.py -- exactly where a migrator under pressure would put
- a shared source read -- is visible.
+    tests/ may locate code in any ceres/static/*.js by string position -- name a
+    static JS file AND read/exec it, in Python or via a Node subprocess. Walks
+    every *.py under tests/, not just test_*.py (plan §2.2's correction), so
+    tests/ceres/conftest.py -- exactly where a migrator under pressure would put
+    a shared source read -- is visible.
 
- Two-directional (plan §2.3 G3 acceptance): a new offender not in BASELINE
- fails here (guards against a repointed test reappearing under a new
- spelling), and a BASELINE entry that no longer reads the JS file also fails
- (guards against the baseline silently going stale instead of shrinking on
- purpose, batch by batch, as Phase 1 migrates each file)."""
+    Two-directional (plan §2.3 G3 acceptance): a new offender not in BASELINE
+    fails here (guards against a repointed test reappearing under a new
+    spelling), and a BASELINE entry that no longer reads the JS file also fails
+    (guards against the baseline silently going stale instead of shrinking on
+    purpose, batch by batch, as Phase 1 migrates each file)."""
     offenders = _collect_offenders()
 
     new_offenders = offenders - BASELINE
@@ -366,7 +366,7 @@ def test_no_test_reads_a_static_js_file_by_source_position() -> None:
         "campaign plan §2.2 for the migration/allowlisting rule.\n"
         f"  offenders not accounted for in BASELINE (new offender, or dropped "
         f"from BASELINE without migrating): {sorted(new_offenders)}\n"
-        f"  BASELINE entries that no longer read a static JS file (migrated "
+        f"  BASELINE entries that no longer read a static JS file (migrated -- "
         f"remove from BASELINE): {sorted(stale_baseline_entries)}"
     )
 
@@ -444,10 +444,10 @@ EXPECTED_BASELINE = 74
 
 def test_ratchet_baseline_is_the_census_43() -> None:
     """The ratchet's own progress meter (plan §2.2 item 2): BASELINE must be
- exactly EXPECTED_BASELINE, updated by each Phase 1 batch (see the constant's
- own comment for this batch's arithmetic and why it departs from the ticket's
- assumption). Before G4 deleted the dead `APP` constant in
- test_b3_slot_editor.py, the AST pass over-counted by one (census §1b: 49
- flagged, 48 genuine, 1 dead-constant false positive) -- the original 43 was
- 43, not 44, only because that constant is gone."""
+    exactly EXPECTED_BASELINE, updated by each Phase 1 batch (see the constant's
+    own comment for this batch's arithmetic and why it departs from the ticket's
+    assumption). Before G4 deleted the dead `APP` constant in
+    test_b3_slot_editor.py, the AST pass over-counted by one (census §1b: 49
+    flagged, 48 genuine, 1 dead-constant false positive) -- the original 43 was
+    43, not 44, only because that constant is gone."""
     assert len(BASELINE) == EXPECTED_BASELINE, len(BASELINE)

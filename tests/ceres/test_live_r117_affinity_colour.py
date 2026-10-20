@@ -35,7 +35,7 @@ def real_board_row(live_browser):
     row = copy.deepcopy(_real_detail_row(base_url))
     row.update(terrain="Mountain", biome=MOUNTAIN.copy())
     workers = [copy.deepcopy(worker) for worker in row["workers"] if not worker.get("is_runi")][:2]
-    assert workers, "colour guard requires a real worker row"
+    assert workers, " colour guard requires a real worker row"
     for slot, worker in enumerate(workers, 2):
         worker["slot"] = slot
     row["workers"] = workers
@@ -68,44 +68,44 @@ def _contrast(first, second):
 
 def _collect(page):
     return page.evaluate("""() => {
- const css = (element, pseudo) => getComputedStyle(element, pseudo);
- const rect = element => { const box = element.getBoundingClientRect(); return [box.x, box.y, box.width, box.height]; };
- const root = css(document.documentElement);
- const picker = document.querySelector('.inline-picker');
- return {
- rootSize: parseFloat(root.fontSize),
- bg: root.getPropertyValue('--bg').trim(), bg2: root.getPropertyValue('--bg2').trim(),
- heading: root.getPropertyValue('--heading').trim(), pickerBg: css(picker).backgroundColor,
- editorZ: css(document.querySelector('.editor-main')).zIndex,
- veilZ: css(document.querySelector('.eos-scenic-veil')).zIndex,
- scrollWidth: document.documentElement.scrollWidth,
- hosts: [...document.querySelectorAll('.terrain-affinity,.terrain-affinity-scroll')].map(element => ({
- bonus: css(element).getPropertyValue('--affinity-bonus').trim(),
- penalty: css(element).getPropertyValue('--affinity-penalty').trim(),
- })),
- rectangles: [...document.querySelectorAll('.slot-editor,.editor-band,.slot-editor-footer,#plot-table,.candidate-columns,.inline-picker,.terrain-affinity-scroll,.terrain-affinity,.terrain-affinity-badge')].map(rect),
- badges: [...document.querySelectorAll('.terrain-affinity-badge')].map(element => {
- const style = css(element), before = css(element, '::before'), after = css(element, '::after');
- const image = element.querySelector('.splinter-icon'), imageStyle = css(image);
- const ancestors = [];
- for (let parent = element.parentElement; parent; parent = parent.parentElement) {
- const parentStyle = css(parent);
- ancestors.push({filter: parentStyle.filter, opacity: parentStyle.opacity, blend: parentStyle.mixBlendMode});
- }
- return {
- state: element.dataset.affinityState, surface: element.closest('[data-terrain-affinity]').dataset.terrainAffinity,
- color: style.color, background: style.backgroundColor, size: [rect(element)[2], rect(element)[3]], opacity: style.opacity,
- ringWidth: before.borderTopWidth, ringStyle: before.borderTopStyle, ringColor: before.borderTopColor,
- gradient: before.backgroundImage, padding: before.paddingTop, mask: before.maskImage,
- webkitMask: before.webkitMaskImage, composite: before.maskComposite, webkitComposite: before.webkitMaskComposite,
- disc: after.backgroundColor, discInset: after.top,
- image: {filter: imageStyle.filter, mask: imageStyle.maskImage, webkitMask: imageStyle.webkitMaskImage,
- blend: imageStyle.mixBlendMode, opacity: imageStyle.opacity, width: imageStyle.width, height: imageStyle.height},
- ancestors,
- };
- }),
- };
- }""")
+      const css = (element, pseudo) => getComputedStyle(element, pseudo);
+      const rect = element => { const box = element.getBoundingClientRect(); return [box.x, box.y, box.width, box.height]; };
+      const root = css(document.documentElement);
+      const picker = document.querySelector('.inline-picker');
+      return {
+        rootSize: parseFloat(root.fontSize),
+        bg: root.getPropertyValue('--bg').trim(), bg2: root.getPropertyValue('--bg2').trim(),
+        heading: root.getPropertyValue('--heading').trim(), pickerBg: css(picker).backgroundColor,
+        editorZ: css(document.querySelector('.editor-main')).zIndex,
+        veilZ: css(document.querySelector('.eos-scenic-veil')).zIndex,
+        scrollWidth: document.documentElement.scrollWidth,
+        hosts: [...document.querySelectorAll('.terrain-affinity,.terrain-affinity-scroll')].map(element => ({
+          bonus: css(element).getPropertyValue('--affinity-bonus').trim(),
+          penalty: css(element).getPropertyValue('--affinity-penalty').trim(),
+        })),
+        rectangles: [...document.querySelectorAll('.slot-editor,.editor-band,.slot-editor-footer,#plot-table,.candidate-columns,.inline-picker,.terrain-affinity-scroll,.terrain-affinity,.terrain-affinity-badge')].map(rect),
+        badges: [...document.querySelectorAll('.terrain-affinity-badge')].map(element => {
+          const style = css(element), before = css(element, '::before'), after = css(element, '::after');
+          const image = element.querySelector('.splinter-icon'), imageStyle = css(image);
+          const ancestors = [];
+          for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+            const parentStyle = css(parent);
+            ancestors.push({filter: parentStyle.filter, opacity: parentStyle.opacity, blend: parentStyle.mixBlendMode});
+          }
+          return {
+            state: element.dataset.affinityState, surface: element.closest('[data-terrain-affinity]').dataset.terrainAffinity,
+            color: style.color, background: style.backgroundColor, size: [rect(element)[2], rect(element)[3]], opacity: style.opacity,
+            ringWidth: before.borderTopWidth, ringStyle: before.borderTopStyle, ringColor: before.borderTopColor,
+            gradient: before.backgroundImage, padding: before.paddingTop, mask: before.maskImage,
+            webkitMask: before.webkitMaskImage, composite: before.maskComposite, webkitComposite: before.webkitMaskComposite,
+            disc: after.backgroundColor, discInset: after.top,
+            image: {filter: imageStyle.filter, mask: imageStyle.maskImage, webkitMask: imageStyle.webkitMaskImage,
+              blend: imageStyle.mixBlendMode, opacity: imageStyle.opacity, width: imageStyle.width, height: imageStyle.height},
+            ancestors,
+          };
+        }),
+      };
+    }""")
 
 
 def _set_view(page, theme, width=1920, root=16):

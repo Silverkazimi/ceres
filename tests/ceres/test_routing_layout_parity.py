@@ -1,4 +1,4 @@
-"""the browser's bundling (ceres/static/routing-layout.js) must equal the server compiler's grouping
+""": the browser's bundling (ceres/static/routing-layout.js) must equal the server compiler's grouping
 (routing_plan.compile_manifest) for any rule set, so the setup screen never changes when Sign is pressed."""
 import json
 import random
@@ -56,11 +56,12 @@ def _run_batch(rng):
         regions, rules = _case(rng)
         if rules:
             cases.append({"rules": rules, "expected": _expected(regions, rules)})
-    run_in_module_context("const cases = " + json.dumps(cases) + r"""for (const [index, item] of cases.entries()) {
- const { bundles } = plannedBundles(item.rules);
- const got = bundles.map(bundle => bundle.operations.map(op => ({ id: op.id, routes: [...new Set(op.routeIds)].sort() })));
- if (JSON.stringify(got) !== JSON.stringify(item.expected)) {
- throw new Error('case ' + index + ' differs\nbrowser ' + JSON.stringify(got) + '\nserver ' + JSON.stringify(item.expected));
- }
+    run_in_module_context("const cases = " + json.dumps(cases) + r""";
+for (const [index, item] of cases.entries()) {
+  const { bundles } = plannedBundles(item.rules);
+  const got = bundles.map(bundle => bundle.operations.map(op => ({ id: op.id, routes: [...new Set(op.routeIds)].sort() })));
+  if (JSON.stringify(got) !== JSON.stringify(item.expected)) {
+    throw new Error('case ' + index + ' differs\nbrowser ' + JSON.stringify(got) + '\nserver  ' + JSON.stringify(item.expected));
+  }
 }
 """, entry=STATIC / "routing-layout.js")

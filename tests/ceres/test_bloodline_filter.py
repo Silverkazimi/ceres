@@ -98,7 +98,7 @@ def live_browser() -> tuple[Browser, str]:
 
 def _real_detail_row(base_url: str) -> dict:
     """A REAL `GET /api/plots/{deed}` row for a plot with >=1 real worker, used
- only as a field-shape template -- its `workers` list is overwritten by callers."""
+    only as a field-shape template -- its `workers` list is overwritten by callers."""
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=10) as response:
         board = json.loads(response.read().decode("utf-8"))
     for plot in board["plots"]:
@@ -126,35 +126,35 @@ def _real_candidate_template(base_url: str) -> dict:
 
 def test_bloodline_picker_reaches_server_with_sub_type_and_staged_metadata_survives(live_browser: tuple[Browser, str]) -> None:
     r"""Replaces the node-sliced picker-lens/mutate test (census row 5's node half).
- Real REST fixture: a real plot detail row, its worker list replaced by ONE real
- worker object annotated as a solo BLOODLINE Elf holder. Clicking the holder's
- real SOLO badge (`bloodlineCardBadgeHtml()`, `data-notice-action="open-bloodline-
- pairs"`) drives the exact same `openPicker(..., {bloodline_pairs: true})` call
- site the picker-lens test used to slice out and exercise in isolation.
+    Real REST fixture: a real plot detail row, its worker list replaced by ONE real
+    worker object annotated as a solo BLOODLINE Elf holder. Clicking the holder's
+    real SOLO badge (`bloodlineCardBadgeHtml()`, `data-notice-action="open-bloodline-
+    pairs"`) drives the exact same `openPicker(..., {bloodline_pairs: true})` call
+    site the picker-lens test used to slice out and exercise in isolation.
 
- Discovered while writing this test (not in the census's description): the SOLO
- badge lives INSIDE the holder's own tile, so `openBloodlinePairPicker()`'s
- `noticeAction.closest('[data-slot-index]')` resolves to the HOLDER'S OWN slot,
- and since that slot is occupied, `openPicker()` opens in `'replace'` mode on
- the holder's own tile -- "find a matching companion" replaces the holder, it
- does not fill a separate empty slot. So "staged metadata survives a mutate" is
- checked here as: the picked replacement (itself carrying a BLOODLINE Elf entry,
- i.e. a real alternate holder of the same sub_type -- `candidates.py:756`'s
- `role: replacement_holder` case) renders its OWN `.slot-bloodline-badge.is-solo`
- badge after staging, proving `mutateEditorSlot()` carried the incoming
- candidate's `land_abilities` into `row.workers` and `annotateEditorBloodlines()`
- recomputed the new tenant's status, rather than the tile silently keeping the
- OLD holder's stale annotation.
+    Discovered while writing this test (not in the census's description): the SOLO
+    badge lives INSIDE the holder's own tile, so `openBloodlinePairPicker()`'s
+    `noticeAction.closest('[data-slot-index]')` resolves to the HOLDER'S OWN slot,
+    and since that slot is occupied, `openPicker()` opens in `'replace'` mode on
+    the holder's own tile -- "find a matching companion" replaces the holder, it
+    does not fill a separate empty slot. So "staged metadata survives a mutate" is
+    checked here as: the picked replacement (itself carrying a BLOODLINE Elf entry,
+    i.e. a real alternate holder of the same sub_type -- `candidates.py:756`'s
+    `role: replacement_holder` case) renders its OWN `.slot-bloodline-badge.is-solo`
+    badge after staging, proving `mutateEditorSlot()` carried the incoming
+    candidate's `land_abilities` into `row.workers` and `annotateEditorBloodlines()`
+    recomputed the new tenant's status, rather than the tile silently keeping the
+    OLD holder's stale annotation.
 
- Named injection, run and watched red, then reverted and watched green: in
- `ceres/static/app.js`'s `mutateEditorSlot()`, the worker-stage line
- `land_abilities: occupant.land_abilities || []` was changed to
- `land_abilities: []` (drops the incoming candidate's own BLOODLINE entry on
- stage). Red: `playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout
- 30000ms exceeded ... waiting for locator(".slot-group[data-group-id='worker']
- .slot-bloodline-badge.is-solo").first to be visible` -- the newly staged tile
- carried no BLOODLINE entry at all to annotate. Restoring the line made this
- test pass again (whole-file run: 5 passed)."""
+    Named injection, run and watched red, then reverted and watched green: in
+    `ceres/static/app.js`'s `mutateEditorSlot()`, the worker-stage line
+    `land_abilities: occupant.land_abilities || []` was changed to
+    `land_abilities: []` (drops the incoming candidate's own BLOODLINE entry on
+    stage). Red: `playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout
+    30000ms exceeded ... waiting for locator(".slot-group[data-group-id='worker']
+    .slot-bloodline-badge.is-solo").first to be visible` -- the newly staged tile
+    carried no BLOODLINE entry at all to annotate. Restoring the line made this
+    test pass again (whole-file run: 5 passed)."""
     browser, base_url = live_browser
     row = _real_detail_row(base_url)
     deed_uid = row["deed_uid"]
@@ -205,44 +205,44 @@ def test_bloodline_picker_reaches_server_with_sub_type_and_staged_metadata_survi
 
 
 def test_bloodline_pair_break_removal_notice_reopens_a_working_companion_picker(live_browser: tuple[Browser, str]) -> None:
-    r"""Replaces the two node-sliced `bloodlinePlotSubTypes()`/
- `pickerResultNotice()` tests (census row 5) with the ONE real click path that
- reaches `openBloodlinePairPicker()` for a plot that WAS an active pair:
- removing the companion from a paired Bloodline holder (via the tile's real
- remove button) triggers the server's `bloodline_pair_deactivated` removal-impact
- notice with its "Find a matching companion" action button
- (`ceres/candidates.py:748-759`) -- clicking it must reopen a picker that still
- finds the holder's Bloodline sub_type, not the "no Bloodline holder on this
- plot" refusal.
+    r""" -- Replaces the two node-sliced `bloodlinePlotSubTypes()`/
+    `pickerResultNotice()` tests (census row 5) with the ONE real click path that
+    reaches `openBloodlinePairPicker()` for a plot that WAS an active pair:
+    removing the companion from a paired Bloodline holder (via the tile's real
+    remove button) triggers the server's `bloodline_pair_deactivated` removal-impact
+    notice with its "Find a matching companion" action button
+    (`ceres/candidates.py:748-759`) -- clicking it must reopen a picker that still
+    finds the holder's Bloodline sub_type, not the "no Bloodline holder on this
+    plot" refusal.
 
- SCOPE NOTE (discrepancy with the census's literal description, reported per
- ticket instruction rather than forced): there is no real UI action anywhere in
- the shipped product that opens the `bloodline_pairs` picker while a pair is
- still ACTIVE and un-touched -- `bloodlineCardBadgeHtml()` renders the SOLO
- holder's badge as the only clickable trigger (`is-solo`; the `is-paired` badge
- is a plain non-interactive `<span>`), and the picker's own filter panel has no
- `bloodline_pairs` checkbox (only `q`/`rarity`/`splinter`/`edition`/`min_pp`/
- `bucket`/`ready_now`/`include_terrain_penalised` are wired to
- `[data-picker-filter]`). The ONLY other entry point is this removal-impact
- notice, and by the time its button is clickable, `mutateEditorSlot()` has
- already removed the companion from `row.workers` client-side (`stagePricedRemovals`,
- app.js:6270-6276) -- so `bloodlinePlotSubTypes(row)` runs on an ALREADY-broken
- pair at click time regardless of old or new code, which is why this test's
- injection (below) targets a different, but still real and load-bearing, line:
- the notice's own action-button rendering, not `bloodlinePlotSubTypes()` itself.
- Converting the census's literal "still-paired-at-call-time" scenario is not
- possible without either an `app.js` export (forbidden by ) or
- duplicating picker logic in the test (forbidden by the campaign method) --
- flagged here rather than forced.
+    SCOPE NOTE (discrepancy with the census's literal description, reported per
+    ticket instruction rather than forced): there is no real UI action anywhere in
+    the shipped product that opens the `bloodline_pairs` picker while a pair is
+    still ACTIVE and un-touched -- `bloodlineCardBadgeHtml()` renders the SOLO
+    holder's badge as the only clickable trigger (`is-solo`; the `is-paired` badge
+    is a plain non-interactive `<span>`), and the picker's own filter panel has no
+    `bloodline_pairs` checkbox (only `q`/`rarity`/`splinter`/`edition`/`min_pp`/
+    `bucket`/`ready_now`/`include_terrain_penalised` are wired to
+    `[data-picker-filter]`). The ONLY other entry point is this removal-impact
+    notice, and by the time its button is clickable, `mutateEditorSlot()` has
+    already removed the companion from `row.workers` client-side (`stagePricedRemovals`,
+    app.js:6270-6276) -- so `bloodlinePlotSubTypes(row)` runs on an ALREADY-broken
+    pair at click time regardless of old or new code, which is why this test's
+    injection (below) targets a different, but still real and load-bearing, line:
+    the notice's own action-button rendering, not `bloodlinePlotSubTypes()` itself.
+    Converting the census's literal "still-paired-at-call-time" scenario is not
+    possible without either an `app.js` export (forbidden by ) or
+    duplicating picker logic in the test (forbidden by the campaign method) --
+    flagged here rather than forced.
 
- Named injection, run and watched red, then reverted and watched green: in
- `ceres/static/app.js`'s notice-action button template, `notice.action?.id ===
- 'open_bloodline_pairs'` was changed to `notice.action?.id ===
- 'nonexistent_action_id'` (the action button is never rendered for any real
- notice). Red: `playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout
- 30000ms exceeded ... waiting for locator(".ceres-notice .notice-action") to be
- visible`. Restoring the line made this test pass again (whole-file run:
- 5 passed)."""
+    Named injection, run and watched red, then reverted and watched green: in
+    `ceres/static/app.js`'s notice-action button template, `notice.action?.id ===
+    'open_bloodline_pairs'` was changed to `notice.action?.id ===
+    'nonexistent_action_id'` (the action button is never rendered for any real
+    notice). Red: `playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout
+    30000ms exceeded ... waiting for locator(".ceres-notice .notice-action") to be
+    visible`. Restoring the line made this test pass again (whole-file run:
+    5 passed)."""
     browser, base_url = live_browser
     row = _real_detail_row(base_url)
     deed_uid = row["deed_uid"]

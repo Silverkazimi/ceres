@@ -234,9 +234,9 @@ const eq = (a, b, what) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw 
 const tier = (rate) => cmRateTier(rate, 1000)?.cls ?? null;
 // gap = top / rate - 1: 1000 -> 0, 1000/1.2 -> exactly 20 %, 1000/1.4 -> exactly 40 %
 eq([tier(1000), tier(1200), tier(1000 / 1.0001), tier(1000 / 1.2), tier(1000 / 1.2001), tier(1000 / 1.4), tier(1000 / 1.4001), tier(100), tier(null)],
- ['is-top', 'is-top', 'is-good', 'is-good', 'is-fair', 'is-fair', 'is-dear', 'is-dear', null], 'tiers and their exact boundaries');
+   ['is-top', 'is-top', 'is-good', 'is-good', 'is-fair', 'is-fair', 'is-dear', 'is-dear', null], 'tiers and their exact boundaries');
 const row = (name, pp, usd) => ({ name, card_detail_id: 1, edition: 7, foil: 0, card_set: 'chaos', rarity: 'common', splinters: [], level: 1, bcx: 1,
- land_base_pp: pp, max_level_pp: pp, price_usd: usd, price_dec: usd * 2000, combined: 1 });
+  land_base_pp: pp, max_level_pp: pp, price_usd: usd, price_dec: usd * 2000, combined: 1 });
 const pages = [[row('Top', 1000, 1), row('Tie', 2000, 2), row('Good', 1000, 1.2)], [row('Fair', 1000, 1.4), row('Dear', 1000, 1.41)]];
 const view = cmPagedView(pages, {}, 'cost_per_pp');
 eq(view.tiles.map((t) => [t.card.name, t.rateTier.cls]), [['Top', 'is-top'], ['Tie', 'is-top'], ['Good', 'is-good'], ['Fair', 'is-fair'], ['Dear', 'is-dear']], 'across loaded pages');
@@ -244,8 +244,8 @@ const html = (t) => cmMetrics(t.listing, t.rateTier || null);
 if (!/cm-metric-rate is-top"/.test(html(view.tiles[0])) || !/Top pick\./.test(html(view.tiles[0]))) throw Error('top: ' + html(view.tiles[0]));
 if (!/cm-metric-rate is-fair"/.test(html(view.tiles[3])) || !/40% more per PP than the top pick/.test(html(view.tiles[3]))) throw Error('fair: ' + html(view.tiles[3]));
 for (const sort of ['price', 'pp']) {
- const other = cmPagedView(pages, {}, sort);
- if (other.tiles.some((t) => t.rateTier) || other.tiles.some((t) => /is-(top|good|fair|dear)/.test(html(t)))) throw Error('a tier under ' + sort);
+  const other = cmPagedView(pages, {}, sort);
+  if (other.tiles.some((t) => t.rateTier) || other.tiles.some((t) => /is-(top|good|fair|dear)/.test(html(t)))) throw Error('a tier under ' + sort);
 }
 console.log('ok');
 """, entry=STATIC / "card-market.js").stdout

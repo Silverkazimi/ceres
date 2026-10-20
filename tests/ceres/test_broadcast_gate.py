@@ -14,9 +14,9 @@ def test_timeout_keeps_one_request_and_recovers_late_callback() -> None:
 (async () => {
 const timers = [];
 setTimeout = (callback, delay) => {
- const timer = { callback, delay, cleared: false };
- timers.push(timer);
- return timer;
+  const timer = { callback, delay, cleared: false };
+  timers.push(timer);
+  return timer;
 };
 clearTimeout = (timer) => { timer.cleared = true; };
 
@@ -24,29 +24,29 @@ let callback;
 let requestCount = 0;
 let inclusionCount = 0;
 window.hive_keychain = {
- requestBroadcast(_account, _operations, _key, handler) {
- requestCount += 1;
- callback = handler;
- },
+  requestBroadcast(_account, _operations, _key, handler) {
+    requestCount += 1;
+    callback = handler;
+  },
 };
 fetch = async (url, init) => {
- inclusionCount += 1;
- if (!String(url).startsWith('/api/op-inclusion?player=alice')) throw new Error(`wrong inclusion URL: ${url}`);
- if (JSON.parse(init.body).tx_id !== 'late-tx') throw new Error('wrong inclusion transaction');
- return { ok: true, status: 200, json: async () => ({ included: true, block_num: 321 }) };
+  inclusionCount += 1;
+  if (!String(url).startsWith('/api/op-inclusion?player=alice')) throw new Error(`wrong inclusion URL: ${url}`);
+  if (JSON.parse(init.body).tx_id !== 'late-tx') throw new Error('wrong inclusion transaction');
+  return { ok: true, status: 200, json: async () => ({ included: true, block_num: 321 }) };
 };
 
 const operations = [['custom_json', { id: 'sm_stake_change', json: JSON.stringify({ n: 'nonce-ir5890', deed_uid: 'D-1' }) }]];
 const first = BroadcastGate.broadcast('Alice', operations).then(
- () => { throw new Error('the timeout must enter pending verification'); },
- (error) => error,
+  () => { throw new Error('the timeout must enter pending verification'); },
+  (error) => error,
 );
 await Promise.resolve();
 if (requestCount !== 1 || typeof callback !== 'function') throw new Error('Keychain was not called exactly once');
 timers.find((timer) => timer.delay === KEYCHAIN_RESPONSE_TIMEOUT_MS).callback();
 const timeout = await first;
 if (!timeout.keychainTimedOut || !timeout.ambiguousBroadcast || timeout.broadcasted !== true || timeout.retryable !== false) {
- throw new Error('timeout was not classified as an ambiguous pending broadcast');
+  throw new Error('timeout was not classified as an ambiguous pending broadcast');
 }
 
 callback({ success: true, result: { id: 'late-tx' }, data: { key: 'Posting' } });
@@ -55,11 +55,11 @@ if (late.txId !== 'late-tx' || late.blockNum !== null) throw new Error('late cal
 if (requestCount !== 1 || inclusionCount !== 0) throw new Error('late completion resent or blocked on inclusion');
 
 const duplicate = await BroadcastGate.broadcast('alice', [['custom_json', {
- id: 'sm_stake_change',
- json: JSON.stringify({ n: 'nonce-ir5890', deed_uid: 'D-CHANGED' }),
+  id: 'sm_stake_change',
+  json: JSON.stringify({ n: 'nonce-ir5890', deed_uid: 'D-CHANGED' }),
 }]]).then(
- () => null,
- (error) => error,
+  () => null,
+  (error) => error,
 );
 if (!duplicate?.duplicateBroadcast || duplicate.retryable !== false) throw new Error('same account/nonce was not refused');
 if (requestCount !== 1) throw new Error('same account/nonce reached requestBroadcast twice');
@@ -75,12 +75,12 @@ def test_five_uncertain_rows_recover_by_probe_and_wallet_is_reached() -> None:
         r"""
 (async () => {
 const operation = nonce => ['custom_json', {
- id: 'sm_land_operation', required_auths: [], required_posting_auths: ['alice'],
- json: JSON.stringify({ n: nonce }),
+  id: 'sm_land_operation', required_auths: [], required_posting_auths: ['alice'],
+  json: JSON.stringify({ n: nonce }),
 }];
 const rows = Array.from({ length: 5 }, (_, index) => {
- const id = JSON.stringify(['alice', 'custom_json', 'sm_land_operation', `wedged-${index}`]);
- return { id, claimIds: [id], count: 1, txId: null, createdAt: new Date().toISOString() };
+  const id = JSON.stringify(['alice', 'custom_json', 'sm_land_operation', `wedged-${index}`]);
+  return { id, claimIds: [id], count: 1, txId: null, createdAt: new Date().toISOString() };
 });
 localStorage.setItem('ceres:broadcast-claims:v1:alice', JSON.stringify(rows.map(row => row.id)));
 localStorage.setItem('ceres:pending-custom-ops:v1:alice', JSON.stringify(rows));
@@ -90,8 +90,8 @@ const recovered = await recoverPendingBroadcastRequests('alice', 1);
 if (recovered.blocked || recovered.released !== 5 || recovered.remaining !== 0 || probes !== 5) throw Error('five-row recovery did not clear the proven-absent requests');
 let walletCalls = 0;
 window.hive_keychain = { requestBroadcast(_account, _operations, _key, callback) {
- walletCalls += 1;
- callback({ success: true, result: { id: 'recovered-tx' }, data: { key: 'Posting' } });
+  walletCalls += 1;
+  callback({ success: true, result: { id: 'recovered-tx' }, data: { key: 'Posting' } });
 } };
 await BroadcastGate.broadcast('alice', [operation('fresh-after-recovery')]);
 if (walletCalls !== 1) throw Error('wallet was not reached after recovery');
@@ -103,32 +103,32 @@ if (walletCalls !== 1) throw Error('wallet was not reached after recovery');
 
 
 def test_old_rows_keep_their_claims_but_stop_blocking_new_signing() -> None:
-    """age never releases a claim, but it does free the budget.
+    """: age never releases a claim, but it does free the budget.
 
- Keeping a request's claim is what stops the same signed envelope being sent twice.
- Keeping it in the per-block budget forever is what bricked the maintainer's account: a
- request nobody can look up would otherwise refuse every later signing attempt for
- good. After the window in which Hive would certainly have included it, it stops
- counting against the budget and the claims stay.
+    Keeping a request's claim is what stops the same signed envelope being sent twice.
+    Keeping it in the per-block budget forever is what bricked the maintainer's account: a
+    request nobody can look up would otherwise refuse every later signing attempt for
+    good. After the window in which Hive would certainly have included it, it stops
+    counting against the budget and the claims stay.
     """
     run_in_module_context(
         r"""
 (async () => {
 const operation = nonce => ['custom_json', {
- id: 'sm_land_operation', required_auths: [], required_posting_auths: ['alice'],
- json: JSON.stringify({ n: nonce }),
+  id: 'sm_land_operation', required_auths: [], required_posting_auths: ['alice'],
+  json: JSON.stringify({ n: nonce }),
 }];
 const rows = Array.from({ length: 5 }, (_, index) => {
- const id = JSON.stringify(['alice', 'custom_json', 'sm_land_operation', `expired-${index}`]);
- return { id, claimIds: [id], count: 1, txId: null, createdAt: new Date(Date.now() - 600001).toISOString() };
+  const id = JSON.stringify(['alice', 'custom_json', 'sm_land_operation', `expired-${index}`]);
+  return { id, claimIds: [id], count: 1, txId: null, createdAt: new Date(Date.now() - 600001).toISOString() };
 });
 localStorage.setItem('ceres:broadcast-claims:v1:alice', JSON.stringify(rows.map(row => row.id)));
 localStorage.setItem('ceres:pending-custom-ops:v1:alice', JSON.stringify(rows));
 fetch = async () => ({ ok: true, json: async () => ({ included: null, block_num: null }) });
 let walletCalls = 0;
 window.hive_keychain = { requestBroadcast(_account, _operations, _key, callback) {
- walletCalls += 1;
- callback({ success: true, result: { id: 'fresh-tx' }, data: { key: 'Posting' } });
+  walletCalls += 1;
+  callback({ success: true, result: { id: 'fresh-tx' }, data: { key: 'Posting' } });
 } };
 const blocked = await BroadcastGate.broadcast('alice', [operation('fresh')]).catch(error => error);
 if (walletCalls !== 1 || blocked?.pendingWalletRequests) throw Error(': an unjudgeable old request still blocks a new signing attempt');
@@ -151,8 +151,8 @@ def test_one_inconclusive_row_refuses_exact_replay_below_budget_limit() -> None:
         r"""
 (async () => {
 const operation = ['custom_json', {
- id: 'sm_land_operation', required_auths: [], required_posting_auths: ['alice'],
- json: JSON.stringify({ n: 'one-row-replay' }),
+  id: 'sm_land_operation', required_auths: [], required_posting_auths: ['alice'],
+  json: JSON.stringify({ n: 'one-row-replay' }),
 }];
 const id = JSON.stringify(['alice', 'custom_json', 'sm_land_operation', 'one-row-replay']);
 localStorage.setItem('ceres:broadcast-claims:v1:alice', JSON.stringify([id]));
@@ -173,15 +173,15 @@ def test_inconclusive_recovery_still_blocks_without_rebroadcast() -> None:
     run_in_module_context(
         r"""
 (async () => {
-const nativeSetTimeout = setTimeout; // run the one-second budget checks at once
+const nativeSetTimeout = setTimeout;  // : run the one-second budget checks at once
 setTimeout = (callback, delay) => delay === 1000 ? Promise.resolve().then(callback) : nativeSetTimeout(callback, delay);
 const operation = nonce => ['custom_json', {
- id: 'sm_land_operation', required_auths: [], required_posting_auths: ['alice'],
- json: JSON.stringify({ n: nonce }),
+  id: 'sm_land_operation', required_auths: [], required_posting_auths: ['alice'],
+  json: JSON.stringify({ n: nonce }),
 }];
 const rows = Array.from({ length: 5 }, (_, index) => {
- const id = JSON.stringify(['alice', 'custom_json', 'sm_land_operation', `unclear-${index}`]);
- return { id, claimIds: [id], count: 1, txId: null, createdAt: new Date().toISOString() };
+  const id = JSON.stringify(['alice', 'custom_json', 'sm_land_operation', `unclear-${index}`]);
+  return { id, claimIds: [id], count: 1, txId: null, createdAt: new Date().toISOString() };
 });
 localStorage.setItem('ceres:broadcast-claims:v1:alice', JSON.stringify(rows.map(row => row.id)));
 localStorage.setItem('ceres:pending-custom-ops:v1:alice', JSON.stringify(rows));
@@ -206,8 +206,8 @@ def test_two_staged_transactions_sign_in_sequence_before_modal_closes() -> None:
 (async () => {
 const target = { scope: 'portfolio' };
 const review = {
- payload: { account: 'alice', chunks: [{ operations: [] }, { operations: [] }] },
- stagedSnapshot: [{ deed_uid: 'D-1' }, { deed_uid: 'D-2' }],
+  payload: { account: 'alice', chunks: [{ operations: [] }, { operations: [] }] },
+  stagedSnapshot: [{ deed_uid: 'D-1' }, { deed_uid: 'D-2' }],
 };
 CERES_PREVIEWS.set(previewKey(target), review);
 S.CERES_CHECKOUT_OPEN = true;
@@ -220,10 +220,10 @@ prepareSigningBatch = async () => null;
 verifyBroadcast = async () => {};
 let walletCalls = 0;
 requestSignatureThroughGate = async (_account, _operations, callback) => {
- walletCalls += 1;
- callback({ success: true, result: { id: `tx-${walletCalls}` } });
- if (walletCalls === 1 && !S.CERES_CHECKOUT_OPEN) throw Error('modal closed before the second staged transaction');
- return { txId: `tx-${walletCalls}`, blockNum: null, submitted: Promise.resolve() };
+  walletCalls += 1;
+  callback({ success: true, result: { id: `tx-${walletCalls}` } });
+  if (walletCalls === 1 && !S.CERES_CHECKOUT_OPEN) throw Error('modal closed before the second staged transaction');
+  return { txId: `tx-${walletCalls}`, blockNum: null, submitted: Promise.resolve() };
 };
 await confirmOperationBroadcast(target);
 if (walletCalls !== 2 || S.CERES_CHECKOUT_OPEN) throw Error('two staged transactions did not complete in sequence');
@@ -251,14 +251,14 @@ prepareSigningBatch = async () => null;
 verifyBroadcast = async () => {};
 let walletCalls = 0;
 requestSignatureThroughGate = async (_account, _operations, callback) => {
- walletCalls += 1;
- if (walletCalls === 1) {
- callback({ success: true, result: { id: 'tx-first' } });
- return { txId: 'tx-first', blockNum: null, submitted: Promise.resolve() };
- }
- const error = Error('An earlier wallet request is still being checked with Hive. This transaction was not sent. Ceres keeps checking and this clears itself.');
- Object.assign(error, { broadcasted: false, retryable: true, pendingWalletRequests: 5, requiredCustomOperations: 1 });
- throw error;
+  walletCalls += 1;
+  if (walletCalls === 1) {
+    callback({ success: true, result: { id: 'tx-first' } });
+    return { txId: 'tx-first', blockNum: null, submitted: Promise.resolve() };
+  }
+  const error = Error('An earlier wallet request is still being checked with Hive. This transaction was not sent. Ceres keeps checking and this clears itself.');
+  Object.assign(error, { broadcasted: false, retryable: true, pendingWalletRequests: 5, requiredCustomOperations: 1 });
+  throw error;
 };
 await confirmOperationBroadcast(target);
 const blockedControl = operationSignButtonHtml(target, { ...review, pendingWalletBlock: { message: 'Ceres is checking', count: 5, requiredCount: 1, checking: true } }, { surface: 'changes' });
@@ -275,7 +275,7 @@ def test_timeout_uses_existing_check_again_state_without_reenabling_sign() -> No
     gate = GATE.read_text(encoding="utf-8")
     operations = OPERATIONS.read_text(encoding="utf-8")
 
-    assert gate.count("requestWalletBroadcast(account, operations") == 1
+    assert gate.count("requestWalletBroadcast(account, operations,") == 1
     assert "error.keychainTimedOut = true;" in gate
     assert "error.ambiguousBroadcast = true;" in gate
     assert "error.broadcasted = true;" in gate
@@ -288,11 +288,11 @@ def test_timeout_uses_existing_check_again_state_without_reenabling_sign() -> No
     assert "if (error?.retryable && broadcastButton)" in operations
 
 def test_retry_reaches_the_wallet_after_a_request_the_chain_never_saw() -> None:
-    """his Changes signing died here.
+    """: his Changes signing died here.
 
- A request that Hive says never arrived must free its identity, not only its budget
- slot. Releasing the slot alone left the identity claimed, so the next press of Sign
- was refused in the browser as a duplicate and the wallet was never contacted.
+    A request that Hive says never arrived must free its identity, not only its budget
+    slot. Releasing the slot alone left the identity claimed, so the next press of Sign
+    was refused in the browser as a duplicate and the wallet was never contacted.
     """
     run_in_module_context(
         r"""
@@ -317,13 +317,13 @@ if (reachedWallet !== 0) throw Error('nothing should have been sent in this test
 
 
 def test_unjudgeable_old_request_stops_blocking_but_keeps_its_claim() -> None:
-    """his account was held hostage by a request nobody can look up.
+    """: his account was held hostage by a request nobody can look up.
 
- An operation whose payload carries no nonce has no checkable identity, so the chain
- probe answers "unknown" forever. Once such a request is older than the window in
- which Hive would certainly have included it, it must stop counting against the
- per-block budget -- while keeping its claim, so that exact envelope can never be
- sent twice.
+    An operation whose payload carries no nonce has no checkable identity, so the chain
+    probe answers "unknown" forever. Once such a request is older than the window in
+    which Hive would certainly have included it, it must stop counting against the
+    per-block budget -- while keeping its claim, so that exact envelope can never be
+    sent twice.
     """
     run_in_module_context(
         r"""
@@ -331,7 +331,7 @@ def test_unjudgeable_old_request_stops_blocking_but_keeps_its_claim() -> None:
 const account = 'alice';
 globalThis.fetch = async () => ({ ok: true, json: async () => ({ included: null, block_num: null }) });
 const stale = { id: 'stuck', claimIds: ['stuck'], count: 4, txId: null, instanceId: 'i-old',
- budgetActive: true, createdAt: new Date(Date.now() - 3600000).toISOString() };
+  budgetActive: true, createdAt: new Date(Date.now() - 3600000).toISOString() };
 saveCustomOps(account, [stale]);
 globalThis.localStorage.setItem('ceres:broadcast-claims:v1:' + account, JSON.stringify(['stuck']));
 let reached = 0;

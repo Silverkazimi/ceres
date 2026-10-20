@@ -28,28 +28,28 @@ updateMountedRow = (uid, options = {}) => mountedUpdates.push({uid, options});
 const resolvers = [];
 let fetchCount = 0;
 fetch = () => {
- fetchCount += 1;
- return new Promise((resolve) => { resolvers.push(resolve); });
+  fetchCount += 1;
+  return new Promise((resolve) => { resolvers.push(resolve); });
 };
 (async () => {
- const pending = loadPlotDetail(rowA, BOARD_GENERATION);
- BOARD_GENERATION = 12;
- BOARD.plots[0] = rowB;
- CURRENT_ROWS[0] = rowB;
- resolvers[0]({ok: true, status: 200, json: async () => ({deed_uid: deedUid, workers: [{asset_ref: 'stale-response'}], assets_loaded: true})});
- await pending;
- await Promise.resolve();
- if (fetchCount !== 2) throw new Error('handoff did not issue exactly one recovery fetch: ' + fetchCount);
- resolvers[1]({ok: true, status: 200, json: async () => detail});
- await new Promise((resolve) => setTimeout(resolve, 0));
- if (fetchCount !== 2) throw new Error('handoff issued a redundant fetch: ' + fetchCount);
- if (BOARD.plots[0] !== detail) throw new Error('detail did not land on the successor BOARD row');
- if (CURRENT_ROWS[0] !== detail) throw new Error('detail did not land on the successor CURRENT_ROWS entry');
- if (rowA.workers.length !== 1 || rowA.workers[0].asset_ref !== 'worker-on-A' || rowA.board_revision !== undefined) throw new Error('stale detail was applied to row A');
- if (!EXPANDED_DATA_LOADED.has(deedUid)) throw new Error('successor detail was not marked ready');
- if (!mountedUpdates.some(({uid, options}) => uid === deedUid && options.readiness === true)) {
- throw new Error('successor row was not remounted with readiness');
- }
+  const pending = loadPlotDetail(rowA, BOARD_GENERATION);
+  BOARD_GENERATION = 12;
+  BOARD.plots[0] = rowB;
+  CURRENT_ROWS[0] = rowB;
+  resolvers[0]({ok: true, status: 200, json: async () => ({deed_uid: deedUid, workers: [{asset_ref: 'stale-response'}], assets_loaded: true})});
+  await pending;
+  await Promise.resolve();
+  if (fetchCount !== 2) throw new Error('handoff did not issue exactly one recovery fetch: ' + fetchCount);
+  resolvers[1]({ok: true, status: 200, json: async () => detail});
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  if (fetchCount !== 2) throw new Error('handoff issued a redundant fetch: ' + fetchCount);
+  if (BOARD.plots[0] !== detail) throw new Error('detail did not land on the successor BOARD row');
+  if (CURRENT_ROWS[0] !== detail) throw new Error('detail did not land on the successor CURRENT_ROWS entry');
+  if (rowA.workers.length !== 1 || rowA.workers[0].asset_ref !== 'worker-on-A' || rowA.board_revision !== undefined) throw new Error('stale detail was applied to row A');
+  if (!EXPANDED_DATA_LOADED.has(deedUid)) throw new Error('successor detail was not marked ready');
+  if (!mountedUpdates.some(({uid, options}) => uid === deedUid && options.readiness === true)) {
+    throw new Error('successor row was not remounted with readiness');
+  }
 })();
 """
 
@@ -76,24 +76,24 @@ updateMountedRow = (uid, options = {}) => mountedUpdates.push({uid, options});
 let resolveDetail;
 let fetchCount = 0;
 fetch = () => {
- fetchCount += 1;
- return new Promise((resolve) => { resolveDetail = resolve; });
+  fetchCount += 1;
+  return new Promise((resolve) => { resolveDetail = resolve; });
 };
 (async () => {
- BOARD_GENERATION = 22;
- const click = toggleRow(rowA);
- BOARD.plots[0] = rowB;
- CURRENT_ROWS[0] = rowB;
- resolveDetail({ok: true, status: 200, json: async () => detail});
- await click;
- if (fetchCount !== 1) throw new Error('same-generation handoff issued a redundant fetch: ' + fetchCount);
- if (BOARD.plots[0] !== detail || CURRENT_ROWS[0] !== detail) throw new Error('same-generation detail missed successor entries');
- if (rowA.workers.length !== 1 || rowA.workers[0].asset_ref !== 'worker-on-A') throw new Error('same-generation stale detail was applied to row A');
- if (!EXPANDED_DATA_LOADED.has(deedUid)) throw new Error('same-generation successor detail was not marked ready');
- if (!mountedUpdates.some(({uid, options}) => uid === deedUid && options.readiness === true)) {
- throw new Error('same-generation successor row was not remounted with readiness');
- }
- console.log('SAME_GENERATION_HANDOFF_OK');
+  BOARD_GENERATION = 22;
+  const click = toggleRow(rowA);
+  BOARD.plots[0] = rowB;
+  CURRENT_ROWS[0] = rowB;
+  resolveDetail({ok: true, status: 200, json: async () => detail});
+  await click;
+  if (fetchCount !== 1) throw new Error('same-generation handoff issued a redundant fetch: ' + fetchCount);
+  if (BOARD.plots[0] !== detail || CURRENT_ROWS[0] !== detail) throw new Error('same-generation detail missed successor entries');
+  if (rowA.workers.length !== 1 || rowA.workers[0].asset_ref !== 'worker-on-A') throw new Error('same-generation stale detail was applied to row A');
+  if (!EXPANDED_DATA_LOADED.has(deedUid)) throw new Error('same-generation successor detail was not marked ready');
+  if (!mountedUpdates.some(({uid, options}) => uid === deedUid && options.readiness === true)) {
+    throw new Error('same-generation successor row was not remounted with readiness');
+  }
+  console.log('SAME_GENERATION_HANDOFF_OK');
 })();
 """
 
@@ -122,22 +122,22 @@ updateMountedRow = (uid, options = {}) => mountedUpdates.push({uid, options});
 let resolveDetail;
 let fetchCount = 0;
 fetch = () => {
- fetchCount += 1;
- return new Promise((resolve) => { resolveDetail = resolve; });
+  fetchCount += 1;
+  return new Promise((resolve) => { resolveDetail = resolve; });
 };
 (async () => {
- const pending = loadPlotDetail(rowA, BOARD_GENERATION);
- BOARD_GENERATION = 32;
- CURRENT_PLAYER = 'beta';
- BOARD = {player: 'beta', plots: [rowB]};
- CURRENT_ROWS = [rowB];
- resolveDetail({ok: false, status: 304, json: async () => ({detail: 'not modified'})});
- await pending;
- if (fetchCount !== 1) throw new Error('304 player/generation change issued a redundant recovery fetch: ' + fetchCount);
- if (BOARD.plots[0] !== rowB || CURRENT_ROWS[0] !== rowB) throw new Error('foreign 304 response changed the new player board');
- if (rowB.board_revision !== 'beta-board' || rowB.workers[0].asset_ref !== 'worker-on-B') throw new Error('stale 304 detail was applied to the new player row');
- if (EXPANDED_DATA_LOADED.has(deedUid)) throw new Error('304 response incorrectly marked detail ready');
- if (EXPAND_ERRORS.has(deedUid)) throw new Error('stale 304 response surfaced an expansion error');
+  const pending = loadPlotDetail(rowA, BOARD_GENERATION);
+  BOARD_GENERATION = 32;
+  CURRENT_PLAYER = 'beta';
+  BOARD = {player: 'beta', plots: [rowB]};
+  CURRENT_ROWS = [rowB];
+  resolveDetail({ok: false, status: 304, json: async () => ({detail: 'not modified'})});
+  await pending;
+  if (fetchCount !== 1) throw new Error('304 player/generation change issued a redundant recovery fetch: ' + fetchCount);
+  if (BOARD.plots[0] !== rowB || CURRENT_ROWS[0] !== rowB) throw new Error('foreign 304 response changed the new player board');
+  if (rowB.board_revision !== 'beta-board' || rowB.workers[0].asset_ref !== 'worker-on-B') throw new Error('stale 304 detail was applied to the new player row');
+  if (EXPANDED_DATA_LOADED.has(deedUid)) throw new Error('304 response incorrectly marked detail ready');
+  if (EXPAND_ERRORS.has(deedUid)) throw new Error('stale 304 response surfaced an expansion error');
 })();
 """
 
@@ -149,11 +149,11 @@ def test_304_after_player_generation_change_does_not_recover_foreign_row() -> No
 def test_old_terminal_drop_rejects_successor_handoff() -> None:
     source = read_entry_source()
     anchor = """      if (!current() || idx === -1 || BOARD.plots[idx] !== row) {
- targetRow = handoffRow();
- if (!targetRow) return;
- idx = BOARD.plots.findIndex((p) => p.deed_uid === deedUid);
- }
- if (!current() || idx === -1 || BOARD.plots[idx] !== targetRow) return;"""
+        targetRow = handoffRow();
+        if (!targetRow) return;
+        idx = BOARD.plots.findIndex((p) => p.deed_uid === deedUid);
+      }
+      if (!current() || idx === -1 || BOARD.plots[idx] !== targetRow) return;"""
     # put the not-loaded check between this guard and reconcileCapPrediction(); the mutation (drop the
     # handoff) does not depend on the line after the guard, so the anchor ends at the guard.
     assert source.count(anchor) == 1

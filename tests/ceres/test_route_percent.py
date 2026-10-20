@@ -33,22 +33,22 @@ def test_manifest_member_retains_the_percent_used_to_compute_its_source_amount()
 def test_amount_routes_are_flagged_and_remain_previewable_at_the_saved_amount():
     run_in_module_context(r"""
 const __seed1 = { rules: [{
- id: 'old', kind: 'sell', source_region: 'land-PNW-041', symbol: 'WOOD',
- destination_symbol: 'DEC', quantity_mode: 'amount', quantity: '25',
+  id: 'old', kind: 'sell', source_region: 'land-PNW-041', symbol: 'WOOD',
+  destination_symbol: 'DEC', quantity_mode: 'amount', quantity: '25',
 }] };
 const setup = createRoutingSetup({ initialRules: __seed1.rules, player: 'fixtureowner', scope: { kind: 'all' },
- regions: [{ region_uid: 'land-PNW-041' }], receipts: ['confirmed-attempt'],
- enabledKinds: ['sale_dec'], signingEnabled: true });
+  regions: [{ region_uid: 'land-PNW-041' }], receipts: ['confirmed-attempt'],
+  enabledKinds: ['sale_dec'], signingEnabled: true });
 let html = setup.html();
 if (!html.includes('25 Wood — fixed amount (old style). Change to a percent') || !html.includes('value=""'))
- throw Error('saved amount route was not flagged with an empty percent field');
+  throw Error('saved amount route was not flagged with an empty percent field');
 if (html.includes('25%')) throw Error('saved amount was silently shown as a percent');
 setup.action('start').then(() => {
- html = setup.html();
- if (html.includes('Saved amount routes must be set to a percent before review.'))
- throw Error('saved amount route was blocked from v2 review');
- if (!html.includes('vm_context fetch stub'))
- throw Error('legacy route did not reach the preview request');
+  html = setup.html();
+  if (html.includes('Saved amount routes must be set to a percent before review.'))
+    throw Error('saved amount route was blocked from v2 review');
+  if (!html.includes('vm_context fetch stub'))
+    throw Error('legacy route did not reach the preview request');
 }).catch(error => { console.error(error); process.exitCode = 1; });
 """, entry=STATIC / "routing-setup.js")
     assert routing.validate_percent_allocation({"quantity_mode": "amount", "quantity": "25"}) == Decimal("25")
@@ -57,26 +57,26 @@ setup.action('start').then(() => {
 def test_setup_pager_posting_copy_default_and_distinct_region_count():
     run_in_module_context(r"""
 const rules = Array.from({ length: 6 }, (_, index) => ({
- id: `route-${index}`, kind: 'sell', source_region: index < 4 ? 'land-PNW-041' : 'land-BRL-065',
- symbol: 'WOOD', destination_symbol: 'DEC', quantity_mode: 'percent', quantity: '25',
+  id: `route-${index}`, kind: 'sell', source_region: index < 4 ? 'land-PNW-041' : 'land-BRL-065',
+  symbol: 'WOOD', destination_symbol: 'DEC', quantity_mode: 'percent', quantity: '25',
 }));
 const __seed2 = { rules };
 const setup = createRoutingSetup({ initialRules: __seed2.rules, player: 'fixtureowner', scope: { kind: 'all' },
- regions: [{ region_uid: 'land-PNW-041' }, { region_uid: 'land-BRL-065' }],
- enabledKinds: ['sale_dec'], signingEnabled: true });
+  regions: [{ region_uid: 'land-PNW-041' }, { region_uid: 'land-BRL-065' }],
+  enabledKinds: ['sale_dec'], signingEnabled: true });
 let html = setup.html();
 if (html.includes('r3-pagebar')) throw Error('single-page pager is visible');
 if (!html.includes('<strong>6 routes</strong><span>2 source regions</span>')) throw Error('setup summary or distinct source-region count is missing');
 if (!html.includes('Signs with your Posting key') || !html.includes('Money transfers need the Active key.'))
- throw Error('Posting summary or tooltip copy missing');
+  throw Error('Posting summary or tooltip copy missing');
 if (html.includes('<span class="r3-wallet">')) throw Error('Posting summary has button styling');
 
 const empty = createRoutingSetup({ player: 'fresh', scope: { kind: 'all' },
- regions: [{ region_uid: 'land-PNW-041' }], enabledKinds: ['sale_dec'], signingEnabled: true });
+  regions: [{ region_uid: 'land-PNW-041' }], enabledKinds: ['sale_dec'], signingEnabled: true });
 empty.action('add');
 html = empty.html();
 if (!/<span class="r3-percent-field"><input[^>]*value="25"[^>]*><span aria-hidden="true">%<\/span><\/span>/.test(html))
- throw Error('new route does not default to a visibly marked 25%');
+  throw Error('new route does not default to a visibly marked 25%');
 
 """, entry=STATIC / "routing-setup.js")
 

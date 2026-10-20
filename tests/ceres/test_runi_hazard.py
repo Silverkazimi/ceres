@@ -1,4 +1,4 @@
-""" verifies the sole-power-source hazard actually fires for a Runi removal
+""" -- verifies the sole-power-source hazard actually fires for a Runi removal
 through the real click-handler path, not just through op_preview.py's build_preview().
 
 This hazard math (`ceres.op_preview.sole_power_source_removed`) was written and unit-
@@ -24,7 +24,7 @@ import urllib.request
 import pytest
 from playwright.sync_api import Browser
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres, wait_ready
 
 
 @pytest.fixture(scope="module")
@@ -35,8 +35,8 @@ def live_browser() -> tuple[Browser, str]:
 
 def _real_row_with_runi(base_url: str) -> dict:
     """A REAL `GET /api/plots/{deed}` row for a plot with a real Runi staked
- (`workers` slot 0) -- used as a template; only the power-source flags and the
- Runi's presence are overridden per scenario."""
+    (`workers` slot 0) -- used as a template; only the power-source flags and the
+    Runi's presence are overridden per scenario."""
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=10) as response:
         board = json.loads(response.read().decode("utf-8"))
     for plot in board["plots"]:
@@ -77,25 +77,26 @@ def _drive_remove_click(page, base_url: str, row: dict, group_id: str, *, expect
     tile.wait_for(timeout=30_000)
     page.locator(".slot-power").first.hover()
     tile.hover()
-    page.wait_for_timeout(200)
+    wait_ready(page)
+    settle(page)
     tile.locator(".slot-remove").click(force=True, timeout=10_000)
     overlay = page.locator("#slot-hazard-overlay")
     if expect_hazard:
         overlay.wait_for(timeout=30_000, state="visible")
         assert "sole power source" in overlay.inner_text().lower()
     else:
-        page.wait_for_timeout(1000)
+        settle(page)
         assert overlay.count() == 0 or not overlay.is_visible(), "hazard modal opened even though another source covers the plot"
 
 
 def test_runi_removal_opens_hazard_modal_when_it_is_the_sole_power_source(live_browser: tuple[Browser, str]) -> None:
     r"""Named injection, run and watched red, then reverted and watched green: in
- `ceres/static/app.js`'s `isSoleSource()`, the `runi` branch
- `return hasRuni && !hasEnergized && !hasCore;` was changed to `return false;`.
- Red: `playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 30000ms
- exceeded ... waiting for locator("#slot-hazard-overlay") to be visible` -- the
- click fell through to the direct `stagePricedRemovals()` path instead.
- Restoring the line made this test pass again (whole-file run: 4 passed)."""
+    `ceres/static/app.js`'s `isSoleSource()`, the `runi` branch
+    `return hasRuni && !hasEnergized && !hasCore;` was changed to `return false;`.
+    Red: `playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 30000ms
+    exceeded ... waiting for locator("#slot-hazard-overlay") to be visible` -- the
+    click fell through to the direct `stagePricedRemovals()` path instead.
+    Restoring the line made this test pass again (whole-file run: 4 passed)."""
     browser, base_url = live_browser
     row = _real_row_with_runi(base_url)
     row["is_power_core_staked"] = False
@@ -108,11 +109,11 @@ def test_runi_removal_opens_hazard_modal_when_it_is_the_sole_power_source(live_b
 
 def test_power_core_removal_opens_hazard_modal_when_it_is_the_sole_power_source(live_browser: tuple[Browser, str]) -> None:
     r"""Named injection, run and watched red, then reverted and watched green: in
- `ceres/static/app.js`'s `isSoleSource()`, the `power_core` branch
- `return hasCore && !hasEnergized && !hasRuni;` was changed to `return false;`.
- Red: `playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 30000ms
- exceeded ... waiting for locator("#slot-hazard-overlay") to be visible`.
- Restoring the line made this test pass again (whole-file run: 4 passed)."""
+    `ceres/static/app.js`'s `isSoleSource()`, the `power_core` branch
+    `return hasCore && !hasEnergized && !hasRuni;` was changed to `return false;`.
+    Red: `playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 30000ms
+    exceeded ... waiting for locator("#slot-hazard-overlay") to be visible`.
+    Restoring the line made this test pass again (whole-file run: 4 passed)."""
     browser, base_url = live_browser
     row = _real_row_with_runi(base_url)
     row["workers"] = [w for w in row["workers"] if w["slot"] != 0]
@@ -127,11 +128,11 @@ def test_power_core_removal_opens_hazard_modal_when_it_is_the_sole_power_source(
 
 def test_runi_removal_does_not_open_hazard_modal_when_energized_covers_the_plot(live_browser: tuple[Browser, str]) -> None:
     r"""Named injection, shared with the sibling test below, run and watched red,
- then reverted and watched green: `isSoleSource()`'s `runi` branch was changed
- to `return hasRuni;` (drops the `!hasEnergized && !hasCore` exclusions, so ANY
- Runi is reported "sole"). Red: `AssertionError: hazard modal opened even
- though another source covers the plot` -- `assert (1 == 0 or not True)`.
- Restoring the line made this test pass again (whole-file run: 4 passed)."""
+    then reverted and watched green: `isSoleSource()`'s `runi` branch was changed
+    to `return hasRuni;` (drops the `!hasEnergized && !hasCore` exclusions, so ANY
+    Runi is reported "sole"). Red: `AssertionError: hazard modal opened even
+    though another source covers the plot` -- `assert (1 == 0 or not True)`.
+    Restoring the line made this test pass again (whole-file run: 4 passed)."""
     browser, base_url = live_browser
     row = _real_row_with_runi(base_url)
     row["is_power_core_staked"] = False
@@ -144,9 +145,9 @@ def test_runi_removal_does_not_open_hazard_modal_when_energized_covers_the_plot(
 
 def test_runi_removal_does_not_open_hazard_modal_when_a_power_core_covers_the_plot(live_browser: tuple[Browser, str]) -> None:
     r"""Named injection: same mutation as the sibling test above (`isSoleSource()`'s
- `runi` branch changed to `return hasRuni;`), run and watched red (identical
- failure: hazard modal opened despite the Power Core covering the plot), then
- reverted and watched green (whole-file run: 4 passed)."""
+    `runi` branch changed to `return hasRuni;`), run and watched red (identical
+    failure: hazard modal opened despite the Power Core covering the plot), then
+    reverted and watched green (whole-file run: 4 passed)."""
     browser, base_url = live_browser
     row = _real_row_with_runi(base_url)
     row["is_power_core_staked"] = True

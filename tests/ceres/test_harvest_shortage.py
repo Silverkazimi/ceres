@@ -1,4 +1,4 @@
-"""same-harvest grain must cover its own regional harvest cost."""
+""": same-harvest grain must cover its own regional harvest cost."""
 
 from pytest import approx
 

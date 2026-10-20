@@ -79,8 +79,8 @@ def _modal_source_with_live_harness_bindings() -> str:
     source = read_entry_source(MODAL_ENTRY)
     return source.rsplit("}", 1)[0] + """
 Object.defineProperties(globalThis, {
- M: {get: () => M},
- plotBodyHtml: {get: () => plotBodyHtml},
+  M: {get: () => M},
+  plotBodyHtml: {get: () => plotBodyHtml},
 });
 }
 """
@@ -145,15 +145,15 @@ def test_plot_modal_you_receive_card_has_stacked_net_ledger_without_overlap(widt
         _modal_preview_page(page, width, markup)
         result = page.locator(".hm-resource-summary").first.evaluate(
                 """card => {
- const ledger = card.querySelector('.hm-plot-ledger');
- const rows = [...ledger.querySelectorAll('.hm-plot-ledger-row')];
- const rect = node => { const box = node.getBoundingClientRect(); return {left:box.left, right:box.right, top:box.top, bottom:box.bottom}; };
- return {
- heading: card.querySelector('.hm-sec-h')?.textContent.trim(),
- rows: rows.map(row => ({symbol:row.dataset.resource, credit:!!row.querySelector('.hm-resource-credit'), debit:!!row.querySelector('.hm-resource-debit'), rect:rect(row)})),
- cardOverflow: card.scrollWidth - card.clientWidth,
- };
- }"""
+                  const ledger = card.querySelector('.hm-plot-ledger');
+                  const rows = [...ledger.querySelectorAll('.hm-plot-ledger-row')];
+                  const rect = node => { const box = node.getBoundingClientRect(); return {left:box.left, right:box.right, top:box.top, bottom:box.bottom}; };
+                  return {
+                    heading: card.querySelector('.hm-sec-h')?.textContent.trim(),
+                    rows: rows.map(row => ({symbol:row.dataset.resource, credit:!!row.querySelector('.hm-resource-credit'), debit:!!row.querySelector('.hm-resource-debit'), rect:rect(row)})),
+                    cardOverflow: card.scrollWidth - card.clientWidth,
+                  };
+                }"""
         )
         assert result["heading"] == "You receive · after tax"  # costs sit in their own rows
         assert result["rows"] == [dict(symbol="GRAIN", credit=True, debit=False, rect=result["rows"][0]["rect"])]

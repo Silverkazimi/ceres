@@ -1,4 +1,4 @@
-"""the real page draws a board from a fixture set, offline end to end (server and browser)."""
+""": the real page draws a board from a fixture set, offline end to end (server and browser)."""
 
 from __future__ import annotations
 

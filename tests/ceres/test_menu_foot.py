@@ -1,4 +1,4 @@
-"""the card menu's footer -- "Open cart" and the
+""": the card menu's footer -- "Open cart" and the
 "N listings in cart" line -- is absent while the cart is empty, appears with the first item and follows every change live."""
 from __future__ import annotations
 

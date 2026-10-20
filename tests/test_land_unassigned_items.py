@@ -47,8 +47,8 @@ def _response(data):
 
 class FakeLandClient:
     """Duck-types LandClient.bundle/assets/available_raw against canned fixtures.
- `available_calls` records every (stake_type_uid, deed_uid, offset) triple so
- tests can assert pagination and deed-anchoring behavior without a network."""
+    `available_calls` records every (stake_type_uid, deed_uid, offset) triple so
+    tests can assert pagination and deed-anchoring behavior without a network."""
 
     def __init__(self, deed_uids, available_pages):
         self.deed_uids = deed_uids

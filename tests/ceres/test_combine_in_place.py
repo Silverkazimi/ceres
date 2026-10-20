@@ -1,4 +1,4 @@
-"""Find combinables'
+""": Find combinables'
 Combine opens the board's combine dialog in place on /cards -- loaded on the first press (wallet.js first), never at first
 paint, the board never drawn -- preselected with the proposed set; a confirmed combine refreshes My cards and the card's
 entry. : the mode is the filter row's pill, the header keeps
@@ -60,17 +60,17 @@ def test_first_paint_never_imports_the_board_or_the_dialog():
 
 LOADER_JS = r"""
 (async () => {
- const calls = [];
- let fail = true;
- const load = (path) => { calls.push(path); return (fail && path === './combine-dialog.js') ? Promise.reject(new Error('offline')) : Promise.resolve({ path }); };
- let first = null;
- try { await cxLoadCombineDialog(load); } catch (e) { first = String(e.message); }
- await new Promise((r) => setTimeout(r, 0));
- fail = false;
- const a = cxLoadCombineDialog(load);
- const b = cxLoadCombineDialog(load);
- const mod = await a;
- console.log(JSON.stringify({ calls, first, same: a === b, mod }));
+  const calls = [];
+  let fail = true;
+  const load = (path) => { calls.push(path); return (fail && path === './combine-dialog.js') ? Promise.reject(new Error('offline')) : Promise.resolve({ path }); };
+  let first = null;
+  try { await cxLoadCombineDialog(load); } catch (e) { first = String(e.message); }
+  await new Promise((r) => setTimeout(r, 0));
+  fail = false;
+  const a = cxLoadCombineDialog(load);
+  const b = cxLoadCombineDialog(load);
+  const mod = await a;
+  console.log(JSON.stringify({ calls, first, same: a === b, mod }));
 })();
 """
 
@@ -87,43 +87,43 @@ GROUP_JS = r"""
 globalThis.CSS = { escape: (s) => s };
 const P = { id: '1-7-0', card_detail_id: 1, edition: 7, foil: 0, name: 'Goblin Shaman', card_set: 'chaos', rarity: 'rare', bcx_max: 22, thresholds: [1, 3, 5, 8, 12, 17, 22] };
 const set = { uids: ['C7-1-SECRET01', 'C7-1-SECRET02'], survivor_uid: 'C7-1-SECRET01', count: 2, destroyed_count: 1, warnings: [],
- before: { bcx: 1, level: 1, land_base_pp: 91 }, after: { bcx: 2, level: 1, land_base_pp: 182 } };
+  before: { bcx: 1, level: 1, land_base_pp: 91 }, after: { bcx: 2, level: 1, land_base_pp: 182 } };
 const group = { print: P, owned_count: 3, combinable_count: 2, sets: [set], base: { bcx: 1, level: 1, maxed: false }, upgrade_hint: { possible: false, reason: 'none' },
- copies: [{ uid: 'C7-1-SECRET01', bcx: 1, level: 1, combinable: true, reasons: [], warnings: [] },
- { uid: 'C7-1-SECRET02', bcx: 1, level: 1, combinable: true, reasons: [], warnings: [] },
- { uid: 'C7-1-SECRET03', bcx: 1, level: 1, combinable: false, reasons: [{ code: 'listed', text: 'listed on the market' }], warnings: [] }] };
+  copies: [{ uid: 'C7-1-SECRET01', bcx: 1, level: 1, combinable: true, reasons: [], warnings: [] },
+           { uid: 'C7-1-SECRET02', bcx: 1, level: 1, combinable: true, reasons: [], warnings: [] },
+           { uid: 'C7-1-SECRET03', bcx: 1, level: 1, combinable: false, reasons: [{ code: 'listed', text: 'listed on the market' }], warnings: [] }] };
 const reloads = [];
 _cxForTests.deps = { tileHtml: () => '<article class="cb-tile"></article>', cards: () => [], filters: () => cbDefaultFilters(), player: () => 'sample01',
- reloadCards: () => reloads.push('cards'), syncClear: () => {} };
+  reloadCards: () => reloads.push('cards'), syncClear: () => {} };
 _cxForTests.body = { groups: [group], summary: {} };
 _cxForTests.upgrades.set('1-7-0', { data: { verdict: { kind: 'none', label: 'x' } } });
 """
 
 OPEN_JS = GROUP_JS + r"""
 (async () => {
- const opened = [];
- let release;
- const gate = new Promise((r) => { release = r; });
- const dialog = { openCombineInPlace: (g, host) => { opened.push({ id: g.print.id, preselect: g.sets[0].uids, hooks: Object.keys(host).sort() }); return true; } };
- const pending = cxOpenCombine('1-7-0', { load: () => gate.then(() => dialog) });
- const busy = cxEntryHtml(group);
- const again = cxOpenCombine('1-7-0', { load: () => { opened.push('second load'); return Promise.resolve(dialog); } }); // a second press while loading
- release();
- await pending; await again;
- const idle = cxEntryHtml(group);
- // the dialog closed with the outcome unknown: the card's Combine stays closed for this visit
- const host = cxCombineHost('1-7-0');
- host.onClosed({ outcome: 'none' });
- const afterNone = _cxForTests.held.has('1-7-0');
- host.onClosed({ outcome: 'unknown' });
- const held = cxEntryHtml(group);
- let loadsWhileHeld = 0;
- await cxOpenCombine('1-7-0', { load: () => { loadsWhileHeld += 1; return Promise.resolve(dialog); } });
- // a dialog that cannot open says so on the entry
- _cxForTests.held.clear();
- await cxOpenCombine('1-7-0', { load: () => Promise.reject(new Error('offline')) });
- const failed = cxEntryHtml(group);
- console.log(JSON.stringify({ opened, busy, idle, afterNone, held, loadsWhileHeld, failed }));
+  const opened = [];
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const dialog = { openCombineInPlace: (g, host) => { opened.push({ id: g.print.id, preselect: g.sets[0].uids, hooks: Object.keys(host).sort() }); return true; } };
+  const pending = cxOpenCombine('1-7-0', { load: () => gate.then(() => dialog) });
+  const busy = cxEntryHtml(group);
+  const again = cxOpenCombine('1-7-0', { load: () => { opened.push('second load'); return Promise.resolve(dialog); } });  // a second press while loading
+  release();
+  await pending; await again;
+  const idle = cxEntryHtml(group);
+  // the dialog closed with the outcome unknown: the card's Combine stays closed for this visit
+  const host = cxCombineHost('1-7-0');
+  host.onClosed({ outcome: 'none' });
+  const afterNone = _cxForTests.held.has('1-7-0');
+  host.onClosed({ outcome: 'unknown' });
+  const held = cxEntryHtml(group);
+  let loadsWhileHeld = 0;
+  await cxOpenCombine('1-7-0', { load: () => { loadsWhileHeld += 1; return Promise.resolve(dialog); } });
+  // a dialog that cannot open says so on the entry
+  _cxForTests.held.clear();
+  await cxOpenCombine('1-7-0', { load: () => Promise.reject(new Error('offline')) });
+  const failed = cxEntryHtml(group);
+  console.log(JSON.stringify({ opened, busy, idle, afterNone, held, loadsWhileHeld, failed }));
 })();
 """
 
@@ -142,24 +142,24 @@ def test_combine_opens_in_place_with_the_proposed_set_and_never_twice_while_unkn
 
 CONFIRMED_JS = GROUP_JS + r"""
 (async () => {
- const urls = [];
- const fresh = { ...group, owned_count: 2, combinable_count: 0, sets: [], copies: [{ uid: 'C7-1-SECRET01', bcx: 2, level: 1, combinable: false, reasons: [{ code: 'listed', text: 'listed on the market' }], warnings: [] }] };
- globalThis.fetch = async (url) => { urls.push(String(url)); return { ok: true, status: 200, json: async () => ({ groups: [fresh] }) }; };
- const owned = [];
- _cxForTests.held.add('1-7-0');
- const running = afterCombine('1-7-0', { triggered: true }, { refreshOwned: async (player, reload, opts) => { owned.push({ player, start: opts.start }); reload(); } });
- const during = cxEntryHtml(group);
- await running;
- const g = _cxForTests.body.groups[0];
- const after = cxEntryHtml(g);
- // the server could not start its read: this page starts it (the checkout hook's start flag)
- await afterCombine('1-7-0', { triggered: false }, { refreshOwned: async (player, reload, opts) => { owned.push({ player, start: opts.start }); } });
- // a re-read that fails says so, and the entry is not left spinning
- globalThis.fetch = async () => { throw new Error('offline'); };
- await afterCombine('1-7-0', null, { refreshOwned: async () => {} });
- const failed = cxEntryHtml(_cxForTests.body.groups[0]);
- console.log(JSON.stringify({ urls, owned, reloads, during, after, upgrades: _cxForTests.upgrades.has('1-7-0'), held: _cxForTests.held.has('1-7-0'),
- refreshing: _cxForTests.refreshing.size, sets: g.sets.length, failed }));
+  const urls = [];
+  const fresh = { ...group, owned_count: 2, combinable_count: 0, sets: [], copies: [{ uid: 'C7-1-SECRET01', bcx: 2, level: 1, combinable: false, reasons: [{ code: 'listed', text: 'listed on the market' }], warnings: [] }] };
+  globalThis.fetch = async (url) => { urls.push(String(url)); return { ok: true, status: 200, json: async () => ({ groups: [fresh] }) }; };
+  const owned = [];
+  _cxForTests.held.add('1-7-0');
+  const running = afterCombine('1-7-0', { triggered: true }, { refreshOwned: async (player, reload, opts) => { owned.push({ player, start: opts.start }); reload(); } });
+  const during = cxEntryHtml(group);
+  await running;
+  const g = _cxForTests.body.groups[0];
+  const after = cxEntryHtml(g);
+  // the server could not start its read: this page starts it (the checkout hook's start flag)
+  await afterCombine('1-7-0', { triggered: false }, { refreshOwned: async (player, reload, opts) => { owned.push({ player, start: opts.start }); } });
+  // a re-read that fails says so, and the entry is not left spinning
+  globalThis.fetch = async () => { throw new Error('offline'); };
+  await afterCombine('1-7-0', null, { refreshOwned: async () => {} });
+  const failed = cxEntryHtml(_cxForTests.body.groups[0]);
+  console.log(JSON.stringify({ urls, owned, reloads, during, after, upgrades: _cxForTests.upgrades.has('1-7-0'), held: _cxForTests.held.has('1-7-0'),
+    refreshing: _cxForTests.refreshing.size, sets: g.sets.length, failed }));
 })();
 """
 
@@ -185,7 +185,7 @@ def test_dialog_mount_hooks_and_board_path():
     assert "openCombineGroupDialog(key, { preselect: group.sets?.[0]?.uids || null });" in body
     assert "fetch(" not in body and "idleCardsReady" not in body and "BOARD" not in body
     # a confirmed combine calls the page's hook instead of the board refresh (which would load the board)
-    assert ("if (COMBINE_HOST?.onConfirmed) COMBINE_HOST.onConfirmed({ combineRefresh: result.combine_refresh }); // the Cards page\n"
+    assert ("if (COMBINE_HOST?.onConfirmed) COMBINE_HOST.onConfirmed({ combineRefresh: result.combine_refresh });  // : the Cards page\n"
             "      else settleCombineRefresh(result.combine_refresh);") in src
     # closing reports an unresolved combine (wallet open, ambiguous broadcast, sent without the game's verdict)
     assert "COMBINE_SIGN_STEP || COMBINE_ARRIVAL?.provisional || COMBINE_PREVIEW?.broadcastStalled ? 'unknown' : 'none';" in src
@@ -195,7 +195,7 @@ def test_dialog_mount_hooks_and_board_path():
     # the signing flow is the dialog's own, unchanged
     assert "if (kind === 'sign') { confirmCombineBroadcast(); return; }" in src and "rebuildCombineForSigning(uids)" in src
     # the /?combine= board link still works
-    assert src.rstrip().endswith("openCombineFromAddress(); // registered when the board's module graph loads (the Cards page never loads it)")
+    assert src.rstrip().endswith("openCombineFromAddress();  // : registered when the board's module graph loads (the Cards page never loads it)")
     assert "export async function openCombineFromPrint(print) {" in src and "url.searchParams.delete('combine')" in src
 
 
@@ -206,7 +206,7 @@ def test_dialog_notice_fallback_matches_the_served_catalog():
 
     src = DIALOG.read_text(encoding="utf-8")
     block = src[src.index("const COMBINE_NOTICE_FALLBACK = {"):src.index("};", src.index("const COMBINE_NOTICE_FALLBACK = {"))]
-    copy = dict(re.findall(r"^ (combine_[a-z_]+): '((?:[^'\\]|\\.)*)',$", block, re.M))
+    copy = dict(re.findall(r"^  (combine_[a-z_]+): '((?:[^'\\]|\\.)*)',$", block, re.M))
     used = set(re.findall(r"combineNoticeText\('([a-z_]+)'", src))
     assert used and used == set(copy), (used, set(copy))
     catalog = notice_catalog()
@@ -224,7 +224,7 @@ def test_dialog_layers_over_the_cards_page():
 
 def test_reload_hook_is_passed_to_find_combinables():
     js = BROWSER.read_text(encoding="utf-8")
-    assert "reloadCards: () => load(), // My cards after a confirmed combine in place" in js
+    assert "reloadCards: () => load(),  // : My cards after a confirmed combine in place" in js
 
 
 # Find combinables in the filter row
@@ -235,7 +235,7 @@ def test_find_combinables_is_the_filter_row_pill():
     row = page[page.index('<div class="controls-row cb-controls" id="cb-controls">'):page.index('<main id="cb-main"')]
     assert "cb-mode-combine" not in header and "Find combinables" not in header
     # My cards / Market (+ the Plots | Cards switcher's two halves, links)
-    assert header.count('<button type="button" id="cb-mode') == 2
+    assert header.count('<button type="button" id="cb-mode-') == 2
     assert header.count('class="ceres-btn ceres-btn--choice" data-control-density="header"') == 4
     # the visible label is "Combinables"; the name and the tooltip keep "Find combinables"
     pill = '<label class="picker-toggle board-filter-pill ceres-btn ceres-btn--choice cb-only" data-control-density="compact" data-tip="Find combinables"><span class="ceres-btn__check" aria-hidden="true"></span><input type="checkbox" id="cb-mode-combine" aria-label="Find combinables"><span>Combinables</span></label>'

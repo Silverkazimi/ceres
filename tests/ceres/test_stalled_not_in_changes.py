@@ -14,11 +14,11 @@ const BOARD = null; const FEED_STATE = new Map(); const SENT_HOLD_MS = 600000;
 {body}
 const now = Date.parse('2026-10-02T12:00:00Z');
 const plots = [
- {{ deed_uid: 'stalled', pending_change: {{ kind: 'worksite_change', stalled: true, ready_at: null, to_label: 'Logging Camp' }} }},
- {{ deed_uid: 'building', pending_change: {{ kind: 'worksite_change', stalled: false, ready_at: '2026-10-03T12:00:00Z', to_label: 'Mine' }} }},
- {{ deed_uid: 'ready', pending_change: {{ kind: 'worksite_change', stalled: false, ready_at: '2026-10-01T12:00:00Z', to_label: 'Farm' }} }},
- {{ deed_uid: 'done', worksite_completion: {{ ready_at: '2026-10-01T12:00:00Z', to_label: 'Quarry', grain_cost: 5 }}, pending_change: {{ kind: 'worksite_change', stalled: true }} }},
- {{ deed_uid: 'plain' }},
+  {{ deed_uid: 'stalled', pending_change: {{ kind: 'worksite_change', stalled: true, ready_at: null, to_label: 'Logging Camp' }} }},
+  {{ deed_uid: 'building', pending_change: {{ kind: 'worksite_change', stalled: false, ready_at: '2026-10-03T12:00:00Z', to_label: 'Mine' }} }},
+  {{ deed_uid: 'ready', pending_change: {{ kind: 'worksite_change', stalled: false, ready_at: '2026-10-01T12:00:00Z', to_label: 'Farm' }} }},
+  {{ deed_uid: 'done', worksite_completion: {{ ready_at: '2026-10-01T12:00:00Z', to_label: 'Quarry', grain_cost: 5 }}, pending_change: {{ kind: 'worksite_change', stalled: true }} }},
+  {{ deed_uid: 'plain' }},
 ];
 const out = constructionItems(plots, now).map(item => item.deedUid + ':' + item.kind).join(',');
 if (out !== 'building:building,ready:feed,done:feed') throw new Error('unexpected items: ' + out);

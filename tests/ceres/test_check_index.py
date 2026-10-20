@@ -1,4 +1,4 @@
-"""the plan check indexes the collection once per request (ceres/stage_plans.py, ceres/op_preview.py).
+""": the plan check indexes the collection once per request (ceres/stage_plans.py, ceres/op_preview.py).
 
 The index must not change a single verdict or asset record: precedence stays workers, then bonus_assets,
 then cards, then unassigned items; the first row of each list wins; Survival facts still merge from the

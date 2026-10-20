@@ -1,4 +1,4 @@
-""" worker-tile tags sit in one top-left row; a tile wears at most one full-width band, by priority."""
+""" / : worker-tile tags sit in one top-left row; a tile wears at most one full-width band, by priority."""
 
 from __future__ import annotations
 
@@ -16,10 +16,10 @@ if (JSON.stringify(TILE_BAND_PRIORITY) !== JSON.stringify(order)) process.exit(1
 // every state present: the highest wins, exactly one band
 const all = Object.fromEntries(order.map((k) => [k, B(k)]));
 for (let i = 0; i < order.length; i += 1) {
- const states = Object.fromEntries(order.slice(i).map((k) => [k, B(k)]));
- const out = tileBand(states);
- if (out !== B(order[i])) process.exit(20 + i);
- if ((out.match(/slot-wait-badge/g) || []).length !== 1) process.exit(30 + i);
+  const states = Object.fromEntries(order.slice(i).map((k) => [k, B(k)]));
+  const out = tileBand(states);
+  if (out !== B(order[i])) process.exit(20 + i);
+  if ((out.match(/slot-wait-badge/g) || []).length !== 1) process.exit(30 + i);
 }
 if (tileBand({ unpowered: B('unpowered'), waiting: B('waiting'), planned: B('planned') }) !== B('unpowered')) process.exit(40);
 if (tileBand({ removal: B('removal'), unpowered: B('unpowered') }) !== B('removal')) process.exit(41);
@@ -44,7 +44,7 @@ def test_tile_markup_has_one_band_slot_and_the_tag_row() -> None:
         assert gone not in tile  # every band and tag goes through tileBand() / tileTagsHtml()
     assert "slot-flag-unpowered" not in editor  # unpowered is the "Not powered" band now (Echo's .tc-badge--unpowered)
     assert 'class="slot-wait-badge is-unpowered"' in editor and "Not powered" in editor
-    assert "tileBand({ removal" in editor and "tileBand({ moving" in editor
+    assert "tileBand({ removal:" in editor and "tileBand({ moving:" in editor
     assert "const tags = tileTagsHtml(kinBadges, coolingFlag);" in editor
 
 
@@ -57,7 +57,7 @@ def test_tag_row_css_uses_name_tail_without_satellite_offset() -> None:
                  "right: 4px;", "flex-flow: row nowrap;", "gap: 3px;"):
         assert decl in row
     assert ".slot-tile .slot-tags .slot-kin-badges { display: contents; }" in css
-    assert "has(> .slot-tile-cell > .slot-energized-satellite) > .slot-tile-cell > .slot-tile .slot-tags" not in css
+    assert ":has(> .slot-tile-cell > .slot-energized-satellite) > .slot-tile-cell > .slot-tile .slot-tags" not in css
     assert ".mobile-plot-sheet .slot-tile .slot-tags { left: 3px; right: 3px; bottom: 2px;" in (STATIC / "mobile-plot.css").read_text(encoding="utf-8")
 
 

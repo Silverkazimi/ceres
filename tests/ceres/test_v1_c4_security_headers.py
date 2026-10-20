@@ -63,13 +63,35 @@ def test_csp_hashes_every_inline_script_as_served(client: TestClient, monkeypatc
     assert "'unsafe-eval'" not in script_src
 
 
-def test_csp_allows_the_inline_image_fallback_handlers(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def _inline_handlers_in_page_modules() -> list[str]:
+    """Every inline event-handler attribute body the page's own modules write, read straight
+    from the sources (independent of the policy builder's own scan)."""
+    bodies: set[str] = set()
+    for path in sorted(STATIC_DIR.rglob("*.js")):
+        for match in re.finditer(r"\bon[a-z]+=(\"|')(.*?)\1", path.read_text(encoding="utf-8")):
+            bodies.add(match.group(2))
+    return sorted(bodies)
+
+
+def test_csp_allows_exactly_the_current_inline_handlers(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The image-fallback handlers the page writes (combine-dialog.js) are allowed by their
+    exact hashes and nothing else: no wildcard, no 'unsafe-inline', no unhashed handler."""
     monkeypatch.setenv("CERES_CSP", "enforce")
-    script_src = _directives(client.get("/").headers["Content-Security-Policy"])["script-src"]
-    handlers = inline_handler_hashes(STATIC_DIR)
-    assert _sha256("this.classList.add('is-none')") in handlers
-    assert "'unsafe-hashes'" in script_src
-    assert set(handlers) <= set(script_src)
+    response = client.get("/")
+    script_src = _directives(response.headers["Content-Security-Policy"])["script-src"]
+    handlers = _inline_handlers_in_page_modules()
+    assert handlers, "the page's modules are expected to write inline image-fallback handlers"
+    assert not [body for body in handlers if "${" in body], "an interpolated handler cannot be hashed and would be blocked"
+    expected_handlers = {_sha256(body) for body in handlers}
+    assert set(inline_handler_hashes(STATIC_DIR)) == expected_handlers
+
+    inline_scripts = [b for b in re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", response.text, re.S) if b.strip()]
+    hashes = {source for source in script_src if source.startswith("'sha256-")}
+    assert hashes == expected_handlers | {_sha256(body) for body in inline_scripts}
+    assert script_src.count("'unsafe-hashes'") == 1
+    assert set(script_src) == {"'self'", "'unsafe-hashes'"} | hashes
+    for loose in ("*", "'unsafe-inline'", "'unsafe-eval'", "https:", "http:", "data:", "blob:"):
+        assert loose not in script_src
 
 
 def test_csp_origins_and_framing(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:

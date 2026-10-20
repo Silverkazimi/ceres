@@ -1,4 +1,4 @@
-""" source-based return markers, independent of survivor identity."""
+""" : source-based return markers, independent of survivor identity."""
 from pathlib import Path
 from tests.ceres.vm_context import run_in_module_context
 STATIC = Path(__file__).parents[2] / 'ceres' / 'static'

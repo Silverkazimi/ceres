@@ -1,4 +1,4 @@
-"""an upgrade plan whose card snapshot carries a negative ability value (Rationing Lite -0.03) is valid; before,
+""": an upgrade plan whose card snapshot carries a negative ability value (Rationing Lite -0.03) is valid; before,
 the browser called it malformed and every saved change stayed on "Checking" forever."""
 import json
 import subprocess

@@ -6,7 +6,7 @@ import urllib.request
 import pytest
 from playwright.sync_api import Browser
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .vm_context import run_in_module_context
 
 CSS = Path("ceres/static/ceres.css").read_text()
@@ -20,19 +20,19 @@ def live_browser() -> tuple[Browser, str]:
 
 def test_slot_labels_use_real_group_and_slot_names(live_browser: tuple[Browser, str]) -> None:
     """ (row 1, (b) half): replaces the source-substring checks
- (editorEmptyLabel/editorSlotNumber's signatures and format strings; "Add
- card"/"asset-label" absent) with a rendered read of a REAL empty item slot.
- `totem` is one of `editorGroups()`'s bundled 1-capacity item groups
- (`ceres/static/app.js`'s `itemGroup('totem', 'Totem', ...)`), rendered as
- an `.asset-slot` tile inside the worker `.slot-group` (not its own
- section) via `renderEditorTile()`'s non-worker branch, which has no
- `emptyLabel` override -- so its empty-tile text is exactly
- `editorEmptyLabel()`'s `Add ${group.label}` output, unlike the `runi`/
- `power_core` satellite tiles which `renderPowerSlot()` gives a bespoke
- override label. Proves the same behaviour the old assertions named by
- spelling: the empty tile's `.empty-label` text is `Add Totem` (the real
- `group.label`, not the retired "Add card" copy), and no element in the
- editor carries the retired `asset-label` class."""
+    (editorEmptyLabel/editorSlotNumber's signatures and format strings; "Add
+    card"/"asset-label" absent) with a rendered read of a REAL empty item slot.
+    `totem` is one of `editorGroups()`'s bundled 1-capacity item groups
+    (`ceres/static/app.js`'s `itemGroup('totem', 'Totem', ...)`), rendered as
+    an `.asset-slot` tile inside the worker `.slot-group` (not its own
+    section) via `renderEditorTile()`'s non-worker branch, which has no
+    `emptyLabel` override -- so its empty-tile text is exactly
+    `editorEmptyLabel()`'s `Add ${group.label}` output, unlike the `runi`/
+    `power_core` satellite tiles which `renderPowerSlot()` gives a bespoke
+    override label. Proves the same behaviour the old assertions named by
+    spelling: the empty tile's `.empty-label` text is `Add Totem` (the real
+    `group.label`, not the retired "Add card" copy), and no element in the
+    editor carries the retired `asset-label` class."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.goto(base_url)
@@ -56,11 +56,11 @@ def test_slot_labels_use_real_group_and_slot_names(live_browser: tuple[Browser, 
 
 def _non_contiguous_worker_row(base_url: str) -> dict:
     """A REAL plot detail row (`GET /api/plots/{deed}`, the exact fetch
- loadPlotDetail() makes when a board row is clicked -- app.js:8248-8268), with
- its worker list thinned to slot 2 and slot 4 only (both real worker objects,
- untouched) and `capacity.potential_card_capacity` lowered to 4 -- reproducing
- the non-contiguous-numbering case (slots 1 and 3 empty) without fabricating
- any card field."""
+    loadPlotDetail() makes when a board row is clicked -- app.js:8248-8268), with
+    its worker list thinned to slot 2 and slot 4 only (both real worker objects,
+    untouched) and `capacity.potential_card_capacity` lowered to 4 -- reproducing
+    the non-contiguous-numbering case (slots 1 and 3 empty) without fabricating
+    any card field."""
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=10) as response:
         board = json.loads(response.read().decode("utf-8"))
     # The board summary's own `workers` list is always empty (populated only by the
@@ -84,18 +84,18 @@ def _non_contiguous_worker_row(base_url: str) -> dict:
 
 def test_non_contiguous_worker_slots_keep_their_addressable_numbers(live_browser: tuple[Browser, str]) -> None:
     r"""Replaces the node-sliced editorSlotNumber()/editorEmptyLabel()/editorSlotLabel()
- unit test with the rendered editor for a REAL plot (fetched live, only its worker
- list thinned and `potential_card_capacity` lowered to 4) whose worker slots 2 and 4
- are occupied by real cards and 1 and 3 are empty -- census row 1's node half; the
- (b) substring tests above are census row 1's (b) half and stay untouched (Batch B).
+    unit test with the rendered editor for a REAL plot (fetched live, only its worker
+    list thinned and `potential_card_capacity` lowered to 4) whose worker slots 2 and 4
+    are occupied by real cards and 1 and 3 are empty -- census row 1's node half; the
+    (b) substring tests above are census row 1's (b) half and stay untouched (Batch B).
 
- Named injection, run and watched red, then reverted and watched green:
- `ceres/static/app.js`'s `function editorEmptyLabel(group, index)` had its worker
- branch `return \`Add Worker ${editorSlotNumber(group, index)}\`;` replaced with
- `return 'Add Worker';` (drops the slot number entirely). Red: this test's first
- assertion on the empty tile at index 0 failed --
- `AssertionError: assert 'Add Worker' == 'Add Worker 1'`. Restoring the original
- line made the same run pass again (6 passed)."""
+    Named injection, run and watched red, then reverted and watched green:
+    `ceres/static/app.js`'s `function editorEmptyLabel(group, index)` had its worker
+    branch `return \`Add Worker ${editorSlotNumber(group, index)}\`;` replaced with
+    `return 'Add Worker';` (drops the slot number entirely). Red: this test's first
+    assertion on the empty tile at index 0 failed --
+    `AssertionError: assert 'Add Worker' == 'Add Worker 1'`. Restoring the original
+    line made the same run pass again (6 passed)."""
     browser, base_url = live_browser
     row = _non_contiguous_worker_row(base_url)
     deed_uid = row["deed_uid"]
@@ -136,78 +136,78 @@ def test_non_contiguous_worker_slots_keep_their_addressable_numbers(live_browser
 
 def test_land_ability_copy_is_plot_wide_and_click_targeted():
     """ (row 1): replaces the source-substring check (four
- literals hunted anywhere in app.js by text position) with a whole-module
- load (`vm_context`) that calls the REAL functions that produce this copy
- and markup, and drives the REAL delegated click handler `initTooltips()`
- registers -- proving the plot-wide sentence is what `bloodlineAbilityTip`
- and `soleBadgeInfo` actually return, that the ability icon markup
- `abilityIconHtml` builds actually carries the `data-ability-tip="1"`
- attribute the click router keys on, and that clicking an element bearing
- that attribute is actually routed differently (short-circuited via
- `preventDefault`/`stopPropagation`) than a plain element -- not merely
- that the string `findAbilityTarget` appears somewhere in the file."""
+    literals hunted anywhere in app.js by text position) with a whole-module
+    load (`vm_context`) that calls the REAL functions that produce this copy
+    and markup, and drives the REAL delegated click handler `initTooltips()`
+    registers -- proving the plot-wide sentence is what `bloodlineAbilityTip`
+    and `soleBadgeInfo` actually return, that the ability icon markup
+    `abilityIconHtml` builds actually carries the `data-ability-tip="1"`
+    attribute the click router keys on, and that clicking an element bearing
+    that attribute is actually routed differently (short-circuited via
+    `preventDefault`/`stopPropagation`) than a plain element -- not merely
+    that the string `findAbilityTarget` appears somewhere in the file."""
     run_in_module_context(
         r"""
         initTooltips();
- const clickListeners = __ceresListeners['doc:click'] || [];
- if (clickListeners.length !== 1) {
- throw new Error('expected exactly one delegated click listener, got ' + clickListeners.length);
- }
- const onClick = clickListeners[0];
+        const clickListeners = __ceresListeners['doc:click'] || [];
+        if (clickListeners.length !== 1) {
+          throw new Error('expected exactly one delegated click listener, got ' + clickListeners.length);
+        }
+        const onClick = clickListeners[0];
 
- // The plot-wide copy, read off the real function that builds a
- // single Bloodline ability icon's tooltip.
- const tip = bloodlineAbilityTip(['BLOODLINE', 0.3, 'Elf', { active: true, companions: ['Prince Rennyn'] }]);
- if (tip.body.split('\n').pop() !== 'Affects every worker on this plot.') {
- throw new Error('bloodlineAbilityTip has the wrong plot-wide body line: ' + tip.body);
- }
+        // The plot-wide copy, read off the real function that builds a
+        // single Bloodline ability icon's tooltip.
+        const tip = bloodlineAbilityTip(['BLOODLINE', 0.3, 'Elf', { active: true, companions: ['Prince Rennyn'] }]);
+        if (tip.body.split('\n').pop() !== 'Affects every worker on this plot.') {
+          throw new Error('bloodlineAbilityTip has the wrong plot-wide body line: ' + tip.body);
+        }
 
- // The ability icon markup that carries that tip must carry the
- // click-targeted attribute the delegated handler keys on.
- const iconHtml = abilityIconHtml('GRAIN');
- if (!iconHtml.includes('data-ability-tip="1"')) {
- throw new Error('abilityIconHtml did not emit data-ability-tip="1": ' + iconHtml);
- }
+        // The ability icon markup that carries that tip must carry the
+        // click-targeted attribute the delegated handler keys on.
+        const iconHtml = abilityIconHtml('GRAIN');
+        if (!iconHtml.includes('data-ability-tip="1"')) {
+          throw new Error('abilityIconHtml did not emit data-ability-tip="1": ' + iconHtml);
+        }
 
- // The sole-holder badge's tooltip carries the plot-wide consequence
- // line (the "Moving it removes..." sentence), read off the real
- // soleBadgeInfo() return value for a land-card-ranged holder.
- const sole = soleBadgeInfo('Test Holder', 1, 866, [['GRAIN']], ['GRAIN']);
- if (!sole.tip.includes('Moving it removes these from every worker on this plot.')) {
- throw new Error('soleBadgeInfo dropped the consequence line: ' + sole.tip);
- }
+        // The sole-holder badge's tooltip carries the plot-wide consequence
+        // line (the "Moving it removes..." sentence), read off the real
+        // soleBadgeInfo() return value for a land-card-ranged holder.
+        const sole = soleBadgeInfo('Test Holder', 1, 866, [['GRAIN']], ['GRAIN']);
+        if (!sole.tip.includes('Moving it removes these from every worker on this plot.')) {
+          throw new Error('soleBadgeInfo dropped the consequence line: ' + sole.tip);
+        }
 
- // Click targeting: an element carrying data-ability-tip is picked out
- // by the real delegated click handler and short-circuited (preventDefault
- // + stopPropagation) before the normal touch-tooltip handling runs.
- let prevented = false;
- let stopped = false;
- const abilityEl = {
- closest(sel) { return sel === '[data-ability-tip]' ? this : null; },
- getAttribute() { return null; },
- };
- onClick({
- target: abilityEl,
- preventDefault() { prevented = true; },
- stopPropagation() { stopped = true; },
- });
- if (!prevented || !stopped) {
- throw new Error('an element carrying data-ability-tip was not click-targeted by the real handler');
- }
+        // Click targeting: an element carrying data-ability-tip is picked out
+        // by the real delegated click handler and short-circuited (preventDefault
+        // + stopPropagation) before the normal touch-tooltip handling runs.
+        let prevented = false;
+        let stopped = false;
+        const abilityEl = {
+          closest(sel) { return sel === '[data-ability-tip]' ? this : null; },
+          getAttribute() { return null; },
+        };
+        onClick({
+          target: abilityEl,
+          preventDefault() { prevented = true; },
+          stopPropagation() { stopped = true; },
+        });
+        if (!prevented || !stopped) {
+          throw new Error('an element carrying data-ability-tip was not click-targeted by the real handler');
+        }
 
- // A plain element (matching neither selector) must NOT be treated as
- // an ability-tip click target -- proves the selector discriminates.
- prevented = false;
- stopped = false;
- const plainEl = { closest() { return null; }, getAttribute() { return null; } };
- onClick({
- target: plainEl,
- preventDefault() { prevented = true; },
- stopPropagation() { stopped = true; },
- });
- if (prevented || stopped) {
- throw new Error('a plain element was wrongly short-circuited as an ability-tip click target');
- }
+        // A plain element (matching neither selector) must NOT be treated as
+        // an ability-tip click target -- proves the selector discriminates.
+        prevented = false;
+        stopped = false;
+        const plainEl = { closest() { return null; }, getAttribute() { return null; } };
+        onClick({
+          target: plainEl,
+          preventDefault() { prevented = true; },
+          stopPropagation() { stopped = true; },
+        });
+        if (prevented || stopped) {
+          throw new Error('a plain element was wrongly short-circuited as an ability-tip click target');
+        }
         """,
         extra_context_js=(
             "context.__ceresListeners = __ceresListeners;\n"
@@ -261,23 +261,23 @@ def test_theme_toggle_avatar_image_keeps_the_edge_handles_aligned(live_browser: 
  the observer's source exists."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.wait_for_selector(".theme-picker .theme-toggle", state="attached", timeout=10_000)
     page.evaluate(
         """() => {
- const img = document.createElement('img');
- img.width = 56; img.height = 56;
- img.src = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56"><rect width="56" height="56" fill="#fff"/></svg>');
- document.querySelector('.theme-picker .theme-toggle').appendChild(img);
- }"""
+          const img = document.createElement('img');
+          img.width = 56; img.height = 56;
+          img.src = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56"><rect width="56" height="56" fill="#fff"/></svg>');
+          document.querySelector('.theme-picker .theme-toggle').appendChild(img);
+        }"""
     )
-    page.wait_for_timeout(300)
+    settle(page)
     geometry = page.evaluate(
         """() => {
- const rect = sel => document.querySelector(sel).getBoundingClientRect();
- return {picker: rect('.theme-picker'), wallet: rect('#wallet-picker'), flag: rect('.badge-bar-head')};
- }"""
+          const rect = sel => document.querySelector(sel).getBoundingClientRect();
+          return {picker: rect('.theme-picker'), wallet: rect('#wallet-picker'), flag: rect('.badge-bar-head')};
+        }"""
     )
     picker, wallet, flag = geometry["picker"], geometry["wallet"], geometry["flag"]
     assert picker["width"] == pytest.approx(wallet["width"], abs=1)
@@ -296,7 +296,7 @@ def test_iris_close_never_publishes_transition_widths_to_other_edge_handles(
         viewport={"width": 1536, "height": 864},
         device_scale_factor=1.25,
     )
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.wait_for_selector("#badge-flag", state="visible", timeout=10_000)
     page.locator("#badge-flag").click()
@@ -304,67 +304,67 @@ def test_iris_close_never_publishes_transition_widths_to_other_edge_handles(
 
     settled = page.evaluate(
         """() => {
- const width = selector => document.querySelector(selector).getBoundingClientRect().width;
- return {
- edgeWidth: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--edge-w')),
- badgeBarWidth: width('#badge-bar'),
- walletWidth: width('#wallet-picker'),
- flagWidth: width('#badge-flag'),
- headerRightReserve: parseFloat(getComputedStyle(document.querySelector('header.board-header')).paddingRight),
- };
- }"""
+          const width = selector => document.querySelector(selector).getBoundingClientRect().width;
+          return {
+            edgeWidth: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--edge-w')),
+            badgeBarWidth: width('#badge-bar'),
+            walletWidth: width('#wallet-picker'),
+            flagWidth: width('#badge-flag'),
+            headerRightReserve: parseFloat(getComputedStyle(document.querySelector('header.board-header')).paddingRight),
+          };
+        }"""
     )
     page.evaluate(
         """() => {
- window.__ir7210Frames = [];
- window.__ir7210SamplerActive = true;
- const width = selector => document.querySelector(selector).getBoundingClientRect().width;
- const sample = () => {
- window.__ir7210Frames.push({
- edgeWidth: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--edge-w')),
- badgeBarWidth: width('#badge-bar'),
- walletWidth: width('#wallet-picker'),
- flagWidth: width('#badge-flag'),
- headerRightReserve: parseFloat(getComputedStyle(document.querySelector('header.board-header')).paddingRight),
- });
- if (window.__ir7210SamplerActive) requestAnimationFrame(sample);
- };
- requestAnimationFrame(sample);
- }"""
+          window.__ir7210Frames = [];
+          window.__ir7210SamplerActive = true;
+          const width = selector => document.querySelector(selector).getBoundingClientRect().width;
+          const sample = () => {
+            window.__ir7210Frames.push({
+              edgeWidth: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--edge-w')),
+              badgeBarWidth: width('#badge-bar'),
+              walletWidth: width('#wallet-picker'),
+              flagWidth: width('#badge-flag'),
+              headerRightReserve: parseFloat(getComputedStyle(document.querySelector('header.board-header')).paddingRight),
+            });
+            if (window.__ir7210SamplerActive) requestAnimationFrame(sample);
+          };
+          requestAnimationFrame(sample);
+        }"""
     )
 
     toggle = page.locator(".theme-picker .theme-toggle")
     toggle.click()
     page.wait_for_function("document.querySelector('.theme-picker')?.classList.contains('is-open')")
-    page.wait_for_timeout(600)
+    settle(page)
     toggle.click()
     page.wait_for_function(
         """() => {
- const picker = document.querySelector('.theme-picker');
- const toggle = picker?.querySelector('.theme-toggle');
- if (!picker || !toggle || picker.classList.contains('is-open')) return false;
- const pickerStyle = getComputedStyle(picker);
- const px = value => parseFloat(value) || 0;
- const closedWidth = toggle.getBoundingClientRect().width
- + px(pickerStyle.paddingLeft) + px(pickerStyle.paddingRight)
- + px(pickerStyle.borderLeftWidth) + px(pickerStyle.borderRightWidth);
- return Math.abs(picker.getBoundingClientRect().width - closedWidth) <= 0.5;
- }""",
+          const picker = document.querySelector('.theme-picker');
+          const toggle = picker?.querySelector('.theme-toggle');
+          if (!picker || !toggle || picker.classList.contains('is-open')) return false;
+          const pickerStyle = getComputedStyle(picker);
+          const px = value => parseFloat(value) || 0;
+          const closedWidth = toggle.getBoundingClientRect().width
+            + px(pickerStyle.paddingLeft) + px(pickerStyle.paddingRight)
+            + px(pickerStyle.borderLeftWidth) + px(pickerStyle.borderRightWidth);
+          return Math.abs(picker.getBoundingClientRect().width - closedWidth) <= 0.5;
+        }""",
         timeout=3_000,
     )
     page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
     frames = page.evaluate(
         """() => {
- window.__ir7210SamplerActive = false;
- return window.__ir7210Frames;
- }"""
+          window.__ir7210SamplerActive = false;
+          return window.__ir7210Frames;
+        }"""
     )
 
     assert frames, "the requestAnimationFrame sampler captured no frames"
     for metric, settled_value in settled.items():
         maximum = max(frame[metric] for frame in frames)
         assert maximum <= settled_value + 1, (
-            f"{metric} exceeded its settled closed value during Iris open/close: \"\n f\"settled={settled_value:.2f}px, max={maximum:.2f}px"
+            f"{metric} exceeded its settled closed value during Iris open/close: " f"settled={settled_value:.2f}px, max={maximum:.2f}px"
         )
     page.close()
 
@@ -375,51 +375,51 @@ def test_wallet_handle_and_panel_share_every_open_close_frame(
     """The edge handle and wallet panel must use one measured motion timeline."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1440, "height": 900})
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.wait_for_selector("#wallet-edge-tab", state="visible", timeout=10_000)
     page.evaluate(
         """() => {
- window.__ir7330Frames = [];
- window.__ir7330Sampling = true;
- const clamp = value => Math.max(0, Math.min(1, value));
- const read = () => {
- const picker = document.querySelector('#wallet-picker');
- const tray = picker?.querySelector('.edge-tray');
- const drawer = document.querySelector('#regional-dec-drawer');
- const panel = drawer?.querySelector('.dec-drawer-panel');
- const trayWidth = tray?.getBoundingClientRect().width || 0;
- const trayTarget = tray?.scrollWidth || 1;
- const transform = panel && getComputedStyle(panel).transform;
- const offset = !panel || transform === 'none' ? 0 : Number.parseFloat(transform.split(',')[4]) || 0;
- const panelWidth = panel?.getBoundingClientRect().width || 1;
- window.__ir7330Frames.push({
- pickerTarget: picker?.dataset.open || 'false',
- pickerAria: document.querySelector('#wallet-edge-tab')?.getAttribute('aria-expanded') || 'false',
- drawerTarget: drawer?.dataset.walletMotion || 'closed',
- handleProgress: clamp(trayWidth / trayTarget),
- panelProgress: drawer?.open ? clamp(1 - offset / panelWidth) : 0,
- drawerOpen: Boolean(drawer?.open),
- });
- if (window.__ir7330Sampling) requestAnimationFrame(read);
- };
- requestAnimationFrame(read);
- }"""
+          window.__ir7330Frames = [];
+          window.__ir7330Sampling = true;
+          const clamp = value => Math.max(0, Math.min(1, value));
+          const read = () => {
+            const picker = document.querySelector('#wallet-picker');
+            const tray = picker?.querySelector('.edge-tray');
+            const drawer = document.querySelector('#regional-dec-drawer');
+            const panel = drawer?.querySelector('.dec-drawer-panel');
+            const trayWidth = tray?.getBoundingClientRect().width || 0;
+            const trayTarget = tray?.scrollWidth || 1;
+            const transform = panel && getComputedStyle(panel).transform;
+            const offset = !panel || transform === 'none' ? 0 : Number.parseFloat(transform.split(',')[4]) || 0;
+            const panelWidth = panel?.getBoundingClientRect().width || 1;
+            window.__ir7330Frames.push({
+              pickerTarget: picker?.dataset.open || 'false',
+              pickerAria: document.querySelector('#wallet-edge-tab')?.getAttribute('aria-expanded') || 'false',
+              drawerTarget: drawer?.dataset.walletMotion || 'closed',
+              handleProgress: clamp(trayWidth / trayTarget),
+              panelProgress: drawer?.open ? clamp(1 - offset / panelWidth) : 0,
+              drawerOpen: Boolean(drawer?.open),
+            });
+            if (window.__ir7330Sampling) requestAnimationFrame(read);
+          };
+          requestAnimationFrame(read);
+        }"""
     )
 
     page.locator("#wallet-edge-tab").click()
     page.wait_for_function("document.querySelector('#regional-dec-drawer')?.open === true", timeout=5_000)
-    page.wait_for_timeout(650)
+    settle(page)
     page.set_viewport_size({"width": 1536, "height": 864})
-    page.wait_for_timeout(200)
+    settle(page)
     page.mouse.click(10, 10)
     page.wait_for_function("document.querySelector('#regional-dec-drawer')?.open === false", timeout=5_000)
     page.wait_for_function("document.querySelector('#wallet-picker')?.dataset.open === 'false'", timeout=5_000)
     page.evaluate(
         """() => {
- window.__ir7330Sampling = false;
- return window.__ir7330Frames;
- }"""
+          window.__ir7330Sampling = false;
+          return window.__ir7330Frames;
+        }"""
     )
     frames = page.evaluate("() => window.__ir7330Frames")
 
@@ -446,41 +446,41 @@ def test_theme_toggle_stays_topmost_at_its_centre(live_browser: tuple[Browser, s
         viewport={"width": 1536, "height": 864},
         device_scale_factor=1.25,
     )
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.wait_for_selector(".theme-picker .theme-toggle", state="visible", timeout=10_000)
 
     def _theme_toggle_hit():
         return page.evaluate(
             """() => {
- const toggle = document.querySelector('.theme-picker .theme-toggle');
- const rect = toggle.getBoundingClientRect();
- const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
- const hit = document.elementFromPoint(x, y);
- const describe = element => ({
- tag: element?.tagName || null,
- className: typeof element?.className === 'string'
- ? element.className
- : element?.className?.baseVal || '',
- });
- return {
- matches: !!hit && (hit === toggle || toggle.contains(hit)),
- hit: describe(hit),
- toggle: describe(toggle),
- x,
- y,
- scrollY: window.scrollY,
- };
- }"""
+              const toggle = document.querySelector('.theme-picker .theme-toggle');
+              const rect = toggle.getBoundingClientRect();
+              const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+              const hit = document.elementFromPoint(x, y);
+              const describe = element => ({
+                tag: element?.tagName || null,
+                className: typeof element?.className === 'string'
+                  ? element.className
+                  : element?.className?.baseVal || '',
+              });
+              return {
+                matches: !!hit && (hit === toggle || toggle.contains(hit)),
+                hit: describe(hit),
+                toggle: describe(toggle),
+                x,
+                y,
+                scrollY: window.scrollY,
+              };
+            }"""
         )
 
     initial = _theme_toggle_hit()
     assert initial["matches"], f"theme toggle centre hit {initial['hit']} at scroll 0; expected {initial['toggle']}"
     page.evaluate("window.scrollTo(0, 600)")
-    page.wait_for_timeout(150)
+    settle(page)
     scrolled = _theme_toggle_hit()
     assert scrolled["matches"], (
-        f"theme toggle centre hit {scrolled['hit']} at scrollY={scrolled['scrollY']}; \"\n f\"expected {scrolled['toggle']}"
+        f"theme toggle centre hit {scrolled['hit']} at scrollY={scrolled['scrollY']}; " f"expected {scrolled['toggle']}"
     )
     page.close()
 
@@ -489,7 +489,7 @@ def test_mobile_theme_toggle_only_occupies_the_open_filter_sheet(live_browser: t
     """the root-level Iris dock must not cover mobile header controls."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 430, "height": 900})
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function(
         "document.documentElement.classList.contains('ceres-lw-le-1279')"
         " && document.querySelector('#plot-card-list .plot-card') !== null",
@@ -500,30 +500,30 @@ def test_mobile_theme_toggle_only_occupies_the_open_filter_sheet(live_browser: t
     def _dock_state():
         return page.locator("#header.theme-picker-dock").evaluate(
             """dock => {
- const rect = dock.getBoundingClientRect();
- return {
- display: getComputedStyle(dock).display,
- rect: {
- x: rect.x, y: rect.y, top: rect.top, right: rect.right,
- bottom: rect.bottom, left: rect.left, width: rect.width, height: rect.height,
- },
- };
- }"""
+              const rect = dock.getBoundingClientRect();
+              return {
+                display: getComputedStyle(dock).display,
+                rect: {
+                  x: rect.x, y: rect.y, top: rect.top, right: rect.right,
+                  bottom: rect.bottom, left: rect.left, width: rect.width, height: rect.height,
+                },
+              };
+            }"""
         )
 
     def _centre_hit(selector: str):
         return page.locator(selector).evaluate(
             """element => {
- const rect = element.getBoundingClientRect();
- const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
- const hit = document.elementFromPoint(x, y);
- return {
- matches: !!hit && (hit === element || element.contains(hit)),
- hit: hit?.tagName || null,
- x,
- y,
- };
- }"""
+              const rect = element.getBoundingClientRect();
+              const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+              const hit = document.elementFromPoint(x, y);
+              return {
+                matches: !!hit && (hit === element || element.contains(hit)),
+                hit: hit?.tagName || null,
+                x,
+                y,
+              };
+            }"""
         )
 
     closed_dock = _dock_state()
@@ -538,30 +538,30 @@ def test_mobile_theme_toggle_only_occupies_the_open_filter_sheet(live_browser: t
     picker.wait_for(state="visible", timeout=10_000)
     page.wait_for_function(
         """() => {
- const toggle = document.querySelector('.theme-picker .theme-toggle');
- const rect = toggle?.getBoundingClientRect();
- if (!toggle || !rect) return false;
- const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
- return !!hit && (hit === toggle || toggle.contains(hit));
- }""",
+          const toggle = document.querySelector('.theme-picker .theme-toggle');
+          const rect = toggle?.getBoundingClientRect();
+          if (!toggle || !rect) return false;
+          const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+          return !!hit && (hit === toggle || toggle.contains(hit));
+        }""",
         timeout=3_000,
     )
     open_geometry = page.evaluate(
         """() => {
- const dock = document.querySelector('#header.theme-picker-dock');
- const controls = document.querySelector('#board-controls');
- const head = controls.querySelector('.mobile-filter-sheet-head');
- const dockRect = dock.getBoundingClientRect();
- const sheetRect = controls.getBoundingClientRect();
- return {
- dockTop: dockRect.top,
- dockRight: dockRect.right,
- expectedTop: sheetRect.top + controls.clientTop,
- expectedRight: sheetRect.left + controls.clientLeft + controls.clientWidth,
- headPaddingInlineEnd: parseFloat(getComputedStyle(head).paddingInlineEnd),
- rootFontSize: parseFloat(getComputedStyle(document.documentElement).fontSize),
- };
- }"""
+          const dock = document.querySelector('#header.theme-picker-dock');
+          const controls = document.querySelector('#board-controls');
+          const head = controls.querySelector('.mobile-filter-sheet-head');
+          const dockRect = dock.getBoundingClientRect();
+          const sheetRect = controls.getBoundingClientRect();
+          return {
+            dockTop: dockRect.top,
+            dockRight: dockRect.right,
+            expectedTop: sheetRect.top + controls.clientTop,
+            expectedRight: sheetRect.left + controls.clientLeft + controls.clientWidth,
+            headPaddingInlineEnd: parseFloat(getComputedStyle(head).paddingInlineEnd),
+            rootFontSize: parseFloat(getComputedStyle(document.documentElement).fontSize),
+          };
+        }"""
     )
     assert open_geometry["dockTop"] == pytest.approx(open_geometry["expectedTop"], abs=1)
     assert open_geometry["dockRight"] == pytest.approx(open_geometry["expectedRight"], abs=1)
@@ -587,24 +587,24 @@ def test_badge_flag_hit_target_survives_scroll(live_browser: tuple[Browser, str]
  sticky table header, proving nothing else painted over the flag's hit area."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.wait_for_selector(".badge-bar-head", state="visible", timeout=10_000)
 
     def _hit_is_flag():
         return page.evaluate(
             """() => {
- const flag = document.getElementById('badge-flag');
- const rect = flag.getBoundingClientRect();
- const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
- const hit = document.elementFromPoint(cx, cy);
- return !!hit && (hit === flag || flag.contains(hit));
- }"""
+              const flag = document.getElementById('badge-flag');
+              const rect = flag.getBoundingClientRect();
+              const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+              const hit = document.elementFromPoint(cx, cy);
+              return !!hit && (hit === flag || flag.contains(hit));
+            }"""
         )
 
     assert _hit_is_flag(), "badge-bar-head hit target must resolve to #badge-flag at scroll 0"
     page.evaluate("window.scrollTo(0, 600)")
-    page.wait_for_timeout(150)
+    settle(page)
     assert _hit_is_flag(), "badge-bar-head hit target must still resolve to #badge-flag after scrolling 600px"
     page.close()
 

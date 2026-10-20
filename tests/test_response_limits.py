@@ -1,5 +1,6 @@
 import gzip
 import io
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -98,13 +99,13 @@ def test_default_cap_is_tight_for_an_endpoint_without_an_override():
 def test_large_endpoint_override_is_explicit():
     # RED MUTATION: remove the collection/deeds overrides; this guard must turn red.
     transport = FixedGetTransport()
-    assert transport._response_limit("https://api.splinterlands.com/cards/collection/player0016") == LARGE_RESPONSE_BYTES
-    assert transport._response_limit("https://vapi.splinterlands.com/land/deeds?player=player0016") == LARGE_RESPONSE_BYTES
+    assert transport._response_limit("https://api.splinterlands.com/cards/collection/player0017") == LARGE_RESPONSE_BYTES
+    assert transport._response_limit("https://vapi.splinterlands.com/land/deeds?player=player0017") == LARGE_RESPONSE_BYTES
 
 
 def test_bundle_over_limit_returns_an_actionable_outcome():
     # RED MUTATION: let the bundle exception escape from `capture_quick`; this guard must turn red.
-    error = ResponseTooLarge("/land/deeds?player=player0016", "trace-bundle", LARGE_RESPONSE_BYTES, LARGE_RESPONSE_BYTES + 1)
+    error = ResponseTooLarge("/land/deeds?player=player0017", "trace-bundle", LARGE_RESPONSE_BYTES, LARGE_RESPONSE_BYTES + 1)
     capture = LandCapture(
         land_client=_TooLargeLandClient(error),
         collection_client=_NoopCollectionClient(),
@@ -113,41 +114,47 @@ def test_bundle_over_limit_returns_an_actionable_outcome():
         sleeper=lambda _delay: None,
     )
 
-    report = capture.capture_quick("player0016")
+    report = capture.capture_quick("player0017")
     assert report["status"] == "response_too_large"
-    assert report["response_too_large"]["endpoint"] == "/land/deeds?player=player0016"
+    assert report["response_too_large"]["endpoint"] == "/land/deeds?player=player0017"
     assert report["capture"]["outcome"]["trace_id"] == "trace-bundle"
 
 
-def test_card_picker_exposes_the_collection_failure_without_a_success_response():
-    # RED MUTATION: keep the old 502/200 fallback; this guard must turn red.
+def test_card_picker_exposes_the_collection_failure_without_a_success_response(monkeypatch, caplog):
     report = {
+        "plots": [{"deed_uid": "deed"}],
         "capture": {
             "failures": [{
                 "deed_uid": "collection",
                 "outcome": {
                     "status": "response_too_large",
-                    "endpoint": "/cards/collection/player0016",
+                    "endpoint": "/cards/collection/player0017",
                     "trace_id": "trace-collection",
                 },
             }],
         },
     }
     request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(ceres_config=object())))
+    refreshes = []
 
-    original_snapshot = routes_candidates.capture_mod.latest_snapshot
-    original_player = routes_candidates.player_for_request
-    original_details = routes_candidates.load_details_by_id
-    routes_candidates.capture_mod.latest_snapshot = lambda _config, _player: (report, None)
-    routes_candidates.player_for_request = lambda _request, _player: "player0016"
-    routes_candidates.load_details_by_id = lambda: {}
-    try:
-        with pytest.raises(HTTPException) as raised:
-            routes_candidates.get_candidates("deed", request, group_id="worker")
-    finally:
-        routes_candidates.capture_mod.latest_snapshot = original_snapshot
-        routes_candidates.player_for_request = original_player
-        routes_candidates.load_details_by_id = original_details
-    assert raised.value.status_code == 503
-    assert "card collection could not be read" in str(raised.value.detail)
-    assert "trace-collection" in str(raised.value.detail)
+    def failed_refresh(_config, player, deed_uid, include_collection=False, **_kwargs):
+        refreshes.append((player, deed_uid, include_collection))
+        raise RuntimeError("simulated collection refresh failure")
+
+    def ranking_must_not_run(*_args, **_kwargs):
+        raise AssertionError("candidates were ranked from a card pool that could not be read")
+
+    monkeypatch.setattr(routes_candidates.capture_mod, "latest_snapshot", lambda _config, _player: (report, None))
+    monkeypatch.setattr(routes_candidates.capture_mod, "expand_plot", failed_refresh)
+    monkeypatch.setattr(routes_candidates, "player_for_request", lambda _request, _player: "player0017")
+    monkeypatch.setattr(routes_candidates, "load_details_by_id", lambda: {})
+    monkeypatch.setattr(routes_candidates, "rank_candidates", ranking_must_not_run)
+    with caplog.at_level("WARNING", logger="ceres.routes_candidates"):
+        response = routes_candidates.get_candidates("deed", request, group_id="worker")
+
+    assert refreshes == [("player0017", "deed", True)]
+    assert response.status_code == 202
+    body = json.loads(response.body)
+    assert body["status"] == "card_pool_refresh_retryable"
+    assert body["candidates"] == [] and body["total"] == -1
+    assert "trace-collection" in caplog.text

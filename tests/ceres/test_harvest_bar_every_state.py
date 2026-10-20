@@ -1,4 +1,4 @@
-""" (A-77): left a dangling `${undo}` in harvestBarHtml's quiet/no-project branch,
+""" (A-77):  left a dangling `${undo}` in harvestBarHtml's quiet/no-project branch,
 so every uncleared plot threw "undo is not defined" and the editor showed "Could not load workers".
 This guard renders the REAL harvestBarHtml (real module, real browser) for every row of the live
 board plus synthetic rows for each branch, and opens the plot the maintainer reported (065-07-085).
@@ -9,8 +9,9 @@ import pytest
 from playwright.sync_api import Browser
 
 from .conftest import spawn_live_ceres
+from . import board_basic_recording as recording
 
-REPORTED_PLOT = "065-07-085"
+REPORTED_PLOT = recording.NEVER_BUILT.label
 
 
 @pytest.fixture(scope="module")
@@ -20,7 +21,7 @@ def live_browser() -> tuple[Browser, str]:
 
 
 def _board(page, base_url: str) -> None:
-    page.goto(f"{base_url}/?player=player0005", timeout=15_000)
+    page.goto(f"{base_url}/?player=sample01", timeout=15_000)
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length >= 1", timeout=60_000)
 
 
@@ -30,31 +31,31 @@ def test_harvest_bar_renders_for_every_board_row_and_each_branch(live_browser: t
     _board(page, base_url)
     result = page.evaluate(
         """async () => {
- const hs = await import('/static/harvest-state.js');
- const table = await import('/static/table.js');
- window.fetch = () => new Promise(() => {});
- const synthetic = [
- {deed_uid: 'ir8334-no-project', harvest: {state: 'no_project'}, is_powered: false},
- {deed_uid: 'ir8334-no-project-powered', harvest: {state: 'no_project'}, is_powered: true},
- {deed_uid: 'ir8334-pending', harvest: null},
- {deed_uid: 'ir8334-tax', resource: 'TAX', harvest: {state: 'tax_collection'}},
- ];
- const rows = [...table.CURRENT_ROWS, ...synthetic];
- const errors = [];
- const states = new Set();
- for (const row of rows) {
- for (const cog of [false, true]) {
- try {
- const html = hs.harvestBarHtml(row, {cog});
- const m = /class="harvest-bar([^"]*)"/.exec(html || '');
- states.add(m ? m[1].trim() || 'normal' : (html ? 'other' : 'empty'));
- } catch (error) {
- errors.push(`${row.deed_uid}: ${error && error.message}`);
- }
- }
- }
- return {count: rows.length, errors, states: [...states]};
- }"""
+          const hs = await import('/static/harvest-state.js');
+          const table = await import('/static/table.js');
+          window.fetch = () => new Promise(() => {});
+          const synthetic = [
+            {deed_uid: 'ir8334-no-project', harvest: {state: 'no_project'}, is_powered: false},
+            {deed_uid: 'ir8334-no-project-powered', harvest: {state: 'no_project'}, is_powered: true},
+            {deed_uid: 'ir8334-pending', harvest: null},
+            {deed_uid: 'ir8334-tax', resource: 'TAX', harvest: {state: 'tax_collection'}},
+          ];
+          const rows = [...table.CURRENT_ROWS, ...synthetic];
+          const errors = [];
+          const states = new Set();
+          for (const row of rows) {
+            for (const cog of [false, true]) {
+              try {
+                const html = hs.harvestBarHtml(row, {cog});
+                const m = /class="harvest-bar([^"]*)"/.exec(html || '');
+                states.add(m ? m[1].trim() || 'normal' : (html ? 'other' : 'empty'));
+              } catch (error) {
+                errors.push(`${row.deed_uid}: ${error && error.message}`);
+              }
+            }
+          }
+          return {count: rows.length, errors, states: [...states]};
+        }"""
     )
     page.close()
     assert result["count"] > 4, result

@@ -1,4 +1,4 @@
-""" the per-plot rebuild of a whole-index set is gone, and stays gone.
+""" — the per-plot rebuild of a whole-index set is gone, and stays gone.
 
 `_plot_row` runs once per plot. It used to open with
 `indexed_refs = set(level_by_asset) | set(skin_by_asset)`, rebuilding two sets over the
@@ -7,20 +7,23 @@ all of them, used only for two membership tests. Measured at 48.91s of a 140.66s
 `project_board` on a 6,303-plot account with a 22,476-entry index; 0.01s on a normal one.
 
 Both uses were redundant, so the line was deleted rather than hoisted:
- levels — `.get()` yields None for an absent ref and None for a skin-only ref, so
- the membership test could never change the result.
- level_states — `ref in level_by_asset` already implies `ref in indexed_refs`.
+  levels       — `.get()` yields None for an absent ref and None for a skin-only ref, so
+                 the membership test could never change the result.
+  level_states — `ref in level_by_asset` already implies `ref in indexed_refs`.
 
 RED MUTATION for this file: restore the original two statements in
 `ceres/board.py::_plot_row` —
- indexed_refs = set(level_by_asset) | set(skin_by_asset)
- levels = [level_by_asset.get(w.get("asset_ref")) if w.get("asset_ref") in indexed_refs else None for w in workers]
- level_states = ["resolved" if w.get("asset_ref") in indexed_refs and w.get("asset_ref") in level_by_asset else "unavailable" for w in workers]
+    indexed_refs = set(level_by_asset) | set(skin_by_asset)
+    levels = [level_by_asset.get(w.get("asset_ref")) if w.get("asset_ref") in indexed_refs else None for w in workers]
+    level_states = ["resolved" if w.get("asset_ref") in indexed_refs and w.get("asset_ref") in level_by_asset else "unavailable" for w in workers]
 `test_plot_row_does_not_build_a_whole_index_set_per_plot` must turn red on the call
 count. The equivalence tests must stay green under that mutation — they assert the
 behaviour that was preserved, so if one of them fails the deletion changed something.
 """
 import inspect
+import io
+import textwrap
+import tokenize
 
 from ceres import board
 
@@ -47,7 +50,7 @@ def test_plot_row_does_not_build_a_whole_index_set_per_plot():
         pass
     assert counter["calls"] == 0, (
         f"the card index was iterated {counter['calls']}x inside a per-plot function; "
-        "is back"
+        " is back"
     )
 
 
@@ -78,7 +81,15 @@ def test_level_states_equivalence_membership_conjunct_was_never_deciding():
 
 def test_the_deleted_line_is_not_reintroduced_verbatim():
     """Cheap backstop. Not a substitute for the call-count guard above — it is the
- only assertion here that could be satisfied by a rename, and it is deliberately
- the weakest of the four."""
+    only assertion here that could be satisfied by a rename, and it is deliberately
+    the weakest of the four."""
     source = inspect.getsource(board._plot_row)
-    assert "set(level_by_asset) | set(skin_by_asset)" not in source
+    # Only executable code counts: `_plot_row` keeps a comment that quotes the deleted line.
+    def code_only(text: str) -> str:
+        tokens = tokenize.generate_tokens(io.StringIO(textwrap.dedent(text)).readline)
+        return " ".join(token.string for token in tokens if token.type not in (tokenize.COMMENT, tokenize.STRING))
+
+    deleted = code_only("set(level_by_asset) | set(skin_by_asset)\n").strip()
+    assert deleted in code_only("indexed_refs = set(level_by_asset) | set(skin_by_asset)\n")
+    assert deleted not in code_only("# indexed_refs = set(level_by_asset) | set(skin_by_asset)\n")
+    assert deleted not in code_only(source)

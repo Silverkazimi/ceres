@@ -9,7 +9,7 @@ ROWS = (ROOT / "ceres" / "static" / "rows.js").read_text(encoding="utf-8")
 
 def test_close_all_hidden_state_tracks_sync_close_all_rule() -> None:
     sync_close_all = ROWS.split("export function syncCloseAll()", 1)[1].split(
-        "\n", 1
+        "\n// /", 1
     )[0]
     assert "const show = !showOpen && (EXPANDED_ROWS.size >= 2 || stagedOn);" in sync_close_all
 

@@ -30,7 +30,7 @@ def _report(plots: list[dict], workers: list[dict], assignments: list[dict]) -> 
 
 
 def test_collection_join_marks_worker_detail_pending_without_demoting_the_plot() -> None:
-    """(a): "the card is simply absent. It must not produce a `collection_join` assignment or worker row for that deed, must not demote the plot's `asset_fetch.status` to `not_requested`, and must not reduce `retrieved`." keeps the plot loaded while marking the worker detail pending."""
+    """(a): "the card is simply absent. It must not produce a `collection_join` assignment or worker row for that deed, must not demote the plot's `asset_fetch.status` to `not_requested`, and must not reduce `retrieved`."  keeps the plot loaded while marking the worker detail pending."""
     base = _report(
         [_plot("a", "retrieved")],
         [{"asset_ref": "old-card", "stake_ref_uid": "a", "slot": 1, "name": "Old"}],
@@ -55,7 +55,7 @@ def test_collection_join_marks_worker_detail_pending_without_demoting_the_plot()
 
 
 def test_slotless_base_rows_mark_worker_detail_pending_without_demoting_the_plot() -> None:
-    """(a): "the card is simply absent. It must not produce a `collection_join` assignment or worker row for that deed, must not demote the plot's `asset_fetch.status` to `not_requested`, and must not reduce `retrieved`." preserves the pending annotation for an existing slotless row."""
+    """(a): "the card is simply absent. It must not produce a `collection_join` assignment or worker row for that deed, must not demote the plot's `asset_fetch.status` to `not_requested`, and must not reduce `retrieved`."  preserves the pending annotation for an existing slotless row."""
     base = _report(
         [_plot("a", "retrieved")],
         [{"asset_ref": "card-a", "stake_ref_uid": "a", "name": "Worker"}],

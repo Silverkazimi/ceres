@@ -27,7 +27,7 @@ from pathlib import Path
 
 from playwright.sync_api import Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres, wait_ready
 
 SCREEN_DIR = Path(__file__).parents[2] / "work" / "combine-reachability"
 
@@ -43,13 +43,13 @@ def _wait_for_board(page: Page) -> None:
 
 def _two_distinct_workers(base_url: str, board: dict) -> tuple[dict, dict, dict]:
     """A worker to make combinable (`row`, `worker`) plus a SECOND, DIFFERENT worker
- from elsewhere on the board (`other`), kept for callers that need two distinct
- staked identities."""
+    from elsewhere on the board (`other`), kept for callers that need two distinct
+    staked identities."""
     found: list[tuple[dict, dict]] = []
     for row in board["plots"]:
         if not row.get("assets_loaded"):
             continue
-        detail = _get(base_url, f"api/plots/{urllib.parse.quote(row['deed_uid'], safe='')}")
+        detail = _get(base_url, f"/api/plots/{urllib.parse.quote(row['deed_uid'], safe='')}")
         for worker in detail.get("workers") or []:
             if worker.get("asset_ref") and isinstance(worker.get("slot"), int) and worker["slot"] >= 1 \
                     and worker.get("card_detail_id") is not None and worker.get("edition") is not None:
@@ -61,8 +61,8 @@ def _two_distinct_workers(base_url: str, board: dict) -> tuple[dict, dict, dict]
 
 def _install_idle_cards_mock(page: Page, worker: dict) -> None:
     """Forces `worker`'s printing to read as combinable: two idle copies of its own
- (card_detail_id, edition, foil), well under a synthetic bcx_max so neither reads
- maxed (isCardMaxed/rowCanCombine, app.js)."""
+    (card_detail_id, edition, foil), well under a synthetic bcx_max so neither reads
+    maxed (isCardMaxed/rowCanCombine, app.js)."""
     copies = [
         {
             "uid": f"MOCK-IDLE-{i}", "card_detail_id": worker["card_detail_id"], "edition": worker["edition"],
@@ -78,9 +78,9 @@ def _install_idle_cards_mock(page: Page, worker: dict) -> None:
 
 def test_tile_combine_chip_is_compact_above_the_tile_not_an_inflow_block() -> None:
     """The chip: `.tile-combine-chip` class, positioned OUTSIDE `.slot-tile` (a
- `.slot-tile-cell` sibling, per ceres.css's own overflow:hidden reasoning), label
- text exactly `Combine 2` (2 idle copies, no parentheses, no glyph), and does not repeat
- the occupant's own name."""
+    `.slot-tile-cell` sibling, per ceres.css's own overflow:hidden reasoning), label
+    text exactly `Combine 2` (2 idle copies, no parentheses, no glyph), and does not repeat
+    the occupant's own name."""
     SCREEN_DIR.mkdir(parents=True, exist_ok=True)
     with spawn_live_ceres() as (browser, base_url):
         board = _get(base_url, "/api/board")
@@ -91,7 +91,7 @@ def test_tile_combine_chip_is_compact_above_the_tile_not_an_inflow_block() -> No
             _install_idle_cards_mock(page, worker)
             page.goto(base_url)
             _wait_for_board(page)
-            page.wait_for_timeout(1200)  # let prefetchIdleCardsCache() populate IDLE_CARDS_CACHE -- 500ms flaked once, widened
+            settle(page)  # prefetchIdleCardsCache() has answered
 
             page_row = page.locator(f"tr.plot-row[data-deed-uid='{row['deed_uid']}']")
             page_row.wait_for(timeout=15_000)
@@ -122,12 +122,12 @@ def test_tile_combine_chip_is_compact_above_the_tile_not_an_inflow_block() -> No
 
 def test_tile_combine_chip_click_opens_the_combine_dialog() -> None:
     """Guards the CLICK, not the markup (2026-08-30 maintainer report: the chip rendered
- but clicking it did nothing). Spies on the real outcome -- `#combine-dialog-overlay`
- losing its `hidden` attribute -- rather than the delegated handler's source.
- Injection: force `pointer-events: none` back onto the live chip (the exact
- defect this guard forbids -- `.slot-grid` disables pointer events on itself and
- only `.slot-tile` opts back in, so the chip, a `.slot-tile-cell` sibling of the
- tile, needs its own `auto`) and confirm the dialog stays closed."""
+    but clicking it did nothing). Spies on the real outcome -- `#combine-dialog-overlay`
+    losing its `hidden` attribute -- rather than the delegated handler's source.
+    Injection: force `pointer-events: none` back onto the live chip (the exact
+    defect this guard forbids -- `.slot-grid` disables pointer events on itself and
+    only `.slot-tile` opts back in, so the chip, a `.slot-tile-cell` sibling of the
+    tile, needs its own `auto`) and confirm the dialog stays closed."""
     SCREEN_DIR.mkdir(parents=True, exist_ok=True)
     with spawn_live_ceres() as (browser, base_url):
         board = _get(base_url, "/api/board")
@@ -138,7 +138,8 @@ def test_tile_combine_chip_click_opens_the_combine_dialog() -> None:
             _install_idle_cards_mock(page, worker)
             page.goto(base_url)
             _wait_for_board(page)
-            page.wait_for_timeout(1200)
+            wait_ready(page)
+            settle(page)
 
             page_row = page.locator(f"tr.plot-row[data-deed-uid='{row['deed_uid']}']")
             page_row.wait_for(timeout=15_000)
@@ -155,7 +156,7 @@ def test_tile_combine_chip_click_opens_the_combine_dialog() -> None:
             assert page.evaluate(overlay_hidden) is True
 
             chip.first.click()
-            page.wait_for_timeout(800)
+            settle(page)
             assert page.evaluate(overlay_hidden) is False, "click did not open the combine dialog"
             page.evaluate("document.getElementById('combine-dialog-overlay').hidden = true; window.closeCombineDialog?.();")
 
@@ -165,7 +166,7 @@ def test_tile_combine_chip_click_opens_the_combine_dialog() -> None:
             chip.first.evaluate("el => el.style.setProperty('pointer-events', 'none', 'important')")
             box = chip.first.evaluate("el => { const r = el.getBoundingClientRect(); return {x: r.x + r.width / 2, y: r.y + r.height / 2}; }")
             page.mouse.click(box["x"], box["y"])
-            page.wait_for_timeout(500)
+            settle(page)
             assert page.evaluate(overlay_hidden) is True, "guard is void -- dialog opened even with pointer-events:none forced onto the chip"
 
             page.screenshot(path=str(SCREEN_DIR / "tile-chip-click-opens-dialog.png"))

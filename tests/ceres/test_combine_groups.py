@@ -1,4 +1,4 @@
-"""big combines group identical free and cooling copies into one row, show five rows per step with "Show N more",
+""": big combines group identical free and cooling copies into one row, show five rows per step with "Show N more",
 and keep every staked copy listed. "Leave out all" on a grouped row leaves out every copy of the group."""
 from tests.ceres.test_chain_model import STATIC
 from tests.ceres.test_sign_order import SETUP

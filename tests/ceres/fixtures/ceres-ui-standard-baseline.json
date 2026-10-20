@@ -3,7 +3,7 @@
   "rule": "",
   "recorded_on": "2026-09-28",
   "recorded_at_version": "1.0.0",
-  "note": "Deviations from library/ceres-ui-standards.md present on master when the guard was recorded. Shrinking ratchet: remove an entry when its deviation is fixed; add one only with an maintainer-approved exception that is also written into the standard. 2026-10-18 : ratchet shrunk to observed counts; added calc(8*/8.6*var(--ability-unit)) font sizes and calc(4*var(--ability-unit)) radius from the maintainer-approved B-5 layout A (, ).",
+  "note": "Deviations from library/ceres-ui-standards.md present on master  when the guard was recorded. Shrinking ratchet: remove an entry when its deviation is fixed; add one only with an maintainer-approved exception that is also written into the standard. 2026-10-18 : ratchet shrunk to observed counts; added calc(8*/8.6*var(--ability-unit)) font sizes and calc(4*var(--ability-unit)) radius from the maintainer-approved B-5 layout A (, ).",
   "baseline": {
     "raw_colour_beyond_s9310_allowlist": [],
     "m4_fixed_chrome_shadow_filter_motion": [

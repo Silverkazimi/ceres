@@ -1,4 +1,4 @@
-"""Static contract for the Lock column markup and sizing."""
+"""Static contract for the  Lock column markup and sizing."""
 from __future__ import annotations
 
 import re
@@ -17,9 +17,11 @@ def test_lock_header_uses_cell_glyph_family_and_shared_sort_markup() -> None:
     lock_header = header.group(0)
     assert 'export function plotLockSvg(locked)' in LOCK
     assert 'if (slot) slot.innerHTML = plotLockSvg(true);' in LOCK
-    assert 'const icon = plotLockSvg(state.locked);' in LOCK
+    # a staged, unsigned change shows its target padlock; otherwise the current state.
+    assert "const targetLocked = isStaged ? entry.action === 'lock' : state.locked;" in LOCK
+    assert 'const icon = plotLockSvg(targetLocked);' in LOCK
     assert 'return `<span class="plot-lock-icon"' in LOCK
-    assert '>${icon}</span>`' in LOCK
+    assert '>${icon}</span></span>`' in LOCK  # the glyph sits in its own state span inside the cell icon
     assert '>${icon}</button>`' in LOCK
     assert 'initializePlotLockHeaderIcon' in LOCK
     assert "import { initializePlotLockHeaderIcon } from './plot-lock.js';" in (ROOT / "ceres/static/app.js").read_text()
@@ -51,7 +53,7 @@ def test_plot_lock_helper_emits_owner_pair_b_paths() -> None:
     keyhole = "M12 15v2"
     svg = LOCK.split("export function plotLockSvg(locked)", 1)[1].split("\n}", 1)[0]
     assert f"? '{closed}'" in svg
-    assert f"'{opened}'" in svg
+    assert f": '{opened}'" in svg
     assert f'<path d="{body}"/>' in svg
     assert '<path d="${shackle}"/>' in svg
     assert f'<path d="{keyhole}"/>' in svg

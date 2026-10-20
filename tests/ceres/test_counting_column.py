@@ -1,4 +1,4 @@
-"""a counting column (last: right of the locks) numbers every LISTED plot, its header shows the total, it is not sortable, and the header lock matches the row locks."""
+""": a counting column (last: right of the locks) numbers every LISTED plot, its header shows the total, it is not sortable, and the header lock matches the row locks."""
 import re
 from pathlib import Path
 

@@ -2,24 +2,24 @@
 work/combine-reachability/spec.md's "Queued recovery work" (added 2026-08-30):
 
 1. `groupHasCombinableRow` had its only standalone test deleted with
- `test_combine_maxed_rule.py` (commit `2a717567`, the Idle Cards removal). It
- still runs indirectly through the door-level fixtures in
- test_combine_reachability.py, but nothing pins its own behaviour directly, and
- it gates whether a Combine affordance appears at all across all three doors.
+   `test_combine_maxed_rule.py` (commit `2a717567`, the Idle Cards removal). It
+   still runs indirectly through the door-level fixtures in
+   test_combine_reachability.py, but nothing pins its own behaviour directly, and
+   it gates whether a Combine affordance appears at all across all three doors.
 2. `bcx_max: null` must mean UNKNOWN, never maxed -- `isCardMaxed` handles this
- correctly today but nothing guards it, and a regression here would silently
- hide Combine for exactly the cards whose printing ceiling could not be
- resolved (the same class of card `b9432732` found mis-keyed).
+   correctly today but nothing guards it, and a regression here would silently
+   hide Combine for exactly the cards whose printing ceiling could not be
+   resolved (the same class of card `b9432732` found mis-keyed).
 3. The worker-table door (`plotCombineCandidates` -> the click handler's
- 'combine-plot' branch) has never been exercised end to end -- no live plot
- currently has two or more qualifying workers, so this builds a synthetic one
- and drives the real click handler.
+   'combine-plot' branch) has never been exercised end to end -- no live plot
+   currently has two or more qualifying workers, so this builds a synthetic one
+   and drives the real click handler.
 
  (campaign plan `ceres-modularisation-campaign.md` rev 3 Batch D,
 census row 15, method `ceres-ir1854-retire-app-js-slice-harness.md`). The prior
 version of this file sliced `combineGroupKey`..the ledger comment out of
 `ceres/static/app.js` with hand-rolled string markers and ran the slice in a bare
-`node -e` -- fragile in exactly the way retires it: the worker-table
+`node -e` -- fragile in exactly the way  retires it: the worker-table
 rebuild (commit `9dc5c91a`) hoisted `cardFoilValue`/`isNonCombinableFoil` earlier
 in the file and every slice went `ReferenceError` (an earlier 
 queue patched this in place with a `_foil_helpers()` stub, noted here only for the
@@ -75,11 +75,11 @@ def _assert_mismatch_red(body_js: str, mutated_source: str) -> None:
 # 1. groupHasCombinableRow -- standalone guard
 
 _GROUP_HAS_COMBINABLE_ROW_BODY = r"""
-Two copies, both maxed -- neither row would show a Combine button, so the
+// Two copies, both maxed -- neither row would show a Combine button, so the
 // group must not count as combinable.
 const bothMaxed = [
- {uid: 'A1', bcx: 10, bcx_max: 10, available: true},
- {uid: 'A2', bcx: 10, bcx_max: 10, available: true},
+  {uid: 'A1', bcx: 10, bcx_max: 10, available: true},
+  {uid: 'A2', bcx: 10, bcx_max: 10, available: true},
 ];
 if (groupHasCombinableRow(bothMaxed) !== false) process.exit(50);
 
@@ -87,8 +87,8 @@ if (groupHasCombinableRow(bothMaxed) !== false) process.exit(50);
 // one is still a valid PARTNER even though it can't itself be a combine
 // target), so the group counts.
 const oneMaxedOneNot = [
- {uid: 'B1', bcx: 10, bcx_max: 10, available: true},
- {uid: 'B2', bcx: 1, bcx_max: 10, available: true},
+  {uid: 'B1', bcx: 10, bcx_max: 10, available: true},
+  {uid: 'B2', bcx: 1, bcx_max: 10, available: true},
 ];
 if (groupHasCombinableRow(oneMaxedOneNot) !== true) process.exit(51);
 
@@ -104,21 +104,21 @@ if (groupHasCombinableRow(undefined) !== false) process.exit(54);
 
 def test_group_has_combinable_row_via_real_function() -> None:
     """Calls the REAL groupHasCombinableRow (whole module, vm_context) against a
- both-maxed group (false), a mixed maxed/unmaxed group (true), a lone copy
- (false) and empty/undefined input (false, no throw)."""
+    both-maxed group (false), a mixed maxed/unmaxed group (true), a lone copy
+    (false) and empty/undefined input (false, no throw)."""
     _run(_GROUP_HAS_COMBINABLE_ROW_BODY)
 
 
 def test_group_has_combinable_row_mutation_is_red() -> None:
     """Injected defect: groupHasCombinableRow() uses .every instead of .some, as if
- a group only counted when EVERY copy in it could individually combine. Calling
- the REAL function on the mixed maxed/unmaxed group (one row genuinely
- combinable, one maxed) now wrongly returns false -- exactly the case that must
- still show a Combine button (rowCanCombine is true for the unmaxed row)."""
+    a group only counted when EVERY copy in it could individually combine. Calling
+    the REAL function on the mixed maxed/unmaxed group (one row genuinely
+    combinable, one maxed) now wrongly returns false -- exactly the case that must
+    still show a Combine button (rowCanCombine is true for the unmaxed row)."""
     source = read_entry_source()
     mutated = source.replace(
-        "function groupHasCombinableRow(copies) {\n return (copies || []).some((c) => rowCanCombine(c, copies));\n}",
-        "function groupHasCombinableRow(copies) {\n return (copies || []).every((c) => rowCanCombine(c, copies));\n}",
+        "function groupHasCombinableRow(copies) {\n  return (copies || []).some((c) => rowCanCombine(c, copies));\n}",
+        "function groupHasCombinableRow(copies) {\n  return (copies || []).every((c) => rowCanCombine(c, copies));\n}",
         1,
     )
     assert mutated != source, "expected source text not found -- app.js changed shape"
@@ -128,7 +128,7 @@ def test_group_has_combinable_row_mutation_is_red() -> None:
 # 2. isCardMaxed -- bcx_max: null means UNKNOWN, never maxed
 
 _IS_CARD_MAXED_BODY = r"""
-bcx_max unresolved (null) -- must read as NOT maxed, i.e. unknown, per
+// bcx_max unresolved (null) -- must read as NOT maxed, i.e. unknown, per
 // the internal rules's own worked case: the printing's regime couldn't be keyed, so
 // treating it as maxed would silently hide Combine for exactly these cards.
 if (isCardMaxed({uid: 'X', bcx: 5, bcx_max: null}) !== false) process.exit(60);
@@ -148,21 +148,21 @@ if (isCardMaxed({uid: 'X', bcx: 1, bcx_max: 10}) !== false) process.exit(65);
 
 def test_is_card_maxed_treats_null_ceiling_as_unknown_via_real_function() -> None:
     """Calls the REAL isCardMaxed (whole module, vm_context) against a null
- bcx_max (must read false, however large bcx is), a null bcx, and both-known
- above/at/below-ceiling cases."""
+    bcx_max (must read false, however large bcx is), a null bcx, and both-known
+    above/at/below-ceiling cases."""
     _run(_IS_CARD_MAXED_BODY)
 
 
 def test_is_card_maxed_null_ceiling_mutation_is_red() -> None:
     """Injected defect: isCardMaxed() drops the bcx_max null guard, so an
- unresolved ceiling (bcx_max: null) reads as maxed whenever bcx is truthy --
- calling the REAL function on {bcx: 5, bcx_max: null} now wrongly returns
- true, which is exactly the silent-Combine-vanishes failure the internal rules warns
- about for the 4.1% of cards the regime keying got wrong (b9432732)."""
+    unresolved ceiling (bcx_max: null) reads as maxed whenever bcx is truthy --
+    calling the REAL function on {bcx: 5, bcx_max: null} now wrongly returns
+    true, which is exactly the silent-Combine-vanishes failure the internal rules warns
+    about for the 4.1% of cards the regime keying got wrong (b9432732)."""
     source = read_entry_source()
     mutated = source.replace(
-        "function isCardMaxed(c) {\n return c.bcx_max != null && c.bcx != null && c.bcx >= c.bcx_max;\n}",
-        "function isCardMaxed(c) {\n return c.bcx_max == null || (c.bcx != null && c.bcx >= c.bcx_max);\n}",
+        "function isCardMaxed(c) {\n  return c.bcx_max != null && c.bcx != null && c.bcx >= c.bcx_max;\n}",
+        "function isCardMaxed(c) {\n  return c.bcx_max == null || (c.bcx != null && c.bcx >= c.bcx_max);\n}",
         1,
     )
     assert mutated != source, "expected source text not found -- app.js changed shape"
@@ -179,14 +179,14 @@ def test_is_card_maxed_null_ceiling_mutation_is_red() -> None:
 
 _WORKER_TABLE_DOOR_BODY = r"""
 BOARD = { plots: [{
- deed_uid: 'plot-1',
- capacity: { potential_card_capacity: 5 },
- workers: [
- { slot: 1, asset_ref: 'a1', uid: 'a1', card_detail_id: 100, edition: 1, foil: false, name: 'Card A' },
- { slot: 2, asset_ref: 'b1', uid: 'b1', card_detail_id: 200, edition: 1, foil: false, name: 'Card B' },
- ],
- staking_facts: {},
- bonus: {},
+  deed_uid: 'plot-1',
+  capacity: { potential_card_capacity: 5 },
+  workers: [
+    { slot: 1, asset_ref: 'a1', uid: 'a1', card_detail_id: 100, edition: 1, foil: false, name: 'Card A' },
+    { slot: 2, asset_ref: 'b1', uid: 'b1', card_detail_id: 200, edition: 1, foil: false, name: 'Card B' },
+  ],
+  staking_facts: {},
+  bonus: {},
 }] };
 
 const openCombineGroupDialogCalls = [];
@@ -195,73 +195,73 @@ const openPlotCombineChooserCalls = [];
 openPlotCombineChooser = (row, candidates) => { openPlotCombineChooserCalls.push({ row, candidates }); };
 
 function fakeEvent(dataset) {
- return {
- target: { closest: (selector) => (selector === '[data-slot-action]' ? { dataset } : null) },
- preventDefault: () => {},
- stopPropagation: () => {},
- };
+  return {
+    target: { closest: (selector) => (selector === '[data-slot-action]' ? { dataset } : null) },
+    preventDefault: () => {},
+    stopPropagation: () => {},
+  };
 }
 
 (async () => {
- // Case A: exactly ONE qualifying worker on the plot -- click must open
- // the real dialog directly, no intermediate chooser.
- S.IDLE_CARDS_CACHE = [
- { uid: 'A1', card_detail_id: 100, edition: 1, foil: false, bcx: 1, bcx_max: 10, available: true, name: 'Card A' },
- { uid: 'A2', card_detail_id: 100, edition: 1, foil: false, bcx: 1, bcx_max: 10, available: true, name: 'Card A' },
- ];
- await handleSlotEditorClick(fakeEvent({ slotAction: 'combine-plot', deedUid: 'plot-1', groupId: 'worker' }));
- if (openCombineGroupDialogCalls.length !== 1) process.exit(70);
- if (openCombineGroupDialogCalls[0] !== combineGroupKey({ card_detail_id: 100, edition: 1, foil: false })) process.exit(71);
- if (openPlotCombineChooserCalls.length !== 0) process.exit(72);
+  // --- Case A: exactly ONE qualifying worker on the plot -- click must open
+  // the real dialog directly, no intermediate chooser.
+  S.IDLE_CARDS_CACHE = [
+    { uid: 'A1', card_detail_id: 100, edition: 1, foil: false, bcx: 1, bcx_max: 10, available: true, name: 'Card A' },
+    { uid: 'A2', card_detail_id: 100, edition: 1, foil: false, bcx: 1, bcx_max: 10, available: true, name: 'Card A' },
+  ];
+  await handleSlotEditorClick(fakeEvent({ slotAction: 'combine-plot', deedUid: 'plot-1', groupId: 'worker' }));
+  if (openCombineGroupDialogCalls.length !== 1) process.exit(70);
+  if (openCombineGroupDialogCalls[0] !== combineGroupKey({ card_detail_id: 100, edition: 1, foil: false })) process.exit(71);
+  if (openPlotCombineChooserCalls.length !== 0) process.exit(72);
 
- // Case B: TWO qualifying workers -- click must open the chooser, not the
- // dialog directly.
- openCombineGroupDialogCalls.length = 0;
- openPlotCombineChooserCalls.length = 0;
- S.IDLE_CARDS_CACHE = S.IDLE_CARDS_CACHE.concat([
- { uid: 'B1', card_detail_id: 200, edition: 1, foil: false, bcx: 1, bcx_max: 10, available: true, name: 'Card B' },
- { uid: 'B2', card_detail_id: 200, edition: 1, foil: false, bcx: 1, bcx_max: 10, available: true, name: 'Card B' },
- ]);
- await handleSlotEditorClick(fakeEvent({ slotAction: 'combine-plot', deedUid: 'plot-1', groupId: 'worker' }));
- if (openCombineGroupDialogCalls.length !== 0) process.exit(73);
- if (openPlotCombineChooserCalls.length !== 1) process.exit(74);
- if (openPlotCombineChooserCalls[0].candidates.length !== 2) process.exit(75);
+  // --- Case B: TWO qualifying workers -- click must open the chooser, not the
+  // dialog directly.
+  openCombineGroupDialogCalls.length = 0;
+  openPlotCombineChooserCalls.length = 0;
+  S.IDLE_CARDS_CACHE = S.IDLE_CARDS_CACHE.concat([
+    { uid: 'B1', card_detail_id: 200, edition: 1, foil: false, bcx: 1, bcx_max: 10, available: true, name: 'Card B' },
+    { uid: 'B2', card_detail_id: 200, edition: 1, foil: false, bcx: 1, bcx_max: 10, available: true, name: 'Card B' },
+  ]);
+  await handleSlotEditorClick(fakeEvent({ slotAction: 'combine-plot', deedUid: 'plot-1', groupId: 'worker' }));
+  if (openCombineGroupDialogCalls.length !== 0) process.exit(73);
+  if (openPlotCombineChooserCalls.length !== 1) process.exit(74);
+  if (openPlotCombineChooserCalls[0].candidates.length !== 2) process.exit(75);
 
- // Case C: the idle-card cache was cleared after this button rendered
- // the stale click must be a no-op because there are no current candidates.
- openCombineGroupDialogCalls.length = 0;
- openPlotCombineChooserCalls.length = 0;
- S.IDLE_CARDS_CACHE = null;
- await handleSlotEditorClick(fakeEvent({ slotAction: 'combine-plot', deedUid: 'plot-1', groupId: 'worker' }));
- if (openCombineGroupDialogCalls.length !== 0) process.exit(76);
- if (openPlotCombineChooserCalls.length !== 0) process.exit(77);
+  // --- Case C: the idle-card cache was cleared after this button rendered --
+  // the stale click must be a no-op because there are no current candidates.
+  openCombineGroupDialogCalls.length = 0;
+  openPlotCombineChooserCalls.length = 0;
+  S.IDLE_CARDS_CACHE = null;
+  await handleSlotEditorClick(fakeEvent({ slotAction: 'combine-plot', deedUid: 'plot-1', groupId: 'worker' }));
+  if (openCombineGroupDialogCalls.length !== 0) process.exit(76);
+  if (openPlotCombineChooserCalls.length !== 0) process.exit(77);
 })().catch((error) => { console.error(error); process.exit(1); });
 """
 
 
 def test_worker_table_door_click_opens_real_dialog() -> None:
     """Drives the REAL handleSlotEditorClick (whole module, vm_context) against a
- synthetic plot with two workers, each carrying a combinable idle duplicate --
- the worker-table door (plotCombineCandidates -> the 'combine-plot' branch)
- that has never been clicked in live verification because no real plot
- currently qualifies, AND (see module docstring) has no rendering call site
- left in the current source. Asserts a single qualifying worker opens the
- shared combine dialog directly (by its real combineGroupKey), two qualifying
- workers open the plot chooser instead, and a stale click after the current
- idle-card cache is cleared is a no-op."""
+    synthetic plot with two workers, each carrying a combinable idle duplicate --
+    the worker-table door (plotCombineCandidates -> the 'combine-plot' branch)
+    that has never been clicked in live verification because no real plot
+    currently qualifies, AND (see module docstring) has no rendering call site
+    left in the current source. Asserts a single qualifying worker opens the
+    shared combine dialog directly (by its real combineGroupKey), two qualifying
+    workers open the plot chooser instead, and a stale click after the current
+    idle-card cache is cleared is a no-op."""
     _run(_WORKER_TABLE_DOOR_BODY)
 
 
 def test_worker_table_door_single_candidate_mutation_is_red() -> None:
     """Injected defect: the click handler's off-by-one -- `candidates.length === 1`
- becomes `candidates.length === 0` -- so a plot with exactly one qualifying
- worker no longer opens the dialog directly; it falls through to the
- multi-worker chooser instead, showing a pointless one-item picker in front of
- the dialog the player should have landed on immediately."""
+    becomes `candidates.length === 0` -- so a plot with exactly one qualifying
+    worker no longer opens the dialog directly; it falls through to the
+    multi-worker chooser instead, showing a pointless one-item picker in front of
+    the dialog the player should have landed on immediately."""
     source = read_entry_source()
     mutated = source.replace(
-        "    if (candidates.length === 1) {\n IDLE_COMBINE_GROUPS.set(candidates[0].key, candidates[0].copies);\n openCombineGroupDialog(candidates[0].key);\n } else {\n openPlotCombineChooser(row, candidates);\n }",
-        "    if (candidates.length === 0) {\n IDLE_COMBINE_GROUPS.set(candidates[0].key, candidates[0].copies);\n openCombineGroupDialog(candidates[0].key);\n } else {\n openPlotCombineChooser(row, candidates);\n }",
+        "    if (candidates.length === 1) {\n      IDLE_COMBINE_GROUPS.set(candidates[0].key, candidates[0].copies);\n      openCombineGroupDialog(candidates[0].key);\n    } else {\n      openPlotCombineChooser(row, candidates);\n    }",
+        "    if (candidates.length === 0) {\n      IDLE_COMBINE_GROUPS.set(candidates[0].key, candidates[0].copies);\n      openCombineGroupDialog(candidates[0].key);\n    } else {\n      openPlotCombineChooser(row, candidates);\n    }",
         1,
     )
     assert mutated != source, "expected source text not found -- app.js changed shape"

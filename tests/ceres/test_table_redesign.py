@@ -1,8 +1,8 @@
 """ (version A, ceres-table-redesign plan §2/§5, maintainer ): visual-system-
 only redesign of the plot table -- font, row rhythm, header gradient/contrast, sort
 state, zebra/hover/divider, icon sizing, alignment. Source guards cover the visual contract;
-the Totem/Title cell also has a whole-module VM render check. (version B) added
-three sortable material-input columns; keeps Totem and Title as separate ordinary
+the Totem/Title cell also has a whole-module VM render check.  (version B) added
+three sortable material-input columns;  keeps Totem and Title as separate ordinary
 columns, and every other Version A token assertion is untouched.
 """
 from __future__ import annotations
@@ -18,7 +18,7 @@ import pytest
 from PIL import Image
 from playwright.sync_api import Browser
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .vm_context import run_in_module_context
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -55,13 +55,13 @@ def test_header_block_size_and_type():
     assert th_rule, "could not find table.plot-table th rule"
     assert "block-size: 2.75rem; box-sizing: border-box;" in th_rule.group(1)
     assert re.search(r"(?<!min-)block-size: 2.75rem;", th_rule.group(1))
-    assert "\n min-block-size" not in th_rule.group(1)
+    assert "\n  min-block-size" not in th_rule.group(1)
     assert "font-weight: 700; line-height: 1.1; letter-spacing: .025em;" in CSS
 
 
 def test_header_gradient_every_theme():
     gradient = (
-        "linear-gradient(180deg, color-mix(in srgb, var(--primary) 65%, var(--heading) 35%) "
+        "linear-gradient(180deg, color-mix(in srgb, var(--primary) 65%, var(--heading) 35%), "
         "color-mix(in srgb, var(--primary) 50%, var(--heading) 50%))"
     )
     # ( for the Badges flag) ended the
@@ -124,8 +124,8 @@ def test_sort_chevron_markup_and_css():
     assert "th[data-key] .sort-chevron" in CSS
     assert "--ceres-chevron-art" in CSS  # reuses the existing shared chevron mask, no new icon family
     assert 'table.plot-table .table-sort-control[aria-pressed="true"] .sort-chevron' in CSS
-    assert "table.plot-table th[data-key] .sort-chevron" in CSS
-    chevron_rule = CSS.split("table.plot-table th[data-key] .sort-chevron", 1)[1].split("}", 1)[0]
+    assert "table.plot-table th[data-key] .sort-chevron," in CSS
+    chevron_rule = CSS.split("table.plot-table th[data-key] .sort-chevron,", 1)[1].split("}", 1)[0]
     assert "inline-size: .6rem; block-size: .6rem;" in chevron_rule
     # (2026-09-20) legitimately introduced its OWN, unrelated
     # `+ .75rem)` (the `--table-end-reserve` DEC-clearance formula) -- this guard
@@ -149,7 +149,7 @@ def test_aria_sort_maintained_in_js():
     assert 'aria-sort="none"' in HTML
     assert 'table-sort-control' not in HTML
     assert "syncSortAriaState" in APP  # imported/called from the existing click handler
-    assert "syncSortAriaState()" in APP
+    assert "syncSortAriaState(); // " in APP
 
 
 def test_aria_sort_plot_direction_is_inverted_like_sortbyplot():
@@ -206,7 +206,7 @@ def test_totem_and_title_are_separate_fluid_columns_between_base_pp_and_boost():
     assert 'class="col-w-title"' in HTML
     assert 'totem-title' not in HTML + ROWS + CSS
     width_rule = re.search(
-        r"table\.plot-table col\.col-w-totem,\n\"\n r\"table\.plot-table col\.col-w-title,\n\"\n r\"table\.plot-table th\[data-key=\"totem_boost\"\],\n\"\n r\"table\.plot-table th\[data-key=\"title_boost\"\],\n\"\n r\"table\.plot-table td\.totem-cell,\n\"\n r\"table\.plot-table td\.title-cell \{(.*?)\n\}",
+        r"table\.plot-table col\.col-w-totem,\n" r"table\.plot-table col\.col-w-title,\n" r"table\.plot-table th\[data-key=\"totem_boost\"\],\n" r"table\.plot-table th\[data-key=\"title_boost\"\],\n" r"table\.plot-table td\.totem-cell,\n" r"table\.plot-table td\.title-cell \{(.*?)\n\}",
         CSS,
         re.S,
     )
@@ -216,7 +216,7 @@ def test_totem_and_title_are_separate_fluid_columns_between_base_pp_and_boost():
 
 def test_totem_and_title_reuse_the_shared_centering_rule():
     center_rule = re.search(
-        r"table\.plot-table th\.col-center,\n\"\n r\"table\.plot-table td\.plot-cell,\n\"\n r\"table\.plot-table td\.rarity-cell,\n\"\n r\"table\.plot-table td\.resource-cell,\n\"\n r\"table\.plot-table td\.type-cell,\n\"\n r\"table\.plot-table td\.totem-cell,\n\"\n r\"table\.plot-table td\.title-cell \{(.*?)\n\}",
+        r"table\.plot-table th\.col-center,\n" r"table\.plot-table td\.plot-cell,\n" r"table\.plot-table td\.rarity-cell,\n" r"table\.plot-table td\.resource-cell,\n" r"table\.plot-table td\.type-cell,\n" r"table\.plot-table td\.totem-cell,\n" r"table\.plot-table td\.title-cell \{(.*?)\n\}",
         CSS,
         re.S,
     )
@@ -295,95 +295,95 @@ def test_separate_totem_title_cells_keep_exact_row_height_and_tooltips(live_brow
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(board)),
     )
     try:
-        page.goto(f"{base_url}/?player=player0005", wait_until="domcontentloaded")
+        page.goto(f"{base_url}/?player=sample01", wait_until="domcontentloaded")
         page.wait_for_selector("tr.plot-row", state="attached", timeout=30_000)
         page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 1", timeout=30_000)
         page.evaluate("document.documentElement.setAttribute('data-theme', 'alchemical')")
         geometry = page.evaluate(
             """([plainId, totemConflictId, titleConflictId, unmatchedId, genericId, withoutId]) => {
- const row = id => document.querySelector(`tr.plot-row[data-deed-uid="${CSS.escape(id)}"]`);
- const rows = [row(plainId), row(totemConflictId), row(titleConflictId), row(unmatchedId), row(genericId)];
- const empty = row(withoutId);
- const box = rect => ({left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height});
- const centeredGroup = (cell, nodes) => {
- const cellBox = cell.getBoundingClientRect();
- const rects = nodes.map(node => node.getBoundingClientRect());
- const left = Math.min(...rects.map(rect => rect.left));
- const right = Math.max(...rects.map(rect => rect.right));
- return {
- box: {left, right, top: Math.min(...rects.map(rect => rect.top)), bottom: Math.max(...rects.map(rect => rect.bottom)), width: right - left, height: Math.max(...rects.map(rect => rect.bottom)) - Math.min(...rects.map(rect => rect.top))},
- leftGap: left - cellBox.left,
- rightGap: cellBox.right - right,
- centerOffset: (left + right) / 2 - (cellBox.left + cellBox.right) / 2,
- };
- };
- const measure = currentRow => {
- const totemCell = currentRow.querySelector('.totem-cell');
- const titleCell = currentRow.querySelector('.title-cell');
- const totem = currentRow.querySelector('.totem-icon');
- const title = currentRow.querySelector('.title-icon');
- const gem = currentRow.querySelector('.title-cell .rarity-gem');
- const markers = [...currentRow.querySelectorAll('.bonus-conflict')];
- const tooltip = marker => marker.getAttribute('title') || marker.getAttribute('data-tip') || '';
- return {
- totemCell: box(totemCell.getBoundingClientRect()),
- titleCell: box(titleCell.getBoundingClientRect()),
- height: currentRow.getBoundingClientRect().height,
- totemGroup: totem ? centeredGroup(totemCell, [totem]) : null,
- titleGroup: title && gem ? centeredGroup(titleCell, [title, gem]) : null,
- titleCellTips: currentRow.querySelectorAll('.title-cell[data-tip]').length,
- titleIconTips: currentRow.querySelectorAll('.title-cell .title-icon[data-tip]').length,
- rarityIconTips: currentRow.querySelectorAll('.title-cell .rarity-gem[data-tip]').length,
- totemInsideCell: totem.getBoundingClientRect().left >= totemCell.getBoundingClientRect().left && totem.getBoundingClientRect().right <= totemCell.getBoundingClientRect().right,
- titleInsideCell: Boolean(title && gem && title.getBoundingClientRect().left >= titleCell.getBoundingClientRect().left && title.getBoundingClientRect().right <= titleCell.getBoundingClientRect().right && gem.getBoundingClientRect().left >= titleCell.getBoundingClientRect().left && gem.getBoundingClientRect().right <= titleCell.getBoundingClientRect().right),
- markers: markers.map(marker => ({
- rightInsideCell: (() => {
- const cell = marker.closest('.totem-cell, .title-cell').getBoundingClientRect();
- return marker.getBoundingClientRect().right <= cell.right;
- })(),
- unclipped: marker.scrollWidth <= marker.clientWidth,
- width: marker.getBoundingClientRect().width,
- height: marker.getBoundingClientRect().height,
- background: getComputedStyle(marker).backgroundColor,
- glyph: getComputedStyle(marker, '::after').content,
- text: marker.textContent.trim(),
- tooltip: tooltip(marker),
- })),
- };
- };
- return {
- rows: rows.map(measure),
- emptyHeight: empty.getBoundingClientRect().height,
- emptyTotemCell: box(empty.querySelector('.totem-cell').getBoundingClientRect()),
- emptyTitleCell: box(empty.querySelector('.title-cell').getBoundingClientRect()),
- headers: ['totem_boost', 'title_boost'].map(key => {
- const th = document.querySelector(`#table-head-sticky th[data-key="${key}"]`);
- const labelRange = document.createRange();
- labelRange.selectNode(th.firstChild);
- const label = labelRange.getBoundingClientRect();
- const chevron = th.querySelector('.sort-chevron').getBoundingClientRect();
- const groupLeft = Math.min(label.left, chevron.left);
- const groupRight = Math.max(label.right, chevron.right);
- const cell = th.getBoundingClientRect();
- return {
- key,
- cell: box(cell),
- label: box(label),
- group: {left: groupLeft, right: groupRight, top: Math.min(label.top, chevron.top), bottom: Math.max(label.bottom, chevron.bottom), width: groupRight - groupLeft, height: Math.max(label.bottom, chevron.bottom) - Math.min(label.top, chevron.top)},
- leftGap: groupLeft - cell.left,
- rightGap: cell.right - groupRight,
- groupCenterOffset: (groupLeft + groupRight) / 2 - (cell.left + cell.right) / 2,
- labelCenterOffset: (label.left + label.right) / 2 - (cell.left + cell.right) / 2,
- };
- }),
- columnWidths: [...document.querySelectorAll('#plot-tbody > tr.plot-row:first-child > td')].map(cell => cell.getBoundingClientRect().width),
- separateShape: {
- headers: [...document.querySelectorAll('#table-head-sticky th')].filter(th => ['totem_boost', 'title_boost'].includes(th.dataset.key)).length,
- cells: empty.cells.length,
- sharedWrapperCount: document.querySelectorAll('.totem-title-pair, .totem-title-slot').length,
- },
- };
- }""",
+              const row = id => document.querySelector(`tr.plot-row[data-deed-uid="${CSS.escape(id)}"]`);
+              const rows = [row(plainId), row(totemConflictId), row(titleConflictId), row(unmatchedId), row(genericId)];
+              const empty = row(withoutId);
+              const box = rect => ({left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height});
+              const centeredGroup = (cell, nodes) => {
+                const cellBox = cell.getBoundingClientRect();
+                const rects = nodes.map(node => node.getBoundingClientRect());
+                const left = Math.min(...rects.map(rect => rect.left));
+                const right = Math.max(...rects.map(rect => rect.right));
+                return {
+                  box: {left, right, top: Math.min(...rects.map(rect => rect.top)), bottom: Math.max(...rects.map(rect => rect.bottom)), width: right - left, height: Math.max(...rects.map(rect => rect.bottom)) - Math.min(...rects.map(rect => rect.top))},
+                  leftGap: left - cellBox.left,
+                  rightGap: cellBox.right - right,
+                  centerOffset: (left + right) / 2 - (cellBox.left + cellBox.right) / 2,
+                };
+              };
+              const measure = currentRow => {
+                const totemCell = currentRow.querySelector('.totem-cell');
+                const titleCell = currentRow.querySelector('.title-cell');
+                const totem = currentRow.querySelector('.totem-icon');
+                const title = currentRow.querySelector('.title-icon');
+                const gem = currentRow.querySelector('.title-cell .rarity-gem');
+                const markers = [...currentRow.querySelectorAll('.bonus-conflict')];
+                const tooltip = marker => marker.getAttribute('title') || marker.getAttribute('data-tip') || '';
+                return {
+                  totemCell: box(totemCell.getBoundingClientRect()),
+                  titleCell: box(titleCell.getBoundingClientRect()),
+                  height: currentRow.getBoundingClientRect().height,
+                  totemGroup: totem ? centeredGroup(totemCell, [totem]) : null,
+                  titleGroup: title && gem ? centeredGroup(titleCell, [title, gem]) : null,
+                  titleCellTips: currentRow.querySelectorAll('.title-cell[data-tip]').length,
+                  titleIconTips: currentRow.querySelectorAll('.title-cell .title-icon[data-tip]').length,
+                  rarityIconTips: currentRow.querySelectorAll('.title-cell .rarity-gem[data-tip]').length,
+                  totemInsideCell: totem.getBoundingClientRect().left >= totemCell.getBoundingClientRect().left && totem.getBoundingClientRect().right <= totemCell.getBoundingClientRect().right,
+                  titleInsideCell: Boolean(title && gem && title.getBoundingClientRect().left >= titleCell.getBoundingClientRect().left && title.getBoundingClientRect().right <= titleCell.getBoundingClientRect().right && gem.getBoundingClientRect().left >= titleCell.getBoundingClientRect().left && gem.getBoundingClientRect().right <= titleCell.getBoundingClientRect().right),
+                  markers: markers.map(marker => ({
+                    rightInsideCell: (() => {
+                      const cell = marker.closest('.totem-cell, .title-cell').getBoundingClientRect();
+                      return marker.getBoundingClientRect().right <= cell.right;
+                    })(),
+                    unclipped: marker.scrollWidth <= marker.clientWidth,
+                    width: marker.getBoundingClientRect().width,
+                    height: marker.getBoundingClientRect().height,
+                    background: getComputedStyle(marker).backgroundColor,
+                    glyph: getComputedStyle(marker, '::after').content,
+                    text: marker.textContent.trim(),
+                    tooltip: tooltip(marker),
+                  })),
+                };
+              };
+              return {
+                rows: rows.map(measure),
+                emptyHeight: empty.getBoundingClientRect().height,
+                emptyTotemCell: box(empty.querySelector('.totem-cell').getBoundingClientRect()),
+                emptyTitleCell: box(empty.querySelector('.title-cell').getBoundingClientRect()),
+                headers: ['totem_boost', 'title_boost'].map(key => {
+                  const th = document.querySelector(`#table-head-sticky th[data-key="${key}"]`);
+                  const labelRange = document.createRange();
+                  labelRange.selectNode(th.firstChild);
+                  const label = labelRange.getBoundingClientRect();
+                  const chevron = th.querySelector('.sort-chevron').getBoundingClientRect();
+                  const groupLeft = Math.min(label.left, chevron.left);
+                  const groupRight = Math.max(label.right, chevron.right);
+                  const cell = th.getBoundingClientRect();
+                  return {
+                    key,
+                    cell: box(cell),
+                    label: box(label),
+                    group: {left: groupLeft, right: groupRight, top: Math.min(label.top, chevron.top), bottom: Math.max(label.bottom, chevron.bottom), width: groupRight - groupLeft, height: Math.max(label.bottom, chevron.bottom) - Math.min(label.top, chevron.top)},
+                    leftGap: groupLeft - cell.left,
+                    rightGap: cell.right - groupRight,
+                    groupCenterOffset: (groupLeft + groupRight) / 2 - (cell.left + cell.right) / 2,
+                    labelCenterOffset: (label.left + label.right) / 2 - (cell.left + cell.right) / 2,
+                  };
+                }),
+                columnWidths: [...document.querySelectorAll('#plot-tbody > tr.plot-row:first-child > td')].map(cell => cell.getBoundingClientRect().width),
+                  separateShape: {
+                    headers: [...document.querySelectorAll('#table-head-sticky th')].filter(th => ['totem_boost', 'title_boost'].includes(th.dataset.key)).length,
+                    cells: empty.cells.length,
+                    sharedWrapperCount: document.querySelectorAll('.totem-title-pair, .totem-title-slot').length,
+                  },
+              };
+                }""",
                 [plain["deed_uid"], totem_conflict["deed_uid"], title_conflict["deed_uid"], unmatched["deed_uid"], generic_derived["deed_uid"], without_bonus["deed_uid"]],
             )
         title_icon = page.locator(
@@ -393,34 +393,34 @@ def test_separate_totem_title_cells_keep_exact_row_height_and_tooltips(live_brow
                 f'tr.plot-row[data-deed-uid="{generic_derived["deed_uid"]}"] .title-cell .rarity-gem'
             )
         title_icon.hover()
-        page.wait_for_timeout(400)
+        settle(page)
         page.wait_for_selector("#ceres-tooltip:not([hidden])")
         title_tip = page.evaluate(
                 """() => {
- const tip = document.querySelector('#ceres-tooltip');
- window.__s15270Tooltip = tip;
- return {
- count: document.querySelectorAll('#ceres-tooltip').length,
- html: tip.querySelector('.tip-inner').innerHTML,
- text: tip.textContent.trim(),
- icons: [...tip.querySelectorAll('img')].map(icon => icon.getAttribute('src')),
- };
- }"""
+                  const tip = document.querySelector('#ceres-tooltip');
+                  window.__s15270Tooltip = tip;
+                  return {
+                    count: document.querySelectorAll('#ceres-tooltip').length,
+                    html: tip.querySelector('.tip-inner').innerHTML,
+                    text: tip.textContent.trim(),
+                    icons: [...tip.querySelectorAll('img')].map(icon => icon.getAttribute('src')),
+                  };
+                }"""
             )
         rarity_icon.hover()
-        page.wait_for_timeout(400)
+        settle(page)
         page.wait_for_selector("#ceres-tooltip:not([hidden])")
         rarity_tip = page.evaluate(
                 """() => {
- const tip = document.querySelector('#ceres-tooltip');
- return {
- sameElement: tip === window.__s15270Tooltip,
- count: document.querySelectorAll('#ceres-tooltip').length,
- html: tip.querySelector('.tip-inner').innerHTML,
- text: tip.textContent.trim(),
- icons: [...tip.querySelectorAll('img')].map(icon => icon.getAttribute('src')),
- };
- }"""
+                  const tip = document.querySelector('#ceres-tooltip');
+                  return {
+                    sameElement: tip === window.__s15270Tooltip,
+                    count: document.querySelectorAll('#ceres-tooltip').length,
+                    html: tip.querySelector('.tip-inner').innerHTML,
+                    text: tip.textContent.trim(),
+                    icons: [...tip.querySelectorAll('img')].map(icon => icon.getAttribute('src')),
+                  };
+                }"""
             )
         screenshot = Image.open(BytesIO(page.screenshot())).convert("RGB")
         def bright_right_padding(cell):
@@ -484,7 +484,7 @@ def test_separate_totem_title_cells_keep_exact_row_height_and_tooltips(live_brow
     assert geometry["columnWidths"][8] > 0 and geometry["columnWidths"][9] > 0
 
     print(
-        "measurements "
+        " measurements "
         + json.dumps(
             {
                 "rows": [
@@ -528,17 +528,17 @@ def test_separate_totem_title_cells_keep_exact_row_height_and_tooltips(live_brow
 def test_vm_render_keeps_totem_then_title_at_separate_indexes_for_every_row():
     run_in_module_context(r"""
 const base = {
- plot: '065-09-083', deed_uid: 'vm-plot', territory: 'Praetoria', terrain: 'Plains',
- resource: 'Grain', worksite_type: 'Farm', plot_status: 'occupied', magic_type: null,
- harvest_pp: 10, construction_pp: 20, base_pp: 30, base_pp_after_cap: 30,
- multiplier: 1, work_per_hour: 2, food_per_hour: 0, input_costs_per_hour: {},
- capacity: { display: '3' }, dec_needed: 0, bonus: { totem: null, title: null },
+  plot: '065-09-083', deed_uid: 'vm-plot', territory: 'Praetoria', terrain: 'Plains',
+  resource: 'Grain', worksite_type: 'Farm', plot_status: 'occupied', magic_type: null,
+  harvest_pp: 10, construction_pp: 20, base_pp: 30, base_pp_after_cap: 30,
+  multiplier: 1, work_per_hour: 2, food_per_hour: 0, input_costs_per_hour: {},
+  capacity: { display: '3' }, dec_needed: 0, bonus: { totem: null, title: null },
 };
 const rows = [
- base,
- { ...base, bonus: { totem: { rarity: 'common', boost: 0.1, name: 'Totem' }, title: null } },
- { ...base, bonus: { totem: null, title: { name: 'Title', boost: 0.1 } } },
- { ...base, bonus: { totem: { rarity: 'common', boost: 0.1, name: 'Totem' }, title: { name: 'Title', boost: 0.1 } } },
+  base,
+  { ...base, bonus: { totem: { rarity: 'common', boost: 0.1, name: 'Totem' }, title: null } },
+  { ...base, bonus: { totem: null, title: { name: 'Title', boost: 0.1 } } },
+  { ...base, bonus: { totem: { rarity: 'common', boost: 0.1, name: 'Totem' }, title: { name: 'Title', boost: 0.1 } } },
 ];
 const rendered = rows.map(row => plotRowCellsHtml(row));
 const totemIndexes = rendered.map(html => [...html.matchAll(/<td\b/g)].findIndex(match => html.slice(match.index).startsWith('<td class="totem-cell"')));
@@ -556,22 +556,22 @@ def test_title_icon_and_rarity_gem_render_adjacent_with_no_gap(live_browser: tup
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1536, "height": 900})
     try:
-        page.goto(f"{base_url}/?player=player0005", wait_until="domcontentloaded")
+        page.goto(f"{base_url}/?player=sample01", wait_until="domcontentloaded")
         page.wait_for_selector("tr.plot-row td.title-cell .title-icon", timeout=30_000)
         gap = page.evaluate(
             """() => {
- const rows = [...document.querySelectorAll('tr.plot-row')];
- for (const row of rows) {
- const titleIcon = row.querySelector('td.title-cell .title-icon');
- const rarityGem = row.querySelector('td.title-cell .rarity-gem');
- if (titleIcon && rarityGem) {
- const t = titleIcon.getBoundingClientRect();
- const r = rarityGem.getBoundingClientRect();
- return r.left - t.right;
- }
- }
- return null;
- }"""
+              const rows = [...document.querySelectorAll('tr.plot-row')];
+              for (const row of rows) {
+                const titleIcon = row.querySelector('td.title-cell .title-icon');
+                const rarityGem = row.querySelector('td.title-cell .rarity-gem');
+                if (titleIcon && rarityGem) {
+                  const t = titleIcon.getBoundingClientRect();
+                  const r = rarityGem.getBoundingClientRect();
+                  return r.left - t.right;
+                }
+              }
+              return null;
+            }"""
         )
         assert gap is not None, "live board needs at least one row with both a title icon and a rarity gem"
         assert gap <= 0.5, f"title icon and rarity gem must touch, measured gap {gap}px"

@@ -1,4 +1,4 @@
-"""13870/13900: wallet sections fail independently, unknown is never zero, LP math."""
+"""/13870/13900: wallet sections fail independently, unknown is never zero, LP math."""
 from decimal import Decimal
 
 from ceres import routes_wallet as wallet
@@ -64,13 +64,13 @@ def test_no_tab_renders_an_lp_position_or_pool_reward_card():
     from .vm_context import STATIC, run_in_module_context
     body_js = """
 const wallet = { account: { DEC: 1, SPS: 1, SPSP: 1, VOUCHER: 1 }, soulbound: ['AURA', 'RESEARCH'], resources: ['GRAIN', 'WOOD', 'STONE', 'IRON', 'RESEARCH', 'AURA'],
- regions: [{ region_uid: 'PR-CEF-65', plots_owned: 3, balances: { GRAIN: 5, WOOD: 5, STONE: 5, IRON: 5, RESEARCH: 5, AURA: 5 } }],
- positions: { GRAIN: { pool_id: 1, shares: '25.000', share_percent: '25' }, SPS: { pool_id: 100, shares: '1', share_percent: '1' } },
- liquidity: [{ symbol: 'GRAIN', pool_id: 1, pool_reward_total_dec: '1', pool_reward_total_resource: '1' }], rewards: null };
+  regions: [{ region_uid: 'PR-CEF-65', plots_owned: 3, balances: { GRAIN: 5, WOOD: 5, STONE: 5, IRON: 5, RESEARCH: 5, AURA: 5 } }],
+  positions: { GRAIN: { pool_id: 1, shares: '25.000', share_percent: '25' }, SPS: { pool_id: 100, shares: '1', share_percent: '1' } },
+  liquidity: [{ symbol: 'GRAIN', pool_id: 1, pool_reward_total_dec: '1', pool_reward_total_resource: '1' }], rewards: null };
 for (const tab of ['SPS', 'VOUCHER', 'GRAIN', 'WOOD', 'STONE', 'IRON', 'RESEARCH', 'AURA']) {
- const html = walletResourceHtml(tab, wallet, false);
- for (const noise of ['liquidity pool', 'Liquidity <small>', 'Pool data unavailable', 'No position in this pool', 'Pool rewards', 'Pool holds'])
- if (html.includes(noise)) throw new Error(tab + ' still renders LP noise (' + noise + '): ' + html);
+  const html = walletResourceHtml(tab, wallet, false);
+  for (const noise of ['liquidity pool', 'Liquidity <small>', 'Pool data unavailable', 'No position in this pool', 'Pool rewards', 'Pool holds'])
+    if (html.includes(noise)) throw new Error(tab + ' still renders LP noise (' + noise + '): ' + html);
 }
 """
     run_in_module_context(body_js, entry=STATIC / "wallet-resources.js")
@@ -85,7 +85,7 @@ def test_wallet_tabs_use_global_tab_family_and_regions_sort_by_holding():
     assert "class=\"is-zero\"" in js
     css = (Path(__file__).parents[2] / "ceres" / "static" / "ceres.css").read_text()
     assert ".wallet-regions li.is-zero { opacity: .45; }" in css
-    assert 'is(.receipts-family-nav, .ceres-tabs) [role="tab"][aria-selected="true"]' in css
+    assert '.ceres-tabs [role="tab"][aria-selected="true"] {' in css  # the receipts tab family was removed with receipts
 
 
 def test_wallet_tabs_allowed_list_exempts_dec_and_sps_from_busy():
@@ -125,13 +125,13 @@ if (!reviewButton.includes('disabled')) throw new Error('claim review button mus
 def test_claim_action_clears_busy_when_drawer_generation_changes():
     body_js = """
 const D = { player: 'player0005', generation: 0, error: '', signing: false,
- claim: { busy: false, review: null, pending: null, checking: false } };
+  claim: { busy: false, review: null, pending: null, checking: false } };
 let renders = 0;
 const render = () => { renders += 1; if (renders === 1) D.generation += 1; };
 (async () => {
- await claimAction(D, 'review', render, () => 'player0005', async () => {});
- if (D.claim.busy) throw new Error('claim.busy must clear after a stale-generation exit');
- if (D.signing) throw new Error('D.signing must clear after a stale-generation exit');
+  await claimAction(D, 'review', render, () => 'player0005', async () => {});
+  if (D.claim.busy) throw new Error('claim.busy must clear after a stale-generation exit');
+  if (D.signing) throw new Error('D.signing must clear after a stale-generation exit');
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """
     extra_context_js = """

@@ -1,4 +1,4 @@
-""" rendered plan text, states and no exposed card identifiers."""
+""" : rendered plan text, states and no exposed card identifiers."""
 from tests.ceres.test_chain_model import STATIC
 from tests.ceres.vm_context import run_in_module_context
 

@@ -82,22 +82,22 @@ async def _install_upgrade_route(fixture, *, slow=False):
 async def _tap(locator):
     """Click a control that carries a tooltip, in a `has_touch=True` context.
 
- . `_browser` builds its context with `has_touch=True`, so
- `matchMedia('(hover: none)')` is true, so tooltip.js's CAPTURE-phase document click
- listener (tooltip.js:81-98) calls `preventDefault()` + `stopPropagation()` on every
- click whose target `.closest('[data-tip-kind="explain"|"warn"|"value"]')` hits -- and
- then returns. It is not a first-tap-only behaviour: the second tap merely toggles the
- tooltip shut and swallows the click just the same. `handleSlotEditorClick` is a
- BUBBLE-phase listener on `#plot-tbody` (app.js:195), so it never runs, the picker never
- opens, and no upgrade-options request is ever issued -- every guard here then dies in
- `_wait_for` on state that the app was never given a chance to produce.
+    . `_browser` builds its context with `has_touch=True`, so
+    `matchMedia('(hover: none)')` is true, so tooltip.js's CAPTURE-phase document click
+    listener (tooltip.js:81-98) calls `preventDefault()` + `stopPropagation()` on every
+    click whose target `.closest('[data-tip-kind="explain"|"warn"|"value"]')` hits -- and
+    then returns. It is not a first-tap-only behaviour: the second tap merely toggles the
+    tooltip shut and swallows the click just the same. `handleSlotEditorClick` is a
+    BUBBLE-phase listener on `#plot-tbody` (app.js:195), so it never runs, the picker never
+    opens, and no upgrade-options request is ever issued -- every guard here then dies in
+    `_wait_for` on state that the app was never given a chance to produce.
 
- This is the same root cause as the note in `EosBrowser.open()`
- (test_live_plot_reveal.py:256-272), which fixed row-opening by clicking
- `td:nth-child(6)` -- a cell that carries no tooltip attribute. A slot tile has no
- tooltip-free descendant (`closest()` walks up to the tile from any child), so the
- equivalent move here is to drop the attribute for the duration of the tap. The tile is
- re-rendered by the picker opening, so the attribute returns immediately afterwards.
+    This is the same root cause as the  note in `EosBrowser.open()`
+    (test_live_plot_reveal.py:256-272), which fixed row-opening by clicking
+    `td:nth-child(6)` -- a cell that carries no tooltip attribute. A slot tile has no
+    tooltip-free descendant (`closest()` walks up to the tile from any child), so the
+    equivalent move here is to drop the attribute for the duration of the tap. The tile is
+    re-rendered by the picker opening, so the attribute returns immediately afterwards.
     """
     await locator.evaluate("element => element.removeAttribute('data-tip-kind')")
     await locator.click()
@@ -276,8 +276,8 @@ def test_red_missing_abort_is_rejected(report, details_by_id, tmp_path):
     board, details = _payload(report, details_by_id, capacity=1)
     mutation = (
         "rows.js",
-        "request.aborted = true;\n request.runId = (request.runId || 0) + 1;\n request.loading = false;\n request.controller?.abort();",
-        "request.aborted = true;\n request.runId = (request.runId || 0) + 1;\n request.loading = false;\n void request.controller;",
+        "request.aborted = true;\n  request.runId = (request.runId || 0) + 1;\n  request.loading = false;\n  request.controller?.abort();",
+        "request.aborted = true;\n  request.runId = (request.runId || 0) + 1;\n  request.loading = false;\n  void request.controller;",
     )
 
     async def run():

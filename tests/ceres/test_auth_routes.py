@@ -1,4 +1,4 @@
-"""the login routes -- a signed text proves the account, a session token is the only door to private resources; nothing else is trusted."""
+""": the login routes -- a signed text proves the account, a session token is the only door to private resources; nothing else is trusted."""
 import hashlib
 from types import SimpleNamespace
 
@@ -80,7 +80,7 @@ def test_a_signature_made_for_one_account_or_one_audience_does_not_open_another(
     second = client.post("/api/auth/challenge", json={"account": "bob", "binding": BINDING}).json()
     reply = client.post("/api/auth/verify", json={"challenge_id": second["challenge_id"], "verifier": VERIFIER, "signatures": [sign(alice, second["message"].encode())]})
     assert reply.status_code == 401
-    assert "Site: http" in first["message"]
+    assert "Site: http://127.0.0.1:27390" in first["message"]
 
 
 def test_multi_key_and_delegated_accounts_log_in_with_enough_weight_only():

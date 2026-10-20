@@ -1,4 +1,4 @@
-"""routing happens immediately after harvest or not at all.
+""": routing happens immediately after harvest or not at all.
 
 A failed run is closed on write, its failure is recorded and logged, completed
 steps and transaction evidence stay untouched, and no later routing action
@@ -333,7 +333,7 @@ def test_funding_verify_expires_a_never_seen_transfer(tmp_path: Path, monkeypatc
     step = {"step_id": "b" * 32, "state": "settling", "kind": "sell", "tx_id": "c" * 40,
             "operation_index": 0, "review": {"payload": {}, "step": {}}, "game_result": {"x": 1},
             "funding": {"state": "submitted", "tx_id": "d" * 40, "submitted_at": time.time() - 5000,
-                        "review": {"payload": {"params": {}}, "amount": "1", "recipient": "player0015",
+                        "review": {"payload": {"params": {}}, "amount": "1", "recipient": "player0016",
                                    "operations": [], "authority": "Active"}}}
     _record(root=tmp_path / ".ceres", steps=[step], state="settling", phase="after")
     client = _client(tmp_path)
@@ -359,7 +359,7 @@ def test_funding_verify_expires_a_never_seen_transfer(tmp_path: Path, monkeypatc
     monkeypatch.setattr(routing_routes, "build_sps_funding",
                         lambda player, effects, kind: {"payload": {"params": {}}, "operations": [],
                                                         "authority": "Active", "amount": "1",
-                                                        "recipient": "player0015"})
+                                                        "recipient": "player0016"})
     review = client.post("/api/harvest/routing/funding?player=player0005",
                          json={"run_id": "a" * 32, "step_id": "b" * 32, "action": "review"})
 
@@ -375,7 +375,7 @@ def test_funding_verify_never_expires_a_seen_or_recent_transfer(tmp_path: Path, 
     step = {"step_id": "b" * 32, "state": "settling", "kind": "sell", "tx_id": "c" * 40,
             "operation_index": 0, "review": {"payload": {}, "step": {}}, "game_result": {"x": 1},
             "funding": {"state": "submitted", "tx_id": "d" * 40, "submitted_at": time.time() - 5000,
-                        "review": {"payload": {"params": {}}, "amount": "1", "recipient": "player0015",
+                        "review": {"payload": {"params": {}}, "amount": "1", "recipient": "player0016",
                                    "operations": [], "authority": "Active"}}}
     _record(root=tmp_path / ".ceres", steps=[step], state="settling", phase="after")
     client = _client(tmp_path)
@@ -389,7 +389,7 @@ def test_funding_verify_never_expires_a_seen_or_recent_transfer(tmp_path: Path, 
     recent_step = {"step_id": "b" * 32, "state": "settling", "kind": "sell", "tx_id": "c" * 40,
                    "operation_index": 0, "review": {"payload": {}, "step": {}}, "game_result": {"x": 1},
                    "funding": {"state": "submitted", "tx_id": "d" * 40, "submitted_at": time.time() - 60,
-                               "review": {"payload": {"params": {}}, "amount": "1", "recipient": "player0015",
+                               "review": {"payload": {"params": {}}, "amount": "1", "recipient": "player0016",
                                           "operations": [], "authority": "Active"}}}
     _record(root=tmp_path / ".ceres", steps=[recent_step], state="settling", phase="after")
     client.post("/api/harvest/routing/funding?player=player0005", json=body)
@@ -408,7 +408,7 @@ def test_funding_verify_never_expires_a_seen_or_recent_transfer(tmp_path: Path, 
     old_step = {"step_id": "b" * 32, "state": "settling", "kind": "sell", "tx_id": "c" * 40,
                 "operation_index": 0, "review": {"payload": {}, "step": {}}, "game_result": {"x": 1},
                 "funding": {"state": "submitted", "tx_id": "d" * 40, "submitted_at": time.time() - 5000,
-                            "review": {"payload": {"params": {}}, "amount": "1", "recipient": "player0015",
+                            "review": {"payload": {"params": {}}, "amount": "1", "recipient": "player0016",
                                        "operations": [], "authority": "Active"}}}
     _record(root=tmp_path / ".ceres", steps=[old_step], state="settling", phase="after")
     client.post("/api/harvest/routing/funding?player=player0005", json=body)  # unseen: counter -> 1
@@ -429,7 +429,7 @@ def test_funding_verify_on_already_expired_record_returns_200_and_stays_expired(
                         "error": "The SPS funding transfer has not been seen by the validator within an "
                                  "hour and is treated as expired; if it did go through, attach its "
                                  "transaction ID below.",
-                        "review": {"payload": {"params": {}}, "amount": "1", "recipient": "player0015",
+                        "review": {"payload": {"params": {}}, "amount": "1", "recipient": "player0016",
                                    "operations": [], "authority": "Active"}}}
     _record(root=tmp_path / ".ceres", steps=[step], state="settling", phase="after")
     client = _client(tmp_path)
@@ -440,7 +440,7 @@ def test_funding_verify_on_already_expired_record_returns_200_and_stays_expired(
 
 
 def test_expired_funding_can_adopt_a_late_confirmed_transfer(tmp_path: Path, monkeypatch):
-    review = {"payload": {"params": {}}, "amount": "1", "recipient": "player0015",
+    review = {"payload": {"params": {}}, "amount": "1", "recipient": "player0016",
               "operations": [], "authority": "Active"}
     step = {"step_id": "b" * 32, "state": "settling", "kind": "sell", "tx_id": "c" * 40,
             "operation_index": 0, "review": {"payload": {}, "step": {}}, "game_result": {"x": 1},
@@ -472,7 +472,7 @@ def test_expired_funding_can_adopt_a_late_confirmed_transfer(tmp_path: Path, mon
 
 def test_funding_receipt_reports_seen(monkeypatch):
     tx = "c" * 40
-    review = {"payload": {"params": {"n": 1}}, "amount": "1", "recipient": "player0015"}
+    review = {"payload": {"params": {"n": 1}}, "amount": "1", "recipient": "player0016"}
 
     monkeypatch.setattr(routing_validator, "_read", lambda url, missing_ok=False: None)
     assert routing_validator.funding_receipt("player0005", tx, review) == {"state": "pending", "seen": False}
@@ -495,8 +495,8 @@ def test_ui_has_no_deferred_run_recovery_and_shows_failure_panel():
     assert "S.adopted = !!adopted;" in source  # adoption is computed from the same-scope in-flight run
     assert "if (S.adopted) return '';" in source  # verify-only: never offers signing
     assert "['review', 'sign', 'skip-failed', 'retry-unsent', 'cancel'].includes(name)" in source  # verify-only actions refused
-    assert "return { html, footerHtml, change, action, load, stop" in source
-    assert "html, footerHtml, change, action, load, stop, clear" in source
+    assert "return { html, footerHtml, change, action, load, stop," in source
+    assert "html, footerHtml, change, action, load, stop, clear," in source
     modal = (Path(__file__).parents[2] / "ceres" / "static" / "harvest-modal.js").read_text()
     assert "fetch('/api/harvest/routing/stop?player=' + encodeURIComponent(account)" in modal
     assert "body: JSON.stringify({ run_id: runId }), keepalive: true" in modal

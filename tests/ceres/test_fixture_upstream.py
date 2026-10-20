@@ -1,4 +1,4 @@
-"""fixture-backed upstream -- served from files, fail closed, no socket, refused off loopback."""
+""": fixture-backed upstream -- served from files, fail closed, no socket, refused off loopback."""
 
 from __future__ import annotations
 

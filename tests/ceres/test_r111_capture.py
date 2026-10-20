@@ -29,8 +29,8 @@ def _report(player: str) -> dict:
 
 def test_full_capture_estimate_exposes_truthful_copy_and_cost(monkeypatch):
     """MUTATION INJECTION: restore any of the removed idle-card, bloodline, or
- sole-holder claims, or hardcode ``Can take minutes`` instead of formatting the
- value returned by ``estimate_capture_seconds``; the metadata assertions redden.
+    sole-holder claims, or hardcode ``Can take minutes`` instead of formatting the
+    value returned by ``estimate_capture_seconds``; the metadata assertions redden.
     """
 
     class FakePreflight:

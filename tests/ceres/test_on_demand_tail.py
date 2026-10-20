@@ -30,7 +30,7 @@ def _run(tmp_path, monkeypatch, plot_count: int) -> _RecordingCapture:
 
 
 def test_above_1000_plots_skips_background_detail_batch(tmp_path, monkeypatch):
-    """a whale's never-fetched plots stay on demand -- no background batch after the board is published."""
+    """: a whale's never-fetched plots stay on demand -- no background batch after the board is published."""
     capture = _run(tmp_path, monkeypatch, 1001)
     assert capture.queued == []
 

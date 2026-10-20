@@ -1,0 +1,1 @@
+{"body":{"data":{"ids":[{"uid":"I-332-SYNTTL0001"}]},"status":"success"},"headers":{"Content-Type":"application/json"},"request":{"host":"vapi.splinterlands.com","method":"GET","path":"/land/stake/items/STK-LND-TTL/available","query":"deedUid=I-298-73c2b54841c9d4&player=sample01&offset=0&limit=100"},"status":200}

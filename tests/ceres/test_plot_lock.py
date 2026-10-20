@@ -14,10 +14,10 @@ context.AbortController = AbortController;
 context.navigator.locks = { request(_name, _options, callback) { return callback(); } };
 document.getElementById = id => id === 'board-version' ? { textContent: 'v0.9.835' } : null;
 window.hive_keychain = {
- requestSignTx() {},
- requestBroadcast(_account, _operations, _key, callback) {
- callback({ success: true, result: { id: 'mock-tx' }, data: { key: 'Active' } });
- },
+  requestSignTx() {},
+  requestBroadcast(_account, _operations, _key, callback) {
+    callback({ success: true, result: { id: 'mock-tx' }, data: { key: 'Active' } });
+  },
 };
 """
 
@@ -26,14 +26,14 @@ def run(body: str, entry: Path = PLOT_LOCK) -> None:
     run_in_module_context(
         r"""
 queueRpc = async method => {
- if (method.endsWith('get_dynamic_global_properties')) return {
- head_block_number: 100,
- head_block_id: 'd6908f068242802d3791ff650ddcaefbb54782a5',
- time: new Date().toISOString().slice(0, 19),
- };
- if (method.endsWith('broadcast_transaction')) return null;
- if (method.endsWith('get_transaction')) return { block_num: 100 };
- throw Error('unexpected RPC ' + method);
+  if (method.endsWith('get_dynamic_global_properties')) return {
+    head_block_number: 100,
+    head_block_id: 'd6908f068242802d3791ff650ddcaefbb54782a5',
+    time: new Date().toISOString().slice(0, 19),
+  };
+  if (method.endsWith('broadcast_transaction')) return null;
+  if (method.endsWith('get_transaction')) return { block_num: 100 };
+  throw Error('unexpected RPC ' + method);
 };
 """ + body,
         entry=entry,
@@ -50,7 +50,7 @@ if (!locked.includes('aria-label="Locked · unlocks ' + new Date(row.unlock_date
 if (!locked.includes('M8 10V7a4 4 0 0 1 8 0v3')) throw Error('locked row did not render a closed-lock icon');
 const unlocked = plotLockIconHtml({ ...row, lock_days: null, unlock_date: null });
 if (!unlocked.includes('aria-label="Unlocked"')) throw Error('unlocked label missing');
-// the maintainer's pair B () -- the open shackle swings clear of the body.
+// : the maintainer's pair B () -- the open shackle swings clear of the body.
 if (!unlocked.includes('M8 10V6.8a4 4 0 0 0-7.1-2.5L.3 5')) throw Error('unlocked row did not render an open-lock icon');
 process.exit(0);
 """,
@@ -105,11 +105,11 @@ const lockPayload = JSON.parse(lockOperation[1].json);
 if (lockReview.lockDays !== 3 || lockPayload.lock_days !== 3) throw Error('lock period is not exactly three days');
 if (JSON.stringify(Object.keys(lockPayload)) !== JSON.stringify(['type', 'lock_days', 'asset_ids', 'app', 'n'])) throw Error('lock payload key order is wrong');
 if (lockOperation[1].json !== JSON.stringify({ type: 'item', lock_days: 3, asset_ids: [row.deed_uid], app: expectedApp, n: lockPayload.n })
- || JSON.stringify(Object.keys(lockOperation[1]).sort()) !== JSON.stringify(['id', 'json', 'required_auths', 'required_posting_auths'])) throw Error('lock envelope fields differ from the built operation');
+  || JSON.stringify(Object.keys(lockOperation[1]).sort()) !== JSON.stringify(['id', 'json', 'required_auths', 'required_posting_auths'])) throw Error('lock envelope fields differ from the built operation');
 if (lockOperation[0] !== 'custom_json' || lockOperation[1].id !== 'sm_lock_assets'
- || JSON.stringify(lockPayload.asset_ids) !== JSON.stringify([row.deed_uid]) || lockPayload.type !== 'item'
- || !lockPayload.n || JSON.stringify(lockOperation[1].required_auths) !== '["alice"]'
- || JSON.stringify(lockOperation[1].required_posting_auths) !== '[]' || lockReview.prepared.authority !== 'Active') throw Error('lock envelope differs from the reviewed Active operation');
+  || JSON.stringify(lockPayload.asset_ids) !== JSON.stringify([row.deed_uid]) || lockPayload.type !== 'item'
+  || !lockPayload.n || JSON.stringify(lockOperation[1].required_auths) !== '["alice"]'
+  || JSON.stringify(lockOperation[1].required_posting_auths) !== '[]' || lockReview.prepared.authority !== 'Active') throw Error('lock envelope differs from the reviewed Active operation');
 clearPlotLockPlans();
 const unlockingRow = { ...row, lock_days: 3, unlock_date: '2099-01-02T03:04:05Z' };
 reconcilePlotLockPlans({ player: 'alice', plots: [unlockingRow] });
@@ -122,32 +122,32 @@ const unlockOperation = unlockReview.operations[0];
 const unlockPayload = JSON.parse(unlockOperation[1].json);
 if (JSON.stringify(Object.keys(unlockPayload)) !== JSON.stringify(['type', 'asset_ids', 'app', 'n'])) throw Error('unlock payload key order is wrong');
 if (unlockOperation[1].json !== JSON.stringify({ type: 'item', asset_ids: [row.deed_uid], app: expectedApp, n: unlockPayload.n })
- || JSON.stringify(Object.keys(unlockOperation[1]).sort()) !== JSON.stringify(['id', 'json', 'required_auths', 'required_posting_auths'])) throw Error('unlock envelope fields differ from the built operation');
+  || JSON.stringify(Object.keys(unlockOperation[1]).sort()) !== JSON.stringify(['id', 'json', 'required_auths', 'required_posting_auths'])) throw Error('unlock envelope fields differ from the built operation');
 if (unlockOperation[1].id !== 'sm_unlock_assets' || JSON.stringify(unlockPayload.asset_ids) !== JSON.stringify([row.deed_uid])
- || unlockPayload.type !== 'item' || !unlockPayload.n || JSON.stringify(unlockOperation[1].required_auths) !== '["alice"]'
- || JSON.stringify(unlockOperation[1].required_posting_auths) !== '[]' || unlockReview.prepared.authority !== 'Active') throw Error('unlock envelope differs from the reviewed Active operation');
+  || unlockPayload.type !== 'item' || !unlockPayload.n || JSON.stringify(unlockOperation[1].required_auths) !== '["alice"]'
+  || JSON.stringify(unlockOperation[1].required_posting_auths) !== '[]' || unlockReview.prepared.authority !== 'Active') throw Error('unlock envelope differs from the reviewed Active operation');
 
 const malformed = ['custom_json', { id: 'sm_other', required_auths: ['alice'], required_posting_auths: [], json: JSON.stringify({ n: crypto.randomUUID() }) }];
 const lockWitness = { id: lockOperation[1].id, json: lockOperation[1].json };
 for (const [id, json, witness] of [
- ['sm_other', lockOperation[1].json, lockWitness],
- [lockOperation[1].id, JSON.stringify({ ...lockPayload, lock_days: 4 }), lockWitness],
- [lockOperation[1].id, JSON.stringify(Object.fromEntries(Object.entries(lockPayload).filter(([key]) => key !== 'app'))), null],
- [lockOperation[1].id, JSON.stringify({ ...lockPayload, app: 'ceres/9.9.9' }), null],
+  ['sm_other', lockOperation[1].json, lockWitness],
+  [lockOperation[1].id, JSON.stringify({ ...lockPayload, lock_days: 4 }), lockWitness],
+  [lockOperation[1].id, JSON.stringify(Object.fromEntries(Object.entries(lockPayload).filter(([key]) => key !== 'app'))), null],
+  [lockOperation[1].id, JSON.stringify({ ...lockPayload, app: 'ceres/9.9.9' }), null],
 ]) {
- const activeWitness = witness || { id, json };
- const op = ['custom_json', { ...malformed[1], id, json }];
- await prepareSigningBatch('alice', [[op]], 'Active', { reviewedActiveLock: activeWitness }).then(
- () => { throw Error('transaction queue accepted an unreviewed Active payload'); },
- () => {},
- );
- await BroadcastGate.broadcast('alice', [op], null, 'Active', { reviewedActiveLock: activeWitness }).then(
- () => { throw Error('broadcast gate accepted an unreviewed Active payload'); },
- () => {},
- );
+  const activeWitness = witness || { id, json };
+  const op = ['custom_json', { ...malformed[1], id, json }];
+  await prepareSigningBatch('alice', [[op]], 'Active', { reviewedActiveLock: activeWitness }).then(
+    () => { throw Error('transaction queue accepted an unreviewed Active payload'); },
+    () => {},
+  );
+  await BroadcastGate.broadcast('alice', [op], null, 'Active', { reviewedActiveLock: activeWitness }).then(
+    () => { throw Error('broadcast gate accepted an unreviewed Active payload'); },
+    () => {},
+  );
 }
 const sps = ['custom_json', { id: 'sm_sps', required_auths: ['alice'], required_posting_auths: [],
- json: JSON.stringify({ action: 'token_transfer', params: { token: 'SPS', memo: 'lpsid:123', qty: 1, to: 'alice', n: crypto.randomUUID() } }) }];
+  json: JSON.stringify({ action: 'token_transfer', params: { token: 'SPS', memo: 'lpsid:123', qty: 1, to: 'alice', n: crypto.randomUUID() } }) }];
 const spsPrepared = await prepareSigningBatch('alice', [[sps]], 'Active');
 if (!spsPrepared?.length) throw Error('transaction queue no longer allows the SPS Active exception');
 await BroadcastGate.broadcast('alice', [sps], null, 'Active');
@@ -163,7 +163,7 @@ def test_three_day_review_and_hiveauth_refusal_are_visible_without_inputs() -> N
     assert 'Locking needs Hive Keychain (Active key).' in checkout
     assert 'Unlocking needs Hive Keychain (Active key).' in checkout
     assert 'Deed lock changes need Hive Keychain (Active key).' in checkout
-    signing = checkout[checkout.index('const lockSigningHtml'):checkout.index('\n return `', checkout.index('const lockSigningHtml'))]
+    signing = checkout[checkout.index('const lockSigningHtml'):checkout.index('\n  return `', checkout.index('const lockSigningHtml'))]
     assert (
         "'Keychain shows the exact operation before approval.' : lockGuidance" in signing
         and '<h3 class="hm-sec-h">Signing</h3>' in signing

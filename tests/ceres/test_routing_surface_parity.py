@@ -1,4 +1,4 @@
-"""the routing SETUP and the routing
+""": the routing SETUP and the routing
 WINDOW show the same route list. Their shared parts are built once in routing-route-list.js; this test renders both screens and fails
 when their list markup drifts apart, so a change cannot reach only one of them.
 
@@ -21,21 +21,21 @@ TERRITORY = r"territory-.*"                                                     
 
 WINDOW = r"""
 const operation = { id: 'op', kind: 'sell', source_region: 'PR-BRL-41', source_symbol: 'WOOD', destination_symbol: 'DEC', protected_minimum: '1',
- members: [{ nonce: 'n1', kind: 'sale_dec', route_id: 'r1', source_amount: '10', source_percent: '25', protected_minimum: '1' }] };
+  members: [{ nonce: 'n1', kind: 'sale_dec', route_id: 'r1', source_amount: '10', source_percent: '25', protected_minimum: '1' }] };
 const lp = { id: 'op2', kind: 'liquidity', source_region: 'PR-BRL-41', source_symbol: 'STONE', pool: 'STONE', destination_symbol: 'DEC',
- members: [{ nonce: 'n2', kind: 'lp_wallet', route_id: 'r2', source_amount: '10', source_percent: '25', protected_minimum: '1', required_wallet_dec: '1' }] };
+  members: [{ nonce: 'n2', kind: 'lp_wallet', route_id: 'r2', source_amount: '10', source_percent: '25', protected_minimum: '1', required_wallet_dec: '1' }] };
 const bundle = { id: 'b1', wave: 0, approval: 1, operations: [operation, lp] };
 const record = { run_id: 'x', state: 'ready', manifest: { bundles: [bundle], approval_counts: { routing: 1 } },
- bundles: { b1: { state: 'planned' } }, operations: {}, call_budget: { total: 0, ceiling: 120 } };
+  bundles: { b1: { state: 'planned' } }, operations: {}, call_budget: { total: 0, ceiling: 120 } };
 console.log('__LIST__' + JSON.stringify(routingWindowHtml(record, { player: 'alice' })));
 """
 SETUP = r"""
 const __seed1 = { rules: [
- { id: 'r1', kind: 'sell', destination_symbol: 'DEC', source_region: 'PR-BRL-41', symbol: 'WOOD', quantity_mode: 'percent', quantity: '25', slippage: '2.5' },
- { id: 'r2', kind: 'liquidity', dec_source: 'wallet', source_region: 'PR-BRL-41', symbol: 'STONE', quantity_mode: 'percent', quantity: '25', slippage: '2.5' }] };
+  { id: 'r1', kind: 'sell', destination_symbol: 'DEC', source_region: 'PR-BRL-41', symbol: 'WOOD', quantity_mode: 'percent', quantity: '25', slippage: '2.5' },
+  { id: 'r2', kind: 'liquidity', dec_source: 'wallet', source_region: 'PR-BRL-41', symbol: 'STONE', quantity_mode: 'percent', quantity: '25', slippage: '2.5' }] };
 navigator.locks = { request: async (_name, fn) => fn() };
 const setup = createRoutingSetup({ initialRules: __seed1.rules, player: 'alice', scope: { kind: 'all' }, regions: [{ region_uid: 'PR-BRL-41' }], receipts: [],
- enabledKinds: ['sale_dec', 'lp_wallet'], signingEnabled: true, onRender: () => {}, isCurrent: () => true });
+  enabledKinds: ['sale_dec', 'lp_wallet'], signingEnabled: true, onRender: () => {}, isCurrent: () => true });
 console.log('__LIST__' + JSON.stringify(setup.html()));
 """
 
@@ -92,7 +92,7 @@ def test_the_flow_boxes_are_shared_too():
 
 
 def test_both_summaries_carry_the_scroll_cue():
-    """the cue lives in the summary row of BOTH screens (built once in routing-route-list.js)."""
+    """: the cue lives in the summary row of BOTH screens (built once in routing-route-list.js)."""
     def summary(script, entry):
         result = run_in_module_context(script, entry=STATIC / entry)
         html = json.loads(result.stdout.split("__LIST__", 1)[1].splitlines()[0])

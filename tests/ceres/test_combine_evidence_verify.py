@@ -1,4 +1,4 @@
-""" `/api/op-verify`'s domain check for a card combine derived
+""" -- `/api/op-verify`'s domain check for a card combine derived
 `expected_records` from `capture.latest_snapshot()`, but by the time verify runs the
 destroyed input copies are already gone from the live collection and any capture taken
 between the combine and the verify replaces the snapshot with POST-combine data. So
@@ -19,23 +19,23 @@ prior `/api/combine/build` call -- exactly what every pre-existing test in
 MUTATION INJECTIONS (recorded per the project's mutation standard, the internal rules):
 
 1. `test_carried_evidence_reaches_domain_confirmed_when_snapshot_is_unavailable` --
- forcing `expected_records = None` unconditionally in
- `ceres/routes_op_preview.py::op_verify` (i.e. dropping the carried evidence and
- always falling through to the snapshot branch) goes red: the stubbed
- `capture_mod.latest_snapshot` raises `RuntimeError("no snapshot available")` in this
- test (the exact reported condition -- no usable snapshot exists at verify time), so
- `domain-could-not-verify` renders instead of `domain-confirmed`,
- `AssertionError: assert 'domain-could-not-verify' == 'domain-confirmed'`.
+   forcing `expected_records = None` unconditionally in
+   `ceres/routes_op_preview.py::op_verify` (i.e. dropping the carried evidence and
+   always falling through to the snapshot branch) goes red: the stubbed
+   `capture_mod.latest_snapshot` raises `RuntimeError("no snapshot available")` in this
+   test (the exact reported condition -- no usable snapshot exists at verify time), so
+   `domain-could-not-verify` renders instead of `domain-confirmed`,
+   `AssertionError: assert 'domain-could-not-verify' == 'domain-confirmed'`.
 
 2. `test_missing_carried_evidence_never_false_confirms` -- forcing the fallback branch
- to fabricate a confirm when `expected_records` is `None` (e.g. `state =
- "domain-confirmed"` unconditionally rather than routing through
- `CardVerificationSpec.check_domain`) goes red:
- `AssertionError: assert 'domain-confirmed' == 'domain-could-not-verify'`.
+   to fabricate a confirm when `expected_records` is `None` (e.g. `state =
+   "domain-confirmed"` unconditionally rather than routing through
+   `CardVerificationSpec.check_domain`) goes red:
+   `AssertionError: assert 'domain-confirmed' == 'domain-could-not-verify'`.
 
 3. `test_carried_evidence_still_reports_pending_when_unpropagated` -- collapsing
- `domain_pending` into `domain-confirmed` in the `op_verify` status dispatch goes red:
- `AssertionError: assert 'domain-confirmed' == 'domain-pending'`.
+   `domain_pending` into `domain-confirmed` in the `op_verify` status dispatch goes red:
+   `AssertionError: assert 'domain-confirmed' == 'domain-pending'`.
 """
 
 from __future__ import annotations
@@ -86,7 +86,7 @@ def _chain_verified_stub(*_args, **_kwargs):
 
 def _build_and_get_operation(config, monkeypatch) -> dict:
     """Drives the real `/api/combine/build` route so the evidence file is written
- exactly the way the live server writes it -- not a hand-constructed fixture."""
+    exactly the way the live server writes it -- not a hand-constructed fixture."""
     monkeypatch.setattr(capture_mod, "latest_snapshot", lambda cfg, player: (_pre_combine_report(), None))
     from ceres import routes_combine
     monkeypatch.setattr(routes_combine, "_live_collection", lambda account: (_pre_combine_report(), "2026-08-30T08:00:00Z"))
@@ -112,10 +112,10 @@ def _scope_test_op() -> Op:
 def test_domain_survivor_is_scoped_to_payload_not_collection_winner():
     """The survivor evidence must come from the combine payload.
 
- Mutation injection for independent observation: restore
- ``survivor_rule(self.expected_records)`` in ``CardVerificationSpec.check_domain``.
- The assertion must then go red because the collection-wide 740-BCX winner is not one
- of the two combined cards.
+    Mutation injection for independent observation: restore
+    ``survivor_rule(self.expected_records)`` in ``CardVerificationSpec.check_domain``.
+    The assertion must then go red because the collection-wide 740-BCX winner is not one
+    of the two combined cards.
     """
     expected_records = [
         {"uid": PAYLOAD_SURVIVOR_UID, "card_detail_id": "858", "edition": 2, "gold": False, "bcx": 1, "level": 1},
@@ -140,10 +140,10 @@ def test_domain_survivor_is_scoped_to_payload_not_collection_winner():
 def test_domain_unknown_survivor_keeps_specific_refusal_reason():
     """An unknown survivor retains the dedicated refusal reason.
 
- Mutation injection for independent observation: remove the ``survivor_uid ==
- \"unknown\"`` early return in ``CardVerificationSpec._expected``. The assertion must
- then go red because ``_expected`` falls through to its generic unavailable-input
- refusal instead of the existing survivor-specific reason.
+    Mutation injection for independent observation: remove the ``survivor_uid ==
+    \"unknown\"`` early return in ``CardVerificationSpec._expected``. The assertion must
+    then go red because ``_expected`` falls through to its generic unavailable-input
+    refusal instead of the existing survivor-specific reason.
     """
     expected_records = [
         {"uid": PAYLOAD_SURVIVOR_UID, "card_detail_id": "858", "edition": 2, "gold": False, "bcx": 1, "level": 1},
@@ -196,8 +196,8 @@ def test_carried_evidence_reaches_domain_confirmed_when_snapshot_is_unavailable(
 
 def test_evidence_is_discarded_after_a_confirmed_verify(tmp_path, monkeypatch):
     """The carried evidence file must not be replayable after it has done its job --
- a second verify of the SAME nonce with no evidence left must degrade to the
- snapshot fallback, never silently re-confirm off a stale file."""
+    a second verify of the SAME nonce with no evidence left must degrade to the
+    snapshot fallback, never silently re-confirm off a stale file."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     operation = _build_and_get_operation(config, monkeypatch)
     nonce = json.loads(operation[1]["json"])["n"]
@@ -222,9 +222,9 @@ def test_evidence_is_discarded_after_a_confirmed_verify(tmp_path, monkeypatch):
 
 def test_missing_carried_evidence_never_false_confirms(tmp_path, monkeypatch):
     """No prior `/api/combine/build` call ever happened for this op (matches every
- pre-existing test in test_op_verify_combine.py), and the snapshot fallback also has
- nothing to offer -- must be could-not-verify, never a confirm fabricated from
- absent evidence."""
+    pre-existing test in test_op_verify_combine.py), and the snapshot fallback also has
+    nothing to offer -- must be could-not-verify, never a confirm fabricated from
+    absent evidence."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     payload = {"cards": [SURVIVOR_UID, CONSUMED_UID], "app": "splinterlands/0.7.60", "n": "NeverBuilt01"}
     operation = ["custom_json", {
@@ -271,9 +271,9 @@ def test_carried_evidence_still_reports_pending_when_unpropagated(tmp_path, monk
 
 def test_evidence_for_a_different_account_is_never_used(tmp_path, monkeypatch):
     """A nonce is not scoped by account in the file name alone (collisions are
- astronomically unlikely but not impossible) -- the account check inside
- combine_evidence.load is the actual guard. Verifying as a different player than
- the one who built the op must not pick up the first account's evidence."""
+    astronomically unlikely but not impossible) -- the account check inside
+    combine_evidence.load is the actual guard. Verifying as a different player than
+    the one who built the op must not pick up the first account's evidence."""
     config = CeresConfig(root=tmp_path / ".ceres", player="player0005")
     operation = _build_and_get_operation(config, monkeypatch)
 

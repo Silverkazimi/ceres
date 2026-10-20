@@ -28,7 +28,7 @@ class _OverlappingLandClient:
         self.stamps["bundle_end"] = time.monotonic()
         return _response({
             "status": "success",
-            "data": {"deeds": [{"deed_uid": "I-1-a"}], "worksite_details": [], "staking_details": []},
+            "data": {"deeds": [{"deed_uid": "I-1-a", "plot_status": "natural"}], "worksite_details": [], "staking_details": []},
         })
 
     def available_raw(self, *_args, **_kwargs):
@@ -85,6 +85,9 @@ def test_failed_optional_balances_do_not_discard_the_board(tmp_path, monkeypatch
     }
 
     class _Capture:
+        def __init__(self, **_clients):
+            pass
+
         def capture_quick(self, _player, include_asset_ids=False):
             return dict(report)
 

@@ -36,5 +36,5 @@ def test_missing_color_passes_through_as_none():
 
 def test_unknown_color_is_visible_not_mapped():
     """An unrecognised colour must render as itself (visibly unknown), never get
- silently coerced to one of the seven known splinter names."""
+    silently coerced to one of the seven known splinter names."""
     assert _splinter_name("Purple") == "Purple"

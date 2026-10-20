@@ -12,20 +12,20 @@ cache and its background fetch (`prefetchIdleCardsCache`, renamed from
 Two guards, matching the internal rules's mutation standard:
 
 1. `test_neither_section_exists_anywhere` -- static check that index.html
- carries no trace of either section's DOM ids. Injection: re-inserted the
- literal removed `<details id="idle-cards-section">` markup into a copy of
- index.html's text and re-ran the same assertion helper -- it failed,
- confirming the check actually distinguishes "section present" from
- "section absent" rather than trivially passing on any HTML.
+   carries no trace of either section's DOM ids. Injection: re-inserted the
+   literal removed `<details id="idle-cards-section">` markup into a copy of
+   index.html's text and re-ran the same assertion helper -- it failed,
+   confirming the check actually distinguishes "section present" from
+   "section absent" rather than trivially passing on any HTML.
 
 2. `test_combine_door_depends_on_the_cache_not_the_deleted_section` -- live
- Chromium: with idle-cards mocked to guarantee a combinable duplicate, the
- tile-chip door renders while both deleted sections are confirmed absent
- from the live DOM. Injection: forced `IDLE_CARDS_CACHE = null` in the live
- page and re-rendered the same row -- the chip disappeared, proving the
- door's markup genuinely depends on the cache (not some now-dead reference
- to the removed section) and that a gutted cache is exactly the failure
- mode this pairing of tests would catch.
+   Chromium: with idle-cards mocked to guarantee a combinable duplicate, the
+   tile-chip door renders while both deleted sections are confirmed absent
+   from the live DOM. Injection: forced `IDLE_CARDS_CACHE = null` in the live
+   page and re-rendered the same row -- the chip disappeared, proving the
+   door's markup genuinely depends on the cache (not some now-dead reference
+   to the removed section) and that a gutted cache is exactly the failure
+   mode this pairing of tests would catch.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ from pathlib import Path
 
 from playwright.sync_api import Page
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 from .vm_context import read_entry_source
 
 ROOT = Path(__file__).parents[2]
@@ -130,7 +130,7 @@ def test_combine_door_depends_on_the_cache_not_the_deleted_section() -> None:
                 page.route("**/api/idle-cards*", lambda route: route.abort())
             page.goto(base_url)
             page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
-            page.wait_for_timeout(1200)  # let prefetchIdleCardsCache() settle either way
+            settle(page)  # prefetchIdleCardsCache() has answered either way
 
             sections = page.evaluate(
                 "() => ({idle: !!document.getElementById('idle-cards-section'), unassigned: !!document.getElementById('unassigned-bonus-section')})"
@@ -142,7 +142,7 @@ def test_combine_door_depends_on_the_cache_not_the_deleted_section() -> None:
             page_row.click()
             expanded = page.locator(f"tr.expand-row[data-deed-uid='{row['deed_uid']}']")
             expanded.locator(".slot-editor").wait_for(timeout=15_000)
-            page.wait_for_timeout(500)
+            settle(page)
             count = expanded.locator(".tile-combine-chip").count()
             page.close()
             return count

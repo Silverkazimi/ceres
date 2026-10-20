@@ -8,7 +8,7 @@ missing `card_details` cache leaves undetailed -- see `ceres/capture.py`'s
 `_refresh_card_details()`) silently resolved to edition `0` and 403'd against
 `CARD_CDN_SET[0]` instead of falling through to the real `selected` edition.
 
-Retired the Node-slice harness per (campaign §3.1 batch C row 6b): the fix
+Retired the Node-slice harness per  (campaign §3.1 batch C row 6b): the fix
 lives in `editorCardEdition()` (`ceres/static/app.js:3394`), whose only observable
 surface is the CDN URL an editor slot's `<img>` resolves to, via `editorCardImage()`
 -> `editorAssetImage()` -> `slotAssetImageHtml()`. This now opens a real plot's worker
@@ -45,7 +45,7 @@ def live_browser() -> tuple[Browser, str]:
 
 def _real_detail_row(base_url: str) -> dict:
     """A real plot detail row with >=2 real card workers (not a Runi, which has no
- `card_detail_id`/edition-driven art) -- used only as a field-shape template."""
+    `card_detail_id`/edition-driven art) -- used only as a field-shape template."""
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=10) as response:  # noqa: S310
         board = json.loads(response.read().decode("utf-8"))
     for plot in board["plots"]:
@@ -61,8 +61,8 @@ def _real_detail_row(base_url: str) -> dict:
 
 def _target_worker(row: dict) -> dict:
     """A real monster-card worker (not Runi -- Runi also carries a `card_detail_id`
- but renders under a distinct `alt="... icon"`, not `"... card art"`, so it is
- excluded by name rather than by that field)."""
+    but renders under a distinct `alt="... icon"`, not `"... card art"`, so it is
+    excluded by name rather than by that field)."""
     for worker in row["workers"]:
         if worker.get("card_detail_id") is not None and worker.get("name") != "Runi":
             return worker
@@ -71,9 +71,9 @@ def _target_worker(row: dict) -> dict:
 
 def _worker_slot_image_src(page, base_url: str, row: dict, worker_name: str) -> str | None:
     """Route-mock the plot detail with `row` (one worker carrying the remote-board
- editions shape), open its editor, and return that worker's slot `<img src>`
- (located by its accessible `alt="{name} card art"`, not tile position) -- or
- None if the tile rendered no art at all."""
+    editions shape), open its editor, and return that worker's slot `<img src>`
+    (located by its accessible `alt="{name} card art"`, not tile position) -- or
+    None if the tile rendered no art at all."""
     deed_uid = row["deed_uid"]
     page.route(
         f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",

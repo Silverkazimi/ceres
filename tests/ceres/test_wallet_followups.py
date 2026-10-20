@@ -1,4 +1,4 @@
-"""a sale left at the SPS transfer continues by itself after a reload. : the SPS claim cooldown is a timer."""
+""": a sale left at the SPS transfer continues by itself after a reload. : the SPS claim cooldown is a timer."""
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 

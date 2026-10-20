@@ -77,4 +77,4 @@ def test_project_backup_row_names_card_cache_path() -> None:
     assert "ceres/static/assets/land/../cards/" in row
     assert "regenerable from the Splinterlands CDN" in row
     assert "mkdir -p ceres/static/assets/cards" in row
-    assert "rsync -a ~/.ceres/assets-backup" in row
+    assert "rsync -a ~/.ceres/assets-backup/" in row

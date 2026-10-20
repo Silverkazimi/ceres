@@ -10,7 +10,7 @@ the REAL running app in a real browser, never a sandboxed source-slice.
 census row 10, method `ceres-ir1854-retire-app-js-slice-harness.md`). The prior
 version of this file drove ~15 `_slice()` extractions of `verifyCombineBroadcast`/
 `renderCombineDialog`/`renderCombineArrival` and their whole dependency chain
-against a hand-built fake DOM in `node -e`; retires that technique because
+against a hand-built fake DOM in `node -e`;  retires that technique because
 it breaks on any unrelated helper gaining a new call, independent of correctness.
 This replaces it with `spawn_live_ceres` + Playwright: a real duplicate worker is
 staged, the real `.tile-combine-chip` is clicked to open the REAL dialog, and
@@ -34,7 +34,7 @@ from typing import Any
 
 from playwright.sync_api import Page
 
-from .conftest import LIVE_PLAYER, spawn_live_ceres, wait_for_board
+from .conftest import LIVE_PLAYER, settle, spawn_live_ceres, wait_for_board
 
 CARD_CDN_BASE = "https://d36mxiodymuqjm.cloudfront.net"
 # Mirrors ceres/static/app.js's own CARD_CDN_SET table (editions 0-21) -- kept in
@@ -53,8 +53,8 @@ CARD_CDN_SET = {
 
 def _encode(value: str) -> str:
     """Matches app.js's `encodeURIComponent(...).replace(/[!'()*]/g, ...)` --
- Python's `quote(safe='')` already percent-encodes `!'()*` (not in its
- always-safe set), so no extra pass is needed."""
+    Python's `quote(safe='')` already percent-encodes `!'()*` (not in its
+    always-safe set), so no extra pass is needed."""
     return urllib.parse.quote(value, safe="")
 
 
@@ -65,16 +65,16 @@ def _get(base_url: str, path: str) -> dict:
 
 def _first_combinable_worker(base_url: str) -> tuple[dict, dict]:
     """A worker the real `combineTileActionHtml()` will actually offer a chip
- for: besides `card_detail_id`/`edition`, it also requires
- `hasResolvedCombineCeiling()` (both `bcx` and `bcx_max` present, app.js
- :6891) and NOT `isCardMaxed()` (`bcx < bcx_max`, app.js :6887) -- a worker
- with an unresolved or already-maxed ceiling never renders the chip, no
- matter what idle-cards mock is installed."""
+    for: besides `card_detail_id`/`edition`, it also requires
+    `hasResolvedCombineCeiling()` (both `bcx` and `bcx_max` present, app.js
+    :6891) and NOT `isCardMaxed()` (`bcx < bcx_max`, app.js :6887) -- a worker
+    with an unresolved or already-maxed ceiling never renders the chip, no
+    matter what idle-cards mock is installed."""
     board = _get(base_url, "/api/board")
     for row in board["plots"]:
         if not row.get("assets_loaded"):
             continue
-        detail = _get(base_url, f"api/plots/{urllib.parse.quote(row['deed_uid'], safe='')}")
+        detail = _get(base_url, f"/api/plots/{urllib.parse.quote(row['deed_uid'], safe='')}")
         for worker in detail.get("workers") or []:
             if worker.get("asset_ref") and isinstance(worker.get("slot"), int) and worker["slot"] >= 1 \
                     and worker.get("card_detail_id") is not None and worker.get("edition") is not None \
@@ -86,9 +86,9 @@ def _first_combinable_worker(base_url: str) -> tuple[dict, dict]:
 
 def _survivor_and_consumed(worker: dict) -> tuple[dict, dict]:
     """Two idle copies of `worker`'s own (card_detail_id, edition, foil) printing --
- the field triple `combineGroupKey()` matches on -- so the real chip reads them
- as one combinable group. `name`/`bcx`/`skin` are mock-controlled and independent
- of that match, so the art-URL assertions can rely on OUR chosen name deterministically."""
+    the field triple `combineGroupKey()` matches on -- so the real chip reads them
+    as one combinable group. `name`/`bcx`/`skin` are mock-controlled and independent
+    of that match, so the art-URL assertions can rely on OUR chosen name deterministically."""
     edition = worker["edition"]
     foil = worker.get("foil", False)
     base = {
@@ -144,14 +144,14 @@ def _mock_combine_build(page: Page) -> None:
 def _install_keychain_stub(page: Page, tx_id: str = "FAKE-COMBINE-TX") -> None:
     page.add_init_script(
         f"""window.hive_keychain = {{requestBroadcast: (account, operations, key, callback) => {{
- setTimeout(() => callback({{success: true, result: {{id: '{tx_id}'}}}}), 10);
- }}}};"""
+          setTimeout(() => callback({{success: true, result: {{id: '{tx_id}'}}}}), 10);
+        }}}};"""
     )
 
 
 def _mock_op_verify(page: Page, responses: list[dict]) -> list:
     """Cycles through `responses` on each POST, staying on the last entry once
- exhausted -- records every request so callers can assert count/timing."""
+    exhausted -- records every request so callers can assert count/timing."""
     seen: list = []
     state = {"index": 0}
 
@@ -168,7 +168,7 @@ def _mock_op_verify(page: Page, responses: list[dict]) -> list:
 def _open_dialog(page: Page, base_url: str, row: dict, worker: dict) -> None:
     page.goto(f"{base_url}/?player={LIVE_PLAYER}")
     wait_for_board(page)
-    page.wait_for_timeout(1200)  # let prefetchIdleCardsCache() populate IDLE_CARDS_CACHE
+    settle(page)  # prefetchIdleCardsCache() has answered
     page_row = page.locator(f"tr.plot-row[data-deed-uid='{row['deed_uid']}']")
     page_row.wait_for(timeout=15_000)
     page_row.click()
@@ -191,10 +191,10 @@ def _sign(page: Page) -> None:
 
 def test_confirmed_verdict_renders_arrival_state() -> None:
     """Injection this would catch: reverting to the pre-fix path where a
- domain-confirmed verdict nulls COMBINE_DIALOG/never sets COMBINE_ARRIVAL and
- hides the overlay instead of rendering `renderCombineArrival()` -- expected
- red: `#combine-dialog-title`/`#combine-dialog-body` never show the assertions
- below because the overlay closes instead."""
+    domain-confirmed verdict nulls COMBINE_DIALOG/never sets COMBINE_ARRIVAL and
+    hides the overlay instead of rendering `renderCombineArrival()` -- expected
+    red: `#combine-dialog-title`/`#combine-dialog-body` never show the assertions
+    below because the overlay closes instead."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -228,10 +228,10 @@ def test_confirmed_verdict_renders_arrival_state() -> None:
 
 def test_confirmed_survivor_art_renders_real_card_image() -> None:
     """Injection this would catch: `editorCardImage(survivorCopy)` forced null on
- the arrival path (`const art = null;` instead of the real call) -- expected
- red: no `<img class="combine-arrival-art">` with the computed CDN src ever
- renders; the panel falls back to the no-art placeholder for a card that
- plainly has art."""
+    the arrival path (`const art = null;` instead of the real call) -- expected
+    red: no `<img class="combine-arrival-art">` with the computed CDN src ever
+    renders; the panel falls back to the no-art placeholder for a card that
+    plainly has art."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -261,9 +261,9 @@ def test_confirmed_survivor_art_renders_real_card_image() -> None:
 
 def test_confirmed_survivor_skinned_art_renders_skin_path() -> None:
     """Injection this would catch: `editorCardImage()`'s `encodedSkin` forced
- null regardless of `asset.skin` -- expected red: the rendered `<img>` src
- falls back to the unskinned CDN path even though the survivor copy carries
- a skin."""
+    null regardless of `asset.skin` -- expected red: the rendered `<img>` src
+    falls back to the unskinned CDN path even though the survivor copy carries
+    a skin."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -296,10 +296,10 @@ def test_confirmed_survivor_skinned_art_renders_skin_path() -> None:
 
 def test_destroyed_copies_render_as_cards_and_precede_the_survivor() -> None:
     """Injection this would catch: the stage never mapping destroyed copies to
- `combineArrivalConsumedCardHtml()` elements -- collapsing back to the old
- text-only "N copies destroyed" line -- expected red: no
- `.combine-arrival-consumed-card` element renders at all, even though the
- text-only destroyed count (guard 1) still passes."""
+    `combineArrivalConsumedCardHtml()` elements -- collapsing back to the old
+    text-only "N copies destroyed" line -- expected red: no
+    `.combine-arrival-consumed-card` element renders at all, even though the
+    text-only destroyed count (guard 1) still passes."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -336,8 +336,8 @@ def test_destroyed_copies_render_as_cards_and_precede_the_survivor() -> None:
 
 def test_headline_leads_the_confirmed_panel() -> None:
     """Injection this would catch: dropping `headlineHtml` from the assembled
- body -- expected red: the confirmed panel no longer leads with any success
- statement, and `.combine-arrival-headline` is absent entirely."""
+    body -- expected red: the confirmed panel no longer leads with any success
+    statement, and `.combine-arrival-headline` is absent entirely."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -370,9 +370,9 @@ def test_headline_leads_the_confirmed_panel() -> None:
 
 def test_pending_verdict_stays_optimistic_never_claims_confirmation() -> None:
     """Injection this would catch: the provisional headline/status text
- dropped in favour of always rendering the confirmed copy -- expected red:
- the panel would read "Combine confirmed!" while `COMBINE_ARRIVAL.provisional`
- is still true, exactly the false-confirmation R-26 forbids."""
+    dropped in favour of always rendering the confirmed copy -- expected red:
+    the panel would read "Combine confirmed!" while `COMBINE_ARRIVAL.provisional`
+    is still true, exactly the false-confirmation R-26 forbids."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -408,9 +408,9 @@ def test_pending_verdict_stays_optimistic_never_claims_confirmation() -> None:
 
 def test_pending_verdict_schedules_and_counts_polls() -> None:
     """Injection this would catch: `scheduleOperationPoll()` never called from
- the non-terminal branch of `verifyCombineBroadcast()` -- expected red: only
- the ONE op-verify request from the initial sign ever fires; the count
- assertion below (>= 2 within the shrunk window) fails."""
+    the non-terminal branch of `verifyCombineBroadcast()` -- expected red: only
+    the ONE op-verify request from the initial sign ever fires; the count
+    assertion below (>= 2 within the shrunk window) fails."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)

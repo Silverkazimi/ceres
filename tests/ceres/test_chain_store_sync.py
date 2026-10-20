@@ -1,4 +1,4 @@
-"""opt-in space validates chain shape and merges two devices safely."""
+""": opt-in space validates chain shape and merges two devices safely."""
 from copy import deepcopy
 from pathlib import Path
 
@@ -44,7 +44,7 @@ if (tombstone.state !== 'cancelled' || tombstone.inputs[0].unstake?.tx_id !== 't
 const revived = mergeStaged({chains:{'cc-one':plan('planned','2026-10-06T00:00:00Z',[input('active')])}},{chains:{'cc-one':tombstone}}).chains['cc-one'];
 if (revived.state !== 'cancelled' || revived.inputs[0].unstake?.tx_id !== 'tx-1') throw Error(' A09: cancelled id resurrected');
 const equalRank = mergeStaged({chains:{'cc-one':plan('planned','2026-10-06T00:00:00Z',[input('active')])}},
- {chains:{'cc-one':plan('planned','2026-10-05T00:00:00Z',[{...input('active'), cc:2}])}}).chains['cc-one'];
+  {chains:{'cc-one':plan('planned','2026-10-05T00:00:00Z',[{...input('active'), cc:2}])}}).chains['cc-one'];
 if (equalRank.inputs[0].cc !== 1) throw Error('input edit timestamp lost');
 if (stagedDigest(merged) === stagedDigest({...merged,chains:{}})) throw Error('chains absent from digest');
 """, entry=STATIC / "account-space.js")
