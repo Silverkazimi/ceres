@@ -261,7 +261,7 @@ def test_theme_toggle_avatar_image_keeps_the_edge_handles_aligned(live_browser: 
  the observer's source exists."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.wait_for_selector(".theme-picker .theme-toggle", state="attached", timeout=10_000)
     page.evaluate(
@@ -296,7 +296,7 @@ def test_iris_close_never_publishes_transition_widths_to_other_edge_handles(
         viewport={"width": 1536, "height": 864},
         device_scale_factor=1.25,
     )
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.wait_for_selector("#badge-flag", state="visible", timeout=10_000)
     page.locator("#badge-flag").click()
@@ -375,7 +375,7 @@ def test_wallet_handle_and_panel_share_every_open_close_frame(
     """The edge handle and wallet panel must use one measured motion timeline."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1440, "height": 900})
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.wait_for_selector("#wallet-edge-tab", state="visible", timeout=10_000)
     page.evaluate(
@@ -446,7 +446,7 @@ def test_theme_toggle_stays_topmost_at_its_centre(live_browser: tuple[Browser, s
         viewport={"width": 1536, "height": 864},
         device_scale_factor=1.25,
     )
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.wait_for_selector(".theme-picker .theme-toggle", state="visible", timeout=10_000)
 
@@ -489,7 +489,7 @@ def test_mobile_theme_toggle_only_occupies_the_open_filter_sheet(live_browser: t
     """the root-level Iris dock must not cover mobile header controls."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 430, "height": 900})
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function(
         "document.documentElement.classList.contains('ceres-lw-le-1279')"
         " && document.querySelector('#plot-card-list .plot-card') !== null",
@@ -587,7 +587,7 @@ def test_badge_flag_hit_target_survives_scroll(live_browser: tuple[Browser, str]
  sticky table header, proving nothing else painted over the flag's hit area."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.wait_for_selector(".badge-bar-head", state="visible", timeout=10_000)
 

@@ -295,7 +295,7 @@ def test_separate_totem_title_cells_keep_exact_row_height_and_tooltips(live_brow
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(board)),
     )
     try:
-        page.goto(f"{base_url}/?player=player0005", wait_until="domcontentloaded")
+        page.goto(f"{base_url}/?player=sample01", wait_until="domcontentloaded")
         page.wait_for_selector("tr.plot-row", state="attached", timeout=30_000)
         page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 1", timeout=30_000)
         page.evaluate("document.documentElement.setAttribute('data-theme', 'alchemical')")
@@ -556,7 +556,7 @@ def test_title_icon_and_rarity_gem_render_adjacent_with_no_gap(live_browser: tup
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1536, "height": 900})
     try:
-        page.goto(f"{base_url}/?player=player0005", wait_until="domcontentloaded")
+        page.goto(f"{base_url}/?player=sample01", wait_until="domcontentloaded")
         page.wait_for_selector("tr.plot-row td.title-cell .title-icon", timeout=30_000)
         gap = page.evaluate(
             """() => {

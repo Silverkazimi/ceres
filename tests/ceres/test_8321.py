@@ -106,7 +106,7 @@ def _open_plot(page, base_url: str, *, construction: bool = False) -> tuple[str,
 
     page.route("**/api/board*", board_route)
     page.route("**/api/plots/**", plot_route)
-    page.goto(f"{base_url}/?player=player0005", timeout=15_000)
+    page.goto(f"{base_url}/?player=sample01", timeout=15_000)
     page.wait_for_function("document.querySelector('#plot-tbody > tr.plot-row') !== null", timeout=15_000)
     deed = selected["row"]["deed_uid"]
     with page.expect_response(lambda response: f"/api/plots/{deed}/harvest" in response.url, timeout=15_000):

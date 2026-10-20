@@ -84,7 +84,7 @@ def _board(live_browser: tuple[Browser, str], width: int, root_font: int) -> Pag
  window.dispatchEvent(new Event('resize'));
  }})"""
     )
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     page.wait_for_function(
         "document.querySelector('#plot-tbody > tr.plot-row') !== null"
         " || document.querySelector('#plot-card-list .plot-card') !== null", timeout=30_000

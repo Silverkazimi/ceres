@@ -98,7 +98,7 @@ def test_outcome_refresh_is_quiet():
 # ── browser ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 WALLET = {
-    "player": "player0005", "issues": [], "account": {"DEC": 100, "SPS": 0, "SPSP": 0, "VOUCHER": 0},
+    "player": "sample01", "issues": [], "account": {"DEC": 100, "SPS": 0, "SPSP": 0, "VOUCHER": 0},
     "regions": [{"region_uid": "PR-65", "name": "Region 65", "plots_owned": 3,
                  "balances": {"GRAIN": 5000, "WOOD": 0, "STONE": 0, "IRON": 0, "RESEARCH": 0, "AURA": 0}}],
     "swap": {"symbols": ["GRAIN", "WOOD", "STONE", "IRON"], "account_symbols": [], "directions": ["swap_sell", "swap_buy"],
@@ -115,7 +115,7 @@ STUBS = """
  const realFetch = window.fetch.bind(window);
  window.fetch = async (input, init) => {
  const url = String(input?.url || input);
- if (url.includes('/api/wallet/rewards')) return json({ player: 'player0005', unclaimed_sps: null, reward_rows: [] });
+ if (url.includes('/api/wallet/rewards')) return json({ player: 'sample01', unclaimed_sps: null, reward_rows: [] });
  if (url.includes('/api/wallet/lp/verify')) { await new Promise(r => setTimeout(r, 1200)); return json({ status: 'confirmed', game_result: { dec_amount: '5' } }); }
  if (url.includes('/api/wallet/lp/')) return json({ status: 'not_found' });
  if (url.includes('/api/wallet?')) {
@@ -124,7 +124,7 @@ STUBS = """
  await new Promise(r => setTimeout(r, walletReads > 1 ? 900 : 50));
  return json({ ...WALLET, account: { ...WALLET.account, DEC: walletReads > 1 ? 105 : 100 } });
  }
- if (url.includes('/api/dec')) return json({ player: 'player0005', balance: 100, regions: [] });
+ if (url.includes('/api/dec')) return json({ player: 'sample01', balance: 100, regions: [] });
  return realFetch(input, init);
  };
 })();
@@ -145,7 +145,7 @@ def _cards(browser, base_url, viewport, *, intent=None):
     page = context.new_page()
     requests: list[str] = []
     page.on("request", lambda request: requests.append(request.url))
-    page.goto(f"{base_url}/cards?player=player0005", wait_until="load", timeout=90_000)
+    page.goto(f"{base_url}/cards?player=sample01", wait_until="load", timeout=90_000)
     page.wait_for_function("document.body.dataset.viewReady === 'true' || !!document.querySelector('.cb-message:not([hidden])')", timeout=60_000)
     return context, page, requests
 
@@ -166,7 +166,7 @@ def test_desktop_edge_slideout_opens_the_wallet_above_a_dialog(live_browser):
         page.locator("#wallet-edge-tab").click()
         page.wait_for_function("document.getElementById('regional-dec-drawer')?.open && document.getElementById('wallet-picker').dataset.open === 'true'", timeout=30_000)
         page.wait_for_function("!!document.querySelector('#regional-dec-drawer .dec-drawer-footer')", timeout=30_000)
-        assert page.locator("#regional-dec-drawer .dec-drawer-footer span").inner_text() == "player0005"
+        assert page.locator("#regional-dec-drawer .dec-drawer-footer span").inner_text() == "sample01"
         page.wait_for_timeout(700)  # the slide
         geometry = page.evaluate("""() => {
  const panel = document.querySelector('#regional-dec-drawer .dec-drawer-panel').getBoundingClientRect();
@@ -202,14 +202,14 @@ def test_phone_header_button_opens_the_full_height_drawer(live_browser):
         button.click()
         page.wait_for_function("document.getElementById('regional-dec-drawer')?.open && document.getElementById('regional-dec-drawer').matches(':modal')", timeout=30_000)
         page.wait_for_function("!!document.querySelector('#regional-dec-drawer .dec-drawer-footer')", timeout=30_000)
-        assert page.locator("#regional-dec-drawer .dec-drawer-footer span").inner_text() == "player0005"
+        assert page.locator("#regional-dec-drawer .dec-drawer-footer span").inner_text() == "sample01"
     finally:
         context.close()
 
 
 INTENT = """
 localStorage.setItem('ceres:wallet:resource', 'GRAIN');
-localStorage.setItem('ceres:wallet-lp-intent:v1:player0005:GRAIN', JSON.stringify({ stage: 'confirming', token: 't-ir9261', savedAt: Date.now(),
+localStorage.setItem('ceres:wallet-lp-intent:v1:sample01:GRAIN', JSON.stringify({ stage: 'confirming', token: 't-ir9261', savedAt: Date.now(),
  receipt: { kind: 'swap_sell', symbol: 'GRAIN', pay: 'GRAIN', receive: 'DEC', input: 100, output: 5, minimum: 4.9, region: 'PR-65',
  tx_id: 'e'.repeat(40), nonce: 'ab'.repeat(8), payload: {}, signed_at: new Date().toISOString() } }));
 """
@@ -260,7 +260,7 @@ HARVEST = {
         "evidence": ["regional_rewards"], "reward_eligibility": {"fragment": "eligible", "labors_luck": "eligible"}, "finds": [],
     }],
 }
-FORCED_HARVEST = "localStorage.setItem('ceres:regional-dec:pending:player0005', JSON.stringify(%s));" % json.dumps({
+FORCED_HARVEST = "localStorage.setItem('ceres:regional-dec:pending:sample01', JSON.stringify(%s));" % json.dumps({
     "region_uid": "PR-CEF-41", "action": "stake", "amount": 2500, "nonce": "ab" * 8, "status": "confirmed",
     "tx_id": "f" * 40, "signed_at": 1, "message": "", "harvest": HARVEST})
 

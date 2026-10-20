@@ -20,7 +20,7 @@ def live_browser() -> tuple[Browser, str]:
 
 
 def _board(page, base_url: str) -> None:
-    page.goto(f"{base_url}/?player=player0005", timeout=15_000)
+    page.goto(f"{base_url}/?player=sample01", timeout=15_000)
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length >= 1", timeout=60_000)
 
 

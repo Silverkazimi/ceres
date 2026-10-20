@@ -240,7 +240,8 @@ class EosBrowser:
         await self.page.add_init_script(PROBE)
         await self.page.add_init_script(f"document.addEventListener('DOMContentLoaded',()=>document.documentElement.style.setProperty('font-size','{font}px','important'))")
         await self.page.route("**/*", self.route)
-        await self.page.goto(ORIGIN, wait_until="domcontentloaded")
+        # A bare address opens the start page; the board needs its account in the URL.
+        await self.page.goto(f"{ORIGIN}/?player={self.board['player']}", wait_until="domcontentloaded")
         await self.page.wait_for_selector("tr.plot-row", timeout=15000)
         assert await self.page.evaluate("getComputedStyle(document.documentElement).fontSize") == f"{font}px"
 

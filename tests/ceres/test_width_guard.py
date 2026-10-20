@@ -42,7 +42,7 @@ def _open(live_browser, width: int, dpr: float, stale: bool = False, *, browser:
             " localStorage.setItem('ceres:contentW', '1586'); localStorage.setItem('ceres:autoZoom', 'off'); } } catch (e) {}"
         )
     page = context.new_page()
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function(
         "document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0"
         " || document.querySelectorAll('#plot-card-list .plot-card').length > 0",
@@ -171,7 +171,7 @@ def test_tier_classes_are_stable_across_content_height(live_browser, width: int,
         assert filter_input.count() == 1 and filter_input.is_visible(), "board text filter is not visible"
         value = page.evaluate(
             """async () => {
- const payload = await (await fetch('/api/board?player=player0005')).json();
+ const payload = await (await fetch('/api/board?player=sample01')).json();
  const row = (payload.plots || []).find(p => p.plot);
  return row ? String(row.plot) : '';
  }"""
@@ -427,10 +427,10 @@ def test_picker_grid_shows_seven_per_row_at_full_hd(live_browser, hidden_scrollb
     shared, base_url = live_browser
     browser = hidden_scrollbar_browser if scrollbars == "hidden" else shared
     context = browser.new_context(viewport={"width": width, "height": 1080}, device_scale_factor=dpr)
-    context.add_init_script("try { localStorage.setItem('ceres:picker-view:v1:player0005', 'grid'); } catch (e) {}")
+    context.add_init_script("try { localStorage.setItem('ceres:picker-view:v1:sample01', 'grid'); } catch (e) {}")
     page = context.new_page()
     try:
-        page.goto(f"{base_url}/?player=player0005")
+        page.goto(f"{base_url}/?player=sample01")
         page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=60_000)
         page.wait_for_timeout(800)
         _open_grid_picker(page)

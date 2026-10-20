@@ -93,7 +93,7 @@ def test_pending_worksite_verification_keeps_shared_pill_stable(live_browser: tu
     page.route("**/worksite-preview*", preview_route)
     page.route("**/api/op-inclusion*", lambda route: route.fulfill(status=200, content_type="application/json", body='{"included":true,"block_num":123}'))
     page.route("**/api/op-verify*", verify_route)
-    page.goto(f"{base_url}/?player=player0005", timeout=8_000)
+    page.goto(f"{base_url}/?player=sample01", timeout=8_000)
     try:
         page.wait_for_function("document.querySelector('#plot-tbody > tr.plot-row') !== null", timeout=15_000)
     except PlaywrightTimeoutError:

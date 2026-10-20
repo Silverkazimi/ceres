@@ -21,7 +21,7 @@ def test_rendered_badge_handle_guard() -> None:
     with spawn_live_ceres() as (browser, base_url):
         page = browser.new_page(viewport={"width": 1536, "height": 730})
         try:
-            page.goto(f"{base_url}/?player=player0005", wait_until="networkidle")
+            page.goto(f"{base_url}/?player=sample01", wait_until="networkidle")
             page.locator("#plot-table").wait_for(timeout=30_000)
             page.locator("#wallet-edge-tab img").wait_for(timeout=30_000)
 

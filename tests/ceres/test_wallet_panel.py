@@ -364,7 +364,7 @@ def test_wallet_switcher_live_surfaces_and_hiveauth_escape():
  };
  }"""
         )
-        page.goto(f"{base_url}/?player=player0005", wait_until="domcontentloaded")
+        page.goto(f"{base_url}/?player=sample01", wait_until="domcontentloaded")
         _install_wallet_test_controls(page)
         fixture_hit = page.evaluate(
             """() => {
@@ -438,7 +438,7 @@ def test_wallet_hiveauth_drawer_stays_inside_clipping_surface_live():
  };
  }"""
         )
-        page.goto(f"{base_url}/?player=player0005", wait_until="domcontentloaded")
+        page.goto(f"{base_url}/?player=sample01", wait_until="domcontentloaded")
         _install_wallet_test_controls(page, clipped=True)
         page.locator('[data-wallet-test="clip"] [data-wallet-toggle]').click()
         page.locator('[data-wallet-test="clip"] [data-wallet-select="hiveauth"]').click()
@@ -483,7 +483,7 @@ def test_real_harvest_wallet_drawer_survives_hiveauth_rerender_live():
  };
  }"""
         )
-        page.goto(f"{base_url}/?player=player0005", wait_until="domcontentloaded")
+        page.goto(f"{base_url}/?player=sample01", wait_until="domcontentloaded")
         page.wait_for_function("document.querySelectorAll('[data-deed-uid]').length > 0", timeout=30000)
         page.locator('#harvest-btn').click()
         panel = page.locator('#harvest-modal-overlay .harvest-panel')
@@ -556,7 +556,7 @@ def test_desktop_wallet_drawer_stays_open_after_stake_click():
         page.route("**/api/wallet/rewards?*", lambda route: route.fulfill(
             status=200, content_type="application/json", body=json.dumps({"player": "player0005"})
         ))
-        page.goto(f"{base_url}/?player=player0005", wait_until="domcontentloaded")
+        page.goto(f"{base_url}/?player=sample01", wait_until="domcontentloaded")
         page.locator("#wallet-edge-tab").click()
         page.wait_for_function("document.querySelector('#regional-dec-drawer')?.open === true", timeout=15_000)
         page.wait_for_function("document.querySelector('.dec-drawer-content .dec-status') === null", timeout=15_000)

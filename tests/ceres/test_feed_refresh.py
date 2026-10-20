@@ -151,7 +151,7 @@ def test_confirmed_feed_rerenders_open_harvest_box_from_fresh_projection(live_br
     page.route("**/worksite-preview*", preview_route)
     page.route("**/api/op-inclusion*", inclusion_route)
     page.route("**/api/op-verify*", verify_route)
-    page.goto(f"{base_url}/?player=player0005", timeout=8_000)
+    page.goto(f"{base_url}/?player=sample01", timeout=8_000)
 
     try:
         page.wait_for_function("document.querySelector('#plot-tbody > tr.plot-row') !== null", timeout=15_000)

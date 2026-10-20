@@ -128,7 +128,7 @@ def _launch(live_server, width: int, height: int, dpr: float):
     context.add_init_script(_CLASSIC_SCROLLBAR_INIT)
     context.add_init_script("try { localStorage.setItem('ceres:picker-view:v1:player0005', 'grid'); } catch (e) {}")
     page = context.new_page()
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function(
         "document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0"
         " || document.querySelectorAll('#plot-card-list .plot-card').length > 0",

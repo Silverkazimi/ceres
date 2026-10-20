@@ -127,7 +127,7 @@ def test_harvest_wallet_stays_in_final_layout_after_late_render(
     try:
         page.emulate_media(reduced_motion="reduce")
         page.add_init_script(STUB_SESSION)
-        page.goto(f"{base_url}/?player=player0005", wait_until="load", timeout=90_000)
+        page.goto(f"{base_url}/?player=sample01", wait_until="load", timeout=90_000)
         page.locator("#harvest-btn").wait_for(state="visible", timeout=60_000)
         page.locator("#harvest-btn").click()
         toggle = page.locator("#harvest-modal-overlay .hm-foot .wallet-sign-pair [data-wallet-toggle]")

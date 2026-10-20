@@ -38,7 +38,7 @@ def _open(live_browser: tuple[Browser, str], *, schedule: bool = False) -> Page:
         page.add_init_script("if (sessionStorage.getItem('__ir1882ShrinkPoll') === '1') window.__ceresOperationPollSchedule = [100, 200, 300];")
     page.add_init_script(STUB)
     page.route("**/api/op-verify*", _pending)
-    page.goto(f"{base_url}?player=player0005&ir1882-guard=1")
+    page.goto(f"{base_url}?player=sample01&ir1882-guard=1")
     wait_for_board(page)
     return page
 
@@ -85,7 +85,7 @@ def _count(page: Page) -> int:
 
 
 def _test_url(base_url: str) -> str:
-    return f"{base_url}?player=player0005&ir1882-guard=1"
+    return f"{base_url}?player=sample01&ir1882-guard=1"
 
 
 def _dismiss_banner(page: Page) -> None:

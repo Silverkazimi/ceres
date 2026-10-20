@@ -49,6 +49,7 @@ def _paint_fixture(page):
     page.route("**/*", route_local)
     page.goto("http://r117.test/")
     page.evaluate("""async () => {
+ await import('/static/wallet.js'); // the app's module entry order: board.js must finish before wallet.js reads it
  const {terrainAffinityHtml} = await import('/static/terrainAffinity.js');
  const row = {plot:1, terrain:'Mountain', biome:{red:.1, blue:-.5, green:0, white:null, black:0, gold:.1}};
  document.body.style.cssText = 'margin:0;padding:0;background:#101010';
@@ -68,6 +69,7 @@ def _paint_fixture(page):
 
 def _fire_states(page):
     page.evaluate("""async () => {
+ await import('/static/wallet.js'); // the app's module entry order: board.js must finish before wallet.js reads it
  const {terrainAffinityHtml} = await import('/static/terrainAffinity.js');
  const host = document.createElement('div');
  host.id = 'r117-paint-probe'; host.className = 'terrain-affinity';

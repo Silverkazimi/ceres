@@ -28,7 +28,7 @@ def live_browser() -> tuple[Browser, str]:
 def _page(live_browser: tuple[Browser, str]) -> Page:
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     wait_for_board(page)
     return page
 
@@ -200,7 +200,7 @@ def test_stale_detail_response_cannot_merge_after_player_switch(live_browser: tu
  return ceresFetch(input, init);
  };"""
     )
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     index = page.evaluate(
         "uid => [...document.querySelectorAll('#plot-tbody > tr.plot-row')].findIndex(row => row.dataset.deedUid === uid)",
@@ -306,7 +306,7 @@ def test_clear_plot_includes_actionable_title_and_portfolio_preview_returns_200(
 
     page.route("**/api/plots/*/removal-impact*", removal_route)
     page.route("**/api/op-preview*", preview_route)
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     wait_for_board(page)
     _, expanded, _ = _title_plot(page)
 
@@ -483,7 +483,7 @@ def test_preview_requires_explicit_keychain_confirmation(live_browser: tuple[Bro
  }};"""
     )
     page.route("**/api/op-verify*", lambda route: route.fulfill(status=200, content_type="application/json", body='{"state":"domain-confirmed"}'))
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     wait_for_board(page)
 
     powered_index = -1

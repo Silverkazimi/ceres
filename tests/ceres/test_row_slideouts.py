@@ -62,7 +62,7 @@ def test_live_badge_controls_receive_real_clicks_without_a_flag_delay(
     try:
         page: Page = context.new_page()
         page.add_init_script("localStorage.removeItem('ceres:badge-overlay:open');")
-        page.goto(f"{base_url}/?player=player0005", wait_until="domcontentloaded")
+        page.goto(f"{base_url}/?player=sample01", wait_until="domcontentloaded")
         page.wait_for_selector("tr.plot-row", timeout=30_000)
         page.wait_for_selector("#badge-flag.badge-flag-revealed", timeout=30_000)
 

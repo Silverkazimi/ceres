@@ -55,7 +55,7 @@ def _load(live_browser, width: int, height: int, dpr: float) -> tuple[Page, obje
     errors: list[str] = []
     page.on("pageerror", lambda error: errors.append(str(error)))
     page._s9360_errors = errors
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function(
         "document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0"
         " || document.querySelectorAll('#plot-card-list .plot-card').length > 0",

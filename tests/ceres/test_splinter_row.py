@@ -170,6 +170,7 @@ def test_editor_row_renders_plain_spans_picker_bar_renders_buttons(bare_browser)
     with closing(_bare_page(bare_browser)) as page:
         result = page.evaluate(
             """async () => {
+ await import('/static/wallet.js'); // the app's module entry order: board.js must finish before wallet.js reads it
  const { terrainAffinityHtml } = await import('/static/terrainAffinity.js');
  const row = { terrain: 'Forest', plot: '001-001-1', biome: { fire: 10, water: -10, earth: 0 } };
  const host = document.createElement('div');

@@ -98,7 +98,7 @@ def test_pre_merge_cells_render_terrain_background_input_and_worksite_icon(live_
     resource_key = row["resource"].lower()
 
     page = browser.new_page(viewport={"width": 1400, "height": 900})
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     tr = page.locator(f"tr.plot-row[data-deed-uid='{row['deed_uid']}']")
     tr.wait_for(timeout=30_000)

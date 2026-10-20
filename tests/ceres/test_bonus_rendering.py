@@ -66,7 +66,7 @@ def _render_cell(page, base_url: str, board: dict, deed_uid: str, cell_selector:
         "**/api/board*",
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(board)),
     )
-    page.goto(f"{base_url}/?player=player0005")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function(
         "document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000,
     )

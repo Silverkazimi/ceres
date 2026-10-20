@@ -56,7 +56,7 @@ _HSCROLL_JS = """
 def test_no_horizontal_scrollbar_at_any_width(browser: tuple[Browser, str], width: int) -> None:
     instance, base_url = browser
     page = instance.new_page(viewport={"width": width, "height": 800})
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     page.wait_for_function(
         "document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0"
         " || document.querySelectorAll('#plot-card-list .plot-card').length > 0",
@@ -80,7 +80,7 @@ def test_desktop_table_header_reaches_both_document_edges(browser: tuple[Browser
     instance, base_url = browser
     page = instance.new_page(viewport={"width": 1440, "height": 800})
     try:
-        page.goto(f"{base_url}/?player=player0005")
+        page.goto(f"{base_url}/?player=sample01")
         page.wait_for_function(
             "document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0",
             timeout=60_000,

@@ -103,7 +103,7 @@ def _capture_pending_request(page: Page, url_pattern: str, trigger: Callable[[],
 def test_board_spinner_shows_during_slow_load_and_hides_after(live_browser: tuple[Browser, str]) -> None:
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
-    route = _capture_pending_request(page, "**/api/board*", lambda: page.goto(f"{base_url}/?player=player0005"))  # no ?player= opens the start page
+    route = _capture_pending_request(page, "**/api/board*", lambda: page.goto(f"{base_url}/?player=sample01"))  # no ?player= opens the start page
 
     spinner = page.locator("#board-loading")
     spinner.wait_for(state="visible", timeout=5_000)
@@ -134,7 +134,7 @@ def test_board_spinner_does_not_flash_on_a_fast_load(live_browser: tuple[Browser
  SPINNER_SHOW_DELAY_MS (200ms), so the spinner must never become visible at all."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=15_000)
     assert page.locator("#board-loading").is_hidden()
     page.close()
@@ -147,7 +147,7 @@ def test_profile_spinner_shows_next_to_go_button_during_switch(live_browser: tup
  held/delayed one."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=15_000)
 
     page.fill("#player-input", "player0001")
@@ -174,7 +174,7 @@ def test_no_snapshot_player_shows_readable_message_not_silence(live_browser: tup
  with a next step takes its place."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=15_000)
 
     page.fill("#player-input", "zzznonexistent99")
@@ -256,7 +256,7 @@ def test_table_hidden_during_load_reveals_at_final_width(live_browser: tuple[Bro
  rows have settled."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
-    route = _capture_pending_request(page, "**/api/board*", lambda: page.goto(f"{base_url}/?player=player0005"))  # no ?player= opens the start page
+    route = _capture_pending_request(page, "**/api/board*", lambda: page.goto(f"{base_url}/?player=sample01"))  # no ?player= opens the start page
 
     # During the hold, the table must be genuinely invisible -- no intermediate
     # narrow-header paint -- while still occupying a real (measurable) layout box
@@ -319,7 +319,7 @@ def test_header_hide_guard_actually_guards(live_browser: tuple[Browser, str]) ->
         "**/static/*.js*",
         lambda route: _route_with_injected_anchor(route, anchor, replacement, injection_seen),
     )
-    route = _capture_pending_request(page, "**/api/board*", lambda: page.goto(f"{base_url}/?player=player0005"))  # no ?player= opens the start page
+    route = _capture_pending_request(page, "**/api/board*", lambda: page.goto(f"{base_url}/?player=sample01"))  # no ?player= opens the start page
     assert injection_seen.get("hit"), "injected app.js response was not intercepted"
     head_vis = page.eval_on_selector("#table-head-sticky", "el => getComputedStyle(el).visibility")
     route.continue_()
@@ -389,7 +389,7 @@ def test_spinner_hide_on_completion_guard_actually_guards(live_browser: tuple[Br
         "**/static/*.js*",
         lambda route: _route_with_injected_anchor(route, anchor, replacement, injection_seen),
     )
-    route = _capture_pending_request(page, "**/api/board*", lambda: page.goto(f"{base_url}/?player=player0005"))  # no ?player= opens the start page
+    route = _capture_pending_request(page, "**/api/board*", lambda: page.goto(f"{base_url}/?player=sample01"))  # no ?player= opens the start page
     assert injection_seen.get("hit"), "injected app.js response was not intercepted"
     page.locator("#board-loading").wait_for(state="visible", timeout=5_000)
     route.continue_()
@@ -419,7 +419,7 @@ def test_no_snapshot_message_guard_actually_guards(live_browser: tuple[Browser, 
         "**/static/*.js*",
         lambda route: route.fulfill(status=200, content_type="application/javascript", body=broken_source),
     )
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=15_000)
 
     page.fill("#player-input", "zzznonexistent99")

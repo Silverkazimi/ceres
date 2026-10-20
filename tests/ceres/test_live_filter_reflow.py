@@ -36,7 +36,7 @@ def _page(browser: tuple[Browser, str], *, slow_fill: bool = False) -> Page:
  window.cancelIdleCallback = window.clearTimeout;
             """
         )
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     return page
 
 

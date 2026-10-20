@@ -19,7 +19,7 @@ def test_render_error_stand_in_keeps_band_height_and_logs_plot(live_browser: tup
     page = browser.new_page(viewport={"width": 1536, "height": 945})
     console_errors: list[str] = []
     page.on("console", lambda message: console_errors.append(message.text) if message.type == "error" else None)
-    page.goto(f"{base_url}/?player=player0005", timeout=15_000)
+    page.goto(f"{base_url}/?player=sample01", timeout=15_000)
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length >= 1", timeout=60_000)
     page.evaluate("() => { window.fetch = () => new Promise(() => {}); return 0; }")
 

@@ -69,7 +69,7 @@ def _page(live_browser: tuple[Browser, str], width: int, height: int) -> Page:
     page_errors: list[str] = []
     page.on("pageerror", lambda error: page_errors.append(str(error)))
     page._ir1858_page_errors = page_errors
-    page.goto(f"{base_url}/?player=player0005")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     _wait_full_list(page)
     return page
 
