@@ -223,7 +223,12 @@ def test_list_branch_remains_frozen_while_item_grids_use_rarity_buttons() -> Non
     list_start = CANDIDATES.index("function renderCandidateRow")
     grid_start = CANDIDATES.index("function candidateReadinessOverlayHtml")
     list_branch = CANDIDATES[list_start:grid_start]
-    assert hashlib.sha256(list_branch.encode()).hexdigest() == "d3c07a6993eba871fa960acdfbeccdbd2874aea84aa6668d235a1229d4af0f89"
+    # The pin covers the CODE of the branch, not its comments: the public export rewrites comment
+    # text (it emptied ticket references here), which changed the raw hash without changing code.
+    # Whole-line `//` comments and `/* */` blocks are dropped before hashing.
+    list_code = re.sub(r"/\*.*?\*/", "", list_branch, flags=re.S)
+    list_code = "\n".join(line for line in list_code.splitlines() if not line.lstrip().startswith("//"))
+    assert hashlib.sha256(list_code.encode()).hexdigest() == "aafab369351b6b14dc1f1b26988a65a0264fc9ec92be8d84f6dac267ae12db2a"
     assert 'class="candidate-row candidate-card ${candidate.planned ? \'is-planned \' : \'\'}${classification}' in list_branch
     assert 'candidate-status">${status.html}' in list_branch
     assert 'candidate-plot-change' in list_branch
@@ -598,6 +603,13 @@ def test_item_rarity_choose_stages_totem_and_replaces_title() -> None:
           context.editorSlotLabel = () => 'Totem';
           context.stageDeltaToastText = (delta) => String(delta);
           context.releaseFillRunHeight = () => {};
+          // handleSlotEditorClick first offers the event to the combine-chain upgrade window
+          // (combine-chain-ui.js handleUpgradeAction); none of these events is an upgrade action.
+          context.handleUpgradeAction = async () => false;
+          // candidates.js plannedPlacementReason: '' for any candidate that is not a planned chain card.
+          context.plannedPlacementReason = () => '';
+          // staging.js CERES_STAGE: nothing is staged yet, so the same card is never staged elsewhere.
+          context.CERES_STAGE = [];
           context.unbindCountdowns = () => {};
           context.abortWorkerUpgradeOptions = () => {};
           context.updateMountedRow = () => {};
