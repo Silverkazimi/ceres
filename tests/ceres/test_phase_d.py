@@ -96,8 +96,8 @@ def test_mobile_shell_reuses_the_one_filter_control_row() -> None:
 
 
 def test_phase_d_css_cannot_change_desktop_tiers_or_add_width_queries() -> None:
-    block = CSS.split("/*  PHASE D MOBILE BOARD START */", 1)[1].split(
-        "/*  PHASE D MOBILE BOARD END */", 1
+    block = CSS.split("/* PHASE D MOBILE BOARD START */", 1)[1].split(
+        "/* PHASE D MOBILE BOARD END */", 1
     )[0]
     rules = re.findall(r"([^{}]+)\{([^{}]*)\}", re.sub(r"/\*.*?\*/", "", block, flags=re.S))
     assert rules

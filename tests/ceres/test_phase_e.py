@@ -168,8 +168,8 @@ assert(plotCloses === 2 && harvestCloses === 2 && pushes === 3, 'Back cannot dis
 
 
 def test_phase_e_stays_mobile_only_and_leaves_combine_desktop_only() -> None:
-    block = CSS.split("/*  PHASE E MOBILE PLOT SHEET START */", 1)[1].split(
-        "/*  PHASE E MOBILE PLOT SHEET END */", 1
+    block = CSS.split("/* PHASE E MOBILE PLOT SHEET START */", 1)[1].split(
+        "/* PHASE E MOBILE PLOT SHEET END */", 1
     )[0]
     selectors = re.findall(r"([^{}]+)\{", re.sub(r"/\*.*?\*/", "", block, flags=re.S))
     assert selectors
