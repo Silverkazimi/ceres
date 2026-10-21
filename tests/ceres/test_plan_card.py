@@ -1,4 +1,4 @@
-""": the plan card's four steps sit two by two in Changes. : no "Leave out" on a copy whose unstake is signed."""
+""": the plan card's four steps run as one full-width timeline in Changes (they sat two by two before). : no "Leave out" on a copy whose unstake is signed."""
 from pathlib import Path
 
 STATIC = Path(__file__).parents[2] / "ceres" / "static"
@@ -9,9 +9,12 @@ def test_leave_out_only_for_unsigned_copies():
     assert "const leave = (input) => signed || input.unstake?.tx_id ? '' :" in ui
 
 
-def test_plan_card_steps_two_by_two():
+def test_plan_card_steps_one_timeline():
     css = (STATIC / "ceres.css").read_text(encoding="utf-8")
-    assert ".chain-card .chain-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }" in css
+    # one column at every viewport, steps in order, a rail behind the step markers
+    assert ".chain-card .chain-steps { position: relative; grid-template-columns: minmax(0, 1fr); }" in css
+    assert ".chain-card .chain-step { position: relative; grid-column: 1;" in css
+    assert ".chain-card .chain-steps { grid-template-columns: repeat(2" not in css
 
 
 def test_planned_tile_beside_the_steps_and_not_repeated():
@@ -21,7 +24,8 @@ def test_planned_tile_beside_the_steps_and_not_repeated():
     assert "placeHtml(id, plan, place)], states)}</article>" in ui and '<div class="chain-place">${tile}' in ui  # inside step 4
     assert "export function planPlacementTileHtml(id, plan)" in checkout
     assert "entry._asset?.planned && planIds.has(entry.chain_id)" in checkout
-    assert ".chain-step-4 .chain-place-tile { grid-column: 2; grid-row: 1 / span 2; align-self: start;" in css  # docked top right
+    assert ".chain-step-4 .chain-place-tile { grid-column: 2; grid-row: 1; align-self: start;" in css  # docked top right
+    assert ".chain-step-4 .chain-place > p { grid-column: 1; grid-row: 1;" in css  # the text wraps left of the tile
     assert "after combine</b>" not in checkout[checkout.index("export function planPlacementTileHtml"):][:2500]  # no box
 
 
