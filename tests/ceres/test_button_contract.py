@@ -319,6 +319,11 @@ def _assert_palette(css: str) -> None:
         # (csel-leading-border: the leading-accent border width; ceres-chevron-art
         # the shared inline chevron mask image), never a global canonical.css token.
         "csel-leading-border", "ceres-chevron-art",
+        # The header Changes button's state paint (buttons.css "is-changes-ready" /
+        # "is-changes-waiting"): changes-tone is declared and consumed only there;
+        # it resolves to the existing canonical.css status tokens ok/warn, and the
+        # filled count pill reads the canonical page background bg.
+        "changes-tone", "warn", "bg",
     }
     used = set(re.findall(r"var\(--([A-Za-z0-9_-]+)\)", css))
     assert used <= allowed, f"unregistered token aliases: {sorted(used - allowed)}"
