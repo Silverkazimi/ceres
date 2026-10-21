@@ -14,6 +14,17 @@ def _fixture(name):
     return json.loads((FIXTURES / name).read_text())
 
 
+def test_fixture_files_match_their_synthetic_generator():
+    from tests.ceres import receipt_fixtures
+
+    expected = receipt_fixtures.render()
+    assert sorted(path.name for path in FIXTURES.glob("*.json")) == sorted(expected)
+    for name, text in expected.items():
+        assert (FIXTURES / name).read_text(encoding="utf-8") == text, (
+            f"{name} drifted from tests/ceres/receipt_fixtures.py; regenerate with "
+            "`python -m tests.ceres.receipt_fixtures`")
+
+
 def _header(lookup, index=0):
     info = lookup["trx_info"]
     return {"tx_id": info["id"].split("-")[0], "operation_index": index,
