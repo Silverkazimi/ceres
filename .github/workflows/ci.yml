@@ -82,4 +82,21 @@ jobs:
         env:
           CERES_CI_NO_NETWORK: "1"
           CERES_TEST_SHARD: ${{ matrix.shard }}/16
-        run: python -m pytest -m browser -q
+        run: python -m pytest -m browser -q --junitxml=browser-shard.xml
+      # Seconds per test file in this shard, for refreshing tests/ceres/browser_durations.json.
+      - name: browser test durations (shard ${{ matrix.shard }} of 16)
+        if: always()
+        run: |
+          python - <<'PY'
+          import collections, xml.etree.ElementTree as ET
+          from pathlib import Path
+          report = Path("browser-shard.xml")
+          if not report.is_file():
+              raise SystemExit("no JUnit report: the test step did not finish")
+          seconds = collections.Counter()
+          for case in ET.parse(report).getroot().iter("testcase"):
+              path = case.get("classname", "").replace(".", "/") + ".py"
+              seconds[path] += float(case.get("time") or 0)
+          for path, total in seconds.most_common():
+              print(f"DURATION {path} {total:.0f}")
+          PY

@@ -57,7 +57,7 @@ def _shard_collection(config, items):
     """`CERES_TEST_SHARD=i/n` (1-based) keeps only shard i of n.
 
     Files are weighted by their measured duration (tests/ceres/browser_durations.json, seconds per file;
-    a file not listed counts 2 s per test). A file heavier than the per-shard target is cut into consecutive
+    a file not listed counts 8 s per test, about the measured average). A file heavier than the per-shard target is cut into consecutive
     chunks of its tests; the chunks and whole files are then placed longest first on the lightest shard. Every
     shard collects the same items, so the split is identical on every runner and each test runs exactly once."""
     spec = os.environ.get("CERES_TEST_SHARD", "").strip()
@@ -74,7 +74,7 @@ def _shard_collection(config, items):
     by_file: dict[str, list] = {}
     for item in items:
         by_file.setdefault(item.nodeid.split("::")[0], []).append(item)
-    weight = {path: float(durations.get(path, 2 * len(tests))) for path, tests in by_file.items()}
+    weight = {path: float(durations.get(path, 8 * len(tests))) for path, tests in by_file.items()}
     target = sum(weight.values()) / count
     chunks = []  # (weight, path, first, last)
     for path, tests in by_file.items():
