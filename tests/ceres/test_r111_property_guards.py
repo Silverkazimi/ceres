@@ -632,9 +632,10 @@ def test_combine_verification_performs_the_post_combine_collection_read(tmp_path
             return {"cards": [{"uid": "CARD-SURVIVOR"}]}
 
     class FakeCardVerificationSpec:
-        def __init__(self, fetch_collection, *, expected_records):
+        def __init__(self, fetch_collection, *, expected_records, intent=None):
             self.fetch_collection = fetch_collection
             self.expected_records = expected_records
+            self.intent = intent
 
         def check_domain(self, _operation_name, _operations):
             self.fetch_collection()
@@ -646,7 +647,7 @@ def test_combine_verification_performs_the_post_combine_collection_read(tmp_path
     monkeypatch.setattr(routes_op_preview.capture_mod, "latest_snapshot", lambda _config, _player: (_combine_report("2026-08-29T01:00:00Z"), object()))
     monkeypatch.setattr(routes_op_preview.capture_mod, "is_running", lambda _account: False)
     monkeypatch.setattr(routes_op_preview.capture_mod, "start_refresh", lambda _config, _account: True)
-    monkeypatch.setattr(routes_op_preview.combine_evidence, "load", lambda _config, _nonce, account: None)
+    monkeypatch.setattr(routes_op_preview.combine_evidence, "load", lambda _config, _nonce, account, unresolved=False: None)
 
     response = routes_op_preview.op_verify(
         {
