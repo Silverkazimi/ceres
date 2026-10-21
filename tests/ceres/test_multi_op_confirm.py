@@ -183,11 +183,11 @@ def test_board_splits_a_mixed_verdict_per_operation():
         r"""
 const stake = (deed) => ['custom_json', { id: 'sm_stake_change', json: JSON.stringify({ deed_uid: deed,
   stake: { cards: [{ card_uid: 'C-' + deed }], items: [] }, unstake: { cards: [], items: [] }, n: deed }) }];
-const chunk = { operations: [stake(''), stake(''), stake('')] };
+const chunk = { operations: [stake('D1'), stake('D2'), stake('D3')] };
 const mixed = { op_results: [{ index: 0, success: true }, { index: 1, success: false, error: 'refused' }, { index: 2, success: true }] };
 const split = firstClearOutcomeChunks(mixed, chunk);
-const same = firstClearOutcomeChunks(mixed, { operations: [stake(''), stake(''), stake('')] });
-const allRefused = firstClearOutcomeChunks({ op_results: [{ index: 0, success: false, error: 'x' }] }, { operations: [stake('')] });
+const same = firstClearOutcomeChunks(mixed, { operations: [stake('D1'), stake('D1'), stake('D3')] });
+const allRefused = firstClearOutcomeChunks({ op_results: [{ index: 0, success: false, error: 'x' }] }, { operations: [stake('D1')] });
 console.log(JSON.stringify({
   accepted: [...chunkDeedDirections(split.accepted)], refused: [...chunkDeedDirections(split.refused)],
   ambiguous: same, allRefused,

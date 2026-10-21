@@ -170,7 +170,7 @@ def test_three_day_review_and_hiveauth_refusal_are_visible_without_inputs() -> N
         and '${lockSigningHtml}' in signing
     )
     # the separate review/row-sign buttons were removed (); their disable checks went with them.
-    review = checkout[checkout.index('function plotLockPlanHtml'):checkout.index('// inside the modal', checkout.index('function plotLockPlanHtml'))]
+    review = checkout[checkout.index('function plotLockPlanHtml'):checkout.index('\n}\n', checkout.index('function plotLockPlanHtml'))]  # the function body itself
     assert '<input' not in review
     assert "lockDays: 3" in PLOT_LOCK.read_text()
     assert 'review.prepared.transaction.operations' in PLOT_LOCK.read_text()

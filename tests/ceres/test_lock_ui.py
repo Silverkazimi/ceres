@@ -35,7 +35,7 @@ def test_lock_is_counted_and_can_reach_active_keychain_signing() -> None:
 
 
 def test_hiveauth_lock_guidance_is_only_in_signing_section() -> None:
-    plan = CHECKOUT.split("function plotLockPlanHtml", 1)[1].split("// inside the modal", 1)[0]
+    plan = CHECKOUT.split("function plotLockPlanHtml", 1)[1].split("\n}\n", 1)[0]  # the function body itself
     signing = CHECKOUT.split("const lockSigningHtml", 1)[1].split("const signingCard", 1)[0]
     assert "Locking needs Hive Keychain (Active key)" not in plan
     assert "Locking needs Hive Keychain (Active key)" in signing

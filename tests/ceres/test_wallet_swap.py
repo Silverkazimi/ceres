@@ -68,7 +68,7 @@ if (swapLocked('player0005') !== 'STONE') throw new Error('an open wallet prompt
 
 def test_swap_css_is_scoped_and_uses_shared_controls():
     css = (ROOT / "ceres" / "static" / "ceres.css").read_text()
-    start = css.index("/* : the wallet pool swap card")
+    start = css.index("/* the wallet pool swap card")
     block = css[start:css.index(".wallet-swap .dec-receipt-amount > img", start)]
     for line in block.splitlines():
         if line.startswith(".") or line.startswith("#"):

@@ -145,7 +145,7 @@ def test_sort_binding_below_initial_load_injection_goes_red() -> None:
     start = source.rindex("document.querySelectorAll('#plot-table thead [data-key]').forEach((control) => {")
     end = source.index("  document.getElementById('close-all-plots')", start)
     binding = source[start:end]
-    load_line = "  if (CURRENT_PLAYER) await loadBoard(); else showStartPage(); // : no player in the URL -> start page, no table\n"
+    load_line = "  if (CURRENT_PLAYER) await loadBoard(); else showStartPage(); // no player in the URL -> start page, no table\n"
     # The binding block and the loadBoard() call are no longer adjacent (other init() wiring
     # close-all-plots, open-all-plots, resize listeners -- sits between them since 's rework)
     # so move the block from its own spot to directly ahead of loadBoard() instead of swapping two
