@@ -997,14 +997,14 @@ function cancelCentre(session) {
 // ease-out under the viewport lease. It used to centre the plot in the window.
 export function centreReservedPlot(session, frame) {
   if (!session.scrollLease || !hooks.leaseIsCurrent(session.scrollLease)) return;
-  const { scrollX: x, scrollY: y } = window;
+  const { scrollX: x, scrollY: y } = window; // V (no page zoom)
   const plotRow = frame.closest('tr.expand-row')?.previousElementSibling;
   // Re-read every frame: the page is still growing while the plot opens, so a goal fixed at the start lands short.
   const goal = () => {
-    const rowTop = (plotRow || frame).getBoundingClientRect().top;
-    const headerLine = Math.max(0, ...['header.board-header', '#table-head-sticky'].map((selector) => document.querySelector(selector)?.getBoundingClientRect().bottom || 0));
-    const extent = Math.max(0, document.documentElement.getBoundingClientRect().height - window.innerHeight);
-    return Math.max(0, Math.min(extent, window.scrollY + rowTop - headerLine));
+    const rowTop = (plotRow || frame).getBoundingClientRect().top; // V (no page zoom)
+    const headerLine = Math.max(0, ...['header.board-header', '#table-head-sticky'].map((selector) => document.querySelector(selector)?.getBoundingClientRect().bottom || 0)); // V (no page zoom)
+    const extent = Math.max(0, document.documentElement.getBoundingClientRect().height - window.innerHeight); // V (no page zoom)
+    return Math.max(0, Math.min(extent, window.scrollY + rowTop - headerLine)); // V (no page zoom)
   };
   const target = goal();
   const lease = session.scrollLease;

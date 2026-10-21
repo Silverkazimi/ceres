@@ -214,13 +214,13 @@ export function initTooltips() {
   TOOLTIP_EL.addEventListener('wheel', (event) => {
     event.preventDefault();
     TOOLTIP_EL.style.pointerEvents = 'none';
-    let box = document.elementFromPoint(event.clientX, event.clientY);
+    let box = document.elementFromPoint(event.clientX, event.clientY); // V (no page zoom)
     while (box && box !== document.body && box !== document.documentElement) {
       const style = getComputedStyle(box);
       if (/(auto|scroll)/.test(style.overflowY + style.overflowX) && (box.scrollHeight > box.clientHeight || box.scrollWidth > box.clientWidth)) break;
       box = box.parentElement;
     }
-    const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
+    const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1; // V (no page zoom)
     (box && box !== document.body && box !== document.documentElement ? box : document.scrollingElement || document.documentElement)
       .scrollBy({ left: event.deltaX * scale, top: event.deltaY * scale });
     enterScrollQuiet();
@@ -228,11 +228,11 @@ export function initTooltips() {
   }, { passive: false });
   document.addEventListener('mousemove', (event) => {
     if (!SCROLL_QUIET) return;
-    if (!SCROLL_QUIET_AT) { SCROLL_QUIET_AT = { x: event.clientX, y: event.clientY }; return; }
-    if (Math.hypot(event.clientX - SCROLL_QUIET_AT.x, event.clientY - SCROLL_QUIET_AT.y) <= SCROLL_QUIET_PX) return;
+    if (!SCROLL_QUIET_AT) { SCROLL_QUIET_AT = { x: event.clientX, y: event.clientY }; return; } // V (no page zoom)
+    if (Math.hypot(event.clientX - SCROLL_QUIET_AT.x, event.clientY - SCROLL_QUIET_AT.y) <= SCROLL_QUIET_PX) return; // V (no page zoom)
     SCROLL_QUIET = false;
     SCROLL_QUIET_AT = null;
-    const under = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('[data-tip]');
+    const under = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('[data-tip]'); // V (no page zoom)
     if (under && !under.closest(NO_TIP_ZONE)) { TOUCH_OPENED = false; showTooltip(under); }
   }, { passive: true });
   const reposition = () => {
@@ -268,8 +268,8 @@ export function initTooltips() {
     TOUCH_POINTER = null;
     hideTooltip();
     const trigger = findTrigger(event);
-    if (!trigger?.closest?.('.mobile-plot-sheet') || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
-    TOUCH_POINTER = { id: event.pointerId, trigger, x: event.clientX, y: event.clientY, longPressed: false };
+    if (!trigger?.closest?.('.mobile-plot-sheet') || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return; // V (no page zoom)
+    TOUCH_POINTER = { id: event.pointerId, trigger, x: event.clientX, y: event.clientY, longPressed: false }; // V (no page zoom)
     TOUCH_LONG_PRESS_TIMER = setTimeout(() => {
       TOUCH_LONG_PRESS_TIMER = null;
       if (!TOUCH_POINTER || TOUCH_POINTER.id !== event.pointerId || !trigger.isConnected) return;
@@ -280,8 +280,8 @@ export function initTooltips() {
   }, true);
   document.addEventListener('pointermove', (event) => {
     if (!TOUCH_POINTER || event.pointerId !== TOUCH_POINTER.id || TOUCH_POINTER.longPressed) return;
-    if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)
-        || Math.hypot(event.clientX - TOUCH_POINTER.x, event.clientY - TOUCH_POINTER.y) > TOUCH_MOVE_TOLERANCE) {
+    if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY) // V (no page zoom)
+        || Math.hypot(event.clientX - TOUCH_POINTER.x, event.clientY - TOUCH_POINTER.y) > TOUCH_MOVE_TOLERANCE) { // V (no page zoom)
       clearTimeout(TOUCH_LONG_PRESS_TIMER);
       TOUCH_LONG_PRESS_TIMER = null;
       TOUCH_POINTER = null;
@@ -591,18 +591,18 @@ export function calculateTooltipPosition(trigger, tooltip, viewport, borders = {
 function anchorRect(target) {
   let el = target;
   for (let i = 0; el && i < 4; i++) {
-    const rect = el.getBoundingClientRect();
+    const rect = el.getBoundingClientRect(); // V (no page zoom)
     if (rect.width || rect.height) return rect;
     el = el.firstElementChild;
   }
-  return target.getBoundingClientRect();
+  return target.getBoundingClientRect(); // V (no page zoom)
 }
 
 function positionTooltip(target) {
   const visual = window.visualViewport;
   const viewport = { left: visual?.offsetLeft || 0, top: visual?.offsetTop || 0,
     width: visual?.width || document.documentElement.clientWidth,
-    height: visual?.height || window.innerHeight };
+    height: visual?.height || window.innerHeight }; // V (no page zoom)
   const margin = 12;
   TOOLTIP_EL.style.setProperty('--tooltip-available-width', `${Math.max(0, viewport.width - margin * 2)}px`);
   const computed = getComputedStyle(TOOLTIP_EL);

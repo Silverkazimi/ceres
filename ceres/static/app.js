@@ -123,8 +123,8 @@ function centerThemePicker() {
   const headerEl = document.querySelector('header.board-header');
   const picker = document.querySelector('.theme-picker');
   if (!dock || !picker) return;
-  const headerRect = headerEl?.getBoundingClientRect();
-  const pickerRect = picker.getBoundingClientRect();
+  const headerRect = headerEl?.getBoundingClientRect(); // V (no page zoom)
+  const pickerRect = picker.getBoundingClientRect(); // V (no page zoom)
   if (!pickerRect.width || !pickerRect.height) return; // not laid out yet -- caller retries
   const pickerLayout = pickerRect;
   // SUPERSEDED by
@@ -172,7 +172,7 @@ function centerThemePicker() {
   // per-row badge cell inside the bar -- those are plain CSS (`.badge-bar-row`
   // `.badge-overlay-row`, ceres.css), not written by this function.
   const toggle = document.querySelector('.theme-picker .theme-toggle');
-  const toggleRect = toggle?.getBoundingClientRect();
+  const toggleRect = toggle?.getBoundingClientRect(); // V (no page zoom)
   let closedPickerWidth = null;
   if (toggleRect && toggleRect.width > 0) {
     const pickerCs = getComputedStyle(picker);
@@ -199,8 +199,8 @@ function centerThemePicker() {
       root.setProperty('--edge-chip-shadow', toggleCs.boxShadow);
     }
   }
-  const viewportRect = document.documentElement.getBoundingClientRect();
-  const viewport = { left: viewportRect.left, top: 0, right: viewportRect.right, bottom: window.innerHeight };
+  const viewportRect = document.documentElement.getBoundingClientRect(); // V (no page zoom)
+  const viewport = { left: viewportRect.left, top: 0, right: viewportRect.right, bottom: window.innerHeight }; // V (no page zoom)
   const triggerRect = headerRect?.height
     ? headerRect
     : toggleRect?.height
@@ -213,7 +213,7 @@ function centerThemePicker() {
     ? dock.nextElementSibling
     : null;
   if (mobileFilterSheet) {
-    const sheetRect = mobileFilterSheet.getBoundingClientRect();
+    const sheetRect = mobileFilterSheet.getBoundingClientRect(); // V (no page zoom)
     dock.style.setProperty('--mobile-filter-sheet-top', `${sheetRect.top + mobileFilterSheet.clientTop}px`);
     const sheetBorderRight = parseFloat(getComputedStyle(mobileFilterSheet).borderRightWidth) || 0;
     const sheetInnerRight = sheetRect.right - sheetBorderRight;
@@ -273,11 +273,11 @@ function centerThemePicker() {
   // (), which gave the page an empty horizontal overflow and a scrollbar.
   const badgeBarEl = document.getElementById('badge-bar');
   const scrollerEl = document.getElementById('plot-table-scroll');
-  const scrollerRect = scrollerEl?.getBoundingClientRect();
+  const scrollerRect = scrollerEl?.getBoundingClientRect(); // V (no page zoom)
   if (badgeBarEl && scrollerRect && scrollerRect.width > 0) {
     const pageGutter = Math.max(0, viewportRight - scrollerRect.right);
     document.documentElement.style.setProperty('--page-gutter', `${Math.round(pageGutter)}px`);
-    const barDocTop = scrollerRect.top + window.scrollY;
+    const barDocTop = scrollerRect.top + window.scrollY; // V (no page zoom)
     badgeBarEl.style.top = `${barDocTop}px`;
     badgeBarEl.style.height = `${scrollerRect.height}px`;
     BAR_POSITIONED = true; // see maybeRevealEdgeHandles() above
@@ -311,12 +311,12 @@ function updateEdgeTabsPosition() {
   const controlsRow = document.querySelector('.controls-row');
   const walletPickerEl = document.getElementById('wallet-picker');
   if (!edgeTabs || !controlsRow || !walletPickerEl) return;
-  const controlsRect = controlsRow.getBoundingClientRect();
+  const controlsRect = controlsRow.getBoundingClientRect(); // V (no page zoom)
   // (maintainer): 2px free above and below the wallet box, on whole pixels; the row's 1px bottom border is not free space.
   const boxTop = Math.round(controlsRect.top) + 2;
   const boxBottom = Math.round(controlsRect.bottom - 1) - 2;
   if (boxBottom - boxTop > 8) document.documentElement.style.setProperty('--edge-row-h', `${boxBottom - boxTop}px`);
-  const walletPickerHeight = walletPickerEl.getBoundingClientRect().height;
+  const walletPickerHeight = walletPickerEl.getBoundingClientRect().height; // V (no page zoom)
   if (!(controlsRect.height > 0) || !(walletPickerHeight > 0)) return;
   const edgeTabsY = boxBottom - boxTop > 8 ? boxTop : controlsRect.top + controlsRect.height / 2 - walletPickerHeight / 2;
   edgeTabs.style.top = `${edgeTabsY}px`;
@@ -338,12 +338,12 @@ function updateBadgeFlagPosition() {
   const flag = document.getElementById('badge-flag');
   const thead = document.getElementById('table-head-sticky');
   if (!flag || !thead) return;
-  const theadRect = thead.getBoundingClientRect();
+  const theadRect = thead.getBoundingClientRect(); // V (no page zoom)
   if (!theadRect.height) return; // not laid out yet
   const controlsRow = document.querySelector('.controls-row');
   const wallet = document.getElementById('wallet-picker');
-  const controlsRect = controlsRow?.getBoundingClientRect();
-  const walletRect = wallet?.getBoundingClientRect();
+  const controlsRect = controlsRow?.getBoundingClientRect(); // V (no page zoom)
+  const walletRect = wallet?.getBoundingClientRect(); // V (no page zoom)
   // (maintainer): 2px free above the flag; below it the header's 1px shadow plus 2px (3px), on whole pixels.
   // The column's shade starts under that shadow so it runs unbroken across the badges column.
   const flagTop = Math.round(theadRect.top) + 2;
@@ -478,7 +478,7 @@ function initScrollTop() {
   if (!btn) return;
   const update = () => {
     SCROLL_TOP_RAF = null;
-    btn.classList.toggle('is-visible', window.scrollY > 400);
+    btn.classList.toggle('is-visible', window.scrollY > 400); // V (no page zoom)
   };
   window.addEventListener('scroll', () => {
     if (SCROLL_TOP_RAF) return;
@@ -543,7 +543,7 @@ function closeMobilePlotAndHistory({ restoreFocus = true, closeSelection = true 
   if (!ownsHistoryEntry) return;
   // the phone sheet scrolls with the page, so the browser's own restore on history.back() would put the board
   // back at the top; re-apply the board position closeMobilePlotSheet() just restored once that step is done.
-  const boardY = window.scrollY;
+  const boardY = window.scrollY; // V (no page zoom)
   window.addEventListener?.('popstate', () => globalThis.requestAnimationFrame?.(() => window.scrollTo?.(0, boardY)), { once: true });
   history.back();
 }
@@ -591,7 +591,7 @@ function initMobilePlotSheet() {
     if (closeTopMobileOverlay() !== 'none') { pushMobilePlotHistoryMarker(); return; }
     if (closeMobilePlotPicker()) { pushMobilePlotHistoryMarker(); return; }
     closeMobilePlotSheet();
-    const boardY = window.scrollY; // keep the restored board position over the browser's own restore
+    const boardY = window.scrollY; // V keep the restored board position over the browser's own restore
     globalThis.requestAnimationFrame?.(() => window.scrollTo?.(0, boardY));
   });
   document.addEventListener('keydown', (event) => {
@@ -668,7 +668,7 @@ async function init() {
   // a filter-row divider only counts between two visible neighbours on the SAME line
   // when the row wraps (1280–1919) a divider at a line edge is hidden (same idiom as syncSortDivider, ).
   const syncControlsDividers = () => {
-    const mid = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
+    const mid = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; }; // V (no page zoom)
     const visible = (el) => el && !el.hidden && el.getClientRects().length > 0;
     document.querySelectorAll('.controls-row .controls-sep').forEach((sep) => {
       sep.classList.remove('is-line-edge');
@@ -799,7 +799,7 @@ async function init() {
   // shown once the page is a screen down.
   const scrollTop = document.getElementById('scroll-top-btn');
   if (scrollTop) {
-    const syncScrollTop = () => { scrollTop.hidden = window.scrollY < window.innerHeight * 0.9; };
+    const syncScrollTop = () => { scrollTop.hidden = window.scrollY < window.innerHeight * 0.9; }; // V (no page zoom)
     window.addEventListener('scroll', syncScrollTop, { passive: true });
     scrollTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
     syncScrollTop();

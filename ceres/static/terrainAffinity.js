@@ -73,7 +73,7 @@ export function bindTerrainAffinityOverflow(scope) {
       start.hidden = !overflowing || viewport.scrollLeft <= 1;
       end.hidden = !overflowing || viewport.scrollLeft >= max - 1;
       if (visible.length) {
-        const rectW = end.getBoundingClientRect().width || start.getBoundingClientRect().width;
+        const rectW = end.getBoundingClientRect().width || start.getBoundingClientRect().width; // V (no page zoom)
         const edgeWidth = rectW || width * 0.03; // V (: no page zoom)
         // Use a visible inter-badge gap so an affordance never masks a settled state.
         const first = visible[0];
