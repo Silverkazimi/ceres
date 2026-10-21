@@ -79,8 +79,10 @@ const operation = nonce => ['custom_json', {
   json: JSON.stringify({ n: nonce }),
 }];
 const rows = Array.from({ length: 5 }, (_, index) => {
+  // A10: only a request with a transaction id can be proved absent (a no-id row is never
+  // probed); these carry one and are past the server's absence grace (3900 s).
   const id = JSON.stringify(['alice', 'custom_json', 'sm_land_operation', `wedged-${index}`]);
-  return { id, claimIds: [id], count: 1, txId: null, createdAt: new Date().toISOString() };
+  return { id, claimIds: [id], count: 1, txId: String(index).repeat(40), createdAt: new Date(Date.now() - 3960000).toISOString() };
 });
 localStorage.setItem('ceres:broadcast-claims:v1:alice', JSON.stringify(rows.map(row => row.id)));
 localStorage.setItem('ceres:pending-custom-ops:v1:alice', JSON.stringify(rows));
