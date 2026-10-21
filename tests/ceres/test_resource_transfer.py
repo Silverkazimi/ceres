@@ -420,6 +420,8 @@ def test_regional_dec_binds_the_transfer_fields_and_css_uses_tokens_only():
     regional = (STATIC / "regional-dec.js").read_text(encoding="utf-8")
     assert "transferInput(swapContext(), event.target)" in regional and "transferSelect(swapContext(), event.target)" in regional
     css = (STATIC / "wallet.css").read_text(encoding="utf-8")
-    block = css[css.index(""):]
+    # The Transfer section starts at its own section comment; the export scrub had emptied this
+    # anchor to "" (so the whole file, including `white-space`, was scanned).
+    block = css[css.index("Transfer, shared Swap/Transfer tabs"):]
     import re
     assert not re.search(r"#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|\bwhite\b", block)

@@ -108,8 +108,8 @@ def test_grid_loading_reserves_one_responsive_row_with_official_spinner() -> Non
     assert "\n.candidate-card.is-ghost .cand-ghost-body { min-block-size" not in CSS
     assert ".candidate-list:not(.is-card-grid) .candidate-card.is-ghost .cand-ghost-body { min-block-size: 8.4rem; }" in CSS
     # the phase C block became the fluid open-plot block plus the panel rules.
-    for start, end in (("/*  FLUID OPEN PLOT START", "/*  FLUID OPEN PLOT END */"),
-                       ("/*  PHASE C LOW-RES PANELS START", "/*  PHASE C LOW-RES PANELS END */")):
+    for start, end in (("/* FLUID OPEN PLOT START", "/* FLUID OPEN PLOT END */"),
+                       ("/* PHASE C LOW-RES PANELS START", "/* PHASE C LOW-RES PANELS END */")):
         low_res = CSS.split(start, 1)[1].split(end, 1)[0]
         assert ".candidate-grid-card.is-ghost" not in low_res
     assert "function trimPickerGridLoadingRow" in ACTIONS
