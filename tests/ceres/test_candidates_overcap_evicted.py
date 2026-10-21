@@ -4,7 +4,10 @@ The fixture was extracted from ``~/.ceres/snapshots/land-player0005-latest.json`
 ``2026-09-03T20:33:43.925765Z`` for deed ``I-295-116f9bb372e311``. The plan labels that
 capture ``2026-09-03T22:33Z``; the source file's UTC ``generated_at`` is authoritative and
 the discrepancy is recorded in the fixture's ``provenance`` object. It is committed because
-the source snapshot churns; card names come from ``load_details_by_id()``.
+the source snapshot churns; card names and splinters come from the committed
+``card_details_sample.json`` (``build_details_by_id()``) plus the one catalogue entry it
+lacks, never from a machine-local ``card_details`` cache (``load_details_by_id()``), which
+CI does not have.
 
 G1 injection: make the scored evaluator report an unknown plot impact; the point-valued
 occupied-click contract must go red.
@@ -31,8 +34,8 @@ from pathlib import Path
 import pytest
 
 import ceres.candidates as candidates_module
-from ceres.board import load_details_by_id
 from ceres.candidates import rank_candidates
+from tests.ceres.conftest import build_details_by_id
 
 
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "land" / "candidates_overcap_41_2_27.json"
@@ -63,11 +66,21 @@ def _fixture() -> dict:
     return json.loads(FIXTURE.read_text(encoding="utf-8"))
 
 
+def _details() -> dict[int, dict]:
+    # Every card in the fixture except the second idle candidate (card_detail_id 22) is in the
+    # committed sample. Its catalogue identity (Alpha "Frost Giant", Water splinter) is the
+    # only part of the card's detail the ranking reads here: the splinter decides the terrain
+    # modifier, without which the candidate is unscored ("terrain_modifier_unknown").
+    details = build_details_by_id()
+    details.setdefault(22, {"id": 22, "name": "Frost Giant", "color": "Blue", "type": "Monster", "editions": "0,1"})
+    return details
+
+
 def _rows(report: dict, *, slot: int | None) -> list[dict]:
     return rank_candidates(
         report, DEED_UID, "worker", player="player0005", now=NOW, bucket="idle",
         include_cooling=True, include_terrain_penalised=True, limit=100,
-        details_by_id=load_details_by_id(), slot=slot,
+        details_by_id=_details(), slot=slot,
     )["candidates"]
 
 
