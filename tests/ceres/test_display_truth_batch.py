@@ -40,6 +40,25 @@ def live_browser() -> tuple[Browser, str]:
         yield value
 
 
+def _open_badge_slideouts(page) -> None:
+    """Open every plot's badge slide-out.
+
+    Board badges are no longer a table column: each plot's chips render in its own row of
+    the slide-out panel (`#badge-overlay .badge-overlay-row`), which badge-overlay.js fills
+    only once that plot's handle in the right-edge badge bar (`#badge-bar .badge-bar-row`)
+    is opened."""
+    handles = page.locator("#badge-bar .badge-bar-row")
+    handles.first.wait_for(timeout=30_000)
+    handles.evaluate_all("rows => rows.forEach(row => { if (row.getAttribute('aria-expanded') !== 'true') row.click(); })")
+    page.wait_for_function(
+        """() => {
+            const rows = [...document.querySelectorAll('#badge-overlay .badge-overlay-row')];
+            return rows.length > 0 && rows.every(row => row.classList.contains('is-open'));
+        }""",
+        timeout=30_000,
+    )
+
+
 def _candidate(terrain: float | None, *, splinter: str = "Fire") -> dict:
     construction = (
         {"status": "point", "value": 2400, "low": 2400, "high": 2400, "reason": None}
@@ -279,11 +298,13 @@ def test_r56_over_cap_badge_uses_raw_total(live_browser: tuple[Browser, str]) ->
     _install_over_cap_fixture(page)
     page.reload()
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
+    _open_badge_slideouts(page)
     badges = page.locator(".badge-over_cap")
     assert badges.count() == 1
-    badge = page.locator(f"tr.plot-row[data-deed-uid='{CASCADE_DEED_UID}'] .badge-over_cap")
+    badge = page.locator(f"#badge-overlay .badge-overlay-row[data-deed-uid='{CASCADE_DEED_UID}'] .badge-over_cap")
     badge.wait_for(timeout=30_000)
-    assert badge.get_attribute("data-tip-key") == "100,000"
+    # the chip's tooltip lists the plot's own figures: the raw total against the cap
+    assert "Base PP 107,641 · cap 100,000" in (badge.get_attribute("data-tip-items") or "")
     page.close()
 
 
@@ -303,7 +324,8 @@ def test_r66_runi_base_pp_is_outside_plot_cap(live_browser: tuple[Browser, str])
     row.wait_for(timeout=30_000)
     row.click()
     page.locator(".slot-editor:visible").wait_for(timeout=30_000)
-    assert row.locator(".badge-over_cap").count() == 0
+    _open_badge_slideouts(page)
+    assert page.locator(f"#badge-overlay .badge-overlay-row[data-deed-uid='{RUNI_DEED_UID}'] .badge-over_cap").count() == 0
     page.close()
 
 

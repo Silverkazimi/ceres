@@ -10,6 +10,25 @@ from playwright.sync_api import Browser, Page
 from .conftest import spawn_live_ceres, wait_for_board
 
 
+def _open_badge_slideouts(page) -> None:
+    """Open every plot's badge slide-out.
+
+    Board badges are no longer a table column: each plot's chips render in its own row of
+    the slide-out panel (`#badge-overlay .badge-overlay-row`), which badge-overlay.js fills
+    only once that plot's handle in the right-edge badge bar (`#badge-bar .badge-bar-row`)
+    is opened."""
+    handles = page.locator("#badge-bar .badge-bar-row")
+    handles.first.wait_for(timeout=30_000)
+    handles.evaluate_all("rows => rows.forEach(row => { if (row.getAttribute('aria-expanded') !== 'true') row.click(); })")
+    page.wait_for_function(
+        """() => {
+            const rows = [...document.querySelectorAll('#badge-overlay .badge-overlay-row')];
+            return rows.length > 0 && rows.every(row => row.classList.contains('is-open'));
+        }""",
+        timeout=30_000,
+    )
+
+
 @pytest.fixture(scope="module")
 def live_browser() -> tuple[Browser, str]:
     with spawn_live_ceres() as value:
@@ -97,6 +116,7 @@ def test_idle_badge_uses_expanded_name(live_browser: tuple[Browser, str]) -> Non
     try:
         page.goto(base_url)
         wait_for_board(page)
+        _open_badge_slideouts(page)
         idle = page.locator(".badge-idle").first
         if idle.count() == 0:
             pytest.skip("No idle badge is present in this account's live board snapshot")

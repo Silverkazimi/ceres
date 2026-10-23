@@ -523,20 +523,34 @@ def test_clear_plot_button_keeps_danger_severity_and_foot(
         page.close()
 
 
+def _open_badge_slideouts(page) -> None:
+    """Open every plot's badge slide-out.
+
+    Board badges are no longer a table column: each plot's chips render in its own row of
+    the slide-out panel (`#badge-overlay .badge-overlay-row`), which badge-overlay.js fills
+    only once that plot's handle in the right-edge badge bar (`#badge-bar .badge-bar-row`)
+    is opened."""
+    handles = page.locator("#badge-bar .badge-bar-row")
+    handles.first.wait_for(timeout=30_000)
+    handles.evaluate_all("rows => rows.forEach(row => { if (row.getAttribute('aria-expanded') !== 'true') row.click(); })")
+    page.wait_for_function(
+        """() => {
+            const rows = [...document.querySelectorAll('#badge-overlay .badge-overlay-row')];
+            return rows.length > 0 && rows.every(row => row.classList.contains('is-open'));
+        }""",
+        timeout=30_000,
+    )
+
+
 def test_badged_plot_renders_badge_row(live_browser: tuple[Browser, str]) -> None:
     browser, base_url = live_browser
     page = _page(browser, base_url)
     try:
-        rows = page.locator("#plot-tbody > tr.plot-row")
-        badged = []
-        for index in range(rows.count()):
-            _expand(page, index)
-            if rows.nth(index).locator(".badge-row").count():
-                badged.append(index)
-                break
-            rows.nth(index).click()
+        _open_badge_slideouts(page)
+        slideouts = page.locator("#badge-overlay .badge-overlay-row")
+        badged = [index for index in range(slideouts.count()) if slideouts.nth(index).locator(".badge-row").count()]
         assert badged, "the offline board fixture has no badge-bearing plot"
-        assert rows.nth(badged[0]).locator(".badge-row > *").count() > 0
+        assert slideouts.nth(badged[0]).locator(".badge-row > *").count() > 0
     finally:
         page.close()
 
