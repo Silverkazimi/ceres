@@ -106,10 +106,45 @@ PROBE = r"""(() => {
 })();"""
 
 
+# Expected editor-band height, derived from the band's own terms rather than read back
+# from its block-size. Phone layout (`html.ceres-lw-le-1279`) keeps the fixed rem band
+# from eos.js plotGeometryProfile (22.5125rem below 62rem of width, else 18.5125rem).
+# Desktop bands are scene-scaled (ceres.css `--eos-content-height`): facts + controls +
+# cards + footer + 21 scene units, where one scene unit is 1/1920 of the `.slot-editor`
+# container's inline size. Each term is measured on its own (a zero-width probe sized by
+# that single term) and the scene unit comes from the container's measured content
+# width, so the sum is an independent check of the band's resolved block-size.
+EXPECTED_BAND = r"""band=>{
+  const root=parseFloat(getComputedStyle(document.documentElement).fontSize);
+  if(document.documentElement.classList.contains('ceres-lw-le-1279')){
+    const width=Math.min(band.closest('td').getBoundingClientRect().width,document.querySelector('#plot-table-scroll').clientWidth,1920);
+    return (width/root<62?22.5125:18.5125)*root;
+  }
+  const term=value=>{
+    const probe=document.createElement('div');
+    probe.style.cssText=`position:absolute;visibility:hidden;inline-size:0;padding:0;border:0;block-size:${value}`;
+    band.append(probe);
+    const height=probe.getBoundingClientRect().height;
+    probe.remove();
+    return height;
+  };
+  const container=band.closest('.slot-editor'), cs=getComputedStyle(container);
+  const unit=(container.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight))/1920;
+  return ['var(--eos-facts)','var(--eos-controls)','var(--eos-cards)','var(--eos-footer)'].map(term).reduce((a,b)=>a+b,0)+21*unit;
+}"""
+
+
 def _payload(report, details_by_id, *, count=80, capacity=5, no_art=False, long=False):
     board = project_board(report, details_by_id)
-    template = next(row for row in board["plots"] if row["workers"])
-    worker = copy.deepcopy(template["workers"][0])
+    # A plain powered worker plot. The fixture report's worker plots are Runi plots whose
+    # slot-0 card is the Runi (card_detail_id 505): every Eos worker cloned from that card
+    # would be a Runi to the product (format.js isRuniWorker) and fill the Runi tile, and
+    # the template's staked Runi would add a Runi occupant. Clone a non-Runi worker and
+    # leave the Runi unstaked; power comes from the Power Core set below.
+    def _runi(worker):
+        return worker.get("runi_number") not in (None, "") or worker.get("card_detail_id") == 505 or str(worker.get("card_name") or worker.get("name") or "").strip().lower() == "runi"
+    template = next(row for row in board["plots"] if any(not _runi(worker) for worker in row["workers"]))
+    worker = copy.deepcopy(next(worker for worker in template["workers"] if not _runi(worker)))
     plots = []
     for index in range(count):
         row = copy.deepcopy(template)
@@ -120,7 +155,7 @@ def _payload(report, details_by_id, *, count=80, capacity=5, no_art=False, long=
         row["resource"] = "grain"
         row["plot_status"] = "natural"
         row["assets_loaded"] = True
-        row["capacity"].update(potential_card_capacity=capacity, display=f"{capacity}/{capacity}")
+        row["capacity"].update(potential_card_capacity=capacity, display=f"{capacity}/{capacity}", runi_staked=False, worker_count=capacity)
         row["workers"] = []
         row["bonus"] = {
             "power_core":{"name":"Power Core","asset_ref":f"power-{index}"},
@@ -128,6 +163,7 @@ def _payload(report, details_by_id, *, count=80, capacity=5, no_art=False, long=
             "title":{"name":"The Untamed","asset_ref":f"title-{index}","boost":0.1},
         }
         row.setdefault("staking_facts", {})["is_power_core_staked"] = True
+        row["staking_facts"]["is_runi_staked"] = False
         for slot in range(capacity):
             item = copy.deepcopy(worker)
             item.update(slot=slot + 1, name=f"Eos Worker {slot + 1}", card_name=f"Eos Worker {slot + 1}",
@@ -137,10 +173,18 @@ def _payload(report, details_by_id, *, count=80, capacity=5, no_art=False, long=
                 item.pop("editions", None)
             row["workers"].append(item)
         if long:
+            # Staged-removal notices now feed one warning model (plot-warnings.js): any
+            # notice keeps its sentence, and the Bloodline finder action is carried only by
+            # a `bloodline_pair_deactivated` notice. So the long messages and the unique
+            # actions ride on two notices each.
             row["notices"] = [
                 {"code":f"eos_notice_{i}", "severity":"caution", "blocking":"none", "kind":"warning",
-                 "message":f"Notice {i}: " + "A long but complete actionable warning. " * 12,
-                 "action":{"id":"open_bloodline_pairs", "label":f"Inspect companion {i}", "sub_type":"Eos"}}
+                 "message":f"Notice {i}: " + "A long but complete actionable warning. " * 12}
+                for i in range(3)
+            ] + [
+                {"code":"bloodline_pair_deactivated", "severity":"caution", "blocking":"none", "kind":"warning",
+                 "context":{"sub_type":f"Eos{i}"},
+                 "action":{"id":"open_bloodline_pairs", "label":f"Inspect companion {i}", "sub_type":f"Eos{i}"}}
                 for i in range(3)
             ]
         plots.append(row)
@@ -158,6 +202,7 @@ class EosBrowser:
         self.gates = {name:asyncio.Event() for name in ("detail", "scene", "portrait", "upgrade")}
         self.requests, self.active, self.peak, self.errors = [], 0, 0, []
         self.fail_detail = False
+        self.reserved = None
         self.fail_primary = False
         self.fail_art = False
         self.scene_requests = 0
@@ -185,6 +230,19 @@ class EosBrowser:
             uid = path.split("/")[3]
             await route.fulfill(status=503 if self.fail_detail else 200,
                                 json={"detail":"Eos detail temporarily unavailable"} if self.fail_detail else self.details[uid])
+        elif path.endswith("/removal-impact"):
+            # A staged removal is priced first; the page refuses (and stages nothing) when
+            # the answer is not a well-formed impact, so the fixture prices each removed
+            # asset as a neutral, still-powered change.
+            refs = (request.post_data_json or {}).get("asset_refs") or []
+            await route.fulfill(json={
+                "deed_uid": path.split("/")[3], "before_powered": True, "after_powered": True,
+                "removed": [{"asset_ref": ref, "own_harvest_pp": 0, "own_construction_pp": 0, "own_base_pp": 0} for ref in refs],
+                "plot_residual_delta": 0, "plot_ability_delta": 0, "harvest_pp_delta": 0,
+                "own_construction_pp_delta": {"status": "point", "value": 0, "low": 0, "high": 0},
+                "own_base_pp_delta": {"status": "point", "value": 0, "low": 0, "high": 0},
+                "notices": [],
+            })
         elif "upgrade" in path:
             await self.gates["upgrade"].wait()
             await route.fulfill(json={"options":[], "candidates":[]})
@@ -200,7 +258,8 @@ class EosBrowser:
                 self.scene_requests += int(scene)
                 try:
                     await self.gates["scene" if scene else "portrait"].wait()
-                    if self.fail_art or (self.fail_primary and "eos-skin" in path):
+                    primary = self.fail_primary(path) if callable(self.fail_primary) else (self.fail_primary and "eos-skin" in path)
+                    if self.fail_art or primary:
                         await route.fulfill(status=404, body="controlled image failure")
                     else:
                         await route.fulfill(content_type="image/svg+xml", body=ART)
@@ -273,16 +332,23 @@ class EosBrowser:
         snapshot = await self.page.evaluate("""uid=>{
           const band=document.querySelector(`tr.expand-row[data-deed-uid="${uid}"] .editor-band`);
           if(!band) throw new Error('Reservation must exist synchronously after explicit click');
-          const rect=band.getBoundingClientRect(), root=parseFloat(getComputedStyle(document.documentElement).fontSize);
-          const width=Math.min(band.closest('td').getBoundingClientRect().width,document.querySelector('#plot-table-scroll').clientWidth,1920);
-          const height=(width/root<62?22.5:17.5)*root, extent=Math.max(0,document.scrollingElement.scrollHeight-innerHeight);
-          return {height, actual:rect.height, top:rect.top+scrollY, x:scrollX,
-            target:Math.max(0,Math.min(extent,scrollY+rect.top+height/2-innerHeight/2)),extent,
+          const rect=band.getBoundingClientRect();
+          const height=(EXPECTED_BAND)(band), extent=Math.max(0,document.scrollingElement.scrollHeight-innerHeight);
+          // An opening plot's ROW lands directly under the sticky header line (eos.js
+          // centreReservedPlot; it no longer centres the band in the window).
+          const plotRow=band.closest('tr.expand-row').previousElementSibling;
+          const headerLine=Math.max(0,...['header.board-header','#table-head-sticky'].map(s=>document.querySelector(s)?.getBoundingClientRect().bottom||0));
+          return {height, actual:rect.height, top:rect.top+scrollY, x:scrollX, headerLine,
+            target:Math.max(0,Math.min(extent,scrollY+plotRow.getBoundingClientRect().top-headerLine)),extent,
             focusUnchanged:document.activeElement===eosProbe.focus};
-        }""", uid)
+        }""".replace("EXPECTED_BAND", EXPECTED_BAND), uid)
         assert abs(snapshot["actual"] - snapshot["height"]) <= 0.5, snapshot
         assert snapshot["focusUnchanged"]
+        self.reserved = snapshot["height"]
         return snapshot
+
+    async def expected_band(self, uid="eos-0008"):
+        return await self.band(uid).evaluate(f"band=>({EXPECTED_BAND})(band)")
 
     def band(self, uid="eos-0008"):
         return self.page.locator(f'tr.expand-row[data-deed-uid="{uid}"] .editor-band')
@@ -307,20 +373,26 @@ class EosBrowser:
         THE FIX MUST NOT BE TO OPEN THE GATES. That would make nineteen guards pass by
         removing the condition they test — verification theatre by construction.
 
-        Ceres ships NO web fonts: no `@font-face`, no remote font stylesheet, no `.woff`
-        anywhere under `ceres/`, and the page reports `document.fonts.size == 0`. So the
-        wait can never have anything to settle here, and skipping it costs no fidelity.
-
-        That assumption is CHECKED rather than asserted in a comment: if a web font is ever
-        added, `document.fonts.size` becomes non-zero and this falls back to the normal
-        screenshot, which waits. The bypass is self-limiting instead of permanent, and the
-        day a font arrives the guards go back to waiting for it rather than silently
-        capturing unstyled text.
+        Ceres now ships one local web face (badge-face.css, vendored Inter), so
+        `document.fonts.size` is no longer 0 and the old "no fonts, skip the wait" check
+        sent every capture back to `page.screenshot()` and its 30 s fonts timeout. The
+        no-unstyled-text property is kept per face instead: after a forced layout, every
+        face the page actually uses has left `unloaded`, and the capture first awaits each
+        such face's own `loaded` promise (a face that fails to load fails the guard). That
+        settles exactly the fonts on screen and never waits on the held document.
         """
         path = self.artifact / f"{name}.png"
-        if not await self.page.evaluate("() => document.fonts.size === 0"):
-            await self.page.screenshot(path=str(path))
-            return
+        # Ceres now ships one local web face (badge-face.css, vendored Inter). The
+        # no-unstyled-text property is kept per face instead of through
+        # `document.fonts.ready`: after a forced layout every face the page actually
+        # uses has left `unloaded`, so waiting on each such face's own `loaded`
+        # promise settles exactly the fonts on screen and never waits on the held
+        # document. A face that fails to load fails the guard.
+        await self.page.evaluate("""async () => {
+          document.body.getBoundingClientRect();
+          const used=[...document.fonts].filter(face=>face.status!=='unloaded');
+          await Promise.all(used.map(face=>face.loaded));
+        }""")
         if self._cdp is None:
             self._cdp = await self.page.context.new_cdp_session(self.page)
         shot = await self._cdp.send("Page.captureScreenshot", {"format": "png"})
@@ -378,6 +450,12 @@ def _stable(trace):
                 assert abs(frame[key] - reference[key]) <= 0.5, (key, reference, frame)
 
 
+async def _staged_removal(f):
+    """A removal is staged only after its impact is priced (an async request), so wait
+    for the removed tile's restore control instead of reading the stage at once."""
+    await f.band().locator('[data-slot-action="restore"][data-group-id="worker"]').first.wait_for(state="attached")
+
+
 async def _no_new_gesture(fixture, action):
     before = await fixture.trace()
     await action()
@@ -425,16 +503,28 @@ async def _g1(f):
     _stable(await f.trace())
     measurements = await f.band().evaluate("""band=>{
       const r=band.getBoundingClientRect();
-      const regions=['.editor-facts','.slot-group-controls','.slot-grid','.slot-editor-footer'];
+      const regions=['.slot-group-controls','.slot-grid','.slot-editor-footer'];
+      const container=band.closest('.slot-editor'), cs=getComputedStyle(container);
       return {band:r.height,td:band.closest('td').getBoundingClientRect().height,
+        factsInset:band.querySelector('.slot-editor-body').getBoundingClientRect().top-r.top,
+        sceneUnit:(container.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight))/1920,
         tdBorder:getComputedStyle(band.closest('td')).borderBottomWidth,
         regions:regions.map(selector=>{const n=band.querySelector(selector);return {selector,height:n?.getBoundingClientRect().height??null}}),
         satellites:[...band.querySelectorAll('.power-satellite')].map(n=>{const b=n.getBoundingClientRect();return {top:b.top-r.top,bottom:b.bottom-r.top}})};
     }""")
-    assert measurements["band"] == 280, measurements
+    measurements["expected"] = await f.expected_band()
+    measurements["reserved"] = f.reserved
+    # The band settles at the height reserved synchronously on open, and that height is
+    # the scene-scaled sum of its own terms (EXPECTED_BAND), not a fixed pixel count.
+    assert abs(measurements["band"] - measurements["reserved"]) <= 0.5, measurements
+    assert abs(measurements["band"] - measurements["expected"]) <= 0.5, measurements
+    # The facts line is gone (editor.js renders `facts = ''`); its term survives as the
+    # body's top inset. The band is still fully partitioned: inset + controls + cards +
+    # footer + 21 scene units, measured from the rendered regions.
     assert all(region["height"] is not None for region in measurements["regions"]), measurements
-    assert abs(sum(region["height"] for region in measurements["regions"]) - 280) <= 0.5, measurements
-    assert all(0 <= s["top"] <= s["bottom"] <= 280.5 for s in measurements["satellites"]), measurements
+    partition = sum(region["height"] for region in measurements["regions"]) + measurements["factsInset"] + 21 * measurements["sceneUnit"]
+    assert abs(partition - measurements["band"]) <= 0.5, (partition, measurements)
+    assert all(0 <= s["top"] <= s["bottom"] <= measurements["band"] + 0.5 for s in measurements["satellites"]), measurements
     (f.artifact / "measured-band-arithmetic.json").write_text(json.dumps(measurements, indent=2))
 
 
@@ -451,7 +541,9 @@ async def _page_all_slots(f, capacity):
         await next_page.first.click()
         await asyncio.sleep(0.08)
         await _fit(f, strict=False)
-    assert seen == set(range(capacity)), (capacity, seen)
+    # A zero-capacity plot still renders the default five addable worker tiles
+    # (editor.js editorGroups: slotFloor = capacity > 0 ? capacity : DEFAULT_WORKER_SLOTS).
+    assert seen == set(range(capacity or 5)), (capacity, seen)
     if capacity:
         assert {"worker","power_core","totem","title"} <= units, (capacity,units)
 
@@ -470,8 +562,13 @@ async def _g2(f):
 
 
 async def _g3(f):
+    # The boot loading seal (index.html `.harvest-scene`) is a fixed piece of terrain art
+    # shown before any plot exists; it is page chrome, not a plot reveal, so its own
+    # static sources are read from the page and kept out of the reveal ledger.
+    boot = set(await f.page.evaluate("()=>[...document.querySelectorAll('.harvest-scene img')].map(n=>new URL(n.getAttribute('src'),location.href).pathname)"))
+    assert boot, "boot seal art moved; re-check which requests are page chrome"
     def reveal_requests():
-        return [r for r in f.requests if "terrain-backgrounds" in r["path"] or "productionBuildingUniform" in r["path"] or "Eos%20Worker" in r["path"] or "Eos Worker" in r["path"]]
+        return [r for r in f.requests if r["path"] not in boot and ("terrain-backgrounds" in r["path"] or "productionBuildingUniform" in r["path"] or "Eos%20Worker" in r["path"] or "Eos Worker" in r["path"])]
     await asyncio.sleep(0.1)
     assert not reveal_requests(), reveal_requests()
     await f.module("table", "m=>m.render()")
@@ -479,7 +576,7 @@ async def _g3(f):
     assert not reveal_requests(), reveal_requests()
     await f.open()
     await asyncio.sleep(0.1)
-    assert f.scene_requests > 0
+    assert [r for r in reveal_requests() if "terrain-backgrounds" in r["path"] or "productionBuildingUniform" in r["path"]], f.requests
     assert len({r["path"] for r in reveal_requests()}) <= 2, reveal_requests()
     assert not [r for r in f.requests if "/api/plots/" in r["path"] and "eos-0008" not in r["path"]]
 
@@ -489,47 +586,66 @@ async def _g4(f):
     await f.filmstrip("initial-veil", 0.12)
     f.release("scene")
     await asyncio.sleep(0.4)
+    # The opaque `.eos-worker-cover` is retired: mountPlotPresentation hides it on every
+    # mount (pinned by test_eos_p5_contract). Worker tiles are now permanent frames, and
+    # the workers' negative space is the portraits themselves: none exists while the
+    # detail is held (inert, empty scaffold tiles), and each managed portrait stays
+    # unpainted (opacity 0 / hidden) until its portrait request is released.
     state = await f.band().evaluate("""band=>{
       const scene=band.querySelector('.editor-scene'),veil=band.querySelector('.eos-scenic-veil'),cover=band.querySelector('.eos-worker-cover');
-      const s=getComputedStyle(scene),v=veil&&getComputedStyle(veil),c=cover&&getComputedStyle(cover);
+      const s=getComputedStyle(scene),v=veil&&getComputedStyle(veil);
+      const cells=[...band.querySelectorAll('.slot-tile-cell')];
       return {background:s.backgroundImage,terrain:s.getPropertyValue('--scene-terrain'),veil:veil?.hidden?'0':v?.opacity??'0',
-        cover:c?.opacity,backgroundColor:c?.backgroundColor,slotCount:band.querySelectorAll('.slot-tile').length};
+        coverShown:!!cover&&getComputedStyle(cover).display!=='none',cells:cells.length,
+        live:cells.filter(n=>!n.inert||n.querySelector('img')).length};
     }""")
     assert state["veil"] == "0", state
     assert "url(" in state["background"] or "url(" in state["terrain"], state
-    assert state["cover"] == "1", state
-    box = await f.band().locator(".eos-worker-cover").bounding_box()
-    assert box and box["width"] > 50
-    clip = {"x":box["x"]+box["width"]*.65,"y":box["y"]+box["height"]*.5,"width":10,"height":10}
-    body = f.band().locator(".slot-editor-body")
-    await body.evaluate("n=>n.style.background='rgb(255,0,255)'")
-    pink = Image.open(io.BytesIO(await f.page.screenshot(clip=clip))).convert("RGB").tobytes()
-    await body.evaluate("n=>n.style.background='rgb(0,255,0)'")
-    green = Image.open(io.BytesIO(await f.page.screenshot(clip=clip))).convert("RGB").tobytes()
-    assert pink == green, "Worker cover leaks changing underlying pixels"
-    await body.evaluate("n=>n.style.background=''")
+    assert not state["coverShown"], state
+    assert state["cells"] > 0 and state["live"] == 0, state
     await f.screenshot("scene-visible-worker-negative-space")
     f.release("detail")
+    portraits = f.band().locator(".slot-tile-cell img.eos-portrait-fill")
+    await portraits.first.wait_for(state="attached")
     await asyncio.sleep(0.1)
-    assert await f.band().locator(".eos-worker-cover").evaluate("n=>getComputedStyle(n).opacity") == "1"
+    painted = await portraits.evaluate_all("nodes=>nodes.filter(n=>{const s=getComputedStyle(n);return s.visibility!=='hidden'&&Number(s.opacity)>0}).length")
+    assert painted == 0, "Held portraits are painted before their release"
+    portrait = portraits.first
+    box = await portrait.evaluate("n=>{const r=n.closest('.slot-tile').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}}")
+    assert box and box["width"] > 20, box
+    clip = {"x":box["x"]+box["width"]*.5-5,"y":box["y"]+box["height"]*.5-5,"width":10,"height":10}
+    await portrait.evaluate("n=>n.style.background='rgb(255,0,255)'")
+    pink = Image.open(io.BytesIO(await f.page.screenshot(clip=clip))).convert("RGB").tobytes()
+    await portrait.evaluate("n=>n.style.background='rgb(0,255,0)'")
+    green = Image.open(io.BytesIO(await f.page.screenshot(clip=clip))).convert("RGB").tobytes()
+    assert pink == green, "Held portrait leaks changing pixels"
+    await portrait.evaluate("n=>n.style.background=''")
     await f.filmstrip("portraits-held", 0.2)
 
 
 async def _g5(f):
-    f.fail_primary = True
+    # A skinned worker's candidates are now only that skin's URLs (editorCardImageHtml
+    # filters to the skin; there is no fall back to the unskinned card). The primary
+    # candidate (the skin's .jpg) fails; the next candidate (the same skin's .png)
+    # must be the one decoded and shown.
+    primary = lambda path: "/eos-skin/" in path and urlparse(path).path.endswith(".jpg")
+    f.fail_primary = primary
     await f.page.evaluate("eosProbe.blockDecode=true")
     f.release("scene", "portrait", "detail", "upgrade")
     await f.open()
     await f.page.wait_for_function("eosProbe.pending.length > 0")
     decoded = await f.trace()
     assert any(d["managed"] and d["connected"] and d["done"] is None for d in decoded["decodes"])
-    assert await f.band().locator(".eos-worker-cover").evaluate("n=>getComputedStyle(n).opacity") == "1"
+    # The opaque worker cover is retired (see G4); a portrait whose decode is held is unpainted.
+    assert await f.band().locator(".slot-tile-cell img.eos-portrait-fill").evaluate_all(
+        "nodes=>nodes.filter(n=>{const s=getComputedStyle(n);return s.visibility!=='hidden'&&Number(s.opacity)>0}).length") == 0
     assert await f.band().locator("img[data-eos-managed]").count() > 0
-    assert any("eos-skin" in r["path"] for r in f.requests)
+    assert any(primary(r["path"]) for r in f.requests)
     await f.page.evaluate("eosProbe.releaseDecode()")
     await f.terminal()
     actual = await f.band().locator("img[data-eos-managed]").evaluate_all("nodes=>nodes.map(n=>({src:n.currentSrc,decoded:eosProbe.decodes.some(d=>d.node===n&&d.done!==null&&d.src===n.currentSrc)}))")
-    assert actual and all(item["decoded"] and "eos-skin" not in item["src"] for item in actual), actual
+    assert actual and all(item["decoded"] and not primary(item["src"]) for item in actual), actual
+    assert [item for item in actual if "/eos-skin/" in item["src"]], actual
     await _page_all_slots(f, 5)
     await f.page.wait_for_function("[...document.querySelectorAll('img[data-eos-managed]')].filter(n=>n.closest('.editor-band')).every(n=>n.dataset.eosOutcome==='decoded')")
     await f.screenshot("selected-dom-candidate-decoded")
@@ -593,7 +709,7 @@ async def _g8(f):
     remove = f.band().locator('[data-slot-action="remove"][data-group-id="worker"]').first
     assert await remove.count(), "Representative fixture must expose a real stage control"
     await remove.click(force=True)
-    await asyncio.sleep(0.1)
+    await _staged_removal(f)
     staged = await f.module("staging", "m=>m.CERES_STAGE.length")
     assert staged == 1
     await f.terminal()
@@ -611,7 +727,10 @@ async def _g9(f):
     assert len([r for r in f.requests if "/api/plots/eos-0008" in r["path"]]) == 1, "Reopen duplicated in-flight detail"
     old_gate = f.gates["detail"]
     f.gates["detail"] = asyncio.Event()
-    await f.module("board", "m=>{m.loadBoard();return true}")
+    # A non-quiet loadBoard now closes every open plot on purpose (board.js: "All plots
+    # should load closed"); the same-page board re-read that keeps open plots is the
+    # quiet one, which is the generation change this guard is about.
+    await f.module("board", "m=>{m.loadBoard({quiet:true});return true}")
     await f.page.wait_for_function("document.querySelector('.editor-band[data-plot-state=preparing]')!==null")
     old_gate.set()
     f.release("scene", "portrait")
@@ -636,7 +755,7 @@ async def _g10(f):
     await _no_new_gesture(f, remount)
     assert "Eos Worker 1" in await f.band().inner_text()
     await _no_new_gesture(f, lambda:f.module("table", "m=>m.render()"))
-    await _no_new_gesture(f, lambda:f.module("board", "m=>m.loadBoard()"))
+    await _no_new_gesture(f, lambda:f.module("board", "m=>m.loadBoard({quiet:true})"))  # see G9
     assert "Eos Worker 1" in await f.band().inner_text()
     assert not [r for r in f.requests if "/api/plots/" in r["path"] and "eos-0008" not in r["path"]]
 
@@ -691,6 +810,7 @@ async def _g14(f, mutation=None):
     await f.terminal()
     remove = f.band().locator('[data-slot-action="remove"][data-group-id="worker"]').first
     await remove.click()
+    await _staged_removal(f)
     await f.module("staging", """(m,notices)=>{
       if(m.CERES_STAGE.length!==1)throw new Error('Expected one genuinely staged removal');
       m.CERES_STAGE[0]._notices=notices;
@@ -700,7 +820,9 @@ async def _g14(f, mutation=None):
         assert await f.page.evaluate(mutation), "G14 named disclosure mutation landed"
     before = await f.band().evaluate("b=>b.getBoundingClientRect().height")
     assert await f.page.locator('[data-eos-details], .eos-details').count() == 0, "G14 unrequested disclosure is absent"
-    assert await f.page.locator('.slot-editor .editor-facts').count() == 1, "G14 plot facts are not duplicated"
+    # The plot-facts line is gone (editor.js renders facts = ''); the plot's staged-change
+    # facts are the change badges in the worker controls line, shown exactly once.
+    assert await f.page.locator('.slot-editor .editor-change-badges').count() == 1, "G14 plot facts are not duplicated"
     for i in range(3):
         action = f.page.get_by_role("button", name=f"Inspect companion {i}", exact=True)
         assert await action.count() == 1 and await action.is_visible(), "G14 unique notice actions survive without disclosure"
@@ -716,7 +838,7 @@ async def _g14(f, mutation=None):
 @pytest.mark.parametrize("mutation,script,message", [
     ("restore_details", "()=>{const el=document.createElement('button');el.dataset.eosDetails='';el.textContent='Details';document.querySelector('.slot-editor-footer').append(el);return !!document.querySelector('[data-eos-details]');}", "G14 unrequested disclosure is absent"),
     ("restore_disclosure_panel", "()=>{const el=document.createElement('div');el.className='eos-details';document.querySelector('.slot-editor').append(el);return !!document.querySelector('.eos-details');}", "G14 unrequested disclosure is absent"),
-    ("duplicate_plot_facts", "()=>{const el=document.querySelector('.editor-facts');el.parentElement.append(el.cloneNode(true));return document.querySelectorAll('.slot-editor .editor-facts').length===2;}", "G14 plot facts are not duplicated"),
+    ("duplicate_plot_facts", "()=>{const el=document.querySelector('.slot-editor .editor-change-badges');el.parentElement.append(el.cloneNode(true));return document.querySelectorAll('.slot-editor .editor-change-badges').length===2;}", "G14 plot facts are not duplicated"),
     ("drop_notice_action", "()=>{const el=[...document.querySelectorAll('[data-notice-action]')].find(n=>n.textContent.includes('Inspect companion 0'));if(!el)return false;el.remove();return ![...document.querySelectorAll('[data-notice-action]')].some(n=>n.textContent.includes('Inspect companion 0'));}", "G14 unique notice actions survive without disclosure"),
 ])
 def test_g14_disclosure_corrections_reject_named_mutations(mutation, script, message, report, details_by_id, tmp_path):
@@ -837,8 +959,10 @@ async def _g17(f):
     assert abs(await f.page.evaluate("scrollY") - snapshot["target"]) <= 0.5
     _stable(await f.trace())
     if snapshot["target"] not in (0, snapshot["extent"]):
-        centre = await f.band(uid).evaluate("b=>{const r=b.getBoundingClientRect();return r.top+r.height/2-innerHeight/2}")
-        assert abs(centre) <= 0.5
+        offset = await f.band(uid).evaluate("""b=>{const row=b.closest('tr.expand-row').previousElementSibling;
+          const line=Math.max(0,...['header.board-header','#table-head-sticky'].map(s=>document.querySelector(s)?.getBoundingClientRect().bottom||0));
+          return row.getBoundingClientRect().top-line}""")
+        assert abs(offset) <= 0.5, offset
     (f.artifact / "centre-arithmetic.json").write_text(json.dumps(snapshot, indent=2))
 
 
@@ -910,7 +1034,7 @@ async def _g19(f, expect_cover_mutation=False, after_scene_mutation=None):
         runTop:r.top,runBottom:r.bottom,coverTop:cr.top,coverBottom:cr.bottom};
     }""")
     assert early["veilParent"] and early["veilZ"] > early["mainZ"], "G19 scenic veil remains above the affinity stacking context"
-    assert early["height"] == 280 and not early["hiddenByAria"]
+    assert abs(early["height"] - f.reserved) <= 0.5 and not early["hiddenByAria"], (early, f.reserved)
     assert early["controlsGated"], "G19 worker controls remain gated during scenic release"
     assert not early["coverOverlap"], "G19 worker cover excludes the full footer affinity run"
     await f.screenshot("badges-beneath-initial-veil")
@@ -937,6 +1061,22 @@ async def _g19(f, expect_cover_mutation=False, after_scene_mutation=None):
     _stable(await f.trace())
 
 
+# Art that never arrives (or never decodes) is no longer frozen at the first 10 s budget:
+# eos.js retries it on the art.js schedule (1, 2, 4, 8, 15 s, each with a 10 s budget)
+# and freezes it to the named fallback only after the last attempt, about a minute in.
+# The guards that need that frozen fallback run the same schedule and budgets scaled 1/50.
+_ART_TIMING = """const CARD_SERVICE_BUDGET_MS = 10000;
+const SCENE_SERVICE_BUDGET_MS = 10000;
+const SCENE_RELEASE_MS = 1200;
+const CARD_RELEASE_MS = 1800;
+// the same schedule as art.js -- 1, 2, 4, 8, 15 s, a fresh URL each retry.
+const RECOVERY_DELAYS_MS = IMAGE_RETRY_DELAYS_MS;"""
+FAST_ART_RECOVERY = ("eos.js", _ART_TIMING, _ART_TIMING
+                     .replace("CARD_SERVICE_BUDGET_MS = 10000;", "CARD_SERVICE_BUDGET_MS = 200;")
+                     .replace("SCENE_SERVICE_BUDGET_MS = 10000;", "SCENE_SERVICE_BUDGET_MS = 200;")
+                     .replace("RECOVERY_DELAYS_MS = IMAGE_RETRY_DELAYS_MS;", "RECOVERY_DELAYS_MS = IMAGE_RETRY_DELAYS_MS.map((delay) => delay / 50);"))
+
+
 SCENARIOS = {f"G{i}":globals()[f"_g{i}"] for i in range(1, 20)}
 
 
@@ -947,7 +1087,8 @@ def test_plot_reveal_guards(guard, report, details_by_id, tmp_path):
     board, details = _payload(report, details_by_id, count=count, capacity=capacity, long=guard == "G14")
 
     async def run():
-        async with _browser(board, details, tmp_path / guard, reduced=guard == "G11") as fixture:
+        async with _browser(board, details, tmp_path / guard, reduced=guard == "G11",
+                            mutation=FAST_ART_RECOVERY if guard == "G6" else None) as fixture:
             await SCENARIOS[guard](fixture)
             assert not fixture.errors, fixture.errors
 
@@ -1055,6 +1196,7 @@ def test_g18_pending_write_cancellation_matrix(intent, count, report, details_by
                         )
                 remove = f.band().locator('[data-slot-action="remove"][data-group-id="worker"]').first
                 await remove.click(force=True)
+                await _staged_removal(f)
                 assert await f.module("staging", "m=>m.CERES_STAGE.length") == 1
             elif intent == "wheel":
                 await f.page.mouse.wheel(0, 120)
@@ -1124,7 +1266,8 @@ def test_g18_stale_anchor_guard_rejects_its_red_mutation(mutated, report, detail
 @pytest.mark.parametrize("guard,css", (
     ("G1", ".editor-band {block-size:auto!important;min-block-size:0!important}"),
     ("G2", ".editor-band {inline-size:100vw!important;max-inline-size:none!important}"),
-    ("G4", ".eos-worker-cover {opacity:.5!important}"),
+    # the worker cover is retired (see _g4); the red mutation paints the held portraits.
+    ("G4", ".slot-tile-cell img.eos-portrait-fill {opacity:1!important;visibility:visible!important}"),
     ("G19", ".editor-main {z-index:5!important}"),
     ("G19-cover", ".eos-worker-cover {top:0!important;bottom:0!important;left:0!important;right:0!important}"),
 ))
@@ -1168,7 +1311,7 @@ def test_g5_rejected_actual_node_decode_becomes_named_fallback(reduced, report, 
     board, details = _payload(report, details_by_id)
 
     async def run():
-        async with _browser(board, details, tmp_path / f"G5-rejected-{reduced}", reduced=reduced) as f:
+        async with _browser(board, details, tmp_path / f"G5-rejected-{reduced}", reduced=reduced, mutation=FAST_ART_RECOVERY) as f:
             await f.page.evaluate("eosProbe.rejectDecode=true")
             f.release("scene", "detail", "portrait", "upgrade")
             await f.open()
@@ -1214,7 +1357,8 @@ def test_g11_reduced_slow_error_and_art_retry(mode, report, details_by_id, tmp_p
     board, details = _payload(report, details_by_id)
 
     async def run():
-        async with _browser(board, details, tmp_path / f"G11-{mode}", reduced=True) as f:
+        async with _browser(board, details, tmp_path / f"G11-{mode}", reduced=True,
+                            mutation=FAST_ART_RECOVERY if mode == "art-timeout" else None) as f:
             if mode == "art-timeout":
                 await _g6(f)
             elif mode == "error":

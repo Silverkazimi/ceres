@@ -21,8 +21,14 @@ let hooks = {};
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const forcedColors = () => window.matchMedia('(forced-colors: active)').matches;
 
+// The plot's splinter badges lead the worker controls row now (editor.js splinterAffinityHtml)
+// instead of the retired footer column (`[data-terrain-affinity="editor"]`). Like that column
+// they belong to the scene, not to the workers: the row is gated control by control, and its
+// badges are left to applyScene, which shows them when the scene releases.
+const SCENE_BADGES = '.slot-group-controls > .editor-splinter-affinity, [data-terrain-affinity="editor"]';
 function revealNodes(frame) {
-  return [...(frame?.querySelectorAll('[data-reveal-group]:not([data-eos-permanent-frame])') || [])];
+  return [...(frame?.querySelectorAll('[data-reveal-group]:not([data-eos-permanent-frame])') || [])]
+    .flatMap((node) => (node.matches?.('.slot-group-controls') ? [...node.children].filter((child) => !child.matches(SCENE_BADGES)) : [node]));
 }
 
 export function configureEos(callbacks) {
@@ -349,12 +355,11 @@ function applyScene(session) {
     art.style.setProperty('--art-r', geometry.r);
     art.style.setProperty('--art-ratio', geometry.ratio);
   }
-  const badges = frame.querySelector('[data-terrain-affinity="editor"]');
-  if (badges) {
+  [...(frame.querySelectorAll?.(SCENE_BADGES) || [])].forEach((badges) => {
     badges.inert = !session.sceneReleased;
     badges.setAttribute('aria-hidden', String(!session.sceneReleased));
     badges.style.visibility = session.sceneReleased ? '' : 'hidden';
-  }
+  });
   const veil = frame.querySelector('.eos-scenic-veil');
   if (veil) veil.hidden = true;
 }
@@ -878,8 +883,18 @@ function prepareWorkers(session) {
         record.failureRevision = revision;
         rememberArtFailure(session, key, outcome, record);
       }
-      image.dataset.eosOutcome = 'deferred';
-      image.removeAttribute('src');
+      // the LAST attempt timing out freezes the art (rememberArtFailure): that is a final
+      // outcome like any other failure -- the named fallback, and the aperture is no longer
+      // pending. Left deferred, nothing would ever run again for it and the plot would stay
+      // "Preparing worker art…" for good.
+      if (record.frozen || session.failedArt.has(key)) {
+        fallback(image);
+        session.pendingArt.delete(aperture);
+        setStatus(session);
+      } else {
+        image.dataset.eosOutcome = 'deferred';
+        image.removeAttribute('src');
+      }
     } else if (outcome.kind !== 'deferred') {
       if (record.failureRevision !== revision) {
         record.failureRevision = revision;
