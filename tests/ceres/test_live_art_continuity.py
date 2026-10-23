@@ -150,12 +150,15 @@ def test_live_art_slot_order_and_fixed_frames(report, details_by_id, tmp_path):
               const r=n.getBoundingClientRect(); return [r.left,r.top,r.width,r.height];
             })""", "eos-0008")
             if red:
+                # `transition: none`: the cells now ease their transform (ceres.css), so without it
+                # the translated frame has not moved yet when the decode settles and is measured.
                 await fixture.page.evaluate("""uid => {
                   const band = document.querySelector(`tr.expand-row[data-deed-uid="${uid}"] .editor-band`);
                   const observer = new MutationObserver(() => {
                     const cell = band?.querySelectorAll('.slot-tile-cell')[4];
                     if (!cell) return;
                     observer.disconnect();
+                    cell.style.transition = 'none';
                     cell.style.transform = 'translateX(4px)';
                   });
                   observer.observe(band, {attributes: true, childList: true, subtree: true});
