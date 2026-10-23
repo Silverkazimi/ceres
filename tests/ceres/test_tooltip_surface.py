@@ -30,6 +30,21 @@ BOARD_TOOLTIP_KINDS = frozenset(
 HONEST_GAP_KINDS = frozenset({"set", "title"})
 
 
+def _pointer_onto(page, target) -> None:
+    """Bring a real pointer to rest on `target`, the way a user's pointer arrives.
+
+    After any scroll, tooltip.js opens nothing until the pointer has really moved more
+    than SCROLL_QUIET_PX (maintainer, 2026-09-29: "tooltips create hurdles when
+    scrolling"), and the board's own load-time scrolls (its filter selects) count as one.
+    Playwright's `hover()` is a single synthetic move, which only arms that check; a short
+    stepped approach is a real pointer move."""
+    box = target.bounding_box()
+    assert box, "hover target has no layout box"
+    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    page.mouse.move(max(0, x - 30), max(0, y - 30))
+    page.mouse.move(x, y, steps=6)
+
+
 def _asset_root() -> Path:
     source = (STATIC / "state.js").read_text(encoding="utf-8")
     match = re.search(r"export const ASSET_BASE = ['\"]([^'\"]+)['\"]", source)
@@ -310,7 +325,8 @@ def test_rendered_key_contrast_meets_wcag_aa_for_all_theme_severity_combinations
         for theme in ("alchemical", "dark", "light", "wood"):
             page.evaluate("theme => { document.documentElement.dataset.theme = theme; }", theme)
             for severity in ("none", "caution", "danger"):
-                target.hover()
+                target.scroll_into_view_if_needed()
+                _pointer_onto(page, target)
                 tooltip = page.locator("#ceres-tooltip.is-visible")
                 tooltip.wait_for(timeout=5_000)
                 tooltip.evaluate(
@@ -342,7 +358,8 @@ def test_rendered_key_has_weight_size_position_and_name_empty_guard(
         expanded = _open_editor_with_empty_worker(page)
         target = expanded.locator("[data-tip-key]").first
         target.wait_for(timeout=10_000)
-        target.hover()
+        target.scroll_into_view_if_needed()
+        _pointer_onto(page, target)
         tooltip = page.locator("#ceres-tooltip.is-visible")
         tooltip.wait_for(timeout=5_000)
         metrics = tooltip.evaluate(
@@ -357,7 +374,8 @@ def test_rendered_key_has_weight_size_position_and_name_empty_guard(
         # kind; identify it by its empty body instead.
         label = page.locator("[data-tip]:not([data-tip-body]):visible").first
         label.wait_for(timeout=10_000)
-        label.hover()
+        label.scroll_into_view_if_needed()
+        _pointer_onto(page, label)
         tooltip.wait_for(timeout=5_000)
         assert tooltip.locator(".tip-body").evaluate("el => el.offsetHeight") == 0
     finally:

@@ -15,6 +15,21 @@ from . import board_basic_recording as recording
 PLOT_WITH_RUNI = recording.OVERCAP.label
 
 
+def _pointer_onto(page, target) -> None:
+    """Bring a real pointer to rest on `target`, the way a user's pointer arrives.
+
+    After any scroll, tooltip.js opens nothing until the pointer has really moved more
+    than SCROLL_QUIET_PX (maintainer, 2026-09-29: "tooltips create hurdles when
+    scrolling"), and the board's own load-time scrolls (its filter selects) count as one.
+    Playwright's `hover()` is a single synthetic move, which only arms that check; a short
+    stepped approach is a real pointer move."""
+    box = target.bounding_box()
+    assert box, "hover target has no layout box"
+    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    page.mouse.move(max(0, x - 30), max(0, y - 30))
+    page.mouse.move(x, y, steps=6)
+
+
 def _open_editor(page, base_url: str, plot: str) -> None:
     page.goto(base_url)
     page.wait_for_selector("#plot-tbody > tr.plot-row", timeout=30_000)
@@ -354,7 +369,9 @@ def test_clear_workers_button_is_distinct_and_explained(editor_page):
 def _measure_arrow(page, trigger, scroll=True):
     if scroll:
         trigger.scroll_into_view_if_needed()
-    trigger.hover()
+    _pointer_onto(page, trigger)
+    # every tooltip opens after the shared intent delay (tooltip.js TOOLTIP_INTENT_MS)
+    page.locator("#ceres-tooltip.is-visible").wait_for(timeout=5_000)
     settle(page)
     assert page.locator("#ceres-tooltip").evaluate(
         "tip => !tip.hidden && tip.classList.contains('is-visible')"
@@ -386,7 +403,16 @@ def _arrow_measurements(page):
     )
     assert edge_index >= 0
     edge = page.locator('#plot-tbody [data-tip]').nth(edge_index)
-    edge.evaluate("el => Object.assign(el.style, {position: 'fixed', left: '1840px', top: '400px'})")
+    # Pinned against the right edge so its tooltip box must clamp. The badge bar is a
+    # tooltip-free strip along the page's right edge (tooltip.js NO_TIP_ZONE), so the
+    # trigger ends just left of it rather than under it.
+    edge.evaluate(
+        """el => {
+            const bar = document.getElementById('badge-bar')?.getBoundingClientRect();
+            const right = bar && bar.width ? bar.left : window.innerWidth;
+            Object.assign(el.style, {position: 'fixed', left: `${right - el.getBoundingClientRect().width - 8}px`, top: '400px'});
+        }"""
+    )
     measurements.append(_measure_arrow(page, edge, scroll=False))
     return measurements
 
