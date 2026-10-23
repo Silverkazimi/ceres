@@ -14,6 +14,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import spawn_live_ceres
+from .table_edge import OVERHANG_JS, TABLE_OVERHANG_PX, overhang_problems
 
 
 @pytest.fixture(scope="module")
@@ -144,7 +145,8 @@ def _metrics(page: Page) -> dict:
           windowTop: window.scrollY,
           clipped: [...document.querySelectorAll('#plot-tbody tr.plot-row td')]
             .filter(td => td.scrollWidth > td.clientWidth + 2).length,
-          rows: document.querySelectorAll('#plot-tbody > tr.plot-row').length
+          rows: document.querySelectorAll('#plot-tbody > tr.plot-row').length,
+          overhang: (""" + OVERHANG_JS + """)()
         })
         """
     )
@@ -153,8 +155,10 @@ def _metrics(page: Page) -> dict:
 def _assert_unclipped(page: Page) -> dict:
     metrics = _metrics(page)
     assert metrics["clipped"] == 0, json.dumps(metrics, sort_keys=True)
-    # nothing is wider than the clipping scroller, nothing scrolls sideways.
-    assert metrics["scrollerOver"] <= 1 and metrics["pageOver"] <= 0, json.dumps(metrics, sort_keys=True)
+    # nothing but the deliberate 8px edge budget (the last column's reserve
+    # padding, table_edge.py) passes the clipping scroller, nothing scrolls sideways.
+    assert metrics["scrollerOver"] <= TABLE_OVERHANG_PX + 1 and metrics["pageOver"] <= 0, json.dumps(metrics, sort_keys=True)
+    assert not overhang_problems(metrics["overhang"]), json.dumps(metrics, sort_keys=True)
     assert metrics["left"] == 0, json.dumps(metrics, sort_keys=True)
     return metrics
 

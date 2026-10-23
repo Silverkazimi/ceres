@@ -15,6 +15,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import settle, spawn_live_ceres, wait_ready
+from .table_edge import OVERHANG_JS, TABLE_OVERHANG_PX, overhang_problems
 
 
 GUTTER = 15
@@ -60,7 +61,8 @@ def _audit(page: Page) -> dict:
             return { clientWidth, pageScrollWidth: document.documentElement.scrollWidth,
                      over: over.slice(0, 8), scrollers: scrollers.slice(0, 8),
                      tableOverflow: (() => { const s = document.querySelector('#plot-table-scroll');
-                       return s && getComputedStyle(s).display !== 'none' ? s.scrollWidth - s.clientWidth : 0; })() };
+                       return s && getComputedStyle(s).display !== 'none' ? s.scrollWidth - s.clientWidth : 0; })(),
+                     overhang: (""" + OVERHANG_JS + """)() };
         }"""
     )
 
@@ -70,7 +72,10 @@ def _assert_fits(page: Page, state: str) -> None:
     assert audit["pageScrollWidth"] <= audit["clientWidth"], f"{state}: page is {audit}"
     assert not audit["over"], f"{state}: elements past client width -> {audit['over']}"
     assert not audit["scrollers"], f"{state}: horizontal scrollers -> {audit['scrollers']}"
-    assert audit["tableOverflow"] <= 1, f"{state}: the table is wider than its clipping scroller -> {audit}"
+    # Only the deliberate 8px edge budget, clipped inside the last column's
+    # reserve padding, may pass the clipping scroller (table_edge.py).
+    assert audit["tableOverflow"] <= TABLE_OVERHANG_PX + 1, f"{state}: the table is wider than its clipping scroller -> {audit}"
+    assert not overhang_problems(audit["overhang"]), f"{state}: {overhang_problems(audit['overhang'])} -> {audit}"
 
 
 def _board(live_browser: tuple[Browser, str], width: int, root_font: int) -> Page:
@@ -134,15 +139,22 @@ def test_every_plot_row_fits_full_hd(
     widest = page.evaluate(
         """() => {
             const clientWidth = document.documentElement.clientWidth;
+            const clipRight = Math.round(document.querySelector('#plot-table-scroll').getBoundingClientRect().right);
             let right = 0, which = '';
             document.querySelectorAll('#plot-tbody > tr.plot-row').forEach((row) => {
                 const edge = Math.round(row.getBoundingClientRect().right);
                 if (edge > right) { right = edge; which = row.textContent.trim().slice(0, 40); }
             });
-            return {right, clientWidth, which};
+            return {right, clientWidth, clipRight, which};
         }"""
     )
-    assert widest["right"] <= widest["clientWidth"] + 1, widest
+    # Every row ends at the clipping scroller's edge plus at most the deliberate
+    # 8px edge budget (reserve padding, clipped -- table_edge.py), and that clip
+    # edge is inside the window: no row content passes the client width.
+    assert widest["clipRight"] <= widest["clientWidth"] + 1, widest
+    assert widest["right"] <= widest["clipRight"] + TABLE_OVERHANG_PX + 1, widest
+    assert_overhang = page.evaluate(OVERHANG_JS)
+    assert not overhang_problems(assert_overhang), (overhang_problems(assert_overhang), assert_overhang)
     page.close()
 
 

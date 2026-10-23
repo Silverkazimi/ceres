@@ -58,7 +58,11 @@ import pytest
 from playwright.sync_api import Browser, Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
+from .fixture_live import install_routes
+from .conftest import LIVE_FIXTURES
+
 from .conftest import settle, spawn_live_ceres, wait_ready
+from .table_edge import OVERHANG_JS, TABLE_EXTRA_WIDTH_PX, TABLE_OVERHANG_PX, overhang_problems
 
 
 CASES = [
@@ -124,7 +128,17 @@ def _launch(live_server, width: int, height: int, dpr: float):
     context = browser.new_context(
         viewport={"width": width, "height": height},
         device_scale_factor=dpr,
+        service_workers="block",
+        reduced_motion="reduce",
     )
+    # This browser is launched here (headless choice above), not by the shared
+    # offline launcher, so give its context the same offline routing the shared
+    # browser's contexts get (conftest._offline_browser): upstream calls from the
+    # fixture set, art the checkout lacks from a placeholder, nothing else, inert
+    # WebSockets. Without it, every missing art image renders as a broken image
+    # with its alt text and widens its column (Title, Harvest/hr).
+    install_routes(context, LIVE_FIXTURES, overlays=["browser-combine"])
+    context.route_web_socket("**/*", lambda ws: None)
     context.add_init_script(_CLASSIC_SCROLLBAR_INIT)
     context.add_init_script("try { localStorage.setItem('ceres:picker-view:v1:player0005', 'grid'); } catch (e) {}")
     page = context.new_page()
@@ -196,7 +210,28 @@ _COLUMNS_JS = """() => {
         add(n.getBoundingClientRect());
       }
     }
+    // A deliberate inline inset on an in-flow box (the Lock icon's
+    // `margin-inline-start: 1rem`, ceres.css) is part of what the column must hold.
+    const walker2 = document.createTreeWalker(cell, NodeFilter.SHOW_ELEMENT);
+    for (let n = walker2.nextNode(); n; n = walker2.nextNode()) {
+      if (outOfFlow(n, cell) || !(hi > lo)) continue;
+      const r = n.getBoundingClientRect();
+      if (r.width <= 1 || r.height <= 1) continue;
+      const cs = getComputedStyle(n);
+      const ml = (parseFloat(cs.marginLeft) || 0) * f, mr = (parseFloat(cs.marginRight) || 0) * f;
+      if (ml > 0) lo = Math.min(lo, r.left - ml);
+      if (mr > 0) hi = Math.max(hi, r.right + mr);
+    }
     return hi > lo ? hi - lo : 0;
+  };
+  // A column's declared minimum width (ceres.css pins Terrain and DEC stake to
+  // their measured master widths with `min-inline-size`) is a need of that
+  // column, not slack it took from the others.
+  const declaredMin = (el) => {
+    const cs = getComputedStyle(el);
+    const min = parseFloat(cs.minWidth);
+    if (!Number.isFinite(min) || min <= 0) return 0;
+    return (cs.boxSizing === 'border-box' ? min * f : min * f + pad(el));
   };
   const badgeContent = (td) => {
     const badgeRow = td.querySelector('.badge-row');
@@ -217,6 +252,8 @@ _COLUMNS_JS = """() => {
   // A hidden column's computed padding is unaffected by display:none, so its measured
   // "content" above can be a nonzero phantom (padding alone) even though it renders
   // nothing -- zero it here so it can never inflate total_c against total_w.
+  heads.forEach((th, i) => { if (i < content.length) content[i] = Math.max(content[i], declaredMin(th)); });
+  if (row) [...row.children].forEach((td, i) => { content[i] = Math.max(content[i], declaredMin(td)); });
   hidden.forEach((h, i) => { if (h) content[i] = 0; });
   const clippedCells = rows.flatMap(tr => [...tr.children]).filter(td => td.scrollWidth > td.clientWidth + 1).length;
   const clippedHead = heads.filter(th => th.scrollWidth > th.clientWidth + 1).length;
@@ -228,6 +265,7 @@ _COLUMNS_JS = """() => {
     growIdx, tableEndReserve, hidden, rows: rows.length, container: scroller.getBoundingClientRect().width,
     scrollerCW: scroller.clientWidth, scrollerSW: scroller.scrollWidth,
     docCW: doc.clientWidth, docSW: doc.scrollWidth, clippedCells, clippedHead,
+    overhang: (""" + OVERHANG_JS + """)(),
   };
 }"""
 
@@ -324,12 +362,16 @@ def _check_columns(got: dict) -> list[str]:
         ratios.append(w / c)
     if ratios and max(ratios) / min(ratios) > MAX_SPREAD:
         failures.append(f"growth spread {max(ratios) / min(ratios):.2f} > {MAX_SPREAD}")
-    if abs(total_w - got["container"]) > 2 * got["f"]:
-        failures.append(f"table {total_w:.0f}px does not span its container {got['container']:.0f}px")
+    # The table spans its container plus the deliberate 8px edge budget whose
+    # clipped strip is the last column's reserve padding (table_edge.py).
+    if abs(total_w - got["container"] - TABLE_EXTRA_WIDTH_PX) > 2 * got["f"]:
+        failures.append(f"table {total_w:.0f}px does not span its container {got['container']:.0f}px"
+                        f" + the {TABLE_EXTRA_WIDTH_PX}px edge budget")
     if got["clippedCells"] or got["clippedHead"]:
         failures.append(f"clipped cells {got['clippedCells']}, clipped headers {got['clippedHead']}")
-    if got["docSW"] > got["docCW"] + 1 or got["scrollerSW"] > got["scrollerCW"] + 1:
+    if got["docSW"] > got["docCW"] + 1 or got["scrollerSW"] > got["scrollerCW"] + TABLE_OVERHANG_PX + 1:
         failures.append(f"side scrolling: page {got['docSW']}/{got['docCW']}, table {got['scrollerSW']}/{got['scrollerCW']}")
+    failures += overhang_problems(got.get("overhang") or {})
     return failures
 
 
