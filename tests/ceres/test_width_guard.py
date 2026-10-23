@@ -19,6 +19,7 @@ from playwright.sync_api import Browser, Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from .conftest import settle, spawn_live_ceres, wait_ready
+from .table_edge import TABLE_EXTRA_WIDTH_PX, TABLE_OVERHANG_PX, assert_overhang_is_reserve
 
 
 WIDTHS = (1280, 1290, 1440)
@@ -97,6 +98,10 @@ def _state(page: Page) -> dict:
             rows: rows.length,
             scrollerCW: scroller ? scroller.clientWidth : 0,
             scrollerSW: scroller ? scroller.scrollWidth : 0,
+            // ceres.css cancels the board's side gutters on the desktop scroller
+            // (margin-inline: -0.5rem; inline-size: calc(100% + 1rem)).
+            scrollerMargins: scroller ? -(parseFloat(getComputedStyle(scroller).marginLeft) || 0)
+              - (parseFloat(getComputedStyle(scroller).marginRight) || 0) : 0,
             tableW: table ? table.offsetWidth : 0,
             inlineColWidths, clippedCells, clippedHead,
             authoritative, hiddenFallback, mainContent,
@@ -123,20 +128,24 @@ def test_width_invariants(live_browser, width: int, dpr: float, stale: bool) -> 
         assert state["zoom"] == "1", detail
         assert state["staleKeys"] == [None, None], detail
         if state["tableVisible"]:
-            # (a) the table spans its scroller exactly (no unclaimed board space)
-            # nothing overflows the clipping scroller (nothing hidden), and no JS
-            # column width is written any more (the browser sizes the columns).
-            assert abs(state["tableW"] - state["scrollerCW"]) <= 1, detail
-            assert state["scrollerSW"] <= state["scrollerCW"] + 1, detail
+            # (a) the table spans its scroller (no unclaimed board space) plus
+            # the deliberate 8px edge budget (table_edge.py), only reserve padding
+            # passes the clipping scroller (nothing hidden), and no JS column
+            # width is written any more (the browser sizes the columns).
+            assert abs(state["tableW"] - state["scrollerCW"] - TABLE_EXTRA_WIDTH_PX) <= 1, detail
+            assert state["scrollerSW"] <= state["scrollerCW"] + TABLE_OVERHANG_PX + 1, detail
+            assert_overhang_is_reserve(page)
             assert state["inlineColWidths"] == 0, detail
             # (b) nothing is ellipsis-clipped for the real on-disk account data.
             assert state["clippedCells"] == 0, detail
             assert state["clippedHead"] == 0, detail
-            # (c) the table's container spans the board's whole content box, and
-            # the width every non-table consumer reads (scroller hidden) is that
-            # same width.
-            assert abs(state["scrollerCW"] - state["mainContent"]) <= 1, detail
-            assert abs(state["hiddenFallback"] - state["scrollerCW"]) <= 1, detail
+            # (c) the table's container spans the board's whole content box plus
+            # the two side gutters it deliberately cancels (ceres.css, pinned by
+            # test_table_under_bar.py), and the width every non-table consumer
+            # reads with the scroller hidden is that content box.
+            assert state["scrollerMargins"] > 0, detail
+            assert abs(state["scrollerCW"] - state["mainContent"] - state["scrollerMargins"]) <= 1, detail
+            assert abs(state["hiddenFallback"] - state["mainContent"]) <= 1, detail
         else:
             # Mobile-card tier: the geometry source is the board's real content
             # box -- never 0, never a clamp, never the viewport API ().
@@ -269,17 +278,35 @@ def test_opened_plot_pager_reads_the_authoritative_width(live_browser) -> None:
         page.wait_for_selector(".editor-band", timeout=30_000)
         wait_ready(page)
         settle(page)
+        # The opened plot no longer publishes its width as a `--eos-frame-width`
+        # style property: the width its geometry (band height, tile pager) is laid
+        # out for lives on its presentation session (eos.js geometryProfile, from
+        # rows.js geometrySnapshot()). It must be the table's authoritative width --
+        # the scroller, which spans the board's content box plus the two side
+        # gutters ceres.css cancels -- and never 0.
         got = page.evaluate(
-            """() => {
+            """async () => {
               """ + _MAIN_CONTENT_JS + """
-              const frame = document.querySelector('.editor-band');
+              const eos = await import('/static/eos.js');
+              const scale = await import('/static/scale.js');
+              const uid = document.querySelector('tr.expand-row')?.dataset.deedUid;
+              const session = uid ? eos.getPlotPresentation(uid) : null;
+              const scroller = document.getElementById('plot-table-scroll');
               return {
-                frameWidth: parseFloat((frame.style.getPropertyValue('--eos-frame-width') || '').replace('px', '')),
+                frameWidth: session?.geometryProfile?.width ?? null,
+                authoritative: scale.availableTableWidth(),
+                scrollerCW: scroller.clientWidth,
+                scrollerMargins: -(parseFloat(getComputedStyle(scroller).marginLeft) || 0)
+                  - (parseFloat(getComputedStyle(scroller).marginRight) || 0),
                 mainContent,
               };
             }"""
         )
-        assert abs(got["frameWidth"] - got["mainContent"]) <= 1, json.dumps(got, sort_keys=True)
+        detail = json.dumps(got, sort_keys=True)
+        assert got["frameWidth"], detail
+        assert abs(got["frameWidth"] - got["authoritative"]) <= 1, detail
+        assert abs(got["frameWidth"] - got["scrollerCW"]) <= 1, detail
+        assert abs(got["frameWidth"] - got["mainContent"] - got["scrollerMargins"]) <= 1, detail
     finally:
         page.close()
         context.close()
@@ -473,6 +500,8 @@ def test_picker_grid_shows_seven_per_row_at_full_hd(live_browser, hidden_scrollb
                 tracks: tracks.length, trackW: tracks[0], cardMin, gap, content,
                 expected: Math.min(grid.querySelectorAll(':scope > .candidate-grid-card').length, Math.max(1, Math.floor((content + gap) / (Math.min(content, cardMin) + gap)))),
                 spill, gridCW: grid.clientWidth, authoritative: scale.availableTableWidth(),
+                clipRight: document.getElementById('plot-table-scroll').getBoundingClientRect().right,
+                cardsRight: Math.max(...[...grid.querySelectorAll(':scope > .candidate-grid-card')].map(card => card.getBoundingClientRect().right)),
                 tiers: [...document.documentElement.classList].filter(c => c.startsWith('ceres-lw-')).sort(),
                 ds: document.documentElement.dataset.ceresScale || '',
               };
@@ -481,7 +510,11 @@ def test_picker_grid_shows_seven_per_row_at_full_hd(live_browser, hidden_scrollb
         detail = json.dumps(got, sort_keys=True)
         assert got["cardMin"] > 0, detail
         # The grid is laid out from the one authoritative width (minus margins).
-        assert got["authoritative"] - 32 <= got["gridCW"] <= got["authoritative"] + 1, detail
+        # The picker sits in the opened plot's row, which spans the table -- the
+        # scroller plus the deliberate 8px edge budget (table_edge.py); every card
+        # still ends inside the scroller's clip edge.
+        assert got["authoritative"] - 32 <= got["gridCW"] <= got["authoritative"] + TABLE_OVERHANG_PX + 1, detail
+        assert got["cardsRight"] <= got["clipRight"] + 0.5, detail
         assert got["tracks"] == got["expected"], detail
         assert got["spill"] == 0, detail
         assert got["tracks"] == 7, detail
