@@ -96,7 +96,7 @@ await player0014('alice', { sign: async () => 'a'.repeat(130) });
 html = accountMenuHtml('alice');
 if (!html.includes('Signed in as alice') || !html.includes('data-account="signout"')) throw Error('signed-in state missing');
 if (!html.includes('Saved data options') || html.includes('data-account="delete-space"')) throw Error('delete options are not folded');
-//  / : Sign out and Saved data options share one row, and Sign out wears the wallet logo of the current login
+// Sign out and Saved data options share one row, and Sign out wears the wallet logo of the current login
 const row = html.match(/<div class="acct-actions">(.*?)<\/div>/s);
 if (!row || !row[1].includes('data-account="signout"') || !row[1].includes('data-account="manage"')) throw Error('Sign out and Saved data options are not on one row');
 if (!/data-account="signout"[^>]*>\s*<img class="wallet-logo"/.test(html)) throw Error('Sign out does not show the wallet logo');

@@ -185,7 +185,7 @@ def test_dialog_mount_hooks_and_board_path():
     assert "openCombineGroupDialog(key, { preselect: group.sets?.[0]?.uids || null });" in body
     assert "fetch(" not in body and "idleCardsReady" not in body and "BOARD" not in body
     # a confirmed combine calls the page's hook instead of the board refresh (which would load the board)
-    assert ("if (COMBINE_HOST?.onConfirmed) COMBINE_HOST.onConfirmed({ combineRefresh: result.combine_refresh });  // : the Cards page\n"
+    assert ("if (COMBINE_HOST?.onConfirmed) COMBINE_HOST.onConfirmed({ combineRefresh: result.combine_refresh });  // the Cards page\n"
             "      else settleCombineRefresh(result.combine_refresh);") in src
     # closing reports an unresolved combine (wallet open, ambiguous broadcast, sent without the game's verdict)
     assert "COMBINE_SIGN_STEP || COMBINE_ARRIVAL?.provisional || COMBINE_PREVIEW?.broadcastStalled ? 'unknown' : 'none';" in src
@@ -195,7 +195,7 @@ def test_dialog_mount_hooks_and_board_path():
     # the signing flow is the dialog's own, unchanged
     assert "if (kind === 'sign') { confirmCombineBroadcast(); return; }" in src and "rebuildCombineForSigning(uids)" in src
     # the /?combine= board link still works
-    assert src.rstrip().endswith("openCombineFromAddress();  // : registered when the board's module graph loads (the Cards page never loads it)")
+    assert src.rstrip().endswith("openCombineFromAddress();  // registered when the board's module graph loads (the Cards page never loads it)")
     assert "export async function openCombineFromPrint(print) {" in src and "url.searchParams.delete('combine')" in src
 
 
@@ -224,7 +224,7 @@ def test_dialog_layers_over_the_cards_page():
 
 def test_reload_hook_is_passed_to_find_combinables():
     js = BROWSER.read_text(encoding="utf-8")
-    assert "reloadCards: () => load(),  // : My cards after a confirmed combine in place" in js
+    assert "reloadCards: () => load(),  // My cards after a confirmed combine in place" in js
 
 
 # Find combinables in the filter row
@@ -234,11 +234,11 @@ def test_find_combinables_is_the_filter_row_pill():
     header = page[page.index('<header class="board-header">'):page.index("</header>")]
     row = page[page.index('<div class="controls-row cb-controls" id="cb-controls">'):page.index('<main id="cb-main"')]
     assert "cb-mode-combine" not in header and "Find combinables" not in header
-    # My cards / Market (+ the Plots | Cards switcher's two halves, links)
-    assert header.count('<button type="button" id="cb-mode-') == 2
-    assert header.count('class="ceres-btn ceres-btn--choice" data-control-density="header"') == 4
-    # the visible label is "Combinables"; the name and the tooltip keep "Find combinables"
-    pill = '<label class="picker-toggle board-filter-pill ceres-btn ceres-btn--choice cb-only" data-control-density="compact" data-tip="Find combinables"><span class="ceres-btn__check" aria-hidden="true"></span><input type="checkbox" id="cb-mode-combine" aria-label="Find combinables"><span>Combinables</span></label>'
+    # My cards / Market / My purchases (+ the Plots | Cards switcher's two halves, links)
+    assert header.count('<button type="button" id="cb-mode-') == 3
+    assert header.count('class="ceres-btn ceres-btn--choice" data-control-density="header"') == 5
+    # the visible label is "Combine"; the name and the tooltip keep "Find combinables"
+    pill = '<label class="picker-toggle board-filter-pill ceres-btn ceres-btn--choice cb-only" data-control-density="compact" data-tip="Find combinables"><span class="ceres-btn__check" aria-hidden="true"></span><input type="checkbox" id="cb-mode-combine" aria-label="Find combinables"><span>Combine</span></label>'
     assert pill in row
     # the end of the row, after Maxed and before Sort
     assert row.index('id="cb-maxed"') < row.index(pill) < row.index('id="cb-sort"')
