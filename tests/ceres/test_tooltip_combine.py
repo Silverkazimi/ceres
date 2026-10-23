@@ -4,19 +4,22 @@ from __future__ import annotations
 
 import re
 from contextlib import contextmanager
-from typing import Iterator
+from typing import Callable, Iterator
 
 from playwright.sync_api import Page
 
 from .conftest import LIVE_PLAYER, spawn_live_ceres
+from .idle_pool import serve_recorded_idle_pool
 from . import board_basic_recording as recording
 
 
 @contextmanager
-def _live_page() -> Iterator[Page]:
+def _live_page(before_load: Callable[[Page, str], object] | None = None) -> Iterator[Page]:
     with spawn_live_ceres() as (browser, base_url):
         page = browser.new_page(viewport={"width": 1600, "height": 1000})
         try:
+            if before_load:
+                before_load(page, base_url)
             page.goto(f"{base_url}/?player={LIVE_PLAYER}", wait_until="domcontentloaded")
             page.wait_for_selector("#plot-tbody > tr.plot-row", timeout=30_000)
             yield page
@@ -98,7 +101,10 @@ def test_rendered_labels_are_player_facing() -> None:
 
 # INJECTION: removing or changing the combine copy-list accessible name.
 def test_combine_copy_list_has_accessible_name() -> None:
-    with _live_page() as page:
+    # The tile chip reads the board's idle-card pool, which a page load on the shared fixture
+    # server never reports as loaded (tests/ceres/idle_pool.py); serve the recorded account's
+    # real pool, read after every recorded plot was read, so the Daria partners are there.
+    with _live_page(serve_recorded_idle_pool) as page:
         _open_combine_dialog(page)
         copy_list = page.locator("#combine-dialog-overlay [aria-label='Cards in this combine']")
         assert copy_list.count(), "The combine dialog copy list lacks its required accessible name."
