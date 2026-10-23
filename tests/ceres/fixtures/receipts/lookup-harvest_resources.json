@@ -1,0 +1,18 @@
+{
+ "trx_info": {
+  "block_id": "3df501f89d35c55daa9cf9b3fd0a4171a25792fa",
+  "block_num": 99000456,
+  "created_date": "2026-10-12T09:02:48.000Z",
+  "data": "{\"op\":\"harvest_resources\",\"region_uid\":\"PR-BRL-23\",\"deed_uids\":[\"I-294-b74a0d9441e629\"],\"auto_buy_grain\":false,\"resource_symbol\":\"\",\"app\":\"ceres/1.0.0\",\"n\":\"ed814b0e6f\"}",
+  "error": null,
+  "id": "96141c8e4f286339bb098d3177c41dd96cd91ed1",
+  "is_owner_auth": false,
+  "player": "sample01",
+  "prev_block_id": "aea694f7f0277d89ded389cb7ecf4cf8a582af9f",
+  "result": "{\"success\":true,\"result\":{\"success\":true,\"data\":{\"results\":[{\"deed_uid\":\"I-294-b74a0d9441e629\",\"region_number\":23,\"resource_symbol\":\"SPS\",\"resource_amount\":62.91,\"tax_amount\":6.291,\"received_amount\":56.619,\"grain_eaten\":5690.925,\"inputs_consumed\":[{\"symbol\":\"WOOD\",\"qty\":2845.463},{\"symbol\":\"STONE\",\"qty\":1138.185},{\"symbol\":\"IRON\",\"qty\":284.546}],\"result_message\":\"Successful\"}]}}}",
+  "sbd_price": null,
+  "steem_price": null,
+  "success": true,
+  "type": "land_operation"
+ }
+}
