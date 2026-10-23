@@ -189,46 +189,21 @@ def test_live_art_slot_order_and_fixed_frames(report, details_by_id, tmp_path):
 @pytest.mark.browser  # drives Chromium through test_live_plot_reveal._browser
 def test_live_art_bounded_retry(report, details_by_id, tmp_path):
     board, details = _payload(report, details_by_id, count=9, capacity=9)
-    short_budget = ("eos.js", "const CARD_SERVICE_BUDGET_MS = 10000;", "const CARD_SERVICE_BUDGET_MS = 20;")
-    unbounded_retry = (
-        "eos.js",
-        """function scheduleArtRecovery(session, key, record) {
-  if (record.retryScheduled || record.recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) return;
-  const delay = RECOVERY_DELAYS_MS[record.recoveryAttempts];
-  record.recoveryAttempts++;
-  record.nextRetryAt = performance.now() + delay;
-  record.retryScheduled = true;
-  timer(session, () => {
-    record.retryScheduled = false;
-    record.nextRetryAt = 0;
-    if (session.mountedFrame) { session.cardsSettled = false; prepareWorkers(session); }
-  }, delay);
-}
-
-function rememberArtFailure(session, key, outcome, record) {
-  record.lastOutcome = outcome.kind;
-  if (outcome.permanent || record.recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) freezeArt(session, key, record);
-  else scheduleArtRecovery(session, key, record);
-}""",
-        """function scheduleArtRecovery(session, key, record) {
-  if (record.retryScheduled) return;
-  const delay = RECOVERY_DELAYS_MS[record.recoveryAttempts] ?? 0;
-  record.recoveryAttempts++;
-  record.nextRetryAt = performance.now() + delay;
-  record.retryScheduled = true;
-  timer(session, () => {
-    record.retryScheduled = false;
-    record.nextRetryAt = 0;
-    if (session.mountedFrame) { session.cardsSettled = false; prepareWorkers(session); }
-  }, delay);
-}
-
-function rememberArtFailure(session, key, outcome, record) {
-  record.lastOutcome = outcome.kind;
-  if (outcome.permanent) freezeArt(session, key, record);
-  else scheduleArtRecovery(session, key, record);
-}""",
-    )
+    # eos.js now drives recovery itself on the art.js schedule (1, 2, 4, 8, 15 s, a 10 s
+    # budget each), so reaching the bound takes about half a minute. Both arms run the
+    # same schedule scaled 1/50 with a 20 ms card budget; the red arm also lifts the
+    # attempt bound (an undefined delay then retries at once), so its requests never stop.
+    timing = """const CARD_SERVICE_BUDGET_MS = 10000;
+const SCENE_SERVICE_BUDGET_MS = 10000;
+const SCENE_RELEASE_MS = 1200;
+const CARD_RELEASE_MS = 1800;
+// the same schedule as art.js -- 1, 2, 4, 8, 15 s, a fresh URL each retry.
+const RECOVERY_DELAYS_MS = IMAGE_RETRY_DELAYS_MS;
+const MAX_RECOVERY_ATTEMPTS = IMAGE_RETRY_DELAYS_MS.length;"""
+    fast = (timing.replace("CARD_SERVICE_BUDGET_MS = 10000;", "CARD_SERVICE_BUDGET_MS = 20;")
+            .replace("RECOVERY_DELAYS_MS = IMAGE_RETRY_DELAYS_MS;", "RECOVERY_DELAYS_MS = IMAGE_RETRY_DELAYS_MS.map((delay) => delay / 50);"))
+    short_budget = ("eos.js", timing, fast)
+    unbounded_retry = ("eos.js", timing, fast.replace("MAX_RECOVERY_ATTEMPTS = IMAGE_RETRY_DELAYS_MS.length;", "MAX_RECOVERY_ATTEMPTS = Infinity;"))
 
     # Asclepius diagnosis 3. Two things make the naive form of this guard vacuous.
     # (1) The deliberate permanent-404 branch is unreachable here: the fixture's art is

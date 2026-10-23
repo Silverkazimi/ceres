@@ -106,6 +106,22 @@ PROBE = r"""(() => {
 })();"""
 
 
+# Art that never arrives (or never decodes) is no longer frozen at the first 10 s budget:
+# eos.js retries it on the art.js schedule (1, 2, 4, 8, 15 s, each with a 10 s budget)
+# and freezes it to the named fallback only after the last attempt, about a minute in.
+# The guards that need that frozen fallback run the same schedule and budgets scaled 1/50.
+_ART_TIMING = """const CARD_SERVICE_BUDGET_MS = 10000;
+const SCENE_SERVICE_BUDGET_MS = 10000;
+const SCENE_RELEASE_MS = 1200;
+const CARD_RELEASE_MS = 1800;
+// the same schedule as art.js -- 1, 2, 4, 8, 15 s, a fresh URL each retry.
+const RECOVERY_DELAYS_MS = IMAGE_RETRY_DELAYS_MS;"""
+FAST_ART_RECOVERY = ("eos.js", _ART_TIMING, _ART_TIMING
+                     .replace("CARD_SERVICE_BUDGET_MS = 10000;", "CARD_SERVICE_BUDGET_MS = 200;")
+                     .replace("SCENE_SERVICE_BUDGET_MS = 10000;", "SCENE_SERVICE_BUDGET_MS = 200;")
+                     .replace("RECOVERY_DELAYS_MS = IMAGE_RETRY_DELAYS_MS;", "RECOVERY_DELAYS_MS = IMAGE_RETRY_DELAYS_MS.map((delay) => delay / 50);"))
+
+
 def _payload(report, details_by_id, *, count=80, capacity=5, no_art=False, long=False):
     board = project_board(report, details_by_id)
     template = next(row for row in board["plots"] if row["workers"])
@@ -987,7 +1003,8 @@ def test_plot_reveal_guards(guard, report, details_by_id, tmp_path):
     board, details = _payload(report, details_by_id, count=count, capacity=capacity, long=guard == "G14")
 
     async def run():
-        async with _browser(board, details, tmp_path / guard, reduced=guard == "G11") as fixture:
+        async with _browser(board, details, tmp_path / guard, reduced=guard == "G11",
+                            mutation=FAST_ART_RECOVERY if guard == "G6" else None) as fixture:
             await SCENARIOS[guard](fixture)
             assert not fixture.errors, fixture.errors
 
@@ -1209,7 +1226,7 @@ def test_g5_rejected_actual_node_decode_becomes_named_fallback(reduced, report, 
     board, details = _payload(report, details_by_id)
 
     async def run():
-        async with _browser(board, details, tmp_path / f"G5-rejected-{reduced}", reduced=reduced) as f:
+        async with _browser(board, details, tmp_path / f"G5-rejected-{reduced}", reduced=reduced, mutation=FAST_ART_RECOVERY) as f:
             await f.page.evaluate("eosProbe.rejectDecode=true")
             f.release("scene", "detail", "portrait", "upgrade")
             await f.open()
@@ -1255,7 +1272,8 @@ def test_g11_reduced_slow_error_and_art_retry(mode, report, details_by_id, tmp_p
     board, details = _payload(report, details_by_id)
 
     async def run():
-        async with _browser(board, details, tmp_path / f"G11-{mode}", reduced=True) as f:
+        async with _browser(board, details, tmp_path / f"G11-{mode}", reduced=True,
+                            mutation=FAST_ART_RECOVERY if mode == "art-timeout" else None) as f:
             if mode == "art-timeout":
                 await _g6(f)
             elif mode == "error":
