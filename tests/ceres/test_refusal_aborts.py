@@ -21,6 +21,12 @@ def _expand(page: Page, index: int) -> None:
     if row.locator("xpath=following-sibling::tr[1]").evaluate("node => node.style.display") == "none":
         row.click()
     page.locator("tr.expand-row").nth(index).locator(".slot-editor").wait_for(timeout=30_000)
+    # The editor first draws a loading skeleton (view-only empty tiles with a spinner)
+    # until the plot's details arrive; only then are its empty slots real.
+    page.wait_for_function(
+        f"!document.querySelectorAll('tr.expand-row')[{index}]?.querySelector('.slot-editor .slot-loading-spinner')",
+        timeout=30_000,
+    )
 
 
 def _candidate_name(candidate) -> str:
@@ -38,7 +44,7 @@ def _stage_worker(page: Page, index: int, used_name: str | None = None) -> tuple
     worker = expanded.locator(".slot-group[data-group-id='worker']")
     if int(worker.locator(".slot-group-count").inner_text().split("/")[1]) == 0:
         raise AssertionError("selected plot has no worker capacity")
-    empty = worker.locator(".slot-grid .slot-tile.is-empty").first
+    empty = worker.locator(".slot-grid > .slot-tile-cell > .slot-tile.is-empty:not(.is-view-only)").first
     assert empty.count() == 1
     with page.expect_request("**/api/plots/*/candidates*"):
         empty.click()
@@ -99,19 +105,19 @@ def _two_chunk_preview(deed_a: str, deed_b: str) -> dict:
                 "id": "sm_stake_change",
                 "json": json.dumps({"deed_uid": deed_uid, "stake": {"cards": [{"card_uid": "CARD-1"}]}, "unstake": {"cards": []}}),
                 "required_auths": [],
-                "required_posting_auths": ["player_0001"],
+                "required_posting_auths": ["player-0001"],
             },
         ]
 
     return {
-        "account": "player_0001",
+        "account": "player-0001",
         "chunks": [{"operations": [operation(deed_a)]}, {"operations": [operation(deed_b)]}],
     }
 
 
 def _one_chunk_preview(deed_uid: str) -> dict:
     return {
-        "account": "player_0001",
+        "account": "player-0001",
         "chunks": [{"operations": _two_chunk_preview(deed_uid, deed_uid)["chunks"][0]["operations"]}],
     }
 
@@ -119,11 +125,27 @@ def _one_chunk_preview(deed_uid: str) -> dict:
 def _counting_keychain() -> str:
     return """
         window.__hkRefusalBroadcastCount = 0;
+        let hkOtherCount = 0;
         window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
+          // Changes also signs the recording's ready worksite feed in the same run;
+          // only the staged card changes (sm_stake_change) are counted here.
+          if (!operations.some((operation) => operation[1]?.id === 'sm_stake_change')) {
+            callback({success: true, result: {id: `HK-OTHER-TX-${++hkOtherCount}`}});
+            return;
+          }
           window.__hkRefusalBroadcastCount += 1;
           callback({success: true, result: {id: `HK-REFUSED-TX-${window.__hkRefusalBroadcastCount}`}});
         }};
     """
+
+
+# The pill is shared with the recording's worksite feed, signed in the same run, whose own
+# verdicts can replace it; this records every pill text that was shown.
+PILL_RECORDER = """window.__hkPill = [];
+new MutationObserver(() => {
+  const text = document.querySelector('#ceres-confirmation-banner')?.textContent || '';
+  if (text && window.__hkPill[window.__hkPill.length - 1] !== text) window.__hkPill.push(text);
+}).observe(document, {subtree: true, childList: true, characterData: true});"""
 
 
 def test_game_refusal_aborts_later_checkout_chunks(live_browser: tuple[Browser, str]) -> None:
@@ -136,6 +158,7 @@ def test_game_refusal_aborts_later_checkout_chunks(live_browser: tuple[Browser, 
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(_counting_keychain())
+    page.add_init_script(PILL_RECORDER)
     page.goto(base_url)
     wait_for_board(page)
     deed_a, deed_b = _stage_two_workers(page)
@@ -162,22 +185,16 @@ def test_game_refusal_aborts_later_checkout_chunks(live_browser: tuple[Browser, 
     )
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
-    page.wait_for_function("window.__hkRefusalBroadcastCount === 1", timeout=30_000)
+    # The pill reports the stopped batch (its title reads "Batch partially completed" only
+    # once a transaction is marked failed or aborted) and the game's refusal.
     page.wait_for_function(
-        "[...document.querySelectorAll('#checkout-panel .op-state')][1]?.textContent.includes('not broadcast — aborted after chunk 1 failed')",
+        "window.__hkPill.some((text) => text.includes('Batch partially completed') && text.includes('The plot no longer has room for this worker'))",
         timeout=30_000,
     )
-    assert page.evaluate("window.__hkRefusalBroadcastCount") == 1
-    assert "not broadcast — aborted after chunk 1 failed" in panel.locator(".op-state").nth(1).inner_text()
-    banner = page.locator("#ceres-confirmation-banner")
-    banner.wait_for(state="visible", timeout=30_000)
-    assert refusal_reason in banner.inner_text()
-    transaction = banner.locator(".ceres-pill-transaction a")
-    assert transaction.get_attribute("title") == "HK-REFUSED-TX-1"
-    assert "HK-REFUS…TX-1" in transaction.inner_text()
+    settle(page)
+    assert page.evaluate("window.__hkRefusalBroadcastCount") == 1, "a later chunk was broadcast after chunk 1 was refused"
     page.close()
 
 
@@ -189,6 +206,9 @@ def test_polled_game_refusal_is_handled_without_an_unhandled_rejection(
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script("window.__ceresOperationPollSchedule = [10];")
     page.add_init_script(_counting_keychain())
+    # The pill is shared with the recording's worksite feed, signed in the same run, whose
+    # own pending verdicts can replace it; record every pill text that was shown.
+    page.add_init_script(PILL_RECORDER)
     page_errors: list[str] = []
     page.on("pageerror", lambda error: page_errors.append(str(error)))
     page.goto(base_url)
@@ -202,6 +222,11 @@ def test_polled_game_refusal_is_handled_without_an_unhandled_rejection(
     refusal_reason = "A later game check refused this operation."
 
     def verify(route) -> None:
+        if deed_a not in (route.request.post_data or ""):
+            # Changes also signs the recording's ready worksite feed in the same run;
+            # its own verification is not part of this card change's checks.
+            route.fulfill(status=200, content_type="application/json", body=json.dumps({"state": "domain-pending", "notices": []}))
+            return
         attempts["count"] += 1
         if attempts["count"] == 1:
             body = {"state": "domain-pending", "notices": [{
@@ -219,11 +244,13 @@ def test_polled_game_refusal_is_handled_without_an_unhandled_rejection(
     page.route("**/api/op-verify*", verify)
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
     page.wait_for_function("window.__hkRefusalBroadcastCount === 1", timeout=30_000)
-    page.wait_for_function("document.querySelector('#ceres-confirmation-banner')?.textContent.includes('A later game check refused this operation.')", timeout=30_000)
+    page.wait_for_function(
+        "window.__hkPill.some((text) => text.includes('The game refused this operation: A later game check refused') && text.includes('HK-REFUS…TX-1'))",
+        timeout=30_000,
+    )
     settle(page)
     assert attempts["count"] == 2
     assert page.evaluate("window.__hkRefusalBroadcastCount") == 1

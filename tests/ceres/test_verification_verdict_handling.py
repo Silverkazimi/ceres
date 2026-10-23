@@ -114,6 +114,12 @@ def _expand(page: Page, index: int) -> None:
     if row.locator("xpath=following-sibling::tr[1]").evaluate("node => node.style.display") == "none":
         row.click()
     page.locator("tr.expand-row").nth(index).locator(".slot-editor").wait_for(timeout=30_000)
+    # The editor first draws a loading skeleton (view-only empty tiles with a spinner)
+    # until the plot's details arrive; only then are its empty slots real.
+    page.wait_for_function(
+        f"!document.querySelectorAll('tr.expand-row')[{index}]?.querySelector('.slot-editor .slot-loading-spinner')",
+        timeout=30_000,
+    )
 
 
 def _stage_worker(page: Page, index: int, used_name: str | None = None) -> str:
@@ -128,7 +134,7 @@ def _stage_worker(page: Page, index: int, used_name: str | None = None) -> str:
     worker = expanded.locator(".slot-group[data-group-id='worker']")
     if int(worker.locator(".slot-group-count").inner_text().split("/")[1]) == 0:
         raise AssertionError("selected plot has no worker capacity")
-    empty = worker.locator(".slot-grid .slot-tile.is-empty").first
+    empty = worker.locator(".slot-grid > .slot-tile-cell > .slot-tile.is-empty:not(.is-view-only)").first
     assert empty.count() == 1
     with page.expect_request("**/api/plots/*/candidates*"):
         empty.click()
@@ -187,7 +193,12 @@ def _two_chunk_preview(deed_a: str, deed_b: str) -> dict:
 
 def _keychain_stub() -> str:
     return (
+        # Changes also signs the recording's ready worksite feed in the same run; only
+        # the staged card changes (sm_stake_change) are counted and numbered here.
         "window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {"
+        "  if (!operations.some((operation) => operation[1]?.id === 'sm_stake_change')) {"
+        "    callback({success: true, result: {id: 'FAKE-VERDICT-OTHER-TX'}}); return;"
+        "  }"
         "  window.__ceresBroadcastCount = (window.__ceresBroadcastCount || 0) + 1;"
         f"  callback({{success: true, result: {{id: `FAKE-VERDICT-TX-${{window.__ceresBroadcastCount}}`}}}});"
         "}};"
@@ -215,7 +226,12 @@ def test_unrecognised_verdict_does_not_abort_the_batch(live_browser: tuple[Brows
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(_keychain_stub())
     verify_requests: list = []
-    page.on("request", lambda request: verify_requests.append(request) if "/api/op-verify" in request.url else None)
+    page.on(
+        "request",
+        lambda request: verify_requests.append(request)
+        if "/api/op-verify" in request.url and "FAKE-VERDICT-TX-" in (request.post_data or "")
+        else None,
+    )
     page.goto(base_url)
     wait_for_board(page)
     deed_a, deed_b = _stage_two_workers(page)
@@ -239,7 +255,6 @@ def test_unrecognised_verdict_does_not_abort_the_batch(live_browser: tuple[Brows
 
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
     page.wait_for_function("(window.__ceresBroadcastCount || 0) === 2", timeout=30_000)
@@ -297,7 +312,6 @@ def test_domain_mismatch_clears_only_the_matching_entry(live_browser: tuple[Brow
 
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
     page.wait_for_function("(window.__ceresBroadcastCount || 0) === 2", timeout=30_000)
@@ -319,8 +333,15 @@ def test_domain_mismatch_clears_only_the_matching_entry(live_browser: tuple[Brow
 
     # The cleared move's own row is no longer marked in-flight (renderCheckoutSurface()
     # re-derives inFlight from txId && broadcast_at every render).
-    cleared_move = panel.locator(f".checkout-move[data-deed-uid='{deed_b}']")
-    assert cleared_move.locator(".checkout-remove").is_enabled()
+    # Signing the last transaction closes Changes; reopen it. Each staged move is a strip
+    # tile: an in-flight one is marked and cannot be undone, a cleared one can.
+    if not panel.is_visible():
+        page.locator("#checkout-btn").click()
+    cleared_move = panel.locator(f".ch-slot[data-deed-uid='{deed_b}'][data-group-id='worker']")
+    cleared_move.wait_for(timeout=30_000)
+    assert "is-in-flight" not in (cleared_move.get_attribute("class") or "")
+    assert cleared_move.get_attribute("data-checkout-action") == "strip-undo"
+    assert panel.locator(f".ch-slot.is-in-flight[data-deed-uid='{deed_a}'][data-group-id='worker']").count() == 1
 
     # Stale-preview invalidation: clearFailedChunkMarkers() deletes the CERES_PREVIEWS
     # entry that produced this now-broadcast-and-failed chunk and calls
