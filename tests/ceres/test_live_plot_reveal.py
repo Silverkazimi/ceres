@@ -137,10 +137,18 @@ def _payload(report, details_by_id, *, count=80, capacity=5, no_art=False, long=
                 item.pop("editions", None)
             row["workers"].append(item)
         if long:
+            # Staged-removal notices now feed one warning model (plot-warnings.js): any
+            # notice keeps its sentence, and the Bloodline finder action is carried only by
+            # a `bloodline_pair_deactivated` notice. So the long messages and the unique
+            # actions ride on two notices each.
             row["notices"] = [
                 {"code":f"eos_notice_{i}", "severity":"caution", "blocking":"none", "kind":"warning",
-                 "message":f"Notice {i}: " + "A long but complete actionable warning. " * 12,
-                 "action":{"id":"open_bloodline_pairs", "label":f"Inspect companion {i}", "sub_type":"Eos"}}
+                 "message":f"Notice {i}: " + "A long but complete actionable warning. " * 12}
+                for i in range(3)
+            ] + [
+                {"code":"bloodline_pair_deactivated", "severity":"caution", "blocking":"none", "kind":"warning",
+                 "context":{"sub_type":f"Eos{i}"},
+                 "action":{"id":"open_bloodline_pairs", "label":f"Inspect companion {i}", "sub_type":f"Eos{i}"}}
                 for i in range(3)
             ]
         plots.append(row)
@@ -730,7 +738,9 @@ async def _g14(f, mutation=None):
         assert await f.page.evaluate(mutation), "G14 named disclosure mutation landed"
     before = await f.band().evaluate("b=>b.getBoundingClientRect().height")
     assert await f.page.locator('[data-eos-details], .eos-details').count() == 0, "G14 unrequested disclosure is absent"
-    assert await f.page.locator('.slot-editor .editor-facts').count() == 1, "G14 plot facts are not duplicated"
+    # The plot-facts line is gone (editor.js renders facts = ''); the plot's staged-change
+    # facts are the change badges in the worker controls line, shown exactly once.
+    assert await f.page.locator('.slot-editor .editor-change-badges').count() == 1, "G14 plot facts are not duplicated"
     for i in range(3):
         action = f.page.get_by_role("button", name=f"Inspect companion {i}", exact=True)
         assert await action.count() == 1 and await action.is_visible(), "G14 unique notice actions survive without disclosure"
@@ -746,7 +756,7 @@ async def _g14(f, mutation=None):
 @pytest.mark.parametrize("mutation,script,message", [
     ("restore_details", "()=>{const el=document.createElement('button');el.dataset.eosDetails='';el.textContent='Details';document.querySelector('.slot-editor-footer').append(el);return !!document.querySelector('[data-eos-details]');}", "G14 unrequested disclosure is absent"),
     ("restore_disclosure_panel", "()=>{const el=document.createElement('div');el.className='eos-details';document.querySelector('.slot-editor').append(el);return !!document.querySelector('.eos-details');}", "G14 unrequested disclosure is absent"),
-    ("duplicate_plot_facts", "()=>{const el=document.querySelector('.editor-facts');el.parentElement.append(el.cloneNode(true));return document.querySelectorAll('.slot-editor .editor-facts').length===2;}", "G14 plot facts are not duplicated"),
+    ("duplicate_plot_facts", "()=>{const el=document.querySelector('.slot-editor .editor-change-badges');el.parentElement.append(el.cloneNode(true));return document.querySelectorAll('.slot-editor .editor-change-badges').length===2;}", "G14 plot facts are not duplicated"),
     ("drop_notice_action", "()=>{const el=[...document.querySelectorAll('[data-notice-action]')].find(n=>n.textContent.includes('Inspect companion 0'));if(!el)return false;el.remove();return ![...document.querySelectorAll('[data-notice-action]')].some(n=>n.textContent.includes('Inspect companion 0'));}", "G14 unique notice actions survive without disclosure"),
 ])
 def test_g14_disclosure_corrections_reject_named_mutations(mutation, script, message, report, details_by_id, tmp_path):
