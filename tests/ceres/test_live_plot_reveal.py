@@ -1154,7 +1154,8 @@ def test_g18_stale_anchor_guard_rejects_its_red_mutation(mutated, report, detail
 @pytest.mark.parametrize("guard,css", (
     ("G1", ".editor-band {block-size:auto!important;min-block-size:0!important}"),
     ("G2", ".editor-band {inline-size:100vw!important;max-inline-size:none!important}"),
-    ("G4", ".eos-worker-cover {opacity:.5!important}"),
+    # the worker cover is retired (see _g4); the red mutation paints the held portraits.
+    ("G4", ".slot-tile-cell img.eos-portrait-fill {opacity:1!important;visibility:visible!important}"),
     ("G19", ".editor-main {z-index:5!important}"),
     ("G19-cover", ".eos-worker-cover {top:0!important;bottom:0!important;left:0!important;right:0!important}"),
 ))
