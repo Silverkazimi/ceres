@@ -3,7 +3,8 @@
 "Combine (N)" flat-label fix that superseded it; 2026-08-30 the `⧉` glyph was
 dropped entirely -- it rendered as tofu in the maintainer's font stack): a compact
 `.tile-combine-chip` positioned above the tile, `Combine N`, never the occupant's
-own name.
+own name. (The visible label is now the word alone; the count of idle copies is in the
+chip's accessible name and tooltip.)
 
 `test_tile_combine_chip_click_opens_the_combine_dialog` guards the click itself. Root
 cause: `.slot-grid` sets `pointer-events: none` on itself and re-enables it only
@@ -28,6 +29,7 @@ from pathlib import Path
 from playwright.sync_api import Page
 
 from .conftest import settle, spawn_live_ceres, wait_ready
+from .idle_pool import serve_idle_cards
 
 SCREEN_DIR = Path(__file__).parents[2] / "work" / "combine-reachability"
 
@@ -70,17 +72,14 @@ def _install_idle_cards_mock(page: Page, worker: dict) -> None:
         }
         for i in range(2)
     ]
-    page.route(
-        "**/api/idle-cards*",
-        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"cards": copies})),
-    )
+    serve_idle_cards(page, copies)
 
 
 def test_tile_combine_chip_is_compact_above_the_tile_not_an_inflow_block() -> None:
     """The chip: `.tile-combine-chip` class, positioned OUTSIDE `.slot-tile` (a
     `.slot-tile-cell` sibling, per ceres.css's own overflow:hidden reasoning), label
-    text exactly `Combine 2` (2 idle copies, no parentheses, no glyph), and does not repeat
-    the occupant's own name."""
+    text exactly `Combine` with `Combine up to 2 idle copies` as its accessible name (2 idle
+    copies, no parentheses, no glyph), and does not repeat the occupant's own name."""
     SCREEN_DIR.mkdir(parents=True, exist_ok=True)
     with spawn_live_ceres() as (browser, base_url):
         board = _get(base_url, "/api/board")
@@ -103,8 +102,12 @@ def test_tile_combine_chip_is_compact_above_the_tile_not_an_inflow_block() -> No
                 f".slot-group[data-group-id='worker'] .slot-tile-cell:has(.slot-tile[data-slot-index='{worker['slot'] - 1}']) .tile-combine-chip"
             )
             chip.first.wait_for(timeout=15_000)
+            # The visible label is the word only; the count of idle copies is carried by the
+            # chip's accessible name and tooltip (combineTileActionHtml, static/combine.js;
+            # same reading as test_combine_reachability.py's door 3).
             label = chip.first.inner_text()
-            assert label == "Combine 2", label
+            assert label == "Combine", label
+            assert chip.first.get_attribute("aria-label") == "Combine up to 2 idle copies"
             assert worker.get("name", "") not in label
 
             # It must NOT be nested inside the tile it belongs to (the old
