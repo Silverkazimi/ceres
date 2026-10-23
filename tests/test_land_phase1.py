@@ -333,7 +333,9 @@ class LandPhase1Tests(unittest.TestCase):
         workers = render_land_analysis(report, "table", view="workers", limit=2)
         diagnostics = render_land_analysis(report, "table", view="diagnostics", limit=2)
         self.assertIn("showing 2 of 11 plots", plots)
-        self.assertIn("showing 2 of 4 workers", workers)
+        # 13: every card the three captured plots' /assets responses show staked (the
+        # collection sample now carries all of them, as a real collection sweep does).
+        self.assertIn("showing 2 of 13 workers", workers)
         self.assertIn("showing 2 of 9 diagnostic codes", diagnostics)
 
     def test_json_view_trims_collection_fetched_at_like_generated_at(self):
