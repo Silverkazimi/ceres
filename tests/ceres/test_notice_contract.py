@@ -38,6 +38,10 @@ _R111_RETIRED_CONTROL_WORDS = re.compile(
 _R111_RETIRED_CONTROL_ALLOWLIST = {
     "verification_in_flight_restored": {"reloaded"},
     "in_flight_store_unavailable": {"reload"},
+    # Planned changes persist in this browser's storage (stage-plans.js); like the two
+    # entries above, these name a reload of the PAGE, not the retired board reload control.
+    "stage_plans_changed_elsewhere": {"reload"},
+    "stage_plans_store_unavailable": {"reload"},
 }
 
 

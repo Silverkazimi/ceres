@@ -139,5 +139,6 @@ def test_upgrade_chip_renders_only_for_the_eligible_worker_not_the_maxed_one(
     assert maxed_row.locator(".candidate-upgrade").count() == 0, "maxed worker's matching candidate must not show the upgrade chip"
     eligible_chip = eligible_row.locator(".candidate-upgrade")
     assert eligible_chip.count() == 1, "eligible worker's matching candidate must show exactly one upgrade chip"
-    assert "1 combinable copy owned" in eligible_chip.inner_text()
+    # chip wording is "<n> combinable copy/copies" (candidates.js renderCandidateRow; "owned" was dropped)
+    assert eligible_chip.inner_text().strip() == "1 combinable copy"
     page.close()

@@ -49,7 +49,10 @@ def test_plot_table_header_order_keeps_terrain_and_worksite_separate() -> None:
 
     body = _slice(html, '<table class="plot-table" id="plot-table">', "</colgroup>")
     cols = re.findall(r"<col[ >]", body)
-    assert len(cols) == 17  # combines Totem/Title into one fixed cell.
+    # one <col> per header column: Totem and Title are independent columns again and the
+    # lock and plot-count columns were added (index.html), 20 in all -- was 17 with the
+    # merged Totem/Title cell.
+    assert len(cols) == len(re.findall(r"<th[ >]", head)) == 20
 
 
 def test_worksite_cell_is_icon_only_and_terrain_keeps_its_own_cell() -> None:

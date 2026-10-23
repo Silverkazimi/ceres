@@ -35,6 +35,7 @@ import re
 import pytest
 from playwright.sync_api import Browser, Page
 
+from . import board_basic_recording as recording
 from .conftest import settle, spawn_live_ceres
 
 
@@ -58,7 +59,10 @@ def _expanded_editor(live_browser: tuple[Browser, str]) -> Page:
             (rows.find(r => r.textContent.includes('/5')) || rows[0]).click();
         }"""
     )
-    page.wait_for_selector(".editor-facts", timeout=15_000)
+    # The `.editor-facts` line is retired: the staged-change badges render on the worker
+    # group's controls line (editor.js, "badges now render inside the worker group's controls
+    # line"), so the opened editor is ready once its band is.
+    page.wait_for_selector(".slot-editor .editor-band[data-plot-state='ready']", timeout=15_000)
     return page
 
 
@@ -91,7 +95,7 @@ def _badge_signed_value(text: str) -> float | None:
 
 
 def _total_base_badge(page):
-    return page.locator(".editor-facts .editor-change-badges .editor-change-badge").filter(
+    return page.locator(".slot-editor .editor-change-badges .editor-change-badge").filter(
         has_text=re.compile(r"^Total Base ")
     )
 
@@ -111,7 +115,7 @@ def test_g12_staged_unstake_reads_negative(live_browser: tuple[Browser, str]) ->
         pytest.skip("no occupied worker tile with an unstake control on the opened plot")
 
     badges = page.evaluate(
-        "[...document.querySelectorAll('.editor-facts .editor-change-badge')].map(e => e.textContent.trim())"
+        "[...document.querySelectorAll('.slot-editor .editor-change-badge')].map(e => e.textContent.trim())"
     )
     base_badges = [b for b in badges if "Base" in b]
     assert base_badges, f"no Base PP change badge rendered after staging a removal: {badges}"
@@ -151,21 +155,13 @@ def test_g12_staged_replace_with_smaller_card_shrinks_total(
 ) -> None:
     """Second G12 assertion: replacing an occupied worker slot with a smaller card
     must shrink the projected total, and on an over-cap plot, the inline "· cap −N" suffix
-    must shrink too -- never grow. Skips (rather than fabricates a fixture) when the
-    live board has no over-cap plot with a smaller replacement available, since this
-    guard's job is to observe real staged pricing, not to manufacture the scenario."""
+    must shrink too -- never grow. Runs on the recording's over-cap plot and its real
+    candidate list: this guard observes real staged pricing, it does not manufacture it."""
     page = _expanded_editor(live_browser)
 
-    over_cap_plot = page.evaluate(
-        """() => {
-            const rows = [...document.querySelectorAll('#plot-tbody > tr.plot-row')];
-            const row = rows.find(r => r.querySelector('.badge-over_cap'));
-            return row ? row.getAttribute('data-deed-uid') : null;
-        }"""
-    )
-    if not over_cap_plot:
-        pytest.skip("no over-cap plot on the live board to exercise the shrink assertion against")
-
+    # The plot-row badges moved out of the table rows into #badge-bar (badge-overlay.js), so a
+    # row no longer carries `.badge-over_cap`; the recording's over-cap plot is named directly.
+    over_cap_plot = recording.OVERCAP.uid
     plot_before = page.evaluate(
         """async deedUid => (await (await fetch(`/api/plots/${encodeURIComponent(deedUid)}`)).json())""",
         over_cap_plot,
@@ -173,52 +169,41 @@ def test_g12_staged_replace_with_smaller_card_shrinks_total(
     raw_before = float(plot_before.get("base_pp") or 0)
     after_cap_before = float(plot_before.get("base_pp_after_cap") or raw_before)
     pre_stage_loss = max(0.0, raw_before - after_cap_before)
+    assert pre_stage_loss > 0, f"the recording's over-cap plot is not over its cap: {raw_before} vs {after_cap_before}"
 
-    row = page.locator(f'tr.plot-row[data-deed-uid="{over_cap_plot}"]')
-    row.click()
-    page.wait_for_selector(".editor-facts", timeout=15_000)
+    expand = page.locator(f'tr.expand-row[data-deed-uid="{over_cap_plot}"]')
+    if not expand.locator(".slot-editor").is_visible():
+        page.locator(f'tr.plot-row[data-deed-uid="{over_cap_plot}"]').click()
+    expand.locator(".editor-band[data-plot-state='ready']").wait_for(timeout=15_000)
+    assert expand.locator(".change-badge-cap").count() == 0, "a fresh editor on an over-cap plot must not already show a staged cap loss"
 
-    cap_line_before = page.locator(".change-badge-cap")
-    assert cap_line_before.count() == 0, "a fresh editor on an over-cap plot must not already show a staged cap loss"
-
-    tile = page.locator('.slot-editor-body .slot-tile[data-group-id="worker"]:not(.is-empty)').first
-    if tile.count() == 0:
-        pytest.skip("the over-cap plot has no occupied worker tile to replace")
-    tile.hover()
-    replace_btn = tile.locator('[data-slot-action="replace"]')
-    if replace_btn.count() == 0:
-        pytest.skip("the over-cap plot's occupied tile offers no replace action")
-    replace_btn.click()
-    page.wait_for_selector(".picker-panel, .ceres-picker", timeout=10_000)
-
-    # Sort ascending by construction/base PP so the first real candidate row is the
-    # smallest available -- the picker's own `base_pp` sort, already server-driven.
-    page.evaluate(
-        """() => {
-            const sortBtn = [...document.querySelectorAll('[data-picker-action="sort"]')]
-                .find(el => el.dataset.sort === 'base_pp');
-            if (sortBtn) sortBtn.click();
-        }"""
+    # Replace the plot's largest worker (slot 1) with the smallest loaded candidate: an occupied
+    # tile is itself the replace control and opens the inline picker.
+    largest = max(plot_before["workers"], key=lambda w: float(w.get("base_pp") or 0) if int(w.get("slot") or 0) >= 1 else -1)
+    tile = expand.locator(f".slot-tile[data-group-id='worker'][data-slot-index='{int(largest['slot']) - 1}']")
+    with page.expect_response("**/api/plots/*/candidates*"):
+        tile.click()
+    expand.locator(".candidate-row").first.wait_for(timeout=30_000)
+    settle(page)
+    bases = expand.locator(".candidate-row .candidate-base strong").evaluate_all(
+        "els => els.map((el) => Number(el.textContent.replace(/[^0-9.]/g, '')))"
     )
-    settle(page)
-    choose = page.locator('[data-picker-action="choose"]').first
-    if choose.count() == 0:
-        pytest.skip("no picker candidate available to replace with")
-    choose.click()
+    assert bases, "the picker listed no worker candidates to replace with"
+    smallest = min(range(len(bases)), key=bases.__getitem__)
+    assert bases[smallest] < float(largest["base_pp"]), f"no candidate smaller than {largest['base_pp']}: {bases}"
+    expand.locator(".candidate-row").nth(smallest).click()
     settle(page)
 
-    cap_line_after = page.locator(".change-badge-cap")
+    total_badge = expand.locator(".editor-change-badges .editor-change-badge").filter(has_text=re.compile(r"^Total Base "))
+    total_badge.wait_for(timeout=15_000)
+    cap_line_after = total_badge.locator(".change-badge-cap")
+    # The ticket's exact G12 assertion: replacing with a SMALLER card must SHRINK the over-cap
+    # loss relative to the pre-stage, server-served figure -- never hold steady or grow, which
+    # is what the fabricated +0 placeholder produced. No cap suffix means no loss is left.
+    loss = 0.0
     if cap_line_after.count():
         loss_text = cap_line_after.inner_text()
         loss = float(re.search(r"([\d,]+)", loss_text).group(1).replace(",", ""))
         assert loss >= 0, f"Over cap loss must never read negative: {loss_text!r}"
-        # The ticket's exact G12 assertion: replacing with a SMALLER card must SHRINK
-        # the over-cap loss relative to the pre-stage, server-served figure -- never
-        # hold steady or grow, which is what the fabricated +0 placeholder produced
-        # (a removal that never registers means the incoming card's own PP is the
-        # only thing counted, so the loss can only ever look flat or bigger).
-        if pre_stage_loss > 0:
-            assert loss < pre_stage_loss, (
-                f"Over cap loss must shrink after replacing with a smaller card: " f"before={pre_stage_loss}, after={loss}"
-            )
+    assert loss < pre_stage_loss, f"Over cap loss must shrink after replacing with a smaller card: before={pre_stage_loss}, after={loss}"
     page.close()

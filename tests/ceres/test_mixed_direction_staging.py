@@ -149,7 +149,9 @@ def test_mixed_direction_preserves_pending_add_marker(live_browser: tuple[Browse
 
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
+    # No separate Prepare click any more: opening Changes prepares the preview of the staged
+    # batch automatically (checkout.js renderCheckoutSurface, "the preview is prepared
+    # automatically"), then the footer Sign confirms it.
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
     # reload only once the signed change is recorded as in flight (the marker the reload restores)

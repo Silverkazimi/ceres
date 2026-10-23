@@ -59,6 +59,11 @@ def test_constructions_wait_and_feed_signs_from_changes(live_browser: tuple[Brow
         payload = route.fetch().json()
         plots = [plot for plot in payload.get("plots", []) if plot.get("deed_uid")]
         assert len(plots) >= 4, "the local board fixture must provide four plots"
+        # The counts below are this test's four shaped constructions only. The recording's own
+        # constructions were started at recording time, so with wall-clock time they finish and
+        # become ready feeds of their own; served here as plain plots.
+        for plot in plots:
+            plot.update(is_construction=False, pending_change=None, worksite_completion=None)
         shapes = {
             "building": _construction(plots[0], ready_in=timedelta(days=1, hours=2, minutes=30)),
             "feed": _construction(plots[1], ready_in=timedelta(hours=-1), completion=True),
@@ -117,7 +122,9 @@ def test_constructions_wait_and_feed_signs_from_changes(live_browser: tuple[Brow
     assert count.inner_text() == "2", "both finished feeds count before their check; building and stalled rows never do"
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    rows = panel.locator(".ch-worksite-build-row")
+    # The construction rows proper; the "Ready now" summary at the top of Changes reuses the row
+    # class for its items (`.is-ready-item`, checkout.js / ready-feed.js) and is not counted here.
+    rows = panel.locator(".ch-worksite-build-row:not(.is-ready-item)")
     page.wait_for_function(
         "() => [...document.querySelectorAll('#checkout-panel .ch-worksite-build-row')].some((row) => row.innerText.includes('the game has not finished this build yet'))",
         timeout=8_000,
@@ -133,7 +140,7 @@ def test_constructions_wait_and_feed_signs_from_changes(live_browser: tuple[Brow
     texts = feeds.all_inner_texts()
     assert any("Feed the workers" in t and "120 Grain" in t and "Ready to sign" in t for t in texts), texts
     assert any("Waiting · the game has not finished this build yet" in t for t in texts), texts
-    assert rows.count() == 3
+    assert rows.count() == 3, rows.all_inner_texts()
 
     sign = panel.page.locator('#changes-overlay [data-checkout-action="sign-worksites"]:not([disabled])')
     sign.click(timeout=8_000)
