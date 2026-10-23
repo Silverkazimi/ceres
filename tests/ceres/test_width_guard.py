@@ -166,8 +166,9 @@ def test_tier_classes_are_stable_across_content_height(live_browser, width: int,
         # filter box MUST be usable -- a hidden box would skip the whole check.
         filter_input = page.locator("#text-filter")
         if "ceres-lw-le-1279" in loaded:
-            # Card tier: the search box lives in the mobile search sheet.
-            page.locator("#mobile-search-btn").click()
+            # Card tier: the search box lives in the mobile filter sheet (the
+            # separate mobile Search button is retired; Filters is the one opener).
+            page.locator("#mobile-filters-btn").click()
             filter_input.wait_for(state="visible")
         assert filter_input.count() == 1 and filter_input.is_visible(), "board text filter is not visible"
         value = page.evaluate(
@@ -325,71 +326,81 @@ def test_card_view_pager_keeps_every_tile_on_one_page(live_browser) -> None:
 
 
 _BADGE_LINES_JS = """() => {
+  // The plot table's rows (one virtual-scroller row height) and the per-row badge
+  // slide-outs (badge-overlay.js), where a plot's badges live since they left the
+  // table: each open slide-out is one line, capped at 45vw (ceres.css
+  // `.badge-overlay-row { white-space: nowrap; max-inline-size: 45vw }`).
   const rows = [...document.querySelectorAll('#plot-tbody tr.plot-row')];
   const heights = rows.map(tr => tr.getBoundingClientRect().height);
-  let wrapped = 0, prematureMax = -Infinity, clipped = 0;
-  for (const tr of rows) {
-    const td = tr.lastElementChild;
-    const row = td.querySelector('.badge-row');
-    if (!row || !row.childElementCount) continue;
-    if (td.scrollWidth > td.clientWidth + 1) clipped += 1;
-    const cs = getComputedStyle(td);
-    const contentRight = td.getBoundingClientRect().right - parseFloat(cs.paddingRight) - parseFloat(cs.borderRightWidth);
-    const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
-    const items = [...row.children].map(el => {
-      const r = el.getBoundingClientRect();
-      return { top: Math.round(r.top), right: r.right, width: r.width };
-    });
-    const lines = [];
-    for (const item of items) {
-      const line = lines.find(l => Math.abs(l.top - item.top) <= 2);
-      if (line) line.items.push(item); else lines.push({ top: item.top, items: [item] });
-    }
-    lines.sort((a, b) => a.top - b.top);
-    if (lines.length > 1) wrapped += 1;
-    for (let k = 0; k + 1 < lines.length; k += 1) {
-      // Real empty space after the last badge of a line, minus what the next
-      // line's first badge needs: > 0 means it wrapped too early.
-      const empty = contentRight - Math.max(...lines[k].items.map(i => i.right));
-      prematureMax = Math.max(prematureMax, empty - (lines[k + 1].items[0].width + gap));
-    }
+  const slides = [...document.querySelectorAll('.badge-overlay-row.is-open')];
+  let wrapped = 0, clipped = 0, overCap = 0, items = 0;
+  for (const slide of slides) {
+    const badges = [...slide.querySelectorAll('.badge-row > *')];
+    items += badges.length;
+    const tops = new Set(badges.map(el => Math.round(el.getBoundingClientRect().top)));
+    if (tops.size > 1) wrapped += 1;
+    if (slide.scrollWidth > slide.clientWidth + 1) clipped += 1;
+    if (slide.getBoundingClientRect().width > innerWidth * 0.45 + 1) overCap += 1;
   }
-  const scroller = document.getElementById('plot-table-scroll');
+  const heightsOf = slides.map(el => el.getBoundingClientRect().height);
   return {
-    rows: rows.length, wrapped, clipped,
-    prematureMax: prematureMax === -Infinity ? null : prematureMax,
+    rows: rows.length, slides: slides.length, items, wrapped, clipped, overCap,
     minHeight: Math.min(...heights), maxHeight: Math.max(...heights),
-    scrollerCW: scroller.clientWidth, scrollerSW: scroller.scrollWidth,
+    minSlide: Math.min(...heightsOf), maxSlide: Math.max(...heightsOf),
   };
 }"""
 
 
+def _open_every_badge_slideout(page: Page) -> None:
+    # The flag opens its status tray on desktop; "all visible plots" is offered
+    # there once a status has been chosen (badge-overlay.js), and a flag click
+    # with slide-outs open closes them all.
+    flag = page.locator("#badge-flag")
+    tray_open = "document.getElementById('badge-filter-tray')?.dataset.open === 'true'"
+    flag.click()
+    page.wait_for_function(tray_open)
+    page.locator("#badge-filter-tray .badge-filter-opt").first.click()
+    page.wait_for_function(f"!({tray_open})")
+    if flag.get_attribute("aria-expanded") != "true":
+        if page.evaluate("document.querySelector('.badge-bar-row[aria-expanded=\"true\"]') !== null"):
+            flag.click()
+        flag.click()
+        page.wait_for_function(tray_open)
+        page.locator("#badge-filter-tray .badge-filter-opt[data-filter='all']").click()
+    page.wait_for_function("document.getElementById('badge-flag')?.getAttribute('aria-expanded') === 'true'")
+    settle(page)
+
+
 def test_badges_wrap_only_when_the_board_is_too_narrow(live_browser) -> None:
-    """'s visible symptom (dead space inside the Badges cell) in the
-     model: at a real 1440 window every badge row fits on one line (the
-    browser gives Badges its content width), so no row wraps and every row has
-    the same height -- the virtual scroller's one row height. When the board is
-    too narrow for every column's content (forced here: the scroller capped at
-    1100 px), Badges -- the only wrap-capable column -- wraps instead of being
-    cut off or pushing the table past its scroller, and never wraps early. The
-    forced step makes the wrap check non-vacuous."""
+    """'s visible symptom (dead space inside the Badges cell), in today's
+    layout: the badges left the table for per-row slide-outs (badge-overlay.js),
+    so no table cell wraps -- every table row keeps the virtual scroller's one row
+    height -- and each plot's badges read as ONE line in its slide-out (nowrap,
+    capped at 45vw): at a real 1440 window no slide-out wraps, none is cut off and
+    none passes its cap. Forced narrow (each slide-out capped at 120px, far below
+    its content) the slide-out still never wraps -- it keeps one line and its row
+    height and clips inside its own box -- and the table rows do not grow. The
+    forced step makes the no-wrap check non-vacuous."""
     page, context = _open(live_browser, 1440, 1.0)
     try:
+        _open_every_badge_slideout(page)
         real = page.evaluate(_BADGE_LINES_JS)
         detail = json.dumps(real, sort_keys=True)
-        assert real["rows"] > 0, detail
-        assert real["wrapped"] == 0 and real["clipped"] == 0, detail
+        assert real["rows"] > 0 and real["slides"] > 0 and real["items"] > 0, detail
+        assert real["wrapped"] == 0 and real["clipped"] == 0 and real["overCap"] == 0, detail
         assert real["maxHeight"] <= real["minHeight"] + 1, detail
-        page.add_style_tag(content="#plot-table-scroll { max-inline-size: 1100px; }")
-        page.wait_for_function("document.querySelector('#plot-table-scroll').clientWidth <= 1100")
+        assert real["maxSlide"] <= real["minSlide"] + 1, detail
+        page.add_style_tag(content=".badge-overlay-row { max-inline-size: 120px !important; }")
+        page.wait_for_function(
+            "[...document.querySelectorAll('.badge-overlay-row.is-open')].every(el => el.getBoundingClientRect().width <= 121)"
+        )
         settle(page)
         got = page.evaluate(_BADGE_LINES_JS)
         detail = json.dumps(got, sort_keys=True)
-        assert got["scrollerCW"] <= 1100, detail
-        assert got["wrapped"] > 0, detail
-        assert got["clipped"] == 0, detail
-        assert got["scrollerSW"] <= got["scrollerCW"] + 1, detail
-        assert got["prematureMax"] is not None and got["prematureMax"] <= 1, detail
+        assert got["clipped"] > 0, detail  # the cap really is below the content
+        assert got["wrapped"] == 0, detail
+        assert got["maxSlide"] <= real["maxSlide"] + 1, detail
+        assert got["minHeight"] == real["minHeight"] and got["maxHeight"] == real["maxHeight"], detail
     finally:
         page.close()
         context.close()
@@ -484,7 +495,11 @@ def test_picker_grid_shows_seven_per_row_at_full_hd(live_browser, hidden_scrollb
         assert got["authoritative"] - 32 <= got["gridCW"] <= got["authoritative"] + 1, detail
         assert got["tracks"] == got["expected"], detail
         assert got["spill"] == 0, detail
-        assert got["tracks"] == 7, detail
+        # The maintainer's Full HD floor of 7 per row. Since the 2026-09-16
+        # clarification ("remove arbitrary layout ceilings", test_picker_grid.py)
+        # the card minimum is a flat 13.5rem and auto-fit alone decides the count,
+        # so a Full HD grid now fits 8 -- never fewer than 7.
+        assert got["tracks"] >= 7, detail
     finally:
         page.close()
         context.close()
