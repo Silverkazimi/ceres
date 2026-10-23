@@ -452,7 +452,9 @@ async def _page_all_slots(f, capacity):
         await next_page.first.click()
         await asyncio.sleep(0.08)
         await _fit(f, strict=False)
-    assert seen == set(range(capacity)), (capacity, seen)
+    # A zero-capacity plot still renders the default five addable worker tiles
+    # (editor.js editorGroups: slotFloor = capacity > 0 ? capacity : DEFAULT_WORKER_SLOTS).
+    assert seen == set(range(capacity or 5)), (capacity, seen)
     if capacity:
         assert {"worker","power_core","totem","title"} <= units, (capacity,units)
 
