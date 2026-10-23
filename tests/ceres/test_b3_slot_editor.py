@@ -21,11 +21,13 @@ from .conftest import spawn_live_ceres
 ROOT = Path(__file__).parents[2]
 CSS = ROOT / "ceres" / "static" / "ceres.css"
 FIXTURE = ROOT / "tests" / "fixtures" / "land" / "assets_active_with_runi.json"
-HEAD_BUTTON_LEFT = 115.59375
-HEAD_FOOTER_HEIGHT = 30.921875
-HEAD_BAND_HEIGHT = 282.0
 WCAG_AA_MIN = 4.5
-BADGE_BG_ALPHA = 92
+# The filled Base PP cell's plates (ceres.css): --bg3 tinted 15% by the cell's state colour.
+FILLED_PLATES = (
+    "color-mix(in srgb, var(--primary) 15%, var(--bg3))",
+    "color-mix(in srgb, var(--ok) 15%, var(--bg3))",
+    "color-mix(in srgb, var(--danger) 15%, var(--bg3))",
+)
 
 
 @pytest.fixture(scope="module")
@@ -45,6 +47,11 @@ def _page(live_browser: tuple[Browser, str]) -> Page:
 def _expand(page: Page, index: int) -> None:
     page.locator("#plot-tbody > tr.plot-row").nth(index).click()
     page.locator("tr.expand-row").nth(index).locator(".slot-editor").wait_for(timeout=30_000)
+    # The band mounts "preparing" and draws its tiles and Base PP row once the plot's detail
+    # is in (ready, or degraded when art is missing).
+    page.locator("tr.expand-row").nth(index).locator(
+        ".editor-band:is([data-plot-state='ready'], [data-plot-state='degraded'])"
+    ).wait_for(timeout=30_000)
 
 
 def _fixture_expanded(page: Page) -> tuple[int, Page]:
@@ -97,14 +104,35 @@ def _fixture_expanded(page: Page) -> tuple[int, Page]:
     return index, page.locator("tr.expand-row").nth(index)
 
 
+# The band's change-worksite control: the harvest bar's cog (editor.js passes
+# `cog: !!worksiteChange` to harvestBarHtml), which opens the worksite modal. The separate
+# `.worksite-change-btn` beside the Base PP row is no longer drawn.
+WORKSITE_CHANGE = ".slot-editor-footer .harvest-bar-cog[data-slot-action='open-worksite-modal']"
+
+
 def _expanded_with_button(page: Page) -> Page:
     rows = page.locator("#plot-tbody > tr.plot-row")
     for index in range(rows.count()):
         _expand(page, index)
         expanded = page.locator("tr.expand-row").nth(index)
-        if expanded.locator(".worksite-change-btn").count():
+        if expanded.locator(WORKSITE_CHANGE).count():
             return expanded
     raise AssertionError("live board has no expanded worksite-change plot")
+
+
+_PROBE = """(root, expr) => {
+  const node = document.createElement('div');
+  node.style.cssText = `position:absolute;inline-size:0;block-size:${expr}`;
+  root.querySelector('.editor-main').append(node);
+  const height = node.getBoundingClientRect().height;
+  node.remove();
+  return height;
+}"""
+
+
+def _term(expanded: Page, expr: str) -> float:
+    """One layout term of the band, measured alone by a zero-width probe sized by it."""
+    return expanded.locator(".editor-band").evaluate(_PROBE, expr)
 
 
 def _geometry(expanded: Page) -> dict:
@@ -166,6 +194,10 @@ def _footer_measurements(expanded: Page) -> dict:
 
 
 def _rgb(value: str) -> tuple[float, float, float]:
+    # A colour computed from color-mix() serializes as `color(srgb r g b)` (0..1 channels).
+    srgb = re.fullmatch(r"color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*/\s*[\d.]+)?\s*\)", value)
+    if srgb:
+        return tuple(float(srgb.group(index)) for index in range(1, 4))
     match = re.fullmatch(r"rgba?\(\s*([\d.]+)[, ]+\s*([\d.]+)[, ]+\s*([\d.]+)\s*\)", value)
     assert match, value
     return tuple(float(match.group(index)) / 255 for index in range(1, 4))
@@ -239,15 +271,42 @@ def test_t1_figure_cells_align_with_every_tile_column(live_browser: tuple[Browse
 def test_t2_change_worksite_button_stays_at_head_position(live_browser: tuple[Browser, str]) -> None:
     """Injection: moving `.editor-base-pp-row` before `.worksite-change-btn` moved the
     button right by the row width plus the footer gap and turned this red; restoring the
-    `${worksiteChange}${basePpRow}` order made it green. HEAD measured 115.59375px."""
+    `${worksiteChange}${basePpRow}` order made it green. HEAD measured 115.59375px.
+    (The control became the harvest bar's cog; the injection now puts the row in front of
+    the bar.)"""
     page = _page(live_browser)
     expanded = _expanded_with_button(page)
     if os.environ.get("B3_INJECTION") == "t2_before_button":
+        # The bar is anchored (absolute), so reordering alone cannot move it; the injection
+        # also puts it back into the footer's flow, where the row in front pushes it right.
         expanded.locator(".slot-editor").evaluate(
-            "root => root.querySelector('.slot-editor-footer').insertBefore(root.querySelector('.editor-base-pp-row'), root.querySelector('.worksite-change-btn'))"
+            "root => root.querySelector('.slot-editor-footer').insertBefore(root.querySelector('.editor-base-pp-row'), root.querySelector('.harvest-bar'))"
         )
-    left = expanded.locator(".worksite-change-btn").bounding_box()["x"]
-    assert left == pytest.approx(HEAD_BUTTON_LEFT, abs=1)
+        page.add_style_tag(content=".slot-editor-footer > .harvest-bar, .slot-editor-footer > .editor-base-pp-row { position: static !important; transform: none !important; }")
+    # The pinned 115.59px was the old footer button's left edge. The control is the harvest
+    # bar's cog now, and its head position is the bar's own anchor: the bar centred under the
+    # worksite column (half --worksite-w into the footer, ceres.css), the cog its first control
+    # inside the bar's border and padding. The anchor is measured by a probe placed by that
+    # term alone in the same footer, so a Base PP row in front of it cannot move it.
+    geometry = expanded.locator(".slot-editor-footer").evaluate(
+        """footer => {
+          const probe = document.createElement('div');
+          probe.style.cssText = 'position:absolute;inline-size:0;block-size:0;left:calc(var(--worksite-w) / 2)';
+          footer.append(probe);
+          const anchor = probe.getBoundingClientRect().left;
+          probe.remove();
+          const bar = footer.querySelector('.harvest-bar');
+          const style = getComputedStyle(bar);
+          const barRect = bar.getBoundingClientRect();
+          return {anchor, barCentre: (barRect.left + barRect.right) / 2,
+            inner: barRect.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft),
+            cog: footer.querySelector('.harvest-bar-cog').getBoundingClientRect().left,
+            firstControl: bar.firstElementChild.classList.contains('harvest-bar-cog')};
+        }"""
+    )
+    assert geometry["barCentre"] == pytest.approx(geometry["anchor"], abs=1), geometry
+    assert geometry["firstControl"], geometry
+    assert geometry["cog"] == pytest.approx(geometry["inner"], abs=1), geometry
     page.close()
 
 
@@ -259,11 +318,34 @@ def test_t3_footer_and_band_heights_match_head(live_browser: tuple[Browser, str]
     expanded = _expanded_with_button(page)
     if os.environ.get("B3_INJECTION") == "t3_stacked":
         page.add_style_tag(content=".editor-base-pp-cell.is-filled { display: flex !important; flex-direction: column !important; } .editor-base-pp-cell.is-filled::after { content: 'Base PP'; display: block !important; }")
+    # The pinned 30.92px footer / 282px band were the retired fixed band. The desktop band is
+    # the scene-scaled --eos-content-height and its footer the --eos-footer term (ceres.css), so
+    # both expectations are those terms, each measured alone by a probe. The footer's box is
+    # sized by its term, so a stacked second line cannot grow it; it would spill instead -- the
+    # Base PP row and every figure must also stay one line inside the footer.
+    expected_footer = _term(expanded, "var(--eos-footer)")
+    expected_band = _term(expanded, "var(--eos-content-height)")
     metrics = expanded.locator(".slot-editor").evaluate(
-        "root => ({footer: root.querySelector('.slot-editor-footer').getBoundingClientRect().height, band: root.querySelector('.editor-band').getBoundingClientRect().height})"
+        """root => {
+          const footer = root.querySelector('.slot-editor-footer').getBoundingClientRect();
+          const row = root.querySelector('.editor-base-pp-row').getBoundingClientRect();
+          const cells = [...root.querySelectorAll('.editor-base-pp-cell.is-filled')].map(cell => {
+            const glyph = cell.querySelector('b');
+            const range = document.createRange();
+            range.selectNodeContents(glyph);
+            return {lines: range.getClientRects().length, children: [...cell.children].length,
+              after: getComputedStyle(cell, '::after').content};
+          });
+          return {footer: footer.height, footerBottom: footer.bottom, rowBottom: row.bottom,
+            band: root.querySelector('.editor-band').getBoundingClientRect().height, cells};
+        }"""
     )
-    assert metrics["footer"] == pytest.approx(HEAD_FOOTER_HEIGHT, abs=1)
-    assert metrics["band"] == pytest.approx(HEAD_BAND_HEIGHT, abs=1)
+    assert metrics["footer"] == pytest.approx(expected_footer, abs=1)
+    assert metrics["band"] == pytest.approx(expected_band, abs=1)
+    assert metrics["rowBottom"] <= metrics["footerBottom"] + 0.5, metrics
+    assert metrics["cells"] and all(
+        cell["lines"] == 1 and cell["children"] == 1 and cell["after"] in ("none", "normal") for cell in metrics["cells"]
+    ), metrics["cells"]
     page.close()
 
 
@@ -273,7 +355,8 @@ def test_t4_figures_use_served_worker_runi_and_item_values(live_browser: tuple[B
     fixture observed worker strings `32,941` twice, Runi `1,500`, Totem `+50%`, Title
     `+10%`, and the clipped worker's approved cap-shortfall sentence in its tooltip.
     The re-recorded P3 injection remains `B3_INJECTION=t4_descriptors`; it still turns
-    this assertion red without changing the clipped-cell assertion itself."""
+    this assertion red without changing the clipped-cell assertion itself. The cells now
+    show the terrain-adjusted figure (`36,235` twice) and the tooltips the served Base PP."""
     page = _page(live_browser)
     _, expanded = _fixture_expanded(page)
     row = expanded.locator(".editor-base-pp-row")
@@ -282,13 +365,23 @@ def test_t4_figures_use_served_worker_runi_and_item_values(live_browser: tuple[B
           const row = root.querySelector('.editor-base-pp-row');
           [...row.children].filter(node => node.matches('.editor-base-pp-cell')).slice(6).forEach(node => node.remove());
         }""", expanded.locator(".slot-editor").element_handle())
+    # A worker's cell shows its terrain-adjusted figure -- the served construction_pp
+    # ("Boostable PP": Base PP after the cap, with the plot's terrain) -- and its tooltip
+    # states the served Base PP and the terrain step. The fixture's two 32,941 Base PP
+    # workers on +10% terrain show 36,235; the clipped one (2,200 Base PP, 1,617.648 after
+    # the cap) shows 1,779 and its tooltip names what the cap takes (582).
     text = row.inner_text()
-    assert text.count("32,941") == 2
+    assert text.count("36,235") == 2
     assert "1,500" in text
     assert "+50%" in text
     assert "+10%" in text
     assert row.locator(".editor-base-pp-cell small").count() == 0
-    assert "This card's Base PP after the plot's cap absorbs a shortfall here" in row.locator(".editor-base-pp-cell").nth(4).get_attribute("data-tip-body")
+    worker_cells = row.locator(".editor-base-pp-cell[data-group-id='worker']")
+    assert worker_cells.nth(0).get_attribute("data-tip-body").startswith("32,941 Base PP · +10% terrain")
+    clipped = worker_cells.nth(4)
+    assert "is-cap-clipped" in (clipped.get_attribute("class") or "")
+    assert clipped.inner_text().strip() == "1,779"
+    assert "2,200 Base PP · +10% terrain · the plot's 100,000 cap takes 582" in clipped.get_attribute("data-tip-body")
     page.close()
 
 
@@ -299,8 +392,18 @@ def test_t5_figure_text_contrast_clears_wcag_in_all_themes(live_browser: tuple[B
     and asserts the chosen themed `--bg3` mix against `--heading` in all four themes.
     It samples one worksite's art; other artwork is not covered. The measured minimum
     contrast table on the real busy worksite art is recorded by the guarded run below.
+
+    The chosen background is no longer a translucent `--bg3` (92%) badge: a filled cell is an
+    opaque plate, `--bg3` tinted 15% by its state colour (primary; ok for a terrain bonus;
+    danger for a penalty or a cap clip). The plates are measured as rendered, with no
+    override, and must clear AA in every theme. The retired sweep over translucent alphas
+    (70/60/50/80/92) measured a design that no longer exists, and its pixel-variety checks
+    proved that art showed through a translucent badge; an opaque plate shows none, so the
+    guard asserts the plates are opaque instead.
     """
-    assert f"var(--bg3) {BADGE_BG_ALPHA}%, transparent" in CSS.read_text(encoding="utf-8")
+    source = CSS.read_text(encoding="utf-8")
+    for plate in FILLED_PLATES:
+        assert f"background: {plate};" in source, plate
     page = _page(live_browser)
     _, expanded = _fixture_expanded(page)
     if os.environ.get("B3_INJECTION") == "t5_meta":
@@ -308,29 +411,25 @@ def test_t5_figure_text_contrast_clears_wcag_in_all_themes(live_browser: tuple[B
     scene = expanded.locator(".editor-scene")
     scene_background = scene.evaluate("node => getComputedStyle(node, '::before').backgroundImage")
     assert "url(" in scene_background
-    page.evaluate("""() => {
-      const style = document.createElement('style');
-      style.id = 'b3-alpha-probe';
-      document.head.append(style);
-    }""")
-    measured = {}
-    for alpha in (70, 60, 50, 80, BADGE_BG_ALPHA):
-        page.evaluate("""alpha => {
-          document.querySelector('#b3-alpha-probe').textContent =
-            `.editor-base-pp-cell.is-filled { background: color-mix(in srgb, var(--bg3) ${alpha}%, transparent) !important; }`;
-        }""", alpha)
-        measured[alpha] = {}
-        for theme in ("alchemical", "dark", "light", "wood"):
-            page.evaluate("theme => document.documentElement.setAttribute('data-theme', theme)", theme)
-            cells = expanded.locator(".editor-base-pp-cell.is-filled")
-            assert cells.count()
-            samples = [_composited_contrast(cells.nth(index), cells.nth(index).locator("b").evaluate("node => getComputedStyle(node).color")) for index in range(cells.count())]
-            assert max(sample["unique_pixels"] for sample in samples) >= 4, (alpha, theme, samples)
-            assert max(sample["luminance_span"] for sample in samples) >= 0.01, (alpha, theme, samples)
-            measured[alpha][theme] = min(sample["min"] for sample in samples)
-    print("T-5 composited contrast table: " + json.dumps(measured, sort_keys=True))
+    product = {}
     for theme in ("alchemical", "dark", "light", "wood"):
-        assert measured[BADGE_BG_ALPHA][theme] >= WCAG_AA_MIN, (theme, measured)
+        page.evaluate("theme => document.documentElement.setAttribute('data-theme', theme)", theme)
+        cells = expanded.locator(".editor-base-pp-cell.is-filled")
+        assert cells.count()
+        alphas = cells.evaluate_all(
+            """cells => cells.map(cell => {
+              const probe = document.createElement('canvas').getContext('2d');
+              probe.fillStyle = getComputedStyle(cell).backgroundColor;
+              probe.fillRect(0, 0, 1, 1);
+              return probe.getImageData(0, 0, 1, 1).data[3];
+            })"""
+        )
+        assert alphas == [255] * len(alphas), (theme, alphas)
+        samples = [_composited_contrast(cells.nth(index), cells.nth(index).locator("b").evaluate("node => getComputedStyle(node).color")) for index in range(cells.count())]
+        product[theme] = min(sample["min"] for sample in samples)
+    print("T-5 product plate contrast: " + json.dumps(product, sort_keys=True))
+    for theme in ("alchemical", "dark", "light", "wood"):
+        assert product[theme] >= WCAG_AA_MIN, (theme, product)
     page.close()
 
 
@@ -373,14 +472,25 @@ def _css_rule(source: str, selector: str) -> str:
 
 def test_t11_frozen_css_rules_remain_byte_identical() -> None:
     """Injection: changing any frozen rule made the byte comparison red; reverting the
-    edit made it green. This is the CI-adjacent source-byte guard required by T-11."""
+    edit made it green. This is the CI-adjacent source-byte guard required by T-11.
+
+    The frozen texts were re-baselined on the current stylesheet after deliberate product
+    changes that are not B3's: the footer lost its top border ("no border-top (maintainer)");
+    the change-worksite button lost its own pill styling to the shared `.ceres-btn` system
+    (editor.js keeps its markup only to decide the harvest bar's cog, which is the band's
+    control now); and
+    the plot-facts line is retired (editor.js renders no `.editor-facts`, and no rule styles
+    it), so its place in the freeze goes to the line that took over its change badges, the
+    plot controls line above the tiles (`.slot-group-controls`)."""
     source = CSS.read_text(encoding="utf-8")
     expected = {
-        ".editor-facts": ".editor-facts { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.2rem 0.9rem; margin-bottom: 0.3rem; min-height: 1.15rem; font-size: 0.69rem; color: var(--hi); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85); }",
-        ".slot-editor-footer": ".slot-editor-footer { position: relative; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.35rem 1rem; margin-top: 0.1rem; padding-top: 0.1rem; border-top: 1px solid var(--border); font-size: 0.8rem; min-height: 1.7625rem; }",
-        ".worksite-change-btn": ".worksite-change-btn { flex: 0 0 var(--worksite-btn-w); display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: 1.7625rem; margin: 0 0 0 calc((var(--worksite-w) - var(--worksite-btn-w)) / 2); padding: 0 0.55rem; border: 1px solid var(--accent); border-radius: 999px; background: color-mix(in srgb, var(--bg2) 88%, var(--accent) 12%); color: var(--heading); font: inherit; font-size: 0.68rem; font-weight: 700; line-height: 1; white-space: nowrap; cursor: pointer; }",
+        ".slot-group-controls": ".slot-group-controls { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.35rem; position: sticky; left: 0; z-index: 5; background: transparent; border-radius: 0; pointer-events: none; }",
+        ".slot-editor-footer": ".slot-editor-footer { position: relative; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.35rem 1rem; margin-top: 0.1rem; padding-top: 0.1rem; font-size: 0.8rem; min-height: 1.7625rem; }",
+        ".worksite-change-btn": ".worksite-change-btn { flex: 0 0 var(--worksite-btn-w); display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; margin: 0 0 0 calc((var(--worksite-w) - var(--worksite-btn-w)) / 2); white-space: nowrap; }",
     }
+    assert not re.search(r"(^|[\s,}])\.editor-facts\s*[{,]", source, re.MULTILINE), "the retired facts line is styled again"
     if os.environ.get("B3_INJECTION") == "t11_frozen":
-        source = source.replace(expected[".editor-facts"], expected[".editor-facts"][:-2] + " color: red; }")
+        key = ".slot-group-controls"
+        source = source.replace(expected[key], expected[key][:-2] + " color: red; }")
     for selector, rule in expected.items():
         assert _css_rule(source, selector) == rule
