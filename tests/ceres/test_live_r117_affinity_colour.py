@@ -16,8 +16,8 @@ THEMES = ("alchemical", "dark", "light", "wood")
 PALETTE = {
     "alchemical": ("#74c98b", "#cf5555", 2.0),
     "dark": ("#7bd59a", "#d45b62", 2.0),
-    "light": ("#2a804a", "#b52a38", 1.30),
-    "wood": ("#227a47", "#b32633", 1.25),
+    "light": ("#2a804a", "#b12937", 1.30),
+    "wood": ("#227a47", "#af2532", 1.25),
 }
 STATES = {"favoured", "penalised", "unchanged", "unknown"}
 MOUNTAIN = {"red": 0.1, "blue": -0.5, "green": -0.5, "white": None, "black": 0.1, "gold": 0}
