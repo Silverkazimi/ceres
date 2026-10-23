@@ -146,6 +146,53 @@ def test_width_invariants(live_browser, width: int, dpr: float, stale: bool) -> 
         context.close()
 
 
+@pytest.mark.parametrize("width", (1290, 1294))
+def test_first_render_follows_the_settled_tier(live_browser, width: int) -> None:
+    """The pre-paint width block (index.html) measures the scrollbar gutter before
+    ceres.css loads. It must measure the page's own thin gutter, not the classic
+    one: at 1290-1294 px the classic gutter put the board in the card tier, the
+    board rendered cards, and the settled (thin-gutter) tier then showed the
+    table -- with no rows in it: an empty board. The gutter the pre-paint block
+    saw must be the settled one, and the board must show what its tier selects."""
+    shared, base_url = live_browser
+    context = shared.new_context(viewport={"width": width, "height": 800})
+    context.add_init_script(
+        "document.addEventListener('DOMContentLoaded', () => {"
+        " window.__ceresFirstScale = document.documentElement.dataset.ceresScale || ''; });"
+    )
+    page = context.new_page()
+    try:
+        page.goto(f"{base_url}/?player=sample01")
+        page.wait_for_function(
+            "document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0"
+            " || document.querySelectorAll('#plot-card-list .plot-card').length > 0",
+            timeout=60_000,
+        )
+        wait_ready(page)
+        settle(page)
+        got = page.evaluate(
+            """() => {
+              const visible = (id) => { const el = document.getElementById(id); return !!el && getComputedStyle(el).display !== 'none'; };
+              return {
+                first: window.__ceresFirstScale, settled: document.documentElement.dataset.ceresScale || '',
+                cardTier: document.documentElement.classList.contains('ceres-lw-le-1279'),
+                tableVisible: visible('plot-table-scroll'), cardsVisible: visible('plot-card-list'),
+                rows: document.querySelectorAll('#plot-tbody > tr.plot-row').length,
+                cards: document.querySelectorAll('#plot-card-list .plot-card').length,
+              };
+            }"""
+        )
+        detail = json.dumps(got, sort_keys=True)
+        assert got["first"] == got["settled"], detail
+        if got["cardTier"]:
+            assert got["cardsVisible"] and got["cards"] > 0, detail
+        else:
+            assert got["tableVisible"] and got["rows"] > 0, detail
+    finally:
+        page.close()
+        context.close()
+
+
 @pytest.mark.parametrize("stale", STALE, ids=["cleanW", "staleW"])
 @pytest.mark.parametrize("dpr", (1.0, 1.35))
 @pytest.mark.parametrize("width", WIDTHS)
