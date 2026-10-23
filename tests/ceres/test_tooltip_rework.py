@@ -125,8 +125,12 @@ def test_tooltip_css_declares_full_hd_bounds_brief_depth_and_warning_variant() -
     this guard checks their rendered CSS contract and warning accent."""
     css = CSS.read_text(encoding="utf-8")
     tooltip_css = css[css.index("#ceres-tooltip {") : css.index("[data-tip] { cursor: help; }")]
-    assert "max-width: min(24rem, calc(100vw - 20px));" in tooltip_css
-    assert "max-height: calc(100vh - 20px);" in tooltip_css
+    # The Full HD bounds are now the measured viewport minus the 12px positioning margin
+    # (positionTooltip() writes both custom properties on every open); the CSS fallbacks
+    # keep the box inside the viewport before the first measurement. The old fixed 24rem
+    # cap went with the wider structured (worker layout) tooltips.
+    assert "max-width: var(--tooltip-available-width, calc(100vw - 24px));" in tooltip_css
+    assert "max-height: var(--tooltip-available-height, calc(100dvh - 28px));" in tooltip_css
     assert "pointer-events: auto;" in tooltip_css
     assert "--text-dim" not in tooltip_css
     assert '#ceres-tooltip[data-depth="brief"]' in tooltip_css
