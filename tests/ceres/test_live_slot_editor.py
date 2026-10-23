@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -17,6 +18,32 @@ from . import board_basic_recording as recording
 
 SCREEN_DIR = Path(__file__).parents[2] / "work" / "ceres-fr1698-items"
 TITLE_DEEDS = (recording.ORDINARY.uid,)
+# The plot table's DOM column count, kept in lockstep with index.html's <thead> (state.js).
+PLOT_TABLE_COLUMN_COUNT = int(re.search(
+    r"export const PLOT_TABLE_COLUMN_COUNT = (\d+);",
+    (Path(__file__).parents[2] / "ceres" / "static" / "state.js").read_text(encoding="utf-8"),
+).group(1))
+# The Workers cell of a plot row, located by its header key rather than a column position
+# (columns were added before it more than once).
+_WORKERS_CELL = """row => row.children[[...document.querySelectorAll('#plot-table thead th')]
+  .findIndex(th => th.dataset.key === 'worker_count')]"""
+# The opened band draws its tiles once the plot's detail is in: it mounts "preparing" and turns
+# ready (or degraded) when the tiles are there.
+_PRESENTED_BAND = ".editor-band:is([data-plot-state='ready'], [data-plot-state='degraded'])"
+# An actionable worker carrying land abilities. The ⚑ tile flag (`.slot-flag`) is retired
+# (editor.js: "the ability icons above the card already say it"); the abilities are icons in
+# the tile's cell -- inside the tile, or as an arc that is the tile's sibling.
+_ABILITY_TILE = ".slot-tile-cell:has(.ability-icon) > .slot-tile[data-group-id='worker'][data-actionable='1']"
+# A saved avatar-builder character (GET /players/player_avatar/{name}, avatar.js). The board's
+# refresh control is the account avatar (#player-avatar, board.js refreshBoardFromAvatar); it
+# shows only once the avatar draws, and the recording has no avatar for the fixture account.
+_AVATAR = {
+    "race": "human", "gender": 1, "body": 1, "skin_color": 1, "background": 1,
+    "face": 1, "hair": 1, "hair_color": 1, "eyebrows": 1, "eyes": 1, "eyes_color": 1,
+    "nose": 1, "mouth": 1, "complexion": 0, "scars": 0, "tattoo": 0,
+    "earrings": 0, "earrings_color": 1, "accessory": 0, "accessory_color": 1,
+    "cloth": 1, "cloth_color": 1, "hat": 0, "hat_color": 1,
+}
 
 
 
@@ -29,6 +56,11 @@ def live_browser() -> tuple[Browser, str]:
 def _page(live_browser: tuple[Browser, str]) -> Page:
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
+    page.route(
+        "https://api.splinterlands.com/players/player_avatar/sample01*",
+        lambda route: route.fulfill(status=200, content_type="application/json",
+                                    headers={"Access-Control-Allow-Origin": "*"}, body=json.dumps(_AVATAR)),
+    )
     page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
     wait_for_board(page)
     return page
@@ -36,11 +68,11 @@ def _page(live_browser: tuple[Browser, str]) -> Page:
 
 def _row_with(page: Page, mode: str) -> int:
     return page.evaluate(
-        """mode => [...document.querySelectorAll('#plot-tbody > tr.plot-row')]
-        .findIndex(row => {
-          const text = row.querySelector('td:nth-child(12)')?.textContent || '';  // Workers ( added Food/hr before it)
+        f"""mode => [...document.querySelectorAll('#plot-tbody > tr.plot-row')]
+        .findIndex(row => {{
+          const text = ({_WORKERS_CELL})(row)?.textContent || '';
           return mode === 'zero' ? /\\b0\\/0\\b/.test(text) : !/\\b0\\/0\\b/.test(text) && /\\/[1-9]\\d*/.test(text);
-        })""",
+        }})""",
         mode,
     )
 
@@ -50,12 +82,13 @@ def _expand(page: Page, index: int) -> None:
     if row.locator("xpath=following-sibling::tr[1]").evaluate("node => node.style.display") == "none":
         row.click()
     page.locator("tr.expand-row").nth(index).locator(".slot-editor").wait_for(timeout=30_000)
+    page.locator("tr.expand-row").nth(index).locator(_PRESENTED_BAND).wait_for(timeout=30_000)
 
 
 def _worker_row_index(page: Page) -> int:
     return page.evaluate(
-        """() => [...document.querySelectorAll('#plot-tbody > tr.plot-row')]
-        .findIndex(row => /\\b[1-9]\\d*\\/[1-9]\\d*(?:\\+R)?\\b/.test(row.children[10]?.textContent || ''))"""
+        f"""() => [...document.querySelectorAll('#plot-tbody > tr.plot-row')]
+        .findIndex(row => /\\b[1-9]\\d*\\/[1-9]\\d*(?:\\+R)?\\b/.test(({_WORKERS_CELL})(row)?.textContent || ''))"""
     )
 
 
@@ -71,8 +104,9 @@ def _mock_completed_refresh(page: Page) -> None:
 
 
 def _reload(page: Page) -> None:
+    # The reload control is the account avatar now ("Refresh board"); #reload-btn is retired.
     with page.expect_response("**/api/board*") as board_response:
-        page.locator("#reload-btn").click()
+        page.locator("#player-avatar").click()
     assert board_response.value.status == 200
 
 
@@ -219,6 +253,11 @@ def test_stale_detail_response_cannot_merge_after_player_switch(live_browser: tu
             route.continue_()
 
     page.route("**/api/board*", board_route)
+    # A player switch is a fresh board load: it first captures the new account (POST
+    # /api/capture/refresh, then /api/capture/status). The synthetic recording holds no such
+    # account, so its capture fails and the board never draws the switched snapshot; complete
+    # the capture here, as the reload tests do, and serve the switched board above.
+    _mock_completed_refresh(page)
     page.evaluate("body => window.__plotDetailQueue.push(body)", switched_detail)
     page.locator("#player-input").fill("switch-target")
     page.locator("#player-input").press("Enter")
@@ -264,10 +303,25 @@ def test_title_tile_is_actionable_and_does_not_stage(live_browser: tuple[Browser
     assert "Title op payload shape is unverified; not stageable." not in (title.get_attribute("data-tip") or "")
     assert title.locator(".slot-remove").count() == 1
 
+    # The Changes button is no longer hidden while nothing is staged: the recording carries
+    # ready-to-sign work of its own (a finished worksite's feed), so it shows that count. A
+    # click on the Title opens its picker and stages nothing: the count does not move.
+    staged_before = _staged_count(page)
     title.click()
     expanded.locator(".inline-picker").wait_for(timeout=30_000)
-    assert page.locator("#checkout-btn").is_hidden()
+    settle(page)
+    assert _staged_count(page) == staged_before
     page.close()
+
+
+def _staged_count(page: Page) -> int:
+    return page.evaluate(
+        """() => {
+          const button = document.getElementById('checkout-btn');
+          const count = document.getElementById('checkout-count');
+          return button.hidden || count.hidden ? 0 : Number(count.textContent || 0);
+        }"""
+    )
 
 
 def test_clear_plot_includes_actionable_title_and_portfolio_preview_returns_200(live_browser: tuple[Browser, str]) -> None:
@@ -315,18 +369,22 @@ def test_clear_plot_includes_actionable_title_and_portfolio_preview_returns_200(
     assert clear_plot.is_enabled()
     clear_plot.click()
     page.locator("#checkout-btn").wait_for(timeout=30_000)
-    page.locator("#checkout-btn").click()
+    # The Changes window prepares its preview by itself as it opens (checkout.js: "the preview
+    # is prepared automatically whenever the staged batch differs from the one last
+    # previewed"); the explicit Prepare button is retired. Each staged removal is one strip
+    # slot of its plot's card, carrying the slot's group.
+    with page.expect_request("**/api/op-preview*") as preview_request:
+        page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    group_ids = panel.locator(".checkout-remove").evaluate_all("buttons => buttons.map(button => button.dataset.groupId)")
+    group_ids = panel.locator(".ch-slot[data-group-id]").evaluate_all("slots => slots.map(slot => slot.dataset.groupId)")
     assert {"worker", "totem", "power_core"}.issubset(set(group_ids))
     assert "title" in group_ids
 
-    with page.expect_request("**/api/op-preview*") as preview_request:
-        panel.locator("button[data-checkout-action='prepare']").click()
     assert preview_request.value.response().status == 200
+    panel.locator(".op-preview-review").wait_for(timeout=30_000)
+    settle(page)
     assert len(preview_requests) == 1
     assert "title" in {move["group_id"] for move in preview_requests[0]["moves"]}
-    panel.locator(".op-preview-review").wait_for(timeout=30_000)
     page.close()
 
 
@@ -349,7 +407,7 @@ def test_real_board_slot_editor_contract(live_browser: tuple[Browser, str]) -> N
         count = int(worker.locator(".slot-group-count").inner_text().split("/")[1])
         if powered_index == -1 and count > 0 and worker.locator(".slot-grid > .slot-tile-cell > .slot-tile.is-empty").count():
             powered_index = index
-        if ability_index == -1 and expanded.locator(".slot-tile .slot-flag").count():
+        if ability_index == -1 and expanded.locator(_ABILITY_TILE).count():
             ability_index = index
         if replace_index == -1 and worker.locator(".slot-tile[data-actionable='1']").count():
             replace_index = index
@@ -360,8 +418,8 @@ def test_real_board_slot_editor_contract(live_browser: tuple[Browser, str]) -> N
     assert replace_index >= 0
     _expand(page, powered_index)
 
-    assert page.locator("#plot-table thead th").count() == 16  # Food/hr; : one table
-    assert page.locator(f"#plot-tbody > tr.plot-row").nth(powered_index).locator("+ tr.expand-row td[colspan='16']").count() == 1
+    assert page.locator("#plot-table thead th").count() == PLOT_TABLE_COLUMN_COUNT  # one table
+    assert page.locator("#plot-tbody > tr.plot-row").nth(powered_index).locator(f"+ tr.expand-row td[colspan='{PLOT_TABLE_COLUMN_COUNT}']").count() == 1
     selected_expand = page.locator("tr.expand-row").nth(powered_index)
     worker_group = selected_expand.locator(".slot-group[data-group-id='worker']")
     capacity = int(worker_group.locator(".slot-group-count").inner_text().split("/")[1])
@@ -380,7 +438,12 @@ def test_real_board_slot_editor_contract(live_browser: tuple[Browser, str]) -> N
     page.locator(".inline-picker").wait_for(timeout=30_000)
     page.locator(".candidate-row").first.wait_for(timeout=30_000)
     assert "candidates" in candidate_request.value.url
-    assert "Showing 25 of" in page.locator(".picker-footer").inner_text()
+    # The first page holds up to the picker's page size of 25. The synthetic recording has
+    # fewer idle workers than that (22), so the page shows all of them: min(25, total).
+    showing = re.search(r"Showing (\d+) of (\d+)", page.locator(".picker-footer").inner_text())
+    assert showing, page.locator(".picker-footer").inner_text()
+    assert int(showing.group(1)) == min(25, int(showing.group(2)))
+    assert page.locator(".inline-picker .candidate-row").count() == int(showing.group(1))
 
     load_more = page.locator(".inline-picker [data-picker-action='more']")
     if load_more.count():
@@ -395,15 +458,21 @@ def test_real_board_slot_editor_contract(live_browser: tuple[Browser, str]) -> N
         _expand(page, replace_index)
     replace_expand = page.locator("tr.expand-row").nth(replace_index)
     occupied = replace_expand.locator(".slot-group[data-group-id='worker'] .slot-tile[data-actionable='1']").first
+    occupant_name = occupied.locator(".slot-name").inner_text().strip()
     occupied.click()
     replace_picker = replace_expand.locator(".inline-picker")
     replace_picker.wait_for(timeout=30_000)
-    assert "Replacing" in replace_picker.inner_text()
-    assert "Plot change" in replace_picker.inner_text()
+    # candidates.js: the replace picker's head names the card it replaces ("Replace <name>
+    # (<PP>) · ..."; it used to read "Replacing"), and the plot's change per candidate is the
+    # Harvest /hr metric (the former "Plot change" column, whose explanation is its tooltip).
+    assert f"Replace {occupant_name}" in replace_picker.inner_text()
+    replace_picker.locator(".candidate-row").first.wait_for(timeout=30_000)
+    assert replace_picker.locator(".candidate-row").count() == replace_picker.locator(".candidate-row .candidate-harvest-change").count()
+    assert "harvest /hr" in replace_picker.inner_text().lower()
     replace_picker.locator(".picker-close").click()
 
     _expand(page, ability_index)
-    ability = page.locator("tr.expand-row").nth(ability_index).locator(".slot-tile[data-actionable='1']").filter(has=page.locator(".slot-flag")).first
+    ability = page.locator("tr.expand-row").nth(ability_index).locator(_ABILITY_TILE).first
     assert ability.locator(".slot-remove").count() == 1
     before_staged = page.locator("tr.expand-row").nth(ability_index).locator(".slot-stage-summary b").inner_text()
     ability.hover()
@@ -505,11 +574,13 @@ def test_preview_requires_explicit_keychain_confirmation(live_browser: tuple[Bro
     assert page.locator("#checkout-btn").is_enabled()
     assert page.evaluate("window.__broadcastCalls.length") == 0
 
-    page.locator("#checkout-btn").click()
+    # Opening the Changes window prepares the preview by itself (the explicit Prepare button
+    # is retired); signing still needs the explicit Sign click below.
     panel = page.locator("#checkout-panel")
     with page.expect_request("**/api/op-preview*"):
-        panel.locator("button[data-checkout-action='prepare']").click()
+        page.locator("#checkout-btn").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
+    panel.locator("button[data-op-action='confirm']:enabled").wait_for(timeout=30_000)
     assert "sm_stake_change" in panel.locator(".op-preview-review").text_content()
     assert page.evaluate("window.__broadcastCalls.length") == 0
 
@@ -536,10 +607,17 @@ def test_preview_requires_explicit_keychain_confirmation(live_browser: tuple[Bro
     absent.locator(".candidate-row").first.wait_for(timeout=30_000)
     absent.locator(".candidate-row").first.click()
     absent.locator("#checkout-btn").wait_for(state="visible", timeout=30_000)
-    absent.locator("#checkout-btn").click()
+    # Without a wallet the preview is still prepared (the operations can be reviewed), but
+    # Sign stays disabled and the footer names the reason once: "Wallet not connected."
     absent_panel = absent.locator("#checkout-panel")
-    prepare = absent_panel.locator("button[data-checkout-action='prepare']")
-    prepare.wait_for(timeout=30_000)
-    assert not prepare.is_disabled()
-    assert absent.locator(".slot-keychain-warning").count() == 1
+    with absent.expect_request("**/api/op-preview*"):
+        absent.locator("#checkout-btn").click()
+    absent_panel.locator(".op-preview-review").wait_for(timeout=30_000)
+    absent.wait_for_function(
+        "() => document.querySelector('#checkout-panel .op-preview-review')?.textContent.includes('sm_stake_change')",
+        timeout=30_000,
+    )
+    sign = absent_panel.locator("button[data-op-action='confirm']")
+    assert sign.count() == 1 and sign.is_disabled()
+    assert absent_panel.locator(".ch-signing-note").all_inner_texts() == ["Wallet not connected."]
     absent.close()
