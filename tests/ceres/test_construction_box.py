@@ -34,7 +34,7 @@ if (!info || info.toLabel !== 'Grain Farm') process.exit(10);
 const html = buildBarHtml(row, '', info);
 if (!html.includes('Under construction — Grain Farm')) process.exit(11);
 if (html.includes('No worksite yet')) process.exit(12);
-if (html.includes('375,000 / 1,500,000 PP')) process.exit(13); //  removes the PP counter; progress remains.
+if (html.includes('375,000 / 1,500,000 PP')) process.exit(13); // removes the PP counter; progress remains.
 if (!html.includes('style="--pct:25.00%"')) process.exit(14);
 if (!html.includes('role="meter"') || !html.includes('aria-valuenow="25"')) process.exit(15);
 const nameAt = html.indexOf('Grain Farm');

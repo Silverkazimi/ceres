@@ -81,7 +81,7 @@ def test_edge_tabs_revealed_class_fades_in_with_its_own_iris_style_keyframe():
     # `.scroll-top` reduced-motion guard) finds its block by searching for the
     # FIRST multi-line `@media (prefers-reduced-motion: reduce) {` in the file
     # a second one earlier in the file would shadow it.
-    assert "#edge-tabs.edge-tabs-revealed { animation: none; } /*  */" in css
+    assert "#edge-tabs.edge-tabs-revealed { animation: none; }" in css
 
 
 def test_badge_bar_and_flag_get_their_own_reveal_classes_reusing_the_keyframe():
@@ -103,7 +103,7 @@ def test_badge_bar_and_flag_get_their_own_reveal_classes_reusing_the_keyframe():
         assert "animation: edgeTabsFadeInRight" in rule
     assert (
         "#badge-bar.badge-bar-revealed, #badge-flag.badge-flag-revealed { animation: none; } "
-        "/* : id-qualified so this override always outranks the later un-scoped "
+        "/* id-qualified so this override always outranks the later un-scoped "
         ".badge-bar-revealed/.badge-flag-revealed rules, regardless of source order */"
     ) in css
 
@@ -175,7 +175,7 @@ def test_app_js_reveals_all_three_handles_together_only_after_every_condition():
     assert "window.addEventListener('ceres:badge-bar-synced'" in init_body
     assert "BAR_ROWS_SYNCED = true;" in init_body
     assert init_body.count("maybeRevealEdgeHandles();") == 2
-    assert "initEdgeTabsReveal(); // " in js
+    assert "initEdgeTabsReveal();" in js
     # centerThemePicker()'s own badge-bar block sets its position flag exactly once
     # the geometry has actually been written, not unconditionally. moved the
     # edge-tabs equivalent out into updateEdgeTabsPosition() (see

@@ -108,8 +108,8 @@ def test_grid_loading_reserves_one_responsive_row_with_official_spinner() -> Non
     assert "\n.candidate-card.is-ghost .cand-ghost-body { min-block-size" not in CSS
     assert ".candidate-list:not(.is-card-grid) .candidate-card.is-ghost .cand-ghost-body { min-block-size: 8.4rem; }" in CSS
     # the phase C block became the fluid open-plot block plus the panel rules.
-    for start, end in (("/*  FLUID OPEN PLOT START", "/*  FLUID OPEN PLOT END */"),
-                       ("/*  PHASE C LOW-RES PANELS START", "/*  PHASE C LOW-RES PANELS END */")):
+    for start, end in (("/* FLUID OPEN PLOT START", "/* FLUID OPEN PLOT END */"),
+                       ("/* PHASE C LOW-RES PANELS START", "/* PHASE C LOW-RES PANELS END */")):
         low_res = CSS.split(start, 1)[1].split(end, 1)[0]
         assert ".candidate-grid-card.is-ghost" not in low_res
     assert "function trimPickerGridLoadingRow" in ACTIONS
@@ -223,7 +223,7 @@ def test_list_branch_remains_frozen_while_item_grids_use_rarity_buttons() -> Non
     list_start = CANDIDATES.index("function renderCandidateRow")
     grid_start = CANDIDATES.index("function candidateReadinessOverlayHtml")
     list_branch = CANDIDATES[list_start:grid_start]
-    assert hashlib.sha256(list_branch.encode()).hexdigest() == "d3c07a6993eba871fa960acdfbeccdbd2874aea84aa6668d235a1229d4af0f89"
+    assert hashlib.sha256(list_branch.encode()).hexdigest() == "18df695bec143d537d782ca321dae2fb2964ecdbb4924beb54a825581ce3702b"
     assert 'class="candidate-row candidate-card ${candidate.planned ? \'is-planned \' : \'\'}${classification}' in list_branch
     assert 'candidate-status">${status.html}' in list_branch
     assert 'candidate-plot-change' in list_branch

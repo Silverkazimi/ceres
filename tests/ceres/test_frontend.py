@@ -31,9 +31,9 @@ def test_l4_01_an_idle_cards_answer_is_applied_only_to_the_player_it_was_asked_f
     owner = re.search(r"const (\w+) = BOARD\?\.player \?\? null;", prefetch)
     assert owner
     owner = owner.group(1)
-    assert f"IDLE_CARDS_LOADING === {maintainer}" in prefetch
+    assert f"IDLE_CARDS_LOADING === {owner}" in prefetch
     assert prefetch.count("!stillMine()") >= 2                                    # checked after both awaits
-    assert f"if (IDLE_CARDS_LOADING === {maintainer}) IDLE_CARDS_LOADING = null;" in prefetch   # a later player's request is never blocked or cleared by this one
+    assert f"if (IDLE_CARDS_LOADING === {owner}) IDLE_CARDS_LOADING = null;" in prefetch   # a later player's request is never blocked or cleared by this one
 
 
 def test_l4_02_a_blocked_storage_cannot_stop_the_board_starting():
