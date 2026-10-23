@@ -241,6 +241,18 @@ def live_browser() -> tuple[Browser, str]:
         yield browser, base_url
 
 
+def _pointer_hover(page, locator) -> None:
+    """Hover like a real pointer: approach the target over a few moves. After any
+    page scroll the tooltip layer waits for the pointer to really move (more than
+    4px, tooltip.js SCROLL_QUIET_PX) before it opens a tip, so a single synthetic
+    jump onto the target -- Playwright's hover() -- never opens one."""
+    box = locator.bounding_box()
+    assert box, "hover target is not laid out"
+    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    page.mouse.move(x - 24, y)
+    page.mouse.move(x, y, steps=6)
+
+
 def test_separate_totem_title_cells_keep_exact_row_height_and_tooltips(live_browser: tuple[Browser, str]):
     browser, base_url = live_browser
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=10) as response:  # noqa: S310
@@ -392,7 +404,7 @@ def test_separate_totem_title_cells_keep_exact_row_height_and_tooltips(live_brow
         rarity_icon = page.locator(
                 f'tr.plot-row[data-deed-uid="{generic_derived["deed_uid"]}"] .title-cell .rarity-gem'
             )
-        title_icon.hover()
+        _pointer_hover(page, title_icon)
         settle(page)
         page.wait_for_selector("#ceres-tooltip:not([hidden])")
         title_tip = page.evaluate(
@@ -407,7 +419,7 @@ def test_separate_totem_title_cells_keep_exact_row_height_and_tooltips(live_brow
                   };
                 }"""
             )
-        rarity_icon.hover()
+        _pointer_hover(page, rarity_icon)
         settle(page)
         page.wait_for_selector("#ceres-tooltip:not([hidden])")
         rarity_tip = page.evaluate(
