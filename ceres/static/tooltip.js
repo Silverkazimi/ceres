@@ -214,13 +214,13 @@ export function initTooltips() {
   TOOLTIP_EL.addEventListener('wheel', (event) => {
     event.preventDefault();
     TOOLTIP_EL.style.pointerEvents = 'none';
-    let box = document.elementFromPoint(event.clientX, event.clientY);
+    let box = document.elementFromPoint(event.clientX, event.clientY); // V (no page zoom)
     while (box && box !== document.body && box !== document.documentElement) {
       const style = getComputedStyle(box);
       if (/(auto|scroll)/.test(style.overflowY + style.overflowX) && (box.scrollHeight > box.clientHeight || box.scrollWidth > box.clientWidth)) break;
       box = box.parentElement;
     }
-    const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
+    const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1; // V (no page zoom)
     (box && box !== document.body && box !== document.documentElement ? box : document.scrollingElement || document.documentElement)
       .scrollBy({ left: event.deltaX * scale, top: event.deltaY * scale });
     enterScrollQuiet();
@@ -228,11 +228,11 @@ export function initTooltips() {
   }, { passive: false });
   document.addEventListener('mousemove', (event) => {
     if (!SCROLL_QUIET) return;
-    if (!SCROLL_QUIET_AT) { SCROLL_QUIET_AT = { x: event.clientX, y: event.clientY }; return; }
-    if (Math.hypot(event.clientX - SCROLL_QUIET_AT.x, event.clientY - SCROLL_QUIET_AT.y) <= SCROLL_QUIET_PX) return;
+    if (!SCROLL_QUIET_AT) { SCROLL_QUIET_AT = { x: event.clientX, y: event.clientY }; return; } // V (no page zoom)
+    if (Math.hypot(event.clientX - SCROLL_QUIET_AT.x, event.clientY - SCROLL_QUIET_AT.y) <= SCROLL_QUIET_PX) return; // V (no page zoom)
     SCROLL_QUIET = false;
     SCROLL_QUIET_AT = null;
-    const under = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('[data-tip]');
+    const under = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('[data-tip]'); // V (no page zoom)
     if (under && !under.closest(NO_TIP_ZONE)) { TOUCH_OPENED = false; showTooltip(under); }
   }, { passive: true });
   const reposition = () => {
