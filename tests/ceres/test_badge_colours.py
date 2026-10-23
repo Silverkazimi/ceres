@@ -43,7 +43,7 @@ const expected = new Map([
   // v0.9.513 "Keep Land Card and VoV badges in the green category" (maintainer decision 2026-09-16).
   ['land_ability_card', 'positive'], ['building_in_box', 'neutral'], ['idle', 'neutral'],
   ['unstable_totem', 'neutral'],
-  // assets_not_loaded ("Partly loaded") removed page-wide by  (v0.9.615); it no longer
+  // assets_not_loaded ("Partly loaded") removed page-wide by (v0.9.615); it no longer
   // enters the shared badge table (syncBackendBadges explicitly skips it).
 ]);
 const definitions = badgeDefinitions();
