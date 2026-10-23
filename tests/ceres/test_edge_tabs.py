@@ -187,7 +187,7 @@ def test_edge_tabs_tracks_the_sticky_controls_row_with_no_extra_frame_lag():
     assert "requestAnimationFrame(" not in sync_body
     assert "updateEdgeTabsPosition();" in sync_body
     assert "{ passive: true }" in sync_body
-    assert "initEdgeTabsScrollSync();" in js
+    assert "initEdgeTabsScrollSync(); // " in js
 
 
 def test_controls_row_is_sticky_under_the_page_header_on_desktop():

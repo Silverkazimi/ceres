@@ -149,7 +149,7 @@ _COLUMNS_JS = """() => {
   const heads = [...document.querySelectorAll('#table-head-sticky thead th, thead#table-head-sticky th')];
   const cells = [...row.children];
   const widths = cells.map(td => td.getBoundingClientRect().width);
-  // review fix: the Wood/hr, Stone/hr, Iron/hr columns hide below 1760px
+  //  review fix: the Wood/hr, Stone/hr, Iron/hr columns hide below 1760px
   // (`html.ceres-lw-le-1759 .col-w-wood/-stone/-iron { display: none }`, raised from
   // 1680 by 's inline sort chevron) -- a hidden
   // column is not a fairness defect and must not enter any ratio, so it is excluded
@@ -158,7 +158,7 @@ _COLUMNS_JS = """() => {
   // is unaffected by display), so this checks both signals, not width alone.
   const hidden = cells.map((td, i) => getComputedStyle(td).display === 'none' || widths[i] === 0);
   const growIdx = cells.length - 1;  // Badges is the last column
-  // the last column (DEC stake) reserves extra padding-inline-end for the
+  // : the last column (DEC stake) reserves extra padding-inline-end for the
   // slide-in badge bar behind it (`--table-end-reserve`, ) -- dead space, not
   // the column claiming more than its fair share. Measured as the difference between
   // its own padding-inline-end and a normal (non-last) cell's, in px, so the fairness

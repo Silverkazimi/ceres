@@ -270,7 +270,7 @@ export function syncBadgeOverlay(reason) {
   if (openRows.size === 0 && reason === 'scroll') return;
 
   // Read phase.
-  const scrollerRect = scroller.getBoundingClientRect(); // V
+  const scrollerRect = scroller.getBoundingClientRect();
   const mounted = [];
   tbody.querySelectorAll('tr.plot-row[data-deed-uid]').forEach((tr) => {
     const deedUid = tr.dataset.deedUid;
@@ -281,7 +281,7 @@ export function syncBadgeOverlay(reason) {
     // row-offset bookkeeping. An expanded plot's own <tr> height is unaffected by its
     // sibling expand-row, so this is deliberately the plot row's height only, never
     // the opened detail's.
-    const trRect = tr.getBoundingClientRect(); // V
+    const trRect = tr.getBoundingClientRect();
     mounted.push({
       deedUid,
       top: `${trRect.top - scrollerRect.top + 1}px`,

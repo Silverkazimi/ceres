@@ -175,7 +175,7 @@ def test_inconclusive_recovery_still_blocks_without_rebroadcast() -> None:
     run_in_module_context(
         r"""
 (async () => {
-const nativeSetTimeout = setTimeout;  // run the one-second budget checks at once
+const nativeSetTimeout = setTimeout;  // : run the one-second budget checks at once
 setTimeout = (callback, delay) => delay === 1000 ? Promise.resolve().then(callback) : nativeSetTimeout(callback, delay);
 const operation = nonce => ['custom_json', {
   id: 'sm_land_operation', required_auths: [], required_posting_auths: ['alice'],

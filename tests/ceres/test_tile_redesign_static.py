@@ -262,7 +262,7 @@ def test_band_geometry_gradient_and_fixed_ability_icons_are_mutation_guarded() -
         ".editor-band {\n"
         "  box-sizing: border-box; inline-size: 100%; max-inline-size: 100%;\n"
         "  block-size: var(--eos-band-height, 18.5125rem); min-block-size: var(--eos-band-height, 18.5125rem);\n"
-        "  --eos-facts: .45rem; --eos-controls: 1.6rem; --eos-cards: 12.45rem; --eos-footer: 2.7rem; /* flipped: the +1.25rem sits at the top */\n"
+        "  --eos-facts: .45rem; --eos-controls: 1.6rem; --eos-cards: 12.45rem; --eos-footer: 2.7rem; /*  flipped: the +1.25rem sits at the top */\n"
         "  background: radial-gradient(ellipse at 16% 75%, color-mix(in srgb, var(--accent) 13%, #13111d), #13111d 65%);\n"
         "}"
     )

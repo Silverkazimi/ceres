@@ -220,7 +220,7 @@ const r = (name, over) => ({ name, card_set: 'chaos', rarity: 'common', foil: 0,
 const rows = [
   r('Cheap now', { price_dec: 50 }),                         // 0.5 DEC/PP now, 2.0 at max
   r('Cheap at max', { price_dec: 200, max_cost_dec: 800 }),   // 2.0 now, 0.8 at max
-  r('Big', { land_base_pp: 1000, price_dec: 1500, max_cost_dec: 1500, card_set: 'alpha', rarity: 'rare' }),  
+  r('Big', { land_base_pp: 1000, price_dec: 1500, max_cost_dec: 1500, card_set: 'alpha', rarity: 'rare' }),  // 1.5 / 1.5
   r('Unknown PP', { land_base_pp: null, max_level_pp: null, max_cost_dec: null, price_dec: 1 }),
 ];
 """
@@ -314,9 +314,9 @@ AUTO_JS = r"""
   await __els['cb-mode-market'].fire('click');
   await wait(20);
   if (__fetches.length !== 1 || !__fetches[0].startsWith('/api/market?player=player0005&rarity=common&sort=cost_per_pp')) throw Error('entry: ' + __fetches.join(', '));
-  // the tile has the one-click maxed button, no market link
+  // : the tile has the one-click maxed button, no market link
   if (drawn.length !== 1 || !drawn[0].extra || /View on market/.test(drawn[0].extra.after) || /<a /.test(drawn[0].extra.after) || !/data-cm-action="add-max"/.test(drawn[0].extra.after)) throw Error('tile: ' + (drawn[0] && drawn[0].extra.after));
-  // the price badge is drawn at the art's bottom edge (extra.bottom), no longer in the foot
+  // : the price badge is drawn at the art's bottom edge (extra.bottom), no longer in the foot
   if (!/2,256/.test(drawn[0].extra.bottom) || !/token-dec\.png/.test(drawn[0].extra.bottom) || !/slot-wait-badge cm-price-badge/.test(drawn[0].extra.bottom) || drawn[0].extra.foot) throw Error('price badge: ' + drawn[0].extra.bottom);
   if (!/PP\/\$/.test(drawn[0].extra.metrics) || /at max level/.test(drawn[0].extra.metrics) || /cm-metric-max/.test(drawn[0].extra.metrics)) throw Error('metrics: ' + drawn[0].extra.metrics);
   if (!/listing/.test(__els['cm-summary'].innerHTML) || !/Best .* PP\/\$/.test(__els['cm-summary'].innerHTML) || /Filters changed/.test(__els['cm-summary'].innerHTML)) throw Error('summary: ' + __els['cm-summary'].innerHTML);
@@ -324,7 +324,7 @@ AUTO_JS = r"""
   await __els['cb-mode-cards'].fire('click'); await __els['cb-mode-market'].fire('click');
   await wait(20);
   if (__fetches.length !== 1) throw Error('same filters read again: ' + __fetches.join(', '));
-  // the PP range is a server filter now -- a change reads again after the debounce, with min_pp in the query
+  // : the PP range is a server filter now -- a change reads again after the debounce, with min_pp in the query
   filters.min_pp = '100';
   await __els['cm-sort'].fire('change');
   await wait(450);

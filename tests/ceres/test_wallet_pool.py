@@ -209,7 +209,7 @@ const st = swapState('player0005', 'GRAIN');
   if (preview.kind !== 'add' || preview.seen_dec !== '50' || preview.resource_amount !== '100' || preview.region_uid !== 'PR-CEF-65') throw new Error('add build: ' + JSON.stringify(preview));
   if (__signed.length !== 1 || __signed[0].authority !== 'Posting' || __signed[0].json.op !== 'add_liquidity') throw new Error('signed: ' + JSON.stringify(__signed));
   if (st.stage !== 'done' || st.receipt.resource !== 100 || st.receipt.dec !== 50) throw new Error('add receipt: ' + st.stage);
-  // the result shows in the pool box itself; the swap card stays (and waits), so nothing above it moves.
+  // : the result shows in the pool box itself; the swap card stays (and waits), so nothing above it moves.
   const poolBox = positionHtml('GRAIN', wallet, 'player0005'), swapBox = swapHtml('GRAIN', wallet, 'player0005');
   if (!poolBox.includes('Liquidity added') || !poolBox.includes('data-lp-active') || swapBox.includes('Liquidity added') || !/data-dec="lp:swap"[^>]*disabled/.test(swapBox)) throw new Error('receipt in the pool box: ' + poolBox);
   await swapAction(ctx, 'done', target);

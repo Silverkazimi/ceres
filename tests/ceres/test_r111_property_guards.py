@@ -162,7 +162,7 @@ def _scan_markup(source: str) -> tuple[set[str], list[str]]:
 def _iter_js_literals(source: str):
     index = 0
     while index < len(source):
-        if source.startswith("", index):
+        if source.startswith("//", index):
             newline = source.find("\n", index + 2)
             index = len(source) if newline < 0 else newline + 1
             continue

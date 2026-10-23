@@ -185,7 +185,7 @@ def test_dialog_mount_hooks_and_board_path():
     assert "openCombineGroupDialog(key, { preselect: group.sets?.[0]?.uids || null });" in body
     assert "fetch(" not in body and "idleCardsReady" not in body and "BOARD" not in body
     # a confirmed combine calls the page's hook instead of the board refresh (which would load the board)
-    assert ("if (COMBINE_HOST?.onConfirmed) COMBINE_HOST.onConfirmed({ combineRefresh: result.combine_refresh });  // the Cards page\n"
+    assert ("if (COMBINE_HOST?.onConfirmed) COMBINE_HOST.onConfirmed({ combineRefresh: result.combine_refresh });  // : the Cards page\n"
             "      else settleCombineRefresh(result.combine_refresh);") in src
     # closing reports an unresolved combine (wallet open, ambiguous broadcast, sent without the game's verdict)
     assert "COMBINE_SIGN_STEP || COMBINE_ARRIVAL?.provisional || COMBINE_PREVIEW?.broadcastStalled ? 'unknown' : 'none';" in src
@@ -195,7 +195,7 @@ def test_dialog_mount_hooks_and_board_path():
     # the signing flow is the dialog's own, unchanged
     assert "if (kind === 'sign') { confirmCombineBroadcast(); return; }" in src and "rebuildCombineForSigning(uids)" in src
     # the /?combine= board link still works
-    assert src.rstrip().endswith("openCombineFromAddress();  // registered when the board's module graph loads (the Cards page never loads it)")
+    assert src.rstrip().endswith("openCombineFromAddress();  // : registered when the board's module graph loads (the Cards page never loads it)")
     assert "export async function openCombineFromPrint(print) {" in src and "url.searchParams.delete('combine')" in src
 
 
@@ -224,7 +224,7 @@ def test_dialog_layers_over_the_cards_page():
 
 def test_reload_hook_is_passed_to_find_combinables():
     js = BROWSER.read_text(encoding="utf-8")
-    assert "reloadCards: () => load(),  // My cards after a confirmed combine in place" in js
+    assert "reloadCards: () => load(),  // : My cards after a confirmed combine in place" in js
 
 
 # Find combinables in the filter row

@@ -29,7 +29,7 @@ FIT_JS = r"""
 const copy = (uid, bcx, over = {}) => ({ uid, bcx, bcx_max: 11, level: 1, level_bcx_thresholds: [1, 3, 6, 9, 11], base_pp: 100 * bcx, available: true, ...over });
 const sum = (list) => list.reduce((n, c) => n + c.bcx, 0);
 const uids = (list) => list.map((c) => c.uid).sort();
-// the case: 6 + 4 + 3 = 13 on an 11-CC card with the old largest-first preset
+// the  case: 6 + 4 + 3 = 13 on an 11-CC card with the old largest-first preset
 const a = [copy('A', 6), copy('B', 4), copy('C', 3), copy('D', 1)];
 const exact = combineFitToMaxCopies(a, 11);
 const b = [copy('E', 6), copy('F', 6), copy('G', 3), copy('H', 3)];       // no subset makes 11: the largest under it (9)

@@ -419,7 +419,7 @@ def observed_buttons_without_ceres_btn() -> list[dict]:
         if path.name in DEV_ONLY_PAGES:
             continue
         source = s9310._blank_js_comments(path.read_text(encoding="utf-8")) if path.suffix == ".js" \
-            else re.sub(r"(?s)", _blank, path.read_text(encoding="utf-8"))
+            else re.sub(r"(?s)<!--.*?-->", _blank, path.read_text(encoding="utf-8"))
         for match in BUTTON_TAG.finditer(source):
             tag = match.group(0)
             if "ceres-btn" in tag:

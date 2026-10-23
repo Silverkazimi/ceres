@@ -101,7 +101,7 @@ const plan=Object.values(chainPlans())[0];
 if(!loaded||!plan||plan.inputs[0].source.slot_index!==2) throw Error('slot rescue failed');
 if(CERES_STAGE.length!==1||CERES_STAGE[0].slot_index!==2||CERES_STAGE[0].action!=='unstake'||CERES_STAGE[0].chain_input_uid!=='A') throw Error('wrong unstake');
 if(card.uid||card.card_uid) throw Error('board acquired UID');
-// round 2: carry the real shape through persistence and the combine continuation.
+//  round 2: carry the real shape through persistence and the combine continuation.
 await persistStagePlans();CERES_STAGE.length=0;PLANS.chains={};
 checkAllPlans=async request=>request.map(item=>({...item,verdict:'ok'}));
 await restoreStagePlans();

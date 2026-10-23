@@ -70,16 +70,16 @@ for (const [index, operation] of operations.entries()) {{
   const total = operation.members.reduce((sum, member) => sum + Number(member.source_amount), 0)
     .toLocaleString('en-US', {{ minimumFractionDigits: 2, maximumFractionDigits: 2 }});
   if ((source.match(/class="r3-flow-source"/g) || []).length !== 1
-      || !source.includes(`<span>${{total}}`))  // a single share adds ` · 25%` after the amount
+      || !source.includes(`<span>${{total}}`))  // : a single share adds ` · 25%` after the amount
     throw Error('flow source is not the aggregate amount: ' + operation.id);
 }}
-// only an operation that merges several shares lists them in a member row; a single share is in its flow box.
+// : only an operation that merges several shares lists them in a member row; a single share is in its flow box.
 const merged = operations.filter(operation => operation.members.length > 1).flatMap(operation => operation.members);
 if ((html.match(/class="r3-member(?:\s|")/g) || []).length !== merged.length)
   throw Error('member cells missing');
 for (const member of merged) {{
   const operation = operations.find(item => item.members.includes(member));
-  // member cells use the page's number format and resource name ("3,606.64 Wood"), like the rows above.
+  // : member cells use the page's number format and resource name ("3,606.64 Wood"), like the rows above.
   const label = `${{Number(member.source_amount).toLocaleString('en-US', {{ minimumFractionDigits: 2, maximumFractionDigits: 2 }})}} ${{operation.source_symbol[0]}}${{operation.source_symbol.slice(1).toLowerCase()}}`;
   const cell = html.match(new RegExp(`<div class="r3-member[^>]*data-r3-member="${{member.route_id}}"[^>]*>(.*?)</div>`))?.[1] || '';
   if (!cell.includes('ch-plot-badge') || !cell.includes('class="r3-art"') || !cell.includes(label))
@@ -89,9 +89,9 @@ if ((html.match(/class="r3-summary-status"/g) || []).length !== 1)
   throw Error('status segment count (: the status lives in the summary row)');
 if (!html.includes('Metered routing checks 38/120') || />Region /.test(html) || !html.includes('ch-plot-badge'))
   throw Error('status or plaque text');
-if (!/Wood<\/span><span class="r3-route-arrow">→<\/span><span class="r3-to">(<img[^>]*>)?DEC/.test(html) || !/Grain<\/span><span class="r3-route-arrow">→<\/span><span class="r3-to">(<img[^>]*>)?DEC/.test(html) || html.includes('…')) // resource names, not codes; : DEC carries its icon
+if (!/Wood<\/span><span class="r3-route-arrow">→<\/span><span class="r3-to">(<img[^>]*>)?DEC/.test(html) || !/Grain<\/span><span class="r3-route-arrow">→<\/span><span class="r3-to">(<img[^>]*>)?DEC/.test(html) || html.includes('…')) // : resource names, not codes; : DEC carries its icon
   throw Error('full step names missing');
-// every route of the shown approval is marked.
+// : every route of the shown approval is marked.
 if ((html.match(/r3-route-chip is-selected/g) || []).length !== new Set(operations.flatMap(operation => operation.members.map(member => member.route_id))).size)
   throw Error('not every route of the shown approval is highlighted');
 if (!html.includes('r3-status-spinner') || !html.includes('Metered routing checks 38/120'))
@@ -141,7 +141,7 @@ if (!memberGrid || !memberGrid.includes('route-one') || !memberGrid.includes('ro
 if (/>Region /.test(html) || !html.includes('ch-plot-badge') || !html.includes('Metered routing checks 38/120'))
   throw Error('plaque or budget text');
 if (!html.includes('Approval 1 of 4')) throw Error('approval denominator did not use manifest routing count');
-// the footer holds Stop and Sign; "Review current bundle" is gone.
+// : the footer holds Stop and Sign; "Review current bundle" is gone.
 if (!html.includes('Stop remaining routes') || html.includes('Review current bundle'))
   throw Error('footer actions missing');
 if (html.includes('data-r3="sign"')) throw Error('checking bundle offers signing');

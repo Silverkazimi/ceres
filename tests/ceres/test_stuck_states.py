@@ -296,7 +296,7 @@ def test_an_external_withdrawal_waits_for_the_pool_and_shows_no_quote():
  if (st.receipt.output !== null) throw Error('the quote must not be shown as received');
  const html = swapHtml('SPS', {}, 'alice');
  if (!html.includes('Waiting for the pool to settle') || !html.includes('Amount confirmed when the pool settles')) throw Error('settling wording');
- // the settlement is read by itself (by this swap's own id) while the card waits; the player can stop that
+ // the settlement is read by itself (by this swap's own id) while the card waits; the player can stop that,
  // and once checking stops, Check again is offered.
  if (!__urls.some(u => u.includes('/settle'))) throw Error('the waiting swap must check the pool settlement by itself');
  if (!html.includes('data-dec="lp:settle-stop"')) throw Error('Stop checking must be offered while Ceres reads the pool');

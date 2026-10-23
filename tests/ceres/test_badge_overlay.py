@@ -125,7 +125,7 @@ def test_app_wires_the_overlay_and_table_dispatches_layout_events():
 
 def test_plot_table_scroll_is_the_overlay_containing_block():
     css = CERES_CSS.read_text(encoding="utf-8")
-    assert "  container: ceres-table / inline-size;\n  position: relative; /* containing block for #badge-overlay */\n}" in css
+    assert "  container: ceres-table / inline-size;\n  position: relative; /* : containing block for #badge-overlay */\n}" in css
 
 
 def test_badge_overlay_module_exports_init_and_sync():

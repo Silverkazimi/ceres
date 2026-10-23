@@ -9,7 +9,7 @@ def test_buy_max_rebuilds_and_requires_review_after_witness_change():
     route = (ROOT / "ceres/routes_market_purchase.py").read_text()
     combine = (ROOT / "ceres/routes_combine.py").read_text()
 
-    sign = client[client.index("async function signCombine(g)"):client.index("the combine's game outcome")]
+    sign = client[client.index("async function signCombine(g)"):client.index("// : the combine's game outcome")]
     assert "post('combine'" in sign
     assert "JSON.stringify(g.witness" in sign
     assert "g.state = 'review-changed'" in sign

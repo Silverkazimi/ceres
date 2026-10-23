@@ -10,7 +10,7 @@ def test_no_page_zoom_and_layout_classes_are_prepainted() -> None:
     # the pre-paint block publishes the board width and the class NAMES
     # (the phone switch reads them), and never zooms the page.
     source = (STATIC / "index.html").read_text()
-    script = source.split("<!-- (maintainer: browser zoom", 1)[1].split("</script>", 1)[0]
+    script = source.split("<!--  (maintainer: browser zoom", 1)[1].split("</script>", 1)[0]
     assert "style.zoom" not in script and "ceres:contentW'))" not in script and "setContent" not in script
     for tier in (1919, 1659, 1439, 1279, 767):
         assert f"ceres-lw-le-{tier}" in script
@@ -32,8 +32,8 @@ def test_table_is_sized_by_css_not_js() -> None:
 
 def test_fluid_table_and_open_plot_blocks_have_no_width_tiers() -> None:
     css = (STATIC / "ceres.css").read_text()
-    for start, end in (("/* FLUID TABLE START", "/* FLUID TABLE END */"),
-                       ("/* FLUID OPEN PLOT START", "/* FLUID OPEN PLOT END */")):
+    for start, end in (("/*  FLUID TABLE START", "/*  FLUID TABLE END */"),
+                       ("/*  FLUID OPEN PLOT START", "/*  FLUID OPEN PLOT END */")):
         block = css.split(start, 1)[1].split(end, 1)[0]
         stripped = re.sub(r"/\*.*?\*/", "", block, flags=re.S)
         # (v0.9.489, "fix: fill the plot tile row and remove slot pagination")
@@ -78,7 +78,7 @@ def test_changed_geometry_reads_are_annotated() -> None:
     tokens = ("getBoundingClientRect(", "innerWidth", "innerHeight", "clientX", "scrollY", "scrollX")
     for name in files:
         for line in (STATIC / name).read_text().splitlines():
-            if any(token in line for token in tokens) and not line.lstrip().startswith(""):
+            if any(token in line for token in tokens) and not line.lstrip().startswith("//"):
                 assert "// V" in line, (name, line)
 
 

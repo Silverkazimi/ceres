@@ -15,4 +15,4 @@ def test_ready_keyframe_animates_opacity_only_and_syncs_with_stage_pulses():
     assert re.search(r'prefers-reduced-motion:\s*reduce[^}]*\{[^}]*animation:\s*none;[^}]*opacity:\s*\.6', CSS)
     assert '--ready-alert: color-mix(in srgb, var(--ok) 70%, var(--hi))' in CSS
     assert '[data-theme="light"], [data-theme="wood"] { --ready-alert: var(--ok); }' in CSS
-    assert 'transition: box-shadow' not in CSS[CSS.index('/* the fixed Changes controls'):]
+    assert 'transition: box-shadow' not in CSS[CSS.index('/*  : the fixed Changes controls'):]

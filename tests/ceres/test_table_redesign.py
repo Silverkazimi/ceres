@@ -149,7 +149,7 @@ def test_aria_sort_maintained_in_js():
     assert 'aria-sort="none"' in HTML
     assert 'table-sort-control' not in HTML
     assert "syncSortAriaState" in APP  # imported/called from the existing click handler
-    assert "syncSortAriaState(); " in APP
+    assert "syncSortAriaState(); // " in APP
 
 
 def test_aria_sort_plot_direction_is_inverted_like_sortbyplot():

@@ -181,10 +181,10 @@ function positionDesktopPanel() {
   }
   const picker = document.getElementById('wallet-picker');
   if (!picker) return;
-  const rect = picker.getBoundingClientRect(); // V
+  const rect = picker.getBoundingClientRect();
   const filterRow = document.querySelector('.controls-row');
-  const filterRect = filterRow?.getBoundingClientRect(); // V
-  const viewportRight = document.documentElement.getBoundingClientRect().right; // V
+  const filterRect = filterRow?.getBoundingClientRect();
+  const viewportRight = document.documentElement.getBoundingClientRect().right;
   const top = Math.round(filterRect?.bottom ?? rect.bottom);
   const right = Math.round(Math.max(0, viewportRight - rect.right));
   drawer.style.top = `${top}px`;

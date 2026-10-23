@@ -131,7 +131,7 @@ def test_material_cell_icon_uses_the_shared_clamp_not_the_14px_dec_icon():
 
 def test_a_measured_zero_renders_as_0_00_not_a_dash():
     _JS = r"""
-    // `applicable` is the ordinary case -- a real recipe entry with a genuine
+    // : `applicable` is the ordinary case -- a real recipe entry with a genuine
     // nonzero measured cost -- kept distinct from `zeroPp`, the zero-EFFECTIVE-PP case
     // (a real recipe entry whose measured cost happens to be exactly 0.0, e.g. base_pp == 0).
     // Both render "0.00"-shaped output (fixed 2 decimals), but they are not the same input.

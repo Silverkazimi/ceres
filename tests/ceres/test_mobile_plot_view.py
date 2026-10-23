@@ -1,4 +1,4 @@
-"""Static guards for // mobile plot composition."""
+"""Static guards for /// mobile plot composition."""
 
 from __future__ import annotations
 

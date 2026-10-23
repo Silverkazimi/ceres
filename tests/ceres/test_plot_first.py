@@ -185,7 +185,7 @@ def test_board_js_reads_the_plot_first_and_holds_board_wide_values():
     assert "html.ceres-plot-first .count-cell, html.ceres-plot-first #table-head-sticky .count-total { visibility: hidden; }" in js
     # the kept row and the anchor run in the same task as the full render
     assert "if (keepDetail) {" in js and "PLOT_FIRST_HOOKS?.anchor?.(keepUid, anchorTop)" in js
-    assert "if (EXPANDED_DATA_LOADED.has(deedUid)) continue; " in js
+    assert "if (EXPANDED_DATA_LOADED.has(deedUid)) continue; // " in js
 
 
 def test_stage_navigation_opens_on_the_plot_first_draw():

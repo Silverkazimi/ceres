@@ -70,7 +70,7 @@ def test_toggle_img_load_listener_is_defensive_future_proofing():
 def test_initEdgeGeometryObserver_is_wired_into_init():
     js = APP_JS.read_text(encoding="utf-8")
     assert "mountThemePicker({ storageKey: 'ceres:theme', defaultTheme: 'dark' });" in js
-    assert "initEdgeGeometryObserver();" in js
+    assert "initEdgeGeometryObserver(); // " in js
     # Wired right after mountThemePicker() -- .theme-picker/.theme-toggle must
     # already exist in the DOM before the observer tries to select them.
     idx_mount = js.index("mountThemePicker({ storageKey: 'ceres:theme', defaultTheme: 'dark' });")
@@ -109,12 +109,12 @@ def test_watch_remount_is_wired_right_after_the_observer():
     assert "new MutationObserver(" in body
     assert "initEdgeGeometryObserver();" in body
     assert ".observe(host, { childList: true });" in body
-    assert "watchThemePickerRemount();" in js
+    assert "watchThemePickerRemount(); // " in js
     # The top-level call in ready() has a unique two-space indent; definition and watcher calls differ.
     observer_call = re.compile(r"(?m)^  initEdgeGeometryObserver\(\);(?:\s*//[^\n]*)?$")
     assert len(observer_call.findall(js)) == 1
     idx_observer = observer_call.search(js).start()
-    idx_watch = js.index("watchThemePickerRemount();")
+    idx_watch = js.index("watchThemePickerRemount(); // ")
     assert idx_watch > idx_observer
     assert idx_watch - idx_observer < 100
 

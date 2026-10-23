@@ -4,7 +4,7 @@ import subprocess
 
 def test_client_hydrates_retries_and_preserves_failures():
     source = (Path(__file__).parents[2] / "ceres/static/stage-plans.js").read_text()
-    fn = source[source.index("async function checkPlans(plans) {"):source.index("// phase 4")]
+    fn = source[source.index("async function checkPlans(plans) {"):source.index("//  phase 4:")]
     script = """
 const assert = require('node:assert/strict');
 let CURRENT_PLAYER='player0005', BOARD={player:'player0005',generated_at:'old'};

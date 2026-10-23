@@ -54,10 +54,10 @@ if (defaultHtml.includes('Dead Survival Runi')) process.exit(42);
 
 S.CERES_PICKER = picker('worker', false, [locked]);
 const includedHtml = renderInlineCandidatePicker(row);
-// worker picker redesign (v0.9.145, d66e066f) replaced the
+// /:  worker picker redesign (v0.9.145, d66e066f) replaced the
 // old div/button row variants and their "dead — Survival" copy with one shared
 // candidate-row div (renderCandidateRow) driven by candidateStatusModel(), whose
-// label for this state is "Dead in Survival" (register row: "older guards
+// label for this state is "Dead in Survival" (register  row: "older guards
 // need updating").
 if (!includedHtml.includes('Dead in Survival')) process.exit(43);
 if (includedHtml.includes('data-picker-action="choose"')) process.exit(44);

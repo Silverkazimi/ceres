@@ -253,7 +253,7 @@ const none = cmMaxedPick(data, cart);
 eq([none.listings.length, /Not enough copies on sale for another maxed card: 0 of 400 CC/.test(none.reason)], [0, true], 'nothing left: a reason');
 eq(cmCheapestCover([[300, 0.9], [100, 0.5], [250, 0.7], [150, 0.45], [60, 0.2]], 400).sort(), [2, 3], 'the same min-cost cover as the server');
 eq(cmCheapestCover([[10, 1]], 400), null, 'unreachable');
-// the menu's bundles are priced from the copies not in the cart; one press = one group, removed as one ()
+// : the menu's bundles are priced from the copies not in the cart; one press = one group, removed as one ()
 const d2 = { ...data, print: { ...data.print, max_level_pp: 1000, thresholds: [1, 5, 14, 30, 60, 100, 150, 220, 300, 400] } };
 const c2 = { items: [], removed: [] };
 const b0 = cmLevelBundles(d2, c2);
@@ -323,7 +323,7 @@ const row = { name: 'Gargoya Lion', card_detail_id: 349, edition: 3, card_set: '
 const before = cmTileHtml(cmTiles([row])[0], tileHtml);
 cartAdd(cartState(), [row]);
 const after = cmTileHtml(cmTiles([row])[0], tileHtml, { fade: true });
-// the maxed card this tile's button added -> green tile, "Remove from cart" in the destructive treatment
+// : the maxed card this tile's button added -> green tile, "Remove from cart" in the destructive treatment
 const other = { ...row, lkey: 'aaaaaaaaaaaaaaa9', bcx: 1 };
 cartAdd(cartState(), [{ ...row, lkey: 'aaaaaaaaaaaaaaa8' }], { group: 'max-x', via: 'aaaaaaaaaaaaaaa9', bundle: 'Lv 10' });
 const added = cmTileHtml(cmTiles([other])[0], tileHtml);
@@ -408,11 +408,11 @@ def test_tile_hover_and_price_badge_css():
     assert ".card-browser.cb-reduce-motion .cb-grid > .cb-tile { transition: none; }" in css
     assert ".card-browser .cb-grid > .cb-tile:hover .cb-art > img { transform: none; }" in css  # no zoom
     assert "border-color: color-mix(in srgb, var(--text) 60%, transparent); background: var(--cb-glass-hover); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 60%, transparent)" in css
-    assert ":is(" not in css.split(".card-browser { --cb-panel-glass")[-1]
+    assert ":is(" not in css.split(" / ")[-1]
     for rule in re.findall(r"^([^@/\s][^{]*)\{", css, re.M):
         for selector in rule.split(","):
             assert selector.strip().startswith((".card-browser", "html")), selector
-    for colour in re.findall(r"var\(--(cyan|info)\)", css.split(".card-browser { --cb-panel-glass")[-1]):
+    for colour in re.findall(r"var\(--(cyan|info)\)", css.split(" / ")[-1]):
         raise AssertionError(colour)
 
 
@@ -471,9 +471,9 @@ console.log(JSON.stringify([
 def test_unused_slots_fade_out_then_go():
     out = run_in_module_context(r"""
 const removed = [];
-const el = (i) => ({ i, classes: [], attrs: {}, classList: { add(c) { this.owner.classes.push(c); } }, setAttribute(k, v) { this.attrs[k] = v; }, remove() { removed.push(this.i); } });
+const el = (i) => ({ i, classes: [], attrs: {}, classList: { add(c) { this.maintainer.classes.push(c); } }, setAttribute(k, v) { this.attrs[k] = v; }, remove() { removed.push(this.i); } });
 const extra = [el(5), el(6)];
-extra.forEach((e) => { e.classList.owner = e; });
+extra.forEach((e) => { e.classList.maintainer = e; });
 cmTrimSlots(extra);
 const now = extra.map((e) => [e.classes.join(' '), e.attrs['aria-hidden']]);
 setTimeout(() => console.log(JSON.stringify({ now, removed })), 260);

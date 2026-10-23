@@ -45,7 +45,7 @@ def test_persisted_other_tab_budget_and_inconclusive_lookup_block_send():
     run("""
 (async () => {
 localStorage.setItem('ceres:pending-custom-ops:v1:alice',JSON.stringify([{id:'other-tab',count:4,txId:'old-tx',createdAt:new Date().toISOString()}]));
-setTimeout=(cb,delay)=>{if(delay===1000) Promise.resolve().then(cb);return 1;};  // one-second budget checks
+setTimeout=(cb,delay)=>{if(delay===1000) Promise.resolve().then(cb);return 1;};  // : one-second budget checks
 clearTimeout=()=>{};
 fetch=async()=>({ok:true,json:async()=>({included:null,block_num:null})});
 const error=await BroadcastGate.broadcast('alice',ops(4,'new')).catch(e=>e);

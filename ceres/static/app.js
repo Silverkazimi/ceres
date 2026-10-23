@@ -123,10 +123,10 @@ function centerThemePicker() {
   const headerEl = document.querySelector('header.board-header');
   const picker = document.querySelector('.theme-picker');
   if (!dock || !picker) return;
-  const headerRect = headerEl?.getBoundingClientRect(); // V
-  const pickerRect = picker.getBoundingClientRect(); // V
+  const headerRect = headerEl?.getBoundingClientRect();
+  const pickerRect = picker.getBoundingClientRect();
   if (!pickerRect.width || !pickerRect.height) return; // not laid out yet -- caller retries
-  const pickerLayout = pickerRect; // V
+  const pickerLayout = pickerRect;
   // SUPERSEDED by
   // (maintainer, verbatim: "But all icons and borders in the slider are
   // unaligned" -- measured: Iris pill 32px/28px toggle, our own wallet/flag
@@ -171,12 +171,12 @@ function centerThemePicker() {
   // width, the single row badges as well") extends the same guarantee to every
   // per-row badge cell inside the bar -- those are plain CSS (`.badge-bar-row`
   // `.badge-overlay-row`, ceres.css), not written by this function.
-  const toggle = document.querySelector('.theme-picker .theme-toggle'); // V
-  const toggleRect = toggle?.getBoundingClientRect(); // V
+  const toggle = document.querySelector('.theme-picker .theme-toggle');
+  const toggleRect = toggle?.getBoundingClientRect();
   let closedPickerWidth = null;
   if (toggleRect && toggleRect.width > 0) {
-    const pickerCs = getComputedStyle(picker); // V
-    const toggleCs = getComputedStyle(toggle); // V
+    const pickerCs = getComputedStyle(picker);
+    const toggleCs = getComputedStyle(toggle);
     const px = (value) => Number.parseFloat(value) || 0;
     closedPickerWidth = toggleRect.width
       + px(pickerCs.paddingLeft) + px(pickerCs.paddingRight)
@@ -185,21 +185,21 @@ function centerThemePicker() {
     // particular, closePicker() removes `is-open` before max-width settles.
     if (Math.abs(pickerLayout.width - closedPickerWidth) <= 0.5) {
       const root = document.documentElement.style;
-      root.setProperty('--edge-w', `${Math.round(closedPickerWidth)}px`); // V
-      root.setProperty('--edge-chip-w', `${Math.round(toggleRect.width)}px`); // V
-      root.setProperty('--edge-chip-h', `${Math.round(toggleRect.height)}px`); // V
+      root.setProperty('--edge-w', `${Math.round(closedPickerWidth)}px`);
+      root.setProperty('--edge-chip-w', `${Math.round(toggleRect.width)}px`);
+      root.setProperty('--edge-chip-h', `${Math.round(toggleRect.height)}px`);
       // (maintainer: "the badge icons are too small ... the flag must use
       // global colors"): the flag glyph's own font-size now tracks Iris's
       // toggle glyph's live-measured size instead of a fixed 0.75rem.
-      root.setProperty('--edge-chip-font', toggleCs.fontSize); // V
-      root.setProperty('--edge-pad-left', pickerCs.paddingLeft); // V
-      root.setProperty('--edge-pad-right', `${Math.max(0, Math.round(pickerLayout.right - toggleRect.right))}px`); // V
-      root.setProperty('--edge-radius-outer', pickerCs.borderRadius); // V
-      root.setProperty('--edge-radius-inner', toggleCs.borderRadius); // V
-      root.setProperty('--edge-chip-shadow', toggleCs.boxShadow); // V
+      root.setProperty('--edge-chip-font', toggleCs.fontSize);
+      root.setProperty('--edge-pad-left', pickerCs.paddingLeft);
+      root.setProperty('--edge-pad-right', `${Math.max(0, Math.round(pickerLayout.right - toggleRect.right))}px`);
+      root.setProperty('--edge-radius-outer', pickerCs.borderRadius);
+      root.setProperty('--edge-radius-inner', toggleCs.borderRadius);
+      root.setProperty('--edge-chip-shadow', toggleCs.boxShadow);
     }
   }
-  const viewportRect = document.documentElement.getBoundingClientRect(); // V
+  const viewportRect = document.documentElement.getBoundingClientRect();
   const viewport = { left: viewportRect.left, top: 0, right: viewportRect.right, bottom: window.innerHeight };
   const triggerRect = headerRect?.height
     ? headerRect
@@ -213,12 +213,12 @@ function centerThemePicker() {
     ? dock.nextElementSibling
     : null;
   if (mobileFilterSheet) {
-    const sheetRect = mobileFilterSheet.getBoundingClientRect(); // V
-    dock.style.setProperty('--mobile-filter-sheet-top', `${sheetRect.top + mobileFilterSheet.clientTop}px`); // V
-    const sheetBorderRight = parseFloat(getComputedStyle(mobileFilterSheet).borderRightWidth) || 0; // V
-    const sheetInnerRight = sheetRect.right - sheetBorderRight; // V
-    const rightInset = Math.max(0, viewportRight - sheetInnerRight); // V
-    dock.style.setProperty('--mobile-filter-sheet-right', `${rightInset}px`); // V
+    const sheetRect = mobileFilterSheet.getBoundingClientRect();
+    dock.style.setProperty('--mobile-filter-sheet-top', `${sheetRect.top + mobileFilterSheet.clientTop}px`);
+    const sheetBorderRight = parseFloat(getComputedStyle(mobileFilterSheet).borderRightWidth) || 0;
+    const sheetInnerRight = sheetRect.right - sheetBorderRight;
+    const rightInset = Math.max(0, viewportRight - sheetInnerRight);
+    dock.style.setProperty('--mobile-filter-sheet-right', `${rightInset}px`);
   }
   // his instruction, marked important by him: "the header buttons must never be
   // hiding behind the iris theme picker". The picker is a FIXED widget from another
@@ -254,8 +254,8 @@ function centerThemePicker() {
   // the checkout button ended up under it. The closed width derived above is stable
   // while the tray opens and closes, so using it with the dock's viewport-edge distance
   // keeps the header reserve fixed through both transitions.
-  const edge = Math.max(0, viewportRight - pickerLayout.right); // V
-  const reserve = Math.ceil((closedPickerWidth ?? pickerLayout.width) + edge + gap); // V
+  const edge = Math.max(0, viewportRight - pickerLayout.right);
+  const reserve = Math.ceil((closedPickerWidth ?? pickerLayout.width) + edge + gap);
   if (headerEl && headerRect?.height) headerEl.style.setProperty('--hdr-pad-right', `${Math.max(reserve, 16)}px`);
   // Dock is `position: fixed` -- its `top` is a direct viewport coordinate
   // no offset subtraction against an ancestor's rect needed (unlike the old
@@ -271,15 +271,15 @@ function centerThemePicker() {
   // never write its `right` from the table's rect -- the table overhangs its
   // clipped scroller, and following that overhang pushed the bar past the page edge
   // (), which gave the page an empty horizontal overflow and a scrollbar.
-  const badgeBarEl = document.getElementById('badge-bar'); // V
-  const scrollerEl = document.getElementById('plot-table-scroll'); // V
-  const scrollerRect = scrollerEl?.getBoundingClientRect(); // V
+  const badgeBarEl = document.getElementById('badge-bar');
+  const scrollerEl = document.getElementById('plot-table-scroll');
+  const scrollerRect = scrollerEl?.getBoundingClientRect();
   if (badgeBarEl && scrollerRect && scrollerRect.width > 0) {
-    const pageGutter = Math.max(0, viewportRight - scrollerRect.right); // V
-    document.documentElement.style.setProperty('--page-gutter', `${Math.round(pageGutter)}px`); // V
-    const barDocTop = scrollerRect.top + window.scrollY; // V
-    badgeBarEl.style.top = `${barDocTop}px`; // V
-    badgeBarEl.style.height = `${scrollerRect.height}px`; // V
+    const pageGutter = Math.max(0, viewportRight - scrollerRect.right);
+    document.documentElement.style.setProperty('--page-gutter', `${Math.round(pageGutter)}px`);
+    const barDocTop = scrollerRect.top + window.scrollY;
+    badgeBarEl.style.top = `${barDocTop}px`;
+    badgeBarEl.style.height = `${scrollerRect.height}px`;
     BAR_POSITIONED = true; // see maybeRevealEdgeHandles() above
     maybeRevealEdgeHandles();
   }
@@ -311,15 +311,15 @@ function updateEdgeTabsPosition() {
   const controlsRow = document.querySelector('.controls-row');
   const walletPickerEl = document.getElementById('wallet-picker');
   if (!edgeTabs || !controlsRow || !walletPickerEl) return;
-  const controlsRect = controlsRow.getBoundingClientRect(); // V
+  const controlsRect = controlsRow.getBoundingClientRect();
   // (maintainer): 2px free above and below the wallet box, on whole pixels; the row's 1px bottom border is not free space.
   const boxTop = Math.round(controlsRect.top) + 2;
   const boxBottom = Math.round(controlsRect.bottom - 1) - 2;
   if (boxBottom - boxTop > 8) document.documentElement.style.setProperty('--edge-row-h', `${boxBottom - boxTop}px`);
-  const walletPickerHeight = walletPickerEl.getBoundingClientRect().height; // V
+  const walletPickerHeight = walletPickerEl.getBoundingClientRect().height;
   if (!(controlsRect.height > 0) || !(walletPickerHeight > 0)) return;
-  const edgeTabsY = boxBottom - boxTop > 8 ? boxTop : controlsRect.top + controlsRect.height / 2 - walletPickerHeight / 2; // V
-  edgeTabs.style.top = `${edgeTabsY}px`; // V
+  const edgeTabsY = boxBottom - boxTop > 8 ? boxTop : controlsRect.top + controlsRect.height / 2 - walletPickerHeight / 2;
+  edgeTabs.style.top = `${edgeTabsY}px`;
   EDGE_TABS_POSITIONED = true; // see maybeRevealEdgeHandles() above
   maybeRevealEdgeHandles();
 }
@@ -338,12 +338,12 @@ function updateBadgeFlagPosition() {
   const flag = document.getElementById('badge-flag');
   const thead = document.getElementById('table-head-sticky');
   if (!flag || !thead) return;
-  const theadRect = thead.getBoundingClientRect(); // V
+  const theadRect = thead.getBoundingClientRect();
   if (!theadRect.height) return; // not laid out yet
-  const controlsRow = document.querySelector('.controls-row'); // V
-  const wallet = document.getElementById('wallet-picker'); // V
-  const controlsRect = controlsRow?.getBoundingClientRect(); // V
-  const walletRect = wallet?.getBoundingClientRect(); // V
+  const controlsRow = document.querySelector('.controls-row');
+  const wallet = document.getElementById('wallet-picker');
+  const controlsRect = controlsRow?.getBoundingClientRect();
+  const walletRect = wallet?.getBoundingClientRect();
   // (maintainer): 2px free above the flag; below it the header's 1px shadow plus 2px (3px), on whole pixels.
   // The column's shade starts under that shadow so it runs unbroken across the badges column.
   const flagTop = Math.round(theadRect.top) + 2;
@@ -351,7 +351,7 @@ function updateBadgeFlagPosition() {
   document.documentElement.style.setProperty('--badge-flag-inset', `${flagTop - theadRect.top}px`);
   document.documentElement.style.setProperty('--badge-flag-h', `${flagHeight}px`);
   document.documentElement.style.setProperty('--badge-head-shade', `${theadRect.height + 1}px`);
-  flag.style.top = `${flagTop}px`; // V
+  flag.style.top = `${flagTop}px`;
   document.documentElement.style.setProperty('--badge-flag-top', `${flagTop}px`); // the flag's status tray shares its row
   // no JS `right` -- ceres.css `position: fixed; right: 0` keeps the flag on
   // the true page edge, aligned with the bar beneath it.
@@ -478,7 +478,7 @@ function initScrollTop() {
   if (!btn) return;
   const update = () => {
     SCROLL_TOP_RAF = null;
-    btn.classList.toggle('is-visible', window.scrollY > 400); // V
+    btn.classList.toggle('is-visible', window.scrollY > 400);
   };
   window.addEventListener('scroll', () => {
     if (SCROLL_TOP_RAF) return;
@@ -668,7 +668,7 @@ async function init() {
   // a filter-row divider only counts between two visible neighbours on the SAME line
   // when the row wraps (1280–1919) a divider at a line edge is hidden (same idiom as syncSortDivider, ).
   const syncControlsDividers = () => {
-    const mid = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; }; // V
+    const mid = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
     const visible = (el) => el && !el.hidden && el.getClientRects().length > 0;
     document.querySelectorAll('.controls-row .controls-sep').forEach((sep) => {
       sep.classList.remove('is-line-edge');

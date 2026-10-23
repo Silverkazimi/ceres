@@ -106,7 +106,7 @@ def test_index_html_column_count_comment_matches_the_table():
     # the table comment names the real column count: PLOT_TABLE_COLUMN_COUNT and the <th> cells of the plot table
     count = int(re.search(r"export const PLOT_TABLE_COLUMN_COUNT = (\d+);", STATE_JS).group(1))
     table = INDEX_HTML[INDEX_HTML.index('<table class="plot-table"'):]
-    head = re.sub(r"", "", table[:table.index("</thead>")], flags=re.S)
+    head = re.sub(r"<!--.*?-->", "", table[:table.index("</thead>")], flags=re.S)
     assert len(re.findall(r"<th\b", head)) == count
     stated = re.findall(r"\ball (\d+) columns\b", INDEX_HTML)
     assert stated == [str(count)], stated

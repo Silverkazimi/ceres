@@ -4,7 +4,7 @@ from tests.ceres.vm_context import run_in_module_context
 
 STATIC = Path(__file__).parents[2] / 'ceres' / 'static'
 SETUP = r"""
-navigator.locks={request:async(_name,fn)=>fn()}; // exercise the locked wallet path.
+navigator.locks={request:async(_name,fn)=>fn()}; // : exercise the locked wallet path.
 CURRENT_PLAYER='alice'; BOARD={player:'alice',generated_at:'2026-10-05T00:00:00Z',plots:[]};
 PLANS.open=true;PLANS.ready=true;PLANS.account='alice';
 renderCheckoutSurface=()=>{};refreshStageImpactForRow=()=>{};updateMountedRow=()=>{};applyStageToRow=()=>{};

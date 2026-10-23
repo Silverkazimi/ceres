@@ -44,7 +44,7 @@ def test_claim_button_sits_inside_the_rewards_card_with_a_warning_edge():
     css = (STATIC / "ceres.css").read_text()
     # cooldown = neutral box; claimable now = warning box (border and top edge)
     assert ".wallet-card.is-claim-ready:not(.is-confirmed):not(.is-failed) { border-color: var(--warn); border-block-start-color: var(--warn); }" in css
-    assert "is-claim-waiting" not in css.split(".wallet-card.is-claim-ready")[1][:600]
+    assert "is-claim-waiting" not in css.split("")[1][:600]
     assert "claimable ? ' is-claim-ready' : ''" in (STATIC / "wallet-resources.js").read_text()
     dec = (STATIC / "regional-dec.js").read_text()
     assert "withClaimInRewards(walletResourceHtml(D.tab, D.wallet, D.walletBusy), D.tab === 'SPS' ? claimHtml(D) : '')" in dec

@@ -12,7 +12,7 @@ def test_a_plan_that_leaves_the_store_is_tombstoned_and_a_restaged_one_is_not():
     fn = helper + fn
     script = """
 const assert = require('node:assert/strict');
-Object.defineProperty(globalThis, 'navigator', { value: { locks: { request: async (_name, callback) => callback() } }, configurable: true }); // B03: ordinary writes participate too.
+Object.defineProperty(globalThis, 'navigator', { value: { locks: { request: async (_name, callback) => callback() } }, configurable: true }); //  B03: ordinary writes participate too.
 const store = {}; globalThis.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
 const LISTENERS = new Set(); const CERES_STAGE = []; const CERES_STAGED_WORKSITES = new Map();
 const PLANS = { open: true, account: 'alice', revision: 0, pending: new Map(), pendingWorksites: new Map(), dropped: [], lastSig: null, warned: new Set(), removed: {}, known: new Set(), migrateKey: null };
@@ -45,7 +45,7 @@ def test_a_stale_tab_merges_with_what_the_other_tab_saved_instead_of_skipping_or
     fn = source[source.index("export function persistStagePlans() {"):source.index("export function droppedStagePlans")].replace("export ", "")
     script = """
 const assert = require('node:assert/strict');
-Object.defineProperty(globalThis, 'navigator', { value: { locks: { request: async (_name, callback) => callback() } }, configurable: true }); // B03: ordinary writes participate too.
+Object.defineProperty(globalThis, 'navigator', { value: { locks: { request: async (_name, callback) => callback() } }, configurable: true }); //  B03: ordinary writes participate too.
 const store = {}; globalThis.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
 const LISTENERS = new Set(); const CERES_STAGE = []; const CERES_STAGED_WORKSITES = new Map(); let restored = 0; const restoreStagePlans = () => { restored += 1; };
 const PLANS = { open: true, account: 'alice', revision: 0, pending: new Map(), pendingWorksites: new Map(), dropped: [], lastSig: null, warned: new Set(), removed: {}, known: new Set(), migrateKey: null };
@@ -73,7 +73,7 @@ def test_an_expired_in_flight_record_is_archived_and_an_unrestorable_worksite_pl
     arch = plans[plans.index("function archiveWorksitePlan"):plans.index("async function restoreWorksitePlans")]
     script = """
 const assert = require('node:assert/strict');
-Object.defineProperty(globalThis, 'navigator', { value: { locks: { request: async (_name, callback) => callback() } }, configurable: true }); // B03: ordinary writes participate too.
+Object.defineProperty(globalThis, 'navigator', { value: { locks: { request: async (_name, callback) => callback() } }, configurable: true }); //  B03: ordinary writes participate too.
 const store = {}; globalThis.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
 const IN_FLIGHT_RECORD_TTL_MS = 24 * 3600 * 1000; const inFlightStoreKey = () => 'k'; const inFlightStoreFailure = () => { throw new Error('store'); };
 const PLANS = { account: 'alice' };
