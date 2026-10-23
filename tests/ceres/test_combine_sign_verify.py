@@ -34,6 +34,7 @@ import urllib.request
 from playwright.sync_api import Page
 
 from .conftest import LIVE_PLAYER, settle, spawn_live_ceres, wait_for_board, wait_ready
+from .idle_pool import serve_idle_cards
 
 
 def _get(base_url: str, path: str) -> dict:
@@ -75,28 +76,29 @@ def _survivor_and_consumed(worker: dict) -> tuple[dict, dict]:
 
 
 def _install_idle_cards_mock(page: Page, copies: list[dict]) -> None:
-    page.route(
-        "**/api/idle-cards*",
-        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"cards": copies})),
-    )
+    serve_idle_cards(page, copies)
 
 
-def _mock_combine_preview(page: Page, *, buildable: bool, survivor_uid: str, destroyed_uids: list[str]) -> None:
-    body = json.dumps({
+def _mock_combine_preview(page: Page, *, buildable: bool, survivor_uid: str, destroyed_uids: list[str]) -> dict:
+    preview = {
         "account": "player0005", "buildable": buildable,
         "predicted_survivor_uid": survivor_uid,
         "hazard": {"destroyed_uids": destroyed_uids},
-    })
+    }
+    body = json.dumps(preview)
     page.route(
         "**/api/combine/preview*",
         lambda route: route.fulfill(status=200, content_type="application/json", body=body),
     )
+    return preview
 
 
-def _mock_combine_build(page: Page) -> None:
+def _mock_combine_build(page: Page, preview: dict) -> None:
+    """The build answers with the operation and the preview it was built from; the dialog signs only when
+    that preview matches the one the player reviewed (`combineReviewMatches`, static/combine-dialog.js)."""
     body = json.dumps({"operation": ["custom_json", {
         "id": "sm_combine_cards", "json": "{}", "required_auths": [], "required_posting_auths": ["player0005"],
-    }]})
+    }], "preview": preview})
     page.route(
         "**/api/combine/build*",
         lambda route: route.fulfill(status=200, content_type="application/json", body=body),
@@ -204,8 +206,8 @@ def test_keychain_step_renders_while_awaiting_the_extension() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page, delay_ms=800)
             _mock_op_verify(page, [{"state": "domain-confirmed", "combine_refresh": None}])
             _open_dialog(page, base_url, row, worker)
@@ -256,8 +258,8 @@ def test_one_broadcast_per_confirm() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-confirmed", "combine_refresh": None}])
             _open_dialog(page, base_url, row, worker)
@@ -284,8 +286,8 @@ def test_pending_surface_offers_retry_labelled_check_again() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             requests = _mock_op_verify(page, [{"state": "domain-pending", "notices": []}])
             _open_dialog(page, base_url, row, worker)
@@ -317,8 +319,8 @@ def test_mismatch_verdict_renders_its_own_surface() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-mismatch", "notices": []}])
             _open_dialog(page, base_url, row, worker)
@@ -346,8 +348,8 @@ def test_could_not_verify_verdict_renders_its_own_surface() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-could-not-verify", "notices": []}])
             _open_dialog(page, base_url, row, worker)
@@ -376,8 +378,8 @@ def test_escalated_pending_renders_its_own_surface() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             _mock_op_verify(page, [{
                 "state": "domain-pending", "notices": [],
