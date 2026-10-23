@@ -118,7 +118,9 @@ def test_live_art_continuity_m2(report, details_by_id, tmp_path):
 @pytest.mark.browser  # drives Chromium through test_live_plot_reveal._browser
 def test_live_art_slot_order_and_fixed_frames(report, details_by_id, tmp_path):
     board, details = _payload(report, details_by_id, count=12, capacity=9)
-    delayed = ("eos.js", "() => decodeImage(image, source, valid, session.artCleanups, CARD_SERVICE_BUDGET_MS)", "async () => { await new Promise(resolve => setTimeout(resolve, 250)); return decodeImage(image, source, valid, session.artCleanups, CARD_SERVICE_BUDGET_MS); }")
+    # The queued card decode now also carries its callback identity and decode hook.
+    decode_call = "decodeImage(image, source, valid, session.artCleanups, CARD_SERVICE_BUDGET_MS, { ...callbackIdentity(session, assetKey, record.recoveryAttempts), revision, aperture }, onDecoded)"
+    delayed = ("eos.js", f"() => {decode_call}", f"async () => {{ await new Promise(resolve => setTimeout(resolve, 250)); return {decode_call}; }}")
 
     async def run(red=False):
         async with _browser(board, details, tmp_path / ("slot-order-red" if red else "slot-order"), mutation=delayed) as fixture:
@@ -374,26 +376,23 @@ def test_live_art_duplicate_candidates_share_queue_slot(report, details_by_id, t
     for worker in workers:
         worker["name"] = "DedupWorker"
         worker["card_name"] = "DedupWorker"
-    dedup_disabled = (
-        "eos.js",
-        "if (record.inFlightPromise && record.inFlightRevision === revision) return record.inFlightPromise;",
-        "if (false && record.inFlightPromise && record.inFlightRevision === revision) return record.inFlightPromise;",
-    )
+    # A duplicate now joins the in-flight queue entry and then decodes its OWN node from
+    # the shared, already-fetched URL (eos.js queueArtDecode -> ownDecodedNode), so per-node
+    # decode() calls no longer measure queue slots. The guard instead records each real
+    # queue dispatch (`enqueue`) at the dedup branch itself, per art revision.
+    dedup_branch = """  if (record.inFlightPromise && record.inFlightRevision === revision) {
+    return record.inFlightPromise.then((outcome) => outcome.kind === 'decoded'
+      ? ownDecodedNode(image, outcome.url, valid, { ...outcome.identity, aperture }, session.artCleanups, onDecoded)
+      : outcome);
+  }
+  const promise = enqueue("""
+    record_enqueue = "  if (source.some(url => url.includes('DedupWorker'))) (window.eosDedupRevisions ||= []).push(revision);\n  const promise = enqueue("
+    probe = ("eos.js", dedup_branch, dedup_branch.replace("  const promise = enqueue(", record_enqueue))
+    dedup_disabled = ("eos.js", dedup_branch,
+                      dedup_branch.replace("if (record.inFlightPromise &&", "if (false && record.inFlightPromise &&").replace("  const promise = enqueue(", record_enqueue))
 
-    async def run(mutation=None):
-        async with _browser(board, details, tmp_path / ("candidate-dedup-red" if mutation else "candidate-dedup"), mutation=mutation) as fixture:
-            await fixture.page.evaluate("""uid => {
-              window.eosDedupRevisions = [];
-              const decode = HTMLImageElement.prototype.decode;
-              HTMLImageElement.prototype.decode = function() {
-                const source = this.currentSrc || this.src;
-                if (source.includes('DedupWorker')) {
-                  const band = document.querySelector(`tr.expand-row[data-deed-uid="${uid}"] .editor-band`);
-                  window.eosDedupRevisions.push(Number(band?.dataset.artRevision ?? -1));
-                }
-                return decode.apply(this, arguments);
-              };
-            }""", "eos-0008")
+    async def run(mutation=probe):
+        async with _browser(board, details, tmp_path / ("candidate-dedup-red" if mutation is dedup_disabled else "candidate-dedup"), mutation=mutation) as fixture:
             await fixture.open()
             fixture.release("detail", "scene", "portrait", "upgrade")
             await fixture.terminal()
