@@ -42,10 +42,37 @@ def _audit(page: Page) -> dict:
             const over = [];
             const scrollers = [];
             const vendored = (el) => !!el.closest('.theme-picker, .theme-picker-dock');
+            // The right edge of what is actually painted: an element's box clipped by
+            // every ancestor that clips it (overflow-x other than visible) -- the
+            // closed wallet tray's options and a plot card's oversized scene art sit
+            // past the window inside an overflow:hidden box and show nothing there.
+            // An absolute box is clipped only from its containing block up, a fixed
+            // one by none of its ancestors. (A wide editor inside the clipping table
+            // scroller is still caught: it grows the scroller's tableOverflow.)
+            const paintedRight = (el) => {
+                let right = el.getBoundingClientRect().right;
+                let escaping = getComputedStyle(el).position;
+                for (let a = el.parentElement; a; a = a.parentElement) {
+                    const cs = getComputedStyle(a);
+                    if (escaping === 'fixed') break;
+                    if (escaping === 'absolute' && cs.position === 'static') continue;
+                    if (cs.overflowX !== 'visible') right = Math.min(right, a.getBoundingClientRect().right);
+                    escaping = cs.position === 'absolute' || cs.position === 'fixed' ? cs.position : 'static';
+                }
+                return right;
+            };
+            // Not painted at all: visibility hidden (inherited), or a fully
+            // transparent box on its ancestor chain (the closed badge status tray
+            // waits off the edge with visibility: hidden and opacity: 0).
+            const painted = (el) => {
+                if (getComputedStyle(el).visibility === 'hidden') return false;
+                for (let a = el; a; a = a.parentElement) if (getComputedStyle(a).opacity === '0') return false;
+                return true;
+            };
             document.querySelectorAll('*').forEach((el) => {
                 if (vendored(el)) return;
                 const r = el.getBoundingClientRect();
-                if (r.width > 0 && Math.round(r.right) > clientWidth + 1) {
+                if (r.width > 0 && Math.round(r.right) > clientWidth + 1 && Math.round(paintedRight(el)) > clientWidth + 1 && painted(el)) {
                     over.push({ cls: (el.className || el.tagName).toString().slice(0, 60),
                                 right: Math.round(r.right), width: Math.round(r.width) });
                 }
