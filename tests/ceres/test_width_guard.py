@@ -6,8 +6,12 @@ with a clean AND a stale localStorage from the retired zoom scaler
 (`ceres:contentW`, `ceres:autoZoom`).  removed the page zoom: the width
 classes are the plain board width in em (innerWidth - gutter, x 16 / root font),
 the table is sized by CSS (width 100% of its scroller, no JS column widths), and
-the stale keys must be ignored AND cleared. 1280 and 1290 are the card view
-(<= 1279), 1440 the table at every DPR (no ">Full HD" special case any more).
+the stale keys must be ignored AND cleared. 1280 is the card view (<= 1279);
+1290 sits on the switch: with the page's own thin scrollbar (ceres.css
+`scrollbar-width: thin`, a 10px gutter in Chromium) its board is 1280 wide, the
+table; under a classic 15px gutter it would be 1275, the cards -- either way the
+board must show one of them. 1440 is the table at every DPR (no ">Full HD"
+special case any more).
 """
 
 from __future__ import annotations
@@ -255,6 +259,8 @@ _APPROVED_FORMULA_JS = """() => {
   const expected = [];
   const want = (name, on) => { if (on) expected.push(name); };
   want('ceres-lw-le-1919', e <= 1919);
+  // the Wood/Stone/Iron/hr columns' own tier (ceres.css hides them through 1759).
+  want('ceres-lw-le-1759', e <= 1759);
   want('ceres-lw-le-1659', e <= 1659);
   want('ceres-lw-le-1439', e <= 1439);
   want('ceres-lw-le-1279', e <= 1279);
