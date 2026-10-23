@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -106,6 +107,7 @@ def test_worker_tile_shows_no_pp_figure_and_the_footer_reports_base_pp(live_brow
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
     page.locator(".slot-editor:visible").wait_for(timeout=30_000)
+    page.locator(".slot-editor:visible .editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
     tile = page.locator(".slot-editor:visible .slot-group[data-group-id='worker'] .slot-tile:not(.is-empty)").first
     tile.wait_for(timeout=30_000)
     tile_text = tile.inner_text()
@@ -113,10 +115,16 @@ def test_worker_tile_shows_no_pp_figure_and_the_footer_reports_base_pp(live_brow
 
     footer_cell = page.locator(".slot-editor:visible .editor-base-pp-row .editor-base-pp-cell.is-filled").first
     footer_cell.wait_for(timeout=30_000)
+    # The footer figure is the card's Boostable PP now -- its Base PP after the plot cap
+    # with this plot's terrain, "what this plot's boosts multiply" (editor.js
+    # editorBasePpColumn) -- never the boosted Total/Harvest PP; the tooltip names the
+    # card's Base PP it is built from.
     aria = footer_cell.get_attribute("aria-label") or ""
-    assert aria.startswith("Base PP "), f"footer cell must report Base PP, not Harvest PP: {aria!r}"
+    assert aria.startswith("Boostable PP "), f"footer cell must report Boostable PP, not Harvest PP: {aria!r}"
+    assert "Harvest" not in aria and "Total" not in aria, aria
+    assert re.match(r"[\d,]+ Base PP · ", footer_cell.get_attribute("data-tip-body") or ""), footer_cell.get_attribute("data-tip-body")
     figure = footer_cell.locator("b").text_content()
-    assert figure and figure.strip(), "footer Base PP cell rendered no figure"
+    assert figure and figure.strip(), "footer Boostable PP cell rendered no figure"
     page.close()
 
 
@@ -166,6 +174,7 @@ def test_candidate_row_promotes_base_pp_and_terrain_toggle_changes_the_request(l
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
     page.locator(".slot-editor:visible").wait_for(timeout=30_000)
+    page.locator(".slot-editor:visible .editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
     worker = page.locator(".slot-editor:visible .slot-group[data-group-id='worker']")
     empty = worker.locator(".slot-grid > .slot-tile-cell > .slot-tile.is-empty").first
     with page.expect_request("**/api/plots/*/candidates*") as first_request_info:
@@ -180,8 +189,11 @@ def test_candidate_row_promotes_base_pp_and_terrain_toggle_changes_the_request(l
     figure = base_cell.locator("strong").text_content()
     assert figure and figure.strip() and figure.strip() != "—", f"candidate row promoted no Base PP figure: {figure!r}"
 
+    # The terrain-penalised checkbox became part of the picker's splinter selection
+    # (picker-actions.js applySplinterSelection): adding a splinter this terrain penalises
+    # resends the request with the flag.
     with page.expect_request("**/api/plots/*/candidates*") as toggled_request_info:
-        page.locator("input[data-picker-filter='include_terrain_penalised']").check()
+        page.locator(".inline-picker [data-picker-action='splinter'][data-affinity-state='penalised']").first.click()
     toggled_params = urllib.parse.urlparse(toggled_request_info.value.url).query
     assert urllib.parse.parse_qs(toggled_params).get("include_terrain_penalised") == ["true"], "checking the toggle must resend the request with include_terrain_penalised=true"
     page.close()
