@@ -36,6 +36,7 @@ from pathlib import Path
 from playwright.sync_api import Page
 
 from .conftest import settle, spawn_live_ceres
+from .idle_pool import serve_idle_cards
 from .vm_context import read_entry_source
 
 ROOT = Path(__file__).parents[2]
@@ -84,10 +85,8 @@ def _install_idle_cards_mock(page: Page, worker: dict) -> None:
         }
         for i in range(2)
     ]
-    page.route(
-        "**/api/idle-cards*",
-        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"cards": copies})),
-    )
+    # The page fetches the pool only when the board reports it loaded; idle_pool serves both.
+    serve_idle_cards(page, copies)
 
 
 def test_combine_door_depends_on_the_cache_not_the_deleted_section() -> None:
