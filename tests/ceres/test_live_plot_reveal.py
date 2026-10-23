@@ -106,6 +106,34 @@ PROBE = r"""(() => {
 })();"""
 
 
+# Expected editor-band height, derived from the band's own terms rather than read back
+# from its block-size. Phone layout (`html.ceres-lw-le-1279`) keeps the fixed rem band
+# from eos.js plotGeometryProfile (22.5125rem below 62rem of width, else 18.5125rem).
+# Desktop bands are scene-scaled (ceres.css `--eos-content-height`): facts + controls +
+# cards + footer + 21 scene units, where one scene unit is 1/1920 of the `.slot-editor`
+# container's inline size. Each term is measured on its own (a zero-width probe sized by
+# that single term) and the scene unit comes from the container's measured content
+# width, so the sum is an independent check of the band's resolved block-size.
+EXPECTED_BAND = r"""band=>{
+  const root=parseFloat(getComputedStyle(document.documentElement).fontSize);
+  if(document.documentElement.classList.contains('ceres-lw-le-1279')){
+    const width=Math.min(band.closest('td').getBoundingClientRect().width,document.querySelector('#plot-table-scroll').clientWidth,1920);
+    return (width/root<62?22.5125:18.5125)*root;
+  }
+  const term=value=>{
+    const probe=document.createElement('div');
+    probe.style.cssText=`position:absolute;visibility:hidden;inline-size:0;padding:0;border:0;block-size:${value}`;
+    band.append(probe);
+    const height=probe.getBoundingClientRect().height;
+    probe.remove();
+    return height;
+  };
+  const container=band.closest('.slot-editor'), cs=getComputedStyle(container);
+  const unit=(container.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight))/1920;
+  return ['var(--eos-facts)','var(--eos-controls)','var(--eos-cards)','var(--eos-footer)'].map(term).reduce((a,b)=>a+b,0)+21*unit;
+}"""
+
+
 def _payload(report, details_by_id, *, count=80, capacity=5, no_art=False, long=False):
     board = project_board(report, details_by_id)
     template = next(row for row in board["plots"] if row["workers"])
@@ -158,6 +186,7 @@ class EosBrowser:
         self.gates = {name:asyncio.Event() for name in ("detail", "scene", "portrait", "upgrade")}
         self.requests, self.active, self.peak, self.errors = [], 0, 0, []
         self.fail_detail = False
+        self.reserved = None
         self.fail_primary = False
         self.fail_art = False
         self.scene_requests = 0
@@ -273,16 +302,23 @@ class EosBrowser:
         snapshot = await self.page.evaluate("""uid=>{
           const band=document.querySelector(`tr.expand-row[data-deed-uid="${uid}"] .editor-band`);
           if(!band) throw new Error('Reservation must exist synchronously after explicit click');
-          const rect=band.getBoundingClientRect(), root=parseFloat(getComputedStyle(document.documentElement).fontSize);
-          const width=Math.min(band.closest('td').getBoundingClientRect().width,document.querySelector('#plot-table-scroll').clientWidth,1920);
-          const height=(width/root<62?22.5:17.5)*root, extent=Math.max(0,document.scrollingElement.scrollHeight-innerHeight);
-          return {height, actual:rect.height, top:rect.top+scrollY, x:scrollX,
-            target:Math.max(0,Math.min(extent,scrollY+rect.top+height/2-innerHeight/2)),extent,
+          const rect=band.getBoundingClientRect();
+          const height=(EXPECTED_BAND)(band), extent=Math.max(0,document.scrollingElement.scrollHeight-innerHeight);
+          // An opening plot's ROW lands directly under the sticky header line (eos.js
+          // centreReservedPlot; it no longer centres the band in the window).
+          const plotRow=band.closest('tr.expand-row').previousElementSibling;
+          const headerLine=Math.max(0,...['header.board-header','#table-head-sticky'].map(s=>document.querySelector(s)?.getBoundingClientRect().bottom||0));
+          return {height, actual:rect.height, top:rect.top+scrollY, x:scrollX, headerLine,
+            target:Math.max(0,Math.min(extent,scrollY+plotRow.getBoundingClientRect().top-headerLine)),extent,
             focusUnchanged:document.activeElement===eosProbe.focus};
-        }""", uid)
+        }""".replace("EXPECTED_BAND", EXPECTED_BAND), uid)
         assert abs(snapshot["actual"] - snapshot["height"]) <= 0.5, snapshot
         assert snapshot["focusUnchanged"]
+        self.reserved = snapshot["height"]
         return snapshot
+
+    async def expected_band(self, uid="eos-0008"):
+        return await self.band(uid).evaluate(f"band=>({EXPECTED_BAND})(band)")
 
     def band(self, uid="eos-0008"):
         return self.page.locator(f'tr.expand-row[data-deed-uid="{uid}"] .editor-band')
@@ -425,16 +461,28 @@ async def _g1(f):
     _stable(await f.trace())
     measurements = await f.band().evaluate("""band=>{
       const r=band.getBoundingClientRect();
-      const regions=['.editor-facts','.slot-group-controls','.slot-grid','.slot-editor-footer'];
+      const regions=['.slot-group-controls','.slot-grid','.slot-editor-footer'];
+      const container=band.closest('.slot-editor'), cs=getComputedStyle(container);
       return {band:r.height,td:band.closest('td').getBoundingClientRect().height,
+        factsInset:band.querySelector('.slot-editor-body').getBoundingClientRect().top-r.top,
+        sceneUnit:(container.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight))/1920,
         tdBorder:getComputedStyle(band.closest('td')).borderBottomWidth,
         regions:regions.map(selector=>{const n=band.querySelector(selector);return {selector,height:n?.getBoundingClientRect().height??null}}),
         satellites:[...band.querySelectorAll('.power-satellite')].map(n=>{const b=n.getBoundingClientRect();return {top:b.top-r.top,bottom:b.bottom-r.top}})};
     }""")
-    assert measurements["band"] == 280, measurements
+    measurements["expected"] = await f.expected_band()
+    measurements["reserved"] = f.reserved
+    # The band settles at the height reserved synchronously on open, and that height is
+    # the scene-scaled sum of its own terms (EXPECTED_BAND), not a fixed pixel count.
+    assert abs(measurements["band"] - measurements["reserved"]) <= 0.5, measurements
+    assert abs(measurements["band"] - measurements["expected"]) <= 0.5, measurements
+    # The facts line is gone (editor.js renders `facts = ''`); its term survives as the
+    # body's top inset. The band is still fully partitioned: inset + controls + cards +
+    # footer + 21 scene units, measured from the rendered regions.
     assert all(region["height"] is not None for region in measurements["regions"]), measurements
-    assert abs(sum(region["height"] for region in measurements["regions"]) - 280) <= 0.5, measurements
-    assert all(0 <= s["top"] <= s["bottom"] <= 280.5 for s in measurements["satellites"]), measurements
+    partition = sum(region["height"] for region in measurements["regions"]) + measurements["factsInset"] + 21 * measurements["sceneUnit"]
+    assert abs(partition - measurements["band"]) <= 0.5, (partition, measurements)
+    assert all(0 <= s["top"] <= s["bottom"] <= measurements["band"] + 0.5 for s in measurements["satellites"]), measurements
     (f.artifact / "measured-band-arithmetic.json").write_text(json.dumps(measurements, indent=2))
 
 
@@ -837,8 +885,10 @@ async def _g17(f):
     assert abs(await f.page.evaluate("scrollY") - snapshot["target"]) <= 0.5
     _stable(await f.trace())
     if snapshot["target"] not in (0, snapshot["extent"]):
-        centre = await f.band(uid).evaluate("b=>{const r=b.getBoundingClientRect();return r.top+r.height/2-innerHeight/2}")
-        assert abs(centre) <= 0.5
+        offset = await f.band(uid).evaluate("""b=>{const row=b.closest('tr.expand-row').previousElementSibling;
+          const line=Math.max(0,...['header.board-header','#table-head-sticky'].map(s=>document.querySelector(s)?.getBoundingClientRect().bottom||0));
+          return row.getBoundingClientRect().top-line}""")
+        assert abs(offset) <= 0.5, offset
     (f.artifact / "centre-arithmetic.json").write_text(json.dumps(snapshot, indent=2))
 
 
@@ -910,7 +960,7 @@ async def _g19(f, expect_cover_mutation=False, after_scene_mutation=None):
         runTop:r.top,runBottom:r.bottom,coverTop:cr.top,coverBottom:cr.bottom};
     }""")
     assert early["veilParent"] and early["veilZ"] > early["mainZ"], "G19 scenic veil remains above the affinity stacking context"
-    assert early["height"] == 280 and not early["hiddenByAria"]
+    assert abs(early["height"] - f.reserved) <= 0.5 and not early["hiddenByAria"], (early, f.reserved)
     assert early["controlsGated"], "G19 worker controls remain gated during scenic release"
     assert not early["coverOverlap"], "G19 worker cover excludes the full footer affinity run"
     await f.screenshot("badges-beneath-initial-veil")
