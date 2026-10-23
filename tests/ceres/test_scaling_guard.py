@@ -59,6 +59,7 @@ from playwright.sync_api import Browser, Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from .conftest import settle, spawn_live_ceres, wait_ready
+from .table_edge import OVERHANG_JS, TABLE_EXTRA_WIDTH_PX, TABLE_OVERHANG_PX, overhang_problems
 
 
 CASES = [
@@ -228,6 +229,7 @@ _COLUMNS_JS = """() => {
     growIdx, tableEndReserve, hidden, rows: rows.length, container: scroller.getBoundingClientRect().width,
     scrollerCW: scroller.clientWidth, scrollerSW: scroller.scrollWidth,
     docCW: doc.clientWidth, docSW: doc.scrollWidth, clippedCells, clippedHead,
+    overhang: (""" + OVERHANG_JS + """)(),
   };
 }"""
 
@@ -324,12 +326,16 @@ def _check_columns(got: dict) -> list[str]:
         ratios.append(w / c)
     if ratios and max(ratios) / min(ratios) > MAX_SPREAD:
         failures.append(f"growth spread {max(ratios) / min(ratios):.2f} > {MAX_SPREAD}")
-    if abs(total_w - got["container"]) > 2 * got["f"]:
-        failures.append(f"table {total_w:.0f}px does not span its container {got['container']:.0f}px")
+    # The table spans its container plus the deliberate 8px edge budget whose
+    # clipped strip is the last column's reserve padding (table_edge.py).
+    if abs(total_w - got["container"] - TABLE_EXTRA_WIDTH_PX) > 2 * got["f"]:
+        failures.append(f"table {total_w:.0f}px does not span its container {got['container']:.0f}px"
+                        f" + the {TABLE_EXTRA_WIDTH_PX}px edge budget")
     if got["clippedCells"] or got["clippedHead"]:
         failures.append(f"clipped cells {got['clippedCells']}, clipped headers {got['clippedHead']}")
-    if got["docSW"] > got["docCW"] + 1 or got["scrollerSW"] > got["scrollerCW"] + 1:
+    if got["docSW"] > got["docCW"] + 1 or got["scrollerSW"] > got["scrollerCW"] + TABLE_OVERHANG_PX + 1:
         failures.append(f"side scrolling: page {got['docSW']}/{got['docCW']}, table {got['scrollerSW']}/{got['scrollerCW']}")
+    failures += overhang_problems(got.get("overhang") or {})
     return failures
 
 
