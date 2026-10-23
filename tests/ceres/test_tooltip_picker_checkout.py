@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from playwright.sync_api import Browser, Page
 
@@ -65,10 +67,16 @@ def test_picker_tooltip_copy_is_rendered(live_browser: tuple[Browser, str]) -> N
                 assert action.get_attribute("data-tip-key") is not None
                 assert action.get_attribute("data-tip-foot") is None
         # INJECTION: reverting the Terrain title/body rewrite would change this rendered nested span.
+        # The terrain metric's tooltip now names the pairing ("<splinter> on <terrain>", with
+        # inline icons) and states the effect in one short line (candidates.js item 11).
         terrain = page.locator(".candidate-terrain").first
-        terrain.wait_for(timeout=30_000)
-        assert terrain.get_attribute("data-tip") == "Terrain"
-        assert any(word in (terrain.get_attribute("data-tip-body") or "") for word in ("Boosts", "Reduces", "isn't known"))
+        terrain.wait_for(state="attached", timeout=30_000)
+        title = re.sub(r"\{\{ic:[^}]+\}\}", "", terrain.get_attribute("data-tip") or "")
+        assert re.fullmatch(r"\S.* on \S.*", title) or title == "Terrain effect not reported", title
+        assert any(
+            (terrain.get_attribute("data-tip-body") or "").startswith(prefix)
+            for prefix in ("Terrain bonus ", "Terrain penalty ", "No terrain effect", "No modifier is known for ")
+        ), terrain.get_attribute("data-tip-body")
         # INJECTION: restoring newline-joined accessible fields would make the row label multiline.
         labels = page.locator(".candidate-row").evaluate_all("els => els.map(el => el.getAttribute('aria-label') || '')")
         assert labels and all("Base PP" in label and "\n" not in label for label in labels)

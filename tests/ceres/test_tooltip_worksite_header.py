@@ -103,22 +103,20 @@ def _open_modal(live_browser: tuple[Browser, str]) -> Page:
 
 
 def test_header_controls_use_rendered_tooltip_attributes(live_browser) -> None:
-    """Mutation: restore a native title or omit a body/ARIA value; the rendered selector assertion names that control."""
+    """Mutation: restore a native title or omit a body/ARIA value; the rendered selector assertion names that control.
+
+    The header no longer has "Reload plots" (removed; test_r111_property_guards.py keeps
+    `#reload-btn` out) or the Combines filter. Its tooltip-bearing controls with a body are
+    the player switch and Harvest, which must keep the same rendered contract."""
     page = _page(*live_browser)
     expected = {
         ".player-switch": (
             "Switch player",
             "Type a player's name and press Enter to load their plots instead.",
         ),
-        "#reload-btn": (
-            # the action reloads every plot, so the player-facing label
-            # is "Reload plots", not the old implementation term.
-            "Reload plots",
-            "Reads every plot from the game again.",
-        ),
-        "label:has(#combines-filter)": (
-            "Combines filter",
-            "Shows the Combine option on the worker list, tiles and picker. Off hides it everywhere, but never changes which cards can combine.",
+        "#harvest-btn": (
+            "Harvest",
+            "Review and harvest your regions.",
         ),
     }
     try:
