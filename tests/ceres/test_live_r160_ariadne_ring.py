@@ -25,7 +25,11 @@ def live_browser():
 def picker_page(live_browser):
     browser, base_url = live_browser
     row = copy.deepcopy(_real_detail_row(base_url))
-    page = browser.new_page(viewport={"width": 1920, "height": 1080})
+    # The offline harness (conftest._offline_browser) defaults every page to reduced motion,
+    # which the product honours by removing the moving arc. This contract is about the
+    # animated ring, so the page asks for motion explicitly; the reduced-motion test below
+    # switches it back on its own.
+    page = browser.new_page(viewport={"width": 1920, "height": 1080}, reduced_motion="no-preference")
     _mount(page, base_url, row, _candidates())
     # The mounted band re-renders while its data and art land; a tile clicked one frame too
     # early is replaced and the click is lost. Retry until a tile carries the focus class
