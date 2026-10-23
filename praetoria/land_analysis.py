@@ -2440,7 +2440,7 @@ def _format_json_tree(value: Any, key: str = "", inside_raw: bool = False) -> An
         return [_format_json_tree(item, key, False) for item in value]
     if isinstance(value, float):
         return _decimal_text(value)
-    if key in {"generated_at", "observed_at"} and isinstance(value, str):
+    if key in {"generated_at", "observed_at", "fetched_at"} and isinstance(value, str):
         return re.sub(r"\.\d{6,}(?=Z$)", "", value)
     if _is_measure_key(key) and isinstance(value, (int, str)) and not isinstance(value, bool):
         try:

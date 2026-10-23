@@ -144,6 +144,7 @@ def _render_measurements(
     return measurements
 
 
+@pytest.mark.browser  # renders in Chromium through standalone_browser
 @pytest.mark.parametrize(
     ("width", "height", "dpr", "member_count", "token_count"),
     [
@@ -182,6 +183,7 @@ def test_single_region_receipt_shows_only_the_total_ledger(width: int, token_cou
     assert html.count('class="hm-batch-badge is-net"') == token_count, html
 
 
+@pytest.mark.browser  # renders in Chromium through standalone_browser
 @pytest.mark.parametrize("width", [412, 360])
 def test_phone_layout_keeps_paired_tiles_and_no_overflow(width: int) -> None:
     measurements = _render_measurements(
@@ -202,6 +204,7 @@ def test_phone_layout_keeps_paired_tiles_and_no_overflow(width: int) -> None:
     assert all(box["numberRight"] <= box["badgeRight"] + 1 for box in measurements["badgeBoxes"]), measurements
 
 
+@pytest.mark.browser  # renders in Chromium through standalone_browser
 @pytest.mark.parametrize("width", [412, 600, 900])
 @pytest.mark.parametrize("token_count", [4, 5, 6, 7])
 def test_receipt_tile_rows_fill_the_grid_without_empty_tracks(width: int, token_count: int) -> None:
@@ -222,6 +225,7 @@ def test_receipt_tile_rows_fill_the_grid_without_empty_tracks(width: int, token_
         assert all(gap == pytest.approx(measurements["slotGap"], abs=1) for gap in row["gaps"]), measurements
 
 
+@pytest.mark.browser  # renders in Chromium through standalone_browser
 @pytest.mark.parametrize("width,dpr", [(1280, 1), (1440, 1), (1536, 1.25), (1920, 1)])
 @pytest.mark.parametrize("member_count,token_count", [(1, 4), (2, 7), (3, 5), (4, 7)])
 def test_desktop_receipt_is_the_harvest_all_ledger(width: int, dpr: float, member_count: int, token_count: int) -> None:

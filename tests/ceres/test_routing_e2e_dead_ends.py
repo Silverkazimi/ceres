@@ -274,7 +274,7 @@ const setup = createRoutingSetup({ initialRules: __seed1.rules, player: 'alice',
   receipts: ['attempt-1'], enabledKinds: ['sale_dec', 'lp_wallet'], signingEnabled: true, onRender: () => { renders += 1; }, isCurrent: () => true });
 (async () => {
   const before = setup.html();
-  // : the very first paint already shows the final bundled layout; the preview never regroups it.
+  // the very first paint already shows the final bundled layout; the preview never regroups it.
   if (!before.includes('Approval 1 of 2 \u00b7 Sales \u00b7 2 routes') || !before.includes('Approval 2 of 2 \u00b7 LP deposits \u00b7 1 route')) throw Error('first paint is not bundled: ' + before.slice(0, 500));
   if (before.includes('Grouping routes')) throw Error('a grouping placeholder was shown');
   setup.load();
