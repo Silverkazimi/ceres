@@ -50,7 +50,9 @@ def live_browser() -> tuple[Browser, str]:
 def _load(live_browser, width: int, height: int, dpr: float) -> tuple[Page, object]:
     browser, base_url = live_browser
     context = browser.new_context(viewport={"width": width, "height": height}, device_scale_factor=dpr)
-    context.add_init_script("try { localStorage.setItem('ceres:picker-view:v1:player0005', 'grid'); } catch (e) {}")
+    # The grid picker view is remembered per account (picker-actions.js); the
+    # fixture board's account is sample01.
+    context.add_init_script("try { localStorage.setItem('ceres:picker-view:v1:sample01', 'grid'); } catch (e) {}")
     page = context.new_page()
     errors: list[str] = []
     page.on("pageerror", lambda error: errors.append(str(error)))

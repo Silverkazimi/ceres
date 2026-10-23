@@ -18,7 +18,14 @@ from .conftest import settle, spawn_live_ceres, wait_ready
 from .table_edge import OVERHANG_JS, TABLE_EXTRA_WIDTH_PX, TABLE_OVERHANG_PX, overhang_problems
 
 
-FULL_PLOT_COUNT = 129
+# The board's full plot count is the account's own (the fixture recording's
+# sample01), read from the same /api/board payload the page renders -- not a
+# literal from the account these guards were first written against.
+def _full_plot_count(page: Page) -> int:
+    count = page.evaluate("async () => ((await (await fetch('/api/board')).json()).plots || []).length")
+    # The filter round trip below needs a full list well above its < 20 filtered view.
+    assert count >= 20, f"the fixture board has only {count} plots"
+    return count
 
 
 @pytest.fixture(scope="module")
@@ -29,7 +36,7 @@ def live_browser() -> tuple[Browser, str]:
 
 def _wait_full_list(page: Page) -> None:
     page.wait_for_function(
-        f"document.querySelectorAll('#plot-tbody > tr.plot-row').length === {FULL_PLOT_COUNT}",
+        f"document.querySelectorAll('#plot-tbody > tr.plot-row').length === {_full_plot_count(page)}",
         timeout=30_000,
     )
     wait_ready(page)
@@ -113,7 +120,7 @@ def _clear_filter(page: Page) -> int:
     page.locator('#text-filter').fill('')
     _wait_full_list(page)
     count = page.locator('#plot-tbody > tr.plot-row').count()
-    assert count == FULL_PLOT_COUNT
+    assert count == _full_plot_count(page)
     return count
 
 
@@ -124,7 +131,7 @@ def _assert_no_page_errors(page: Page) -> None:
 def test_scrollbar_appearing_after_load_leaves_no_phantom(live_browser: tuple[Browser, str]) -> None:
     page = _page(live_browser, 1920, 5000)
     before = _metrics(page)
-    assert before["rows"] == FULL_PLOT_COUNT
+    assert before["rows"] == _full_plot_count(page)
     assert before["verticalScrollbar"] == 0, before
     _assert_fits(before)
     page.set_viewport_size({"width": 1920, "height": 1080})
