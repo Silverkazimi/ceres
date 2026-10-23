@@ -47,7 +47,7 @@ def _band_page(live_browser: tuple[Browser, str]) -> Page:
 def test_worksite_change_button_is_pointer_interactive(live_browser: tuple[Browser, str]) -> None:
     """MUTATION EVIDENCE: Injecting `pointer-events: none` on the footer button makes `button.click()` raise `TimeoutError: Locator.click: Timeout 5000ms exceeded` before the modal becomes visible."""
     page = _band_page(live_browser)
-    button = page.locator(f'tr.expand-row[data-deed-uid="{DEED}"] button.worksite-change-btn')
+    button = page.locator(f'tr.expand-row[data-deed-uid="{DEED}"] button[data-slot-action="open-worksite-modal"]')
     button.wait_for(timeout=5_000)
     assert button.is_visible()
     assert button.is_enabled()
@@ -63,7 +63,7 @@ def test_worksite_change_button_is_pointer_interactive(live_browser: tuple[Brows
 def test_worksite_change_button_keyboard_path_still_works(live_browser: tuple[Browser, str]) -> None:
     """MUTATION EVIDENCE: Removing the footer button's delegated modal-open action makes `modal.wait_for(state="visible")` raise `TimeoutError` after Enter."""
     page = _band_page(live_browser)
-    button = page.locator(f'tr.expand-row[data-deed-uid="{DEED}"] button.worksite-change-btn')
+    button = page.locator(f'tr.expand-row[data-deed-uid="{DEED}"] button[data-slot-action="open-worksite-modal"]')
     button.wait_for(timeout=5_000)
     button.focus()
     assert button.evaluate("element => document.activeElement === element")
@@ -121,5 +121,13 @@ def test_horizontal_scrim_removed_vertical_scrim_kept() -> None:
     assert matches, ".editor-scene::after rule not found"
     rule_body = next((body for body in matches if "background" in body), matches[-1])
     assert "linear-gradient(180deg" in rule_body, "the top-to-bottom readability scrim must stay"
-    assert "linear-gradient(90deg" not in rule_body, "the left-to-right scrim was supposed to be removed"
+    # The scene now carries a thin fade on all four edges (`--edge-fade`, transparent by
+    # 2.22rem), including the 90deg/270deg sides; what must stay gone is a left-to-right
+    # scrim across the art -- every gradient layer is one of the short edge fades.
+    gradients = re.findall(r"linear-gradient\(([^()]*(?:\([^()]*\)[^()]*)*)\)", rule_body)
+    assert gradients, rule_body
+    assert all(re.fullmatch(r"\s*\d+deg,\s*var\(--edge-fade\)\s*", gradient) for gradient in gradients), (
+        "the left-to-right scrim was supposed to be removed", gradients,
+    )
+    assert re.search(r"rgba\(0, 0, 0, 0\) 2\.22rem", rule_body), "the edge fade must reach transparency within its short band"
     assert "--scene-scrim" not in source, "the horizontal scrim's own custom property should have no readers left"
