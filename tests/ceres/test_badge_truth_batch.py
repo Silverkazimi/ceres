@@ -35,6 +35,25 @@ from tests.ceres.conftest import build_report, spawn_live_ceres, wait_for_board
 CSS = Path(__file__).parents[2] / "ceres" / "static" / "ceres.css"
 
 
+def _open_badge_slideouts(page) -> None:
+    """Open every plot's badge slide-out.
+
+    Board badges are no longer a table column: each plot's chips render in its own row of
+    the slide-out panel (`#badge-overlay .badge-overlay-row`), which badge-overlay.js fills
+    only once that plot's handle in the right-edge badge bar (`#badge-bar .badge-bar-row`)
+    is opened."""
+    handles = page.locator("#badge-bar .badge-bar-row")
+    handles.first.wait_for(timeout=30_000)
+    handles.evaluate_all("rows => rows.forEach(row => { if (row.getAttribute('aria-expanded') !== 'true') row.click(); })")
+    page.wait_for_function(
+        """() => {
+            const rows = [...document.querySelectorAll('#badge-overlay .badge-overlay-row')];
+            return rows.length > 0 && rows.every(row => row.classList.contains('is-open'));
+        }""",
+        timeout=30_000,
+    )
+
+
 @pytest.fixture(scope="module")
 def live_browser() -> tuple[Browser, str]:
     with spawn_live_ceres() as (browser, base_url):
@@ -139,7 +158,8 @@ def test_rendered_badge_chips_follow_the_canonical_order(live_browser: tuple[Bro
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.goto(base_url)
     wait_for_board(page)
-    rows = page.locator("#plot-tbody > tr.plot-row")
+    _open_badge_slideouts(page)
+    rows = page.locator("#badge-overlay .badge-overlay-row")
     codes: list[str] | None = None
     for index in range(rows.count()):
         badges = rows.nth(index).locator(".badge-row .badge")
@@ -148,7 +168,8 @@ def test_rendered_badge_chips_follow_the_canonical_order(live_browser: tuple[Bro
             classes = [badges.nth(i).get_attribute("class") or "" for i in range(count)]
             found = []
             for cls in classes:
-                token = next((p for p in cls.split() if p.startswith("badge-") and p != "badge-row"), None)
+                # the chip's own code class; `badge-group-*` is its colour group
+                token = next((p for p in cls.split() if p.startswith("badge-") and p != "badge-row" and not p.startswith("badge-group-")), None)
                 if token:
                     found.append(token[len("badge-"):])
             if len(found) >= 2:
