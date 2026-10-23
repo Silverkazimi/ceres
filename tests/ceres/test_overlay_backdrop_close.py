@@ -34,6 +34,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import settle, spawn_live_ceres
+from .idle_pool import serve_recorded_idle_pool
 from .test_combine_joint_flow import _find_real_combine_candidate, _expand_plot
 from .vm_context import read_entry_source
 
@@ -47,11 +48,23 @@ def live_browser() -> tuple[Browser, str]:
         yield browser, base_url
 
 
+def _open_board(page: Page, base_url: str) -> None:
+    # The board's Combine doors read the idle-card pool, which the page fetches only when the
+    # board reports it loaded; serve the recorded account's real pool, read after every
+    # recorded plot was read (tests/ceres/idle_pool.py).
+    serve_recorded_idle_pool(page, base_url)
+    page.goto(base_url)
+    page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
+
+
 def _open_combine_dialog(page: Page) -> None:
     candidate = _find_real_combine_candidate(page)
     _expand_plot(page, candidate["index"])
+    # The plot-level Combine button is gone; the door on the board is the worker tile's
+    # own Combine chip (combineTileActionHtml, a `.slot-tile-cell` sibling of the tile).
+    slot_index = int(candidate["worker"]["slot"]) - 1
     combine_btn = page.locator("tr.expand-row").nth(candidate["index"]).locator(
-        "button[data-slot-action='combine-plot']"
+        f".slot-group[data-group-id='worker'] .slot-tile-cell:has(.slot-tile[data-slot-index='{slot_index}']) .tile-combine-chip"
     )
     combine_btn.wait_for(timeout=30_000)
     combine_btn.click()
@@ -66,8 +79,7 @@ def _open_combine_dialog(page: Page) -> None:
 def test_backdrop_click_closes_the_combine_dialog_instantly(live_browser: tuple[Browser, str]) -> None:
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1600, "height": 1000})
-    page.goto(base_url)
-    page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
+    _open_board(page, base_url)
     _open_combine_dialog(page)
 
     overlay = page.locator("#combine-dialog-overlay")
@@ -83,8 +95,7 @@ def test_backdrop_click_closes_the_combine_dialog_instantly(live_browser: tuple[
 def test_panel_click_never_closes_the_combine_dialog(live_browser: tuple[Browser, str]) -> None:
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1600, "height": 1000})
-    page.goto(base_url)
-    page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
+    _open_board(page, base_url)
     _open_combine_dialog(page)
 
     overlay = page.locator("#combine-dialog-overlay")
@@ -102,8 +113,7 @@ def test_escape_still_closes_the_combine_dialog(live_browser: tuple[Browser, str
     addition, not be replaced by it."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1600, "height": 1000})
-    page.goto(base_url)
-    page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
+    _open_board(page, base_url)
     _open_combine_dialog(page)
 
     overlay = page.locator("#combine-dialog-overlay")
