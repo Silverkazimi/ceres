@@ -16,6 +16,13 @@ from .vm_context import read_entry_source, run_in_module_context
 
 
 CSS = Path(__file__).parents[2] / "ceres" / "static" / "ceres.css"
+# The opened plot mounts at once as a reserved scaffold (`preparing`); its slot groups and
+# power slot exist only once the band reaches ready|degraded.
+# The board's layout width is the window less its reserved scrollbar gutter (index.html);
+# at 1280 px that falls to <=1279, the phone card view, which has no plot table. These
+# power-slot guards drive the desktop table, so they run at a plain desktop width.
+_DESKTOP = {"width": 1440, "height": 900}
+_BAND_READY = '.slot-editor .editor-band:is([data-plot-state="ready"],[data-plot-state="degraded"])'
 
 
 _ENERGIZED_BADGE_BODY = r"""
@@ -31,7 +38,8 @@ const row = {
 };
 const group = editorGroups(row).find((item) => item.id === 'worker');
 const html = renderEditorGroup(row, group);
-const starts = [...html.matchAll(/<div class="slot-tile-cell">/g)].map((match) => match.index);
+// Worker cells now carry the Eos permanent-frame class and reveal attributes.
+const starts = [...html.matchAll(/<div class="slot-tile-cell[ "]/g)].map((match) => match.index);
 if (starts.length !== 2) process.exit(30);
 const first = html.slice(starts[0], starts[1]);
 const second = html.slice(starts[1]);
@@ -39,8 +47,11 @@ if (!first.includes('slot-energized-satellite')) process.exit(31);
 if (second.includes('slot-energized-satellite')) process.exit(32);
 const badge = first.slice(first.indexOf('slot-energized-satellite'));
 if (badge.includes('data-slot-action')) process.exit(33);
-if (!badge.includes('data-tip="Energized: This card acts as a Power Core for any land plot on which it works."')) process.exit(34);
-if (!badge.includes('power_core.png')) process.exit(35);
+// The approved copy is now a titled tooltip: "Energized" over the sentence below,
+// with the Energized ability icon (editor.js renderEnergizedBadge).
+if (!badge.includes('data-tip="Energized"')) process.exit(34);
+if (!badge.includes('data-tip-body="Powers this plot&#39;s worker slots, like a Power Core."')) process.exit(34);
+if (!badge.includes('ability_energized.png')) process.exit(35);
 const tileStart = first.indexOf('<div class="slot-tile ');
 const badgeStart = first.indexOf('<div class="slot-energized-satellite');
 if (tileStart < 0 || badgeStart < 0 || badgeStart <= tileStart) process.exit(36);
@@ -51,6 +62,31 @@ for (const match of first.slice(tileStart, badgeStart).matchAll(/<\/?div\b[^>]*>
 if (depth !== 0) process.exit(37);
 if (!badge.includes('<span class="power-satellite is-filled" role="img"')) process.exit(38);
 """
+
+
+def _detail_route(deed_uid: str) -> str:
+    """The plot's detail route. Opening a board row whose assets are not loaded asks for
+    the full detail with `POST /api/plots/<deed>/expand`, not the plain GET, so the
+    stand-in detail answers both (and nothing else under the plot, e.g. `/harvest`)."""
+    return f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}{{,/expand}}*"
+
+
+def _loaded_detail(base_url: str, deed_uid: str) -> dict:
+    """The plot's fully loaded detail. The plain GET can answer with the not-yet-loaded
+    detail (`assets_loaded: false`), which the page refuses to draw; the page itself then
+    asks `POST .../expand`, so the stand-in starts from that same loaded answer."""
+    request = urllib.request.Request(f"{base_url}/api/plots/{urllib.parse.quote(deed_uid, safe='')}/expand", method="POST")
+    with urllib.request.urlopen(request, timeout=30) as response:
+        detail = json.loads(response.read().decode("utf-8"))
+    assert detail.get("assets_loaded") is True, deed_uid
+    return detail
+
+
+def _is_runi(worker: dict) -> bool:
+    """The Runi is identified by its card (format.js isRuniWorker), not by slot 0: a plot
+    detail's worker rows may carry no slot at all (roster slot unknown)."""
+    return (worker.get("runi_number") not in (None, "") or worker.get("card_detail_id") == 505
+            or str(worker.get("card_name") or worker.get("name") or "").strip().lower() == "runi")
 
 
 def _assert_mismatch_red(body_js: str, mutated_source: str) -> None:
@@ -91,8 +127,8 @@ def test_energized_badge_inertness_guard_is_red_when_action_is_added() -> None:
     must fail."""
     source = read_entry_source()
     mutated = source.replace(
-        '<span class="power-satellite is-filled" role="img"${tipAttrs(tooltip)}>',
-        '<span class="power-satellite is-filled" role="img" data-slot-action="remove"${tipAttrs(tooltip)}>',
+        "<span class=\"power-satellite is-filled\" role=\"img\"${tipAttrs({ title: 'Energized'",
+        "<span class=\"power-satellite is-filled\" role=\"img\" data-slot-action=\"remove\"${tipAttrs({ title: 'Energized'",
         1,
     )
     assert mutated != source
@@ -104,8 +140,8 @@ def test_energized_badge_tooltip_guard_is_red_when_copy_changes() -> None:
     copy assertion fail."""
     source = read_entry_source()
     mutated = source.replace(
-        "Energized: This card acts as a Power Core for any land plot on which it works.",
-        "Energized: This card powers this plot.",
+        "body: \"Powers this plot's worker slots, like a Power Core.\"",
+        "body: \"Powers this plot.\"",
         1,
     )
     assert mutated != source
@@ -117,8 +153,8 @@ def test_energized_badge_placement_guard_is_red_when_badge_is_inside_tile() -> N
     open at the badge index, so the sibling-depth assertion must fail."""
     source = read_entry_source()
     mutated = source.replace(
-        'return `<div class="slot-tile-cell">${tile}${energizedBadge}${combineChip}</div>`;',
-        'return `<div class="slot-tile-cell">${tile.slice(0, tile.lastIndexOf(\'</div>\'))}${energizedBadge}</div>${combineChip}</div>`;',
+        '${tile}${energizedBadge}',
+        '${tile.slice(0, tile.lastIndexOf(\'</div>\'))}${energizedBadge}</div>',
         1,
     )
     assert mutated != source
@@ -250,11 +286,12 @@ for (const item of states) {
   if (!html.includes(`data-power-state="${item.expected}"`)) process.exit(10);
 }
 // satelliteGroup priority: when Runi is filled, the satellite shows the OTHER slot
-// (Power Core); when only Power Core is filled, the satellite shows Runi's affordance.
+// (Power Core). When only a Power Core is filled it is the large tile and carries no
+// empty Runi bubble above it (editor.js renderPowerSlot, maintainer ruling).
 const bothHtml = renderPowerSlot(row, makeGroups(coreOccupant, runiOccupant));
 if (!bothHtml.includes('data-group-id="power_core"')) process.exit(11);
 const coreOnlyHtml = renderPowerSlot(row, makeGroups(coreOccupant, null));
-if (!coreOnlyHtml.includes('data-group-id="runi"')) process.exit(12);
+if (!coreOnlyHtml.includes('<div class="slot-power-satellite"></div>') || coreOnlyHtml.includes('aria-label="Add Runi"')) process.exit(12);
 
 // row.bonus.runi is never read as a Runi source (mutateEditorSlot's own comment: it
 // rides row.workers/row.capacity.runi_staked instead) -- proven behaviourally by
@@ -263,7 +300,8 @@ if (!coreOnlyHtml.includes('data-group-id="runi"')) process.exit(12);
 const rowPoison = {
   deed_uid: 'plot-2', capacity: { potential_card_capacity: 0, runi_staked: true },
   staking_facts: { is_runi_staked: true },
-  workers: [{ slot: 0, asset_ref: 'runi-real', name: 'Real Runi', land_abilities: [], sole_holder_for: [] }],
+  // the Runi tile takes only a Runi card (format.js isRuniWorker), so the real Runi is one.
+  workers: [{ slot: 0, asset_ref: 'runi-real', name: 'Real Runi', card_detail_id: 505, land_abilities: [], sole_holder_for: [] }],
   bonus: { runi: { name: 'POISON should never render' } },
 };
 const runiGroup = editorGroups(rowPoison).find((g) => g.id === 'runi');
@@ -296,8 +334,10 @@ for (const item of states) {
   const html = renderPowerSlot(row, item.groups);
   if (!html.includes(`data-power-state="${item.expected}"`)) process.exit(10);
 }
+// A Power Core alone is the large tile with no empty Runi bubble above it.
 const coreOnly = renderPowerSlot(row, [{ ...core, slots: [core.slots[0]] }, { ...runi, slots: [null] }]);
-if (!coreOnly.includes('data-group-id="runi"') || !coreOnly.includes('aria-label="Add Runi"')) process.exit(11);
+if (!coreOnly.includes('<div class="slot-power-satellite"></div>') || coreOnly.includes('aria-label="Add Runi"')
+    || !coreOnly.includes('data-group-id="power_core"')) process.exit(11);
 const runiOnly = renderPowerSlot(row, [{ ...core, slots: [null] }, runi]);
 if (!runiOnly.includes('data-slot-action="add-power-core"') || !runiOnly.includes('aria-label="Add Power Core"')) process.exit(12);
 const neither = renderPowerSlot(row, [{ ...core, slots: [null] }, { ...runi, slots: [null] }]);
@@ -345,13 +385,14 @@ def test_live_slot_editor_renders_power_after_workers_before_totem_and_title(liv
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
     page.goto(base_url)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
-    page.locator(".slot-editor").wait_for(timeout=30_000)
+    page.locator(_BAND_READY).wait_for(timeout=30_000)
     kinds = page.evaluate(
         """() => [...document.querySelectorAll('.slot-group[data-group-id="worker"] .slot-grid > *')]
             .map((node) => {
                 if (node.classList.contains('slot-tile-cell')) return 'worker';
                 if (node.classList.contains('slot-grid-divider')) return 'divider';
-                if (node.classList.contains('slot-power')) return 'power';
+                // the power slot now sits in its Eos permanent frame wrapper
+                if (node.classList.contains('slot-power') || node.querySelector(':scope > .slot-power')) return 'power';
                 if (node.classList.contains('asset-slot')) return 'item';
                 return 'unknown:' + node.className;
             })"""
@@ -524,7 +565,7 @@ if (isSoleSource({ staking_facts: { is_power_core_staked: true, is_energized: fa
   const rowH = {
     deed_uid: 'plot-hazard', capacity: { potential_card_capacity: 0, runi_staked: true },
     staking_facts: { is_power_core_staked: false, is_energized: false, is_runi_staked: true },
-    workers: [{ slot: 0, asset_ref: 'runi-sole', name: 'Sole Runi', land_abilities: [], sole_holder_for: [] }],
+    workers: [{ slot: 0, asset_ref: 'runi-sole', name: 'Sole Runi', card_detail_id: 505, land_abilities: [], sole_holder_for: [] }],
     bonus: {},
   };
   BOARD = { plots: [rowH], player: 'player0005' };
@@ -564,10 +605,9 @@ def test_live_power_slot_screenshots_and_core_affordance(live_browser) -> None:
         board = json.loads(response.read().decode("utf-8"))
     target = next(row for row in board["plots"] if row.get("capacity", {}).get("runi_staked"))
     deed_uid = target["deed_uid"]
-    with urllib.request.urlopen(f"{base_url}/api/plots/{urllib.parse.quote(deed_uid, safe='')}", timeout=10) as response:
-        detail = json.loads(response.read().decode("utf-8"))
-    workers = [worker for worker in detail.get("workers", []) if int(worker.get("slot", 99)) > 0]
-    runi = next(worker for worker in detail.get("workers", []) if int(worker.get("slot", 99)) == 0)
+    detail = _loaded_detail(base_url, deed_uid)
+    workers = [worker for worker in detail.get("workers", []) if not _is_runi(worker)]
+    runi = next(worker for worker in detail.get("workers", []) if _is_runi(worker))
     core = copy.deepcopy(detail.get("bonus", {}).get("power_core")) or {"name": "Power Core", "asset_ref": "core-test"}
     core.setdefault("asset_ref", "core-test")
 
@@ -585,16 +625,16 @@ def test_live_power_slot_screenshots_and_core_affordance(live_browser) -> None:
         page.route("**/api/board*", lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(board)))
         state = state_detail(name)
         page.route(
-            f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}*",
+            _detail_route(deed_uid),
             lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(state)),
         )
         page.goto(base_url)
         page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
-        page.locator(".slot-editor").wait_for(timeout=30_000)
+        page.locator(_BAND_READY).wait_for(timeout=30_000)
         assert page.locator(".slot-power").get_attribute("data-power-state") == name
 
     for name in ("both", "core-only", "runi-only", "neither"):
-        page = browser.new_page(viewport={"width": 1280, "height": 900})
+        page = browser.new_page(viewport=_DESKTOP)
         open_state(page, name)
         power_slot = page.locator(".slot-power")
         if name == "core-only":
@@ -620,18 +660,18 @@ def test_live_power_slot_screenshots_and_core_affordance(live_browser) -> None:
         page.locator(".slot-editor").screenshot(path=str(screen_dir / f"power-slot-{name}.png"))
         page.close()
 
-    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    page = browser.new_page(viewport=_DESKTOP)
     candidates = {
         "candidates": [{"asset_ref": "core-test-new", "name": "Power Core", "plot_impact": {"status": "point", "value": 0}, "construction_pp_delta": {"status": "not_applicable"}}],
         "total": 1,
     }
     page.route("**/api/board*", lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(board)))
     state = state_detail("runi-only")
-    page.route(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}*", lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(state)))
+    page.route(_detail_route(deed_uid), lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(state)))
     page.route("**/api/plots/*/candidates*", lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(candidates)))
     page.goto(base_url)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
-    page.locator(".slot-editor").wait_for(timeout=30_000)
+    page.locator(_BAND_READY).wait_for(timeout=30_000)
     with page.expect_request("**/api/plots/*/candidates*") as candidate_request:
         page.locator(".power-satellite[data-slot-action='add-power-core']").click()
     assert "group_id=power_core" in candidate_request.value.url
@@ -639,28 +679,28 @@ def test_live_power_slot_screenshots_and_core_affordance(live_browser) -> None:
     assert page.locator(".slot-power-large .slot-name").inner_text() == "Runi"
     page.close()
 
-    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    page = browser.new_page(viewport=_DESKTOP)
     page.route("**/api/board*", lambda route, request, payload=board: route.fulfill(status=200, content_type="application/json", body=json.dumps(payload)))
-    page.route(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}*", lambda route, request, payload=state_detail("runi-only"): route.fulfill(status=200, content_type="application/json", body=json.dumps(payload)))
+    page.route(_detail_route(deed_uid), lambda route, request, payload=state_detail("runi-only"): route.fulfill(status=200, content_type="application/json", body=json.dumps(payload)))
     page.route("**/api/plots/*/candidates*", lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(candidates)))
     page.goto(base_url)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
-    page.locator(".slot-editor").wait_for(timeout=30_000)
+    page.locator(_BAND_READY).wait_for(timeout=30_000)
     satellite = page.locator(".power-satellite.is-empty")
     with page.expect_request("**/api/plots/*/candidates*"):
         satellite.focus()
         satellite.press("Enter")
     page.close()
 
-    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    page = browser.new_page(viewport=_DESKTOP)
     page.route("**/api/board*", lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(board)))
     state = state_detail("both")
-    page.route(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}*", lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(state)))
+    page.route(_detail_route(deed_uid), lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(state)))
     impact = {"deed_uid": deed_uid, "before_powered": True, "after_powered": True, "removed": [{"asset_ref": runi.get("asset_ref"), "own_harvest_pp": 0, "own_construction_pp": 1500, "own_base_pp": 1500}], "plot_residual_delta": 0, "plot_ability_delta": 0, "harvest_pp_delta": 0, "own_construction_pp_delta": {"status": "point", "value": -1500, "low": -1500, "high": -1500}, "own_base_pp_delta": {"status": "point", "value": -1500, "low": -1500, "high": -1500}, "notices": []}
     page.route("**/api/plots/*/removal-impact", lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(impact)))
     page.goto(base_url)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
-    page.locator(".slot-editor").wait_for(timeout=30_000)
+    page.locator(_BAND_READY).wait_for(timeout=30_000)
     page.locator(".slot-power-large .slot-tile").hover()
     page.locator(".slot-power-large .slot-remove").click()
     page.wait_for_function("document.querySelector('.slot-power')?.dataset.powerState === 'core-only'", timeout=30_000)
@@ -674,10 +714,9 @@ def test_live_power_satellite_removal_uses_priced_removal_path(live_browser) -> 
         board = json.loads(response.read().decode("utf-8"))
     target = next(row for row in board["plots"] if row.get("capacity", {}).get("runi_staked"))
     deed_uid = target["deed_uid"]
-    with urllib.request.urlopen(f"{base_url}/api/plots/{urllib.parse.quote(deed_uid, safe='')}", timeout=10) as response:
-        detail = json.loads(response.read().decode("utf-8"))
-    workers = [worker for worker in detail.get("workers", []) if int(worker.get("slot", 99)) > 0]
-    runi = next(worker for worker in detail.get("workers", []) if int(worker.get("slot", 99)) == 0)
+    detail = _loaded_detail(base_url, deed_uid)
+    workers = [worker for worker in detail.get("workers", []) if not _is_runi(worker)]
+    runi = next(worker for worker in detail.get("workers", []) if _is_runi(worker))
     core = copy.deepcopy(detail.get("bonus", {}).get("power_core")) or {"name": "Power Core", "asset_ref": "core-test"}
     core.setdefault("asset_ref", "core-test")
     state = copy.deepcopy(detail)
@@ -688,7 +727,7 @@ def test_live_power_satellite_removal_uses_priced_removal_path(live_browser) -> 
     state["bonus"] = copy.deepcopy(detail.get("bonus", {}))
     state["bonus"]["power_core"] = copy.deepcopy(core)
     impact = {"deed_uid": deed_uid, "before_powered": True, "after_powered": False, "removed": [{"asset_ref": core.get("asset_ref"), "own_harvest_pp": 0, "own_construction_pp": None, "own_base_pp": None}], "plot_residual_delta": 0, "plot_ability_delta": 0, "harvest_pp_delta": 0, "own_construction_pp_delta": {"status": "not_applicable", "value": None, "low": None, "high": None}, "own_base_pp_delta": {"status": "not_applicable", "value": None, "low": None, "high": None}, "notices": []}
-    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    page = browser.new_page(viewport=_DESKTOP)
     page.route("**/api/board*", lambda route, request, payload=board: route.fulfill(status=200, content_type="application/json", body=json.dumps(payload)))
     def plot_route(route, request):
         payload = impact if "/removal-impact" in request.url.split("?", 1)[0] else state
@@ -697,7 +736,7 @@ def test_live_power_satellite_removal_uses_priced_removal_path(live_browser) -> 
     page.route("**/api/plots/**", plot_route)
     page.goto(base_url)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
-    page.locator(".slot-editor").wait_for(timeout=30_000)
+    page.locator(_BAND_READY).wait_for(timeout=30_000)
     satellite = page.locator(".power-satellite.is-filled")
     assert satellite.evaluate("(element) => element.tagName") == "BUTTON"
     with page.expect_request(lambda request: "/removal-impact" in request.url):
@@ -706,13 +745,13 @@ def test_live_power_satellite_removal_uses_priced_removal_path(live_browser) -> 
     assert page.locator(".slot-power .power-satellite.is-empty").get_attribute("aria-label") == "Add Power Core"
     page.close()
 
-    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    page = browser.new_page(viewport=_DESKTOP)
     page.route("**/api/board*", lambda route, request, payload=board: route.fulfill(status=200, content_type="application/json", body=json.dumps(payload)))
-    page.route(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}*", lambda route, request, payload=state: route.fulfill(status=200, content_type="application/json", body=json.dumps(payload)))
+    page.route(_detail_route(deed_uid), lambda route, request, payload=state: route.fulfill(status=200, content_type="application/json", body=json.dumps(payload)))
     page.route("**/api/plots/*/removal-impact", lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(impact)))
     page.goto(base_url)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
-    page.locator(".slot-editor").wait_for(timeout=30_000)
+    page.locator(_BAND_READY).wait_for(timeout=30_000)
     satellite = page.locator(".power-satellite.is-filled")
     with page.expect_request(lambda request: "/removal-impact" in request.url):
         satellite.focus()
@@ -729,25 +768,35 @@ def test_live_badge_colours_follow_caution_severity_in_all_themes(live_browser) 
     badge_row["badges"] = ["unpowered_worker", "redundant_power_core", "dark_discount_wasted"]
     badge_row["notices"] = []
     for theme in ("alchemical", "dark", "light", "wood"):
-        page = browser.new_page(viewport={"width": 1280, "height": 900})
+        page = browser.new_page(viewport=_DESKTOP)
         page.add_init_script(f"localStorage.setItem('ceres:theme', '{theme}')")
         page.route("**/api/board*", lambda route, request, payload=badge_board: route.fulfill(status=200, content_type="application/json", body=json.dumps(payload)))
         page.goto(base_url)
         row = page.locator(f"tr.plot-row[data-deed-uid='{badge_row['deed_uid']}']")
         row.wait_for(timeout=30_000)
-        expected = page.evaluate("""() => {
-          const probe = document.createElement('span');
-          probe.style.color = 'var(--warn)';
-          document.body.appendChild(probe);
-          const colour = getComputedStyle(probe).color;
-          probe.remove();
-          return colour;
-        }""")
+        # Badge chips are built only in a row's slide-out, opened from its rail handle.
+        page.locator(f"#badge-bar .badge-bar-row[data-deed-uid='{badge_row['deed_uid']}']").click()
+        row = page.locator(f".badge-overlay-row[data-deed-uid='{badge_row['deed_uid']}']")
+        row.locator(".badge").first.wait_for(timeout=30_000)
+        # All three are caution-severity problems; the glass badge face colours each by its
+        # served state group (badge-colours.css): critical -> --danger, warning -> --warn.
+        # Unpowered worker is a critical-group problem (it earns zero), the other two warnings.
+        tokens = {"critical": "--danger", "warning": "--warn"}
         for code in ("unpowered_worker", "redundant_power_core", "dark_discount_wasted"):
+            meta = board["badge_meta"][code]
+            assert meta["severity"] == "caution", (code, meta)
+            expected = page.evaluate("""token => {
+              const probe = document.createElement('span');
+              probe.style.color = `var(${token})`;
+              document.body.appendChild(probe);
+              const colour = getComputedStyle(probe).color;
+              probe.remove();
+              return colour;
+            }""", tokens[meta["state_group"]])
             badge = row.locator(f".badge-{code}")
             styles = badge.evaluate("(element) => { const style = getComputedStyle(element); return {color: style.color, border: style.borderColor, borderStyle: style.borderStyle}; }")
-            assert styles["color"] == expected
-            assert styles["border"] == expected
+            assert styles["color"] == expected, (code, theme)
+            assert styles["border"] == expected, (code, theme)
             assert styles["borderStyle"] == "solid"
         row.screenshot(path=str(Path(__file__).parents[2] / "work" / f"badges-after-{theme}.png"))
         page.close()
@@ -759,10 +808,9 @@ def test_live_power_slot_screenshots_cover_all_themes(live_browser) -> None:
         board = json.loads(response.read().decode("utf-8"))
     target = next(row for row in board["plots"] if row.get("capacity", {}).get("runi_staked"))
     deed_uid = target["deed_uid"]
-    with urllib.request.urlopen(f"{base_url}/api/plots/{urllib.parse.quote(deed_uid, safe='')}", timeout=10) as response:
-        detail = json.loads(response.read().decode("utf-8"))
-    workers = [worker for worker in detail.get("workers", []) if int(worker.get("slot", 99)) > 0]
-    runi = next(worker for worker in detail.get("workers", []) if int(worker.get("slot", 99)) == 0)
+    detail = _loaded_detail(base_url, deed_uid)
+    workers = [worker for worker in detail.get("workers", []) if not _is_runi(worker)]
+    runi = next(worker for worker in detail.get("workers", []) if _is_runi(worker))
     core = copy.deepcopy(detail.get("bonus", {}).get("power_core")) or {"name": "Power Core", "asset_ref": "core-test"}
     state = copy.deepcopy(detail)
     state["workers"] = workers + [copy.deepcopy(runi)]
@@ -772,13 +820,13 @@ def test_live_power_slot_screenshots_cover_all_themes(live_browser) -> None:
     state["bonus"] = copy.deepcopy(detail.get("bonus", {}))
     state["bonus"]["power_core"] = copy.deepcopy(core)
     for theme in ("alchemical", "dark", "light", "wood"):
-        page = browser.new_page(viewport={"width": 1280, "height": 900})
+        page = browser.new_page(viewport=_DESKTOP)
         page.add_init_script(f"localStorage.setItem('ceres:theme', '{theme}')")
         page.route("**/api/board*", lambda route, request, payload=board: route.fulfill(status=200, content_type="application/json", body=json.dumps(payload)))
-        page.route(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}*", lambda route, request, payload=state: route.fulfill(status=200, content_type="application/json", body=json.dumps(payload)))
+        page.route(_detail_route(deed_uid), lambda route, request, payload=state: route.fulfill(status=200, content_type="application/json", body=json.dumps(payload)))
         page.goto(base_url)
         page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
-        page.locator(".slot-editor").wait_for(timeout=30_000)
+        page.locator(_BAND_READY).wait_for(timeout=30_000)
         page.locator(".slot-power").screenshot(path=str(Path(__file__).parents[2] / "work" / f"power-slot-after-{theme}.png"))
         page.close()
 
