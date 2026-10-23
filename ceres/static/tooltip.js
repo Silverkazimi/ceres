@@ -268,8 +268,8 @@ export function initTooltips() {
     TOUCH_POINTER = null;
     hideTooltip();
     const trigger = findTrigger(event);
-    if (!trigger?.closest?.('.mobile-plot-sheet') || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
-    TOUCH_POINTER = { id: event.pointerId, trigger, x: event.clientX, y: event.clientY, longPressed: false };
+    if (!trigger?.closest?.('.mobile-plot-sheet') || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return; // V
+    TOUCH_POINTER = { id: event.pointerId, trigger, x: event.clientX, y: event.clientY, longPressed: false }; // V
     TOUCH_LONG_PRESS_TIMER = setTimeout(() => {
       TOUCH_LONG_PRESS_TIMER = null;
       if (!TOUCH_POINTER || TOUCH_POINTER.id !== event.pointerId || !trigger.isConnected) return;
@@ -280,8 +280,8 @@ export function initTooltips() {
   }, true);
   document.addEventListener('pointermove', (event) => {
     if (!TOUCH_POINTER || event.pointerId !== TOUCH_POINTER.id || TOUCH_POINTER.longPressed) return;
-    if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)
-        || Math.hypot(event.clientX - TOUCH_POINTER.x, event.clientY - TOUCH_POINTER.y) > TOUCH_MOVE_TOLERANCE) {
+    if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY) // V
+        || Math.hypot(event.clientX - TOUCH_POINTER.x, event.clientY - TOUCH_POINTER.y) > TOUCH_MOVE_TOLERANCE) { // V
       clearTimeout(TOUCH_LONG_PRESS_TIMER);
       TOUCH_LONG_PRESS_TIMER = null;
       TOUCH_POINTER = null;
@@ -591,18 +591,18 @@ export function calculateTooltipPosition(trigger, tooltip, viewport, borders = {
 function anchorRect(target) {
   let el = target;
   for (let i = 0; el && i < 4; i++) {
-    const rect = el.getBoundingClientRect();
+    const rect = el.getBoundingClientRect(); // V
     if (rect.width || rect.height) return rect;
     el = el.firstElementChild;
   }
-  return target.getBoundingClientRect();
+  return target.getBoundingClientRect(); // V
 }
 
 function positionTooltip(target) {
   const visual = window.visualViewport;
   const viewport = { left: visual?.offsetLeft || 0, top: visual?.offsetTop || 0,
     width: visual?.width || document.documentElement.clientWidth,
-    height: visual?.height || window.innerHeight };
+    height: visual?.height || window.innerHeight }; // V
   const margin = 12;
   TOOLTIP_EL.style.setProperty('--tooltip-available-width', `${Math.max(0, viewport.width - margin * 2)}px`);
   const computed = getComputedStyle(TOOLTIP_EL);
@@ -610,7 +610,7 @@ function positionTooltip(target) {
   TOOLTIP_EL.style.setProperty('--tooltip-available-height', `${Math.max(0, viewport.height - margin * 2 - borderHeight)}px`);
   const workerSide = target.getAttribute('data-tip-layout') === 'worker';
   const result = calculateTooltipPosition(
-    anchorRect(target),
+    anchorRect(target), // V
     { width: TOOLTIP_EL.offsetWidth, height: TOOLTIP_EL.offsetHeight }, // Measure final size, not the entrance animation scale.
     viewport,
     {
@@ -624,12 +624,12 @@ function positionTooltip(target) {
     { side: workerSide },
   );
   TOOLTIP_EL.style.left = `${result.left}px`; // V (: no page zoom)
-  TOOLTIP_EL.style.top = `${result.top}px`;
+  TOOLTIP_EL.style.top = `${result.top}px`; // V
   TOOLTIP_EL.classList.toggle('is-below', result.below);
   TOOLTIP_EL.classList.toggle('is-side-right', result.side === 'right');
   TOOLTIP_EL.classList.toggle('is-side-left', result.side === 'left');
-  TOOLTIP_EL.style.setProperty('--ceres-tooltip-arrow-left', result.arrowLeft === null ? '' : `${result.arrowLeft}px`);
-  TOOLTIP_EL.style.setProperty('--ceres-tooltip-arrow-top', result.arrowTop === null ? '' : `${result.arrowTop}px`);
+  TOOLTIP_EL.style.setProperty('--ceres-tooltip-arrow-left', result.arrowLeft === null ? '' : `${result.arrowLeft}px`); // V
+  TOOLTIP_EL.style.setProperty('--ceres-tooltip-arrow-top', result.arrowTop === null ? '' : `${result.arrowTop}px`); // V
 }
 
 // Custom-tooltip attribute pair (board-polish batch 9 continued, item 11
