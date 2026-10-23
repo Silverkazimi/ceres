@@ -193,6 +193,19 @@ class EosBrowser:
             uid = path.split("/")[3]
             await route.fulfill(status=503 if self.fail_detail else 200,
                                 json={"detail":"Eos detail temporarily unavailable"} if self.fail_detail else self.details[uid])
+        elif path.endswith("/removal-impact"):
+            # A staged removal is priced first; the page refuses (and stages nothing) when
+            # the answer is not a well-formed impact, so the fixture prices each removed
+            # asset as a neutral, still-powered change.
+            refs = (request.post_data_json or {}).get("asset_refs") or []
+            await route.fulfill(json={
+                "deed_uid": path.split("/")[3], "before_powered": True, "after_powered": True,
+                "removed": [{"asset_ref": ref, "own_harvest_pp": 0, "own_construction_pp": 0, "own_base_pp": 0} for ref in refs],
+                "plot_residual_delta": 0, "plot_ability_delta": 0, "harvest_pp_delta": 0,
+                "own_construction_pp_delta": {"status": "point", "value": 0, "low": 0, "high": 0},
+                "own_base_pp_delta": {"status": "point", "value": 0, "low": 0, "high": 0},
+                "notices": [],
+            })
         elif "upgrade" in path:
             await self.gates["upgrade"].wait()
             await route.fulfill(json={"options":[], "candidates":[]})
@@ -390,6 +403,12 @@ def _stable(trace):
         for key in ("bandHeight", "tdHeight", "bandTop", "nextTop"):
             if frame[key] is not None and reference[key] is not None:
                 assert abs(frame[key] - reference[key]) <= 0.5, (key, reference, frame)
+
+
+async def _staged_removal(f):
+    """A removal is staged only after its impact is priced (an async request), so wait
+    for the removed tile's restore control instead of reading the stage at once."""
+    await f.band().locator('[data-slot-action="restore"][data-group-id="worker"]').first.wait_for(state="attached")
 
 
 async def _no_new_gesture(fixture, action):
@@ -607,7 +626,7 @@ async def _g8(f):
     remove = f.band().locator('[data-slot-action="remove"][data-group-id="worker"]').first
     assert await remove.count(), "Representative fixture must expose a real stage control"
     await remove.click(force=True)
-    await asyncio.sleep(0.1)
+    await _staged_removal(f)
     staged = await f.module("staging", "m=>m.CERES_STAGE.length")
     assert staged == 1
     await f.terminal()
@@ -705,6 +724,7 @@ async def _g14(f, mutation=None):
     await f.terminal()
     remove = f.band().locator('[data-slot-action="remove"][data-group-id="worker"]').first
     await remove.click()
+    await _staged_removal(f)
     await f.module("staging", """(m,notices)=>{
       if(m.CERES_STAGE.length!==1)throw new Error('Expected one genuinely staged removal');
       m.CERES_STAGE[0]._notices=notices;
@@ -1069,6 +1089,7 @@ def test_g18_pending_write_cancellation_matrix(intent, count, report, details_by
                         )
                 remove = f.band().locator('[data-slot-action="remove"][data-group-id="worker"]').first
                 await remove.click(force=True)
+                await _staged_removal(f)
                 assert await f.module("staging", "m=>m.CERES_STAGE.length") == 1
             elif intent == "wheel":
                 await f.page.mouse.wheel(0, 120)
