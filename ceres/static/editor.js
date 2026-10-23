@@ -373,7 +373,10 @@ export function stakedCardSlots(row) {
   const runiOriginally = !!row?.bonus?.runi || row?.staking_facts?.is_runi_staked === true || capacity.runi_staked === true;
   const staked = Math.max(0, (Number(capacity.worker_count) || 0) - (runiOriginally ? 1 : 0));
   const slots = Math.max(potential, staked);
-  return Number.isInteger(slots) && slots <= 50 ? slots : potential;
+  if (Number.isInteger(slots) && slots <= 50) return slots;
+  // an absurd capacity is no capacity (editorGroups' own guard): fall back to the staked cards
+  // alone, never to the absurd figure, or the editor tried to draw millions of slots.
+  return Number.isInteger(staked) && staked <= 50 ? staked : 0;
 }
 
 export function editorGroups(row) {
