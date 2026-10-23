@@ -266,7 +266,11 @@ def test_base_pp_tooltip_fragments_are_terminated_sentences(editor_page):
 def _open_worksite_modal(page, base_url: str):
     page.set_viewport_size({"width": 1920, "height": 1080})
     _open_editor(page, base_url, PLOT_WITH_RUNI)
-    button = page.locator(".slot-editor button.worksite-change-btn").first
+    # The "Change worksite" control is now the cog on the plot's harvest bar
+    # (harvest-state.js harvestBarHtml, `data-slot-action="open-worksite-modal"`); the old
+    # footer `.worksite-change-btn` is no longer rendered. The bar exists once the band is ready.
+    page.locator(".editor-band[data-plot-state='ready']").first.wait_for(timeout=30_000)
+    button = page.locator(".slot-editor [data-slot-action='open-worksite-modal']").first
     button.wait_for(timeout=10_000)
     button.click()
     modal = page.locator("#worksite-modal-overlay")

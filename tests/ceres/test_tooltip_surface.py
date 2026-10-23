@@ -174,7 +174,9 @@ def _open_worksite_modal(page: Page) -> None:
     rows = page.locator("#plot-tbody > tr.plot-row")
     for index in range(rows.count()):
         expanded = _expand(page, index)
-        button = expanded.locator("button.worksite-change-btn")
+        # The worksite window opens from the harvest-bar cog (`data-slot-action=
+        # "open-worksite-modal"`); the old `.worksite-change-btn` is no longer rendered.
+        button = expanded.locator("[data-slot-action='open-worksite-modal']")
         if button.count():
             button.first.click()
             modal = page.locator("#worksite-modal-overlay")
