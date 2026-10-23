@@ -28,6 +28,7 @@ acceptance on its own for a visual bug.
 from __future__ import annotations
 
 import json
+import re
 import urllib.parse
 import urllib.request
 
@@ -102,7 +103,7 @@ def test_runi_removal_marks_pending_removal_and_restore_repopulates_the_tile(liv
     ])
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
     page.route(
@@ -112,6 +113,7 @@ def test_runi_removal_marks_pending_removal_and_restore_repopulates_the_tile(liv
     page.goto(base_url)
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
+    page.locator(".editor-band[data-plot-state='ready']").first.wait_for(timeout=30_000)  # tiles are drawn once the detail is read
     runi_tile = page.locator(".slot-power .slot-tile[data-group-id='runi']").first
     runi_tile.wait_for(timeout=30_000)
     page.locator(".slot-power").first.hover()
@@ -154,12 +156,13 @@ def test_runi_tooltip_leads_with_boost_and_omits_placeholders(live_browser: tupl
     row["is_energized"] = False
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
     page.goto(base_url)
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
+    page.locator(".editor-band[data-plot-state='ready']").first.wait_for(timeout=30_000)  # tiles are drawn once the detail is read
     runi_tile = page.locator(".slot-power .slot-tile[data-group-id='runi']").first
     runi_tile.wait_for(timeout=30_000)
     covered_title = (runi_tile.get_attribute("data-tip") or "").lower()
@@ -174,12 +177,13 @@ def test_runi_tooltip_leads_with_boost_and_omits_placeholders(live_browser: tupl
     row["is_power_core_staked"] = False
     page2 = browser.new_page(viewport={"width": 1400, "height": 900})
     page2.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
     page2.goto(base_url)
     page2.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page2.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
+    page2.locator(".editor-band[data-plot-state='ready']").first.wait_for(timeout=30_000)  # tiles are drawn once the detail is read
     runi_tile2 = page2.locator(".slot-power .slot-tile[data-group-id='runi']").first
     runi_tile2.wait_for(timeout=30_000)
     sole_aria = (runi_tile2.get_attribute("aria-label") or "").lower()

@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import urllib.parse
 import urllib.request
 
@@ -90,9 +91,13 @@ def _real_candidate_template(base_url: str, row: dict, group_id: str = "worker")
 
 
 def _route_detail(page, base_url: str, row: dict) -> None:
+    # A page load's capture drops earlier per-plot reads, so the board row is not
+    # `assets_loaded` and the open click reads the plot through POST .../expand rather
+    # than GET /api/plots/<deed> (rows.js). Both are the plot's detail row; serve the
+    # mocked row on either.
     deed_uid = row["deed_uid"]
     page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
 

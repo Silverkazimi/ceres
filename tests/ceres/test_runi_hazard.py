@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import urllib.parse
 import urllib.request
 
@@ -63,7 +64,7 @@ def _drive_remove_click(page, base_url: str, row: dict, group_id: str, *, expect
         {"asset_ref": removed_asset_ref, "name": "removed", "own_harvest_pp": 0.0, "own_construction_pp": 0.0, "own_base_pp": 0.0},
     ])
     page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
     page.route(
