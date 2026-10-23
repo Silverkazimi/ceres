@@ -34,6 +34,10 @@ HTML = INDEX_HTML.read_text(encoding="utf-8")
 APP = APP_JS.read_text(encoding="utf-8")
 TABLE = TABLE_JS.read_text(encoding="utf-8")
 ROWS = ROWS_JS.read_text(encoding="utf-8")
+# The plot table's DOM column count (state.js keeps it in lockstep with index.html).
+PLOT_TABLE_COLUMN_COUNT = int(
+    re.search(r"export const PLOT_TABLE_COLUMN_COUNT = (\d+);", (STATIC / "state.js").read_text(encoding="utf-8")).group(1)
+)
 
 
 def test_body_font_clamp_is_exact():
@@ -116,11 +120,18 @@ def test_sort_chevron_markup_and_css():
     assert thead_match, "could not find #table-head-sticky thead"
     thead_html = thead_match.group(0)
     ths = re.findall(r"<th\b[^>]*>.*?</th>", thead_html, re.S)
-    assert len(ths) == 19
+    # 20 header cells (PLOT_TABLE_COLUMN_COUNT, state.js): 19 sortable data-key
+    # columns (Lock joined after DEC stake) plus the trailing listed-plots counter
+    # (`th.col-w-count`), which is not a sort key and so carries no chevron.
+    assert len(ths) == PLOT_TABLE_COLUMN_COUNT == 20
     controls = re.findall(r'<(?:th|button)\b[^>]*\bdata-key="[^"]+"', thead_html)
     assert len(controls) == 19
-    for th in ths:
+    sortable = [th for th in ths if 'data-key="' in th]
+    assert len(sortable) == 19
+    for th in sortable:
         assert 'sort-chevron' in th
+    assert [th for th in ths if 'data-key="' not in th] == [th for th in ths if 'class="col-w-count"' in th]
+    assert all('sort-chevron' not in th for th in ths if 'data-key="' not in th)
     assert "th[data-key] .sort-chevron" in CSS
     assert "--ceres-chevron-art" in CSS  # reuses the existing shared chevron mask, no new icon family
     assert 'table.plot-table .table-sort-control[aria-pressed="true"] .sort-chevron' in CSS
@@ -193,7 +204,8 @@ def test_column_count_and_markup_unchanged():
     # colgroup for #plot-table only (mobile/other tables aren't this markup).
     colgroup_match = re.search(r'<table class="plot-table" id="plot-table">\s*<colgroup>(.*?)</colgroup>', HTML, re.S)
     assert colgroup_match
-    assert len(re.findall(r"<col\b", colgroup_match.group(1))) == 19
+    # 20 since the Lock column (after DEC stake); kept in lockstep with state.js.
+    assert len(re.findall(r"<col\b", colgroup_match.group(1))) == PLOT_TABLE_COLUMN_COUNT == 20
 
 
 def test_totem_and_title_are_separate_fluid_columns_between_base_pp_and_boost():
@@ -469,7 +481,7 @@ def test_separate_totem_title_cells_keep_exact_row_height_and_tooltips(live_brow
     assert all(row["brightTitleRightPadding"] == 0 for row in rows)
     assert geometry["emptyTotemBrightRightPadding"] == 0
     assert geometry["emptyTitleBrightRightPadding"] == 0
-    assert geometry["separateShape"] == {"headers": 2, "cells": 19, "sharedWrapperCount": 0}
+    assert geometry["separateShape"] == {"headers": 2, "cells": PLOT_TABLE_COLUMN_COUNT, "sharedWrapperCount": 0}
     assert rows[0]["markers"] == []
     assert [len(row["markers"]) for row in rows[1:]] == [1, 1, 0, 0]
     markers = [marker for row in rows for marker in row["markers"]]
@@ -480,7 +492,7 @@ def test_separate_totem_title_cells_keep_exact_row_height_and_tooltips(live_brow
     assert all(marker["tooltip"] for marker in markers)
     assert any(marker["text"] == "Conflict" and "Boost mismatch" in marker["tooltip"] for marker in markers)
     assert rows[3]["markers"] == []
-    assert len(geometry["columnWidths"]) == 19
+    assert len(geometry["columnWidths"]) == PLOT_TABLE_COLUMN_COUNT
     assert geometry["columnWidths"][8] > 0 and geometry["columnWidths"][9] > 0
 
     print(
@@ -544,7 +556,7 @@ const rendered = rows.map(row => plotRowCellsHtml(row));
 const totemIndexes = rendered.map(html => [...html.matchAll(/<td\b/g)].findIndex(match => html.slice(match.index).startsWith('<td class="totem-cell"')));
 const titleIndexes = rendered.map(html => [...html.matchAll(/<td\b/g)].findIndex(match => html.slice(match.index).startsWith('<td class="title-cell"')));
 if (totemIndexes.some(index => index !== 8) || titleIndexes.some(index => index !== 9)) throw new Error(`Totem/Title indexes drifted: ${totemIndexes}/${titleIndexes}`);
-if (rendered.some(html => (html.match(/<td\b/g) || []).length !== 19)) throw new Error('every row must render 19 cells');
+if (rendered.some(html => (html.match(/<td\b/g) || []).length !== PLOT_TABLE_COLUMN_COUNT)) throw new Error('every row must render PLOT_TABLE_COLUMN_COUNT cells');
 if (rendered.some(html => /totem-title-pair|totem-title-slot/.test(html))) throw new Error('paired Totem/Title wrapper survived');
 """)
 
