@@ -32,7 +32,7 @@ for (const noise of ['picker-replacing', 'candidate-columns', 'picker-advisory',
 if ((html.match(/class="candidate-row candidate-card/g) || []).length !== 4) process.exit(12);
 const rows = html.split('class="candidate-row candidate-card').slice(1);
 if (!rows[1].includes('data-picker-action="choose"')) process.exit(13);   // cooling stays selectable ( §9)
-if (!rows[1].includes('Unstaked from') || !rows[1].includes('ch-plot-badge') || !rows[1].includes('065-09-083')) process.exit(14);   // : shared plot badge
+if (!rows[1].includes('Unstaked from') || !rows[1].includes('ch-plot-badge') || !rows[1].includes('065-09-083')) process.exit(14);   // shared plot badge
 if (!rows[1].includes('is-oneline') || !rows[1].includes('data-countdown-compact')) process.exit(24);
 if (!rows[1].includes('data-countdown-until')) process.exit(15);
 if (rows[2].includes('data-picker-action="choose"') || !rows[2].includes('aria-disabled="true"')) process.exit(16);

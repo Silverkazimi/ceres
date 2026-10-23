@@ -338,6 +338,16 @@ class LandPhase1Tests(unittest.TestCase):
         self.assertIn("showing 2 of 13 workers", workers)
         self.assertIn("showing 2 of 9 diagnostic codes", diagnostics)
 
+    def test_json_view_trims_collection_fetched_at_like_generated_at(self):
+        report = report_with_assets()
+        report["generated_at"] = "2026-08-09T00:00:00.123456Z"
+        report["coverage"]["collection"]["fetched_at"] = "2026-08-09T00:00:00.654321Z"
+        rendered = json.loads(render_land_analysis(report, "json", view="plots", limit=2))
+        self.assertEqual(rendered["generated_at"], "2026-08-09T00:00:00Z")
+        self.assertEqual(rendered["coverage"]["collection"]["fetched_at"], "2026-08-09T00:00:00Z")
+        # display only: the report itself keeps full precision
+        self.assertEqual(report["coverage"]["collection"]["fetched_at"], "2026-08-09T00:00:00.654321Z")
+
     def test_rendered_numeric_measures_have_no_float_artifacts(self):
         report = report_with_assets()
         for fmt in ("table", "json", "csv"):
