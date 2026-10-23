@@ -200,7 +200,7 @@ function centerThemePicker() {
     }
   }
   const viewportRect = document.documentElement.getBoundingClientRect(); // V
-  const viewport = { left: viewportRect.left, top: 0, right: viewportRect.right, bottom: window.innerHeight };
+  const viewport = { left: viewportRect.left, top: 0, right: viewportRect.right, bottom: window.innerHeight }; // V
   const triggerRect = headerRect?.height
     ? headerRect
     : toggleRect?.height
