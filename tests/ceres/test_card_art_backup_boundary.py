@@ -69,12 +69,23 @@ def test_disabled_route_does_not_fetch_or_write(tmp_path: Path, monkeypatch) -> 
     assert not hasattr(app.state, "card_art_store")
 
 
-def test_project_backup_row_names_card_cache_path() -> None:
-    """Red mutation: removing the path, CDN note, or restore command must fail."""
-    row_file = Path(__file__).resolve().parents[2] / "library" / "backup-coverage-cards.md"
-    row = row_file.read_text(encoding="utf-8")
+def test_project_backup_row_names_card_cache_path(tmp_path: Path) -> None:
+    """Red mutation: removing the path or the CDN note, or moving the cache without the docs, must fail.
 
-    assert "ceres/static/assets/land/../cards/" in row
-    assert "regenerable from the Splinterlands CDN" in row
-    assert "mkdir -p ceres/static/assets/cards" in row
-    assert "rsync -a ~/.ceres/assets-backup/" in row
+    The maintainer's backup-coverage row (library/backup-coverage-cards.md) is not in the public export; the
+    public statement of where the card-art cache lives and that it is regenerable from the game's image server is
+    docs/CONFIGURATION.md, so the guard reads that and checks it against the path the app really writes.
+    """
+    doc = (Path(__file__).resolve().parents[2] / "docs" / "CONFIGURATION.md").read_text(encoding="utf-8")
+    rows = [line for line in doc.splitlines() if line.startswith("| `CERES_CARD_ART_CACHE`")]
+    assert len(rows) == 1, "docs/CONFIGURATION.md lost its CERES_CARD_ART_CACHE row"
+    row = rows[0]
+
+    assert "`~/.ceres/card-art/`" in row
+    assert "game's image server" in row
+    where = doc[doc.index("## Where data lives"):]
+    assert "`~/.ceres/`" in where and "card-art cache" in where.split("\n\n", 2)[1]
+
+    assert CeresConfig().root == Path.home() / ".ceres"
+    app = create_app(CeresConfig(root=tmp_path, card_art_cache_enabled=True))
+    assert app.state.card_art_store.root == tmp_path / "card-art"
