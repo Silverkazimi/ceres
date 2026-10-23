@@ -18,11 +18,14 @@ from . import board_basic_recording as recording
 
 SCREEN_DIR = Path(__file__).parents[2] / "work" / "ceres-fr1698-items"
 TITLE_DEEDS = (recording.ORDINARY.uid,)
-# The plot table's DOM column count, kept in lockstep with index.html's <thead> (state.js).
-PLOT_TABLE_COLUMN_COUNT = int(re.search(
-    r"export const PLOT_TABLE_COLUMN_COUNT = (\d+);",
-    (Path(__file__).parents[2] / "ceres" / "static" / "state.js").read_text(encoding="utf-8"),
-).group(1))
+
+
+def _plot_table_column_count(page) -> int:
+    """The plot table's DOM column count, read from the page's own state.js module (kept in lockstep with
+    index.html's <thead>), never from the source text."""
+    return int(page.evaluate("async () => (await import('/static/state.js')).PLOT_TABLE_COLUMN_COUNT"))
+
+
 # The Workers cell of a plot row, located by its header key rather than a column position
 # (columns were added before it more than once).
 _WORKERS_CELL = """row => row.children[[...document.querySelectorAll('#plot-table thead th')]
@@ -418,8 +421,9 @@ def test_real_board_slot_editor_contract(live_browser: tuple[Browser, str]) -> N
     assert replace_index >= 0
     _expand(page, powered_index)
 
-    assert page.locator("#plot-table thead th").count() == PLOT_TABLE_COLUMN_COUNT  # one table
-    assert page.locator("#plot-tbody > tr.plot-row").nth(powered_index).locator(f"+ tr.expand-row td[colspan='{PLOT_TABLE_COLUMN_COUNT}']").count() == 1
+    column_count = _plot_table_column_count(page)
+    assert page.locator("#plot-table thead th").count() == column_count  # one table
+    assert page.locator("#plot-tbody > tr.plot-row").nth(powered_index).locator(f"+ tr.expand-row td[colspan='{column_count}']").count() == 1
     selected_expand = page.locator("tr.expand-row").nth(powered_index)
     worker_group = selected_expand.locator(".slot-group[data-group-id='worker']")
     capacity = int(worker_group.locator(".slot-group-count").inner_text().split("/")[1])
