@@ -5182,7 +5182,7 @@ html.ceres-lw-le-1099 .ceres-pill, html.ceres-lw-le-1099 .worksite-banner { min-
 .worksite-completion { display: flex; align-items: center; gap: .9rem; margin: 0; padding: 0; }
 .worksite-completion-lead { margin: 0; color: var(--body); font-size: .95rem; }
 .worksite-completion-art { flex: 0 0 7.5rem; aspect-ratio: 1; width: auto; margin: 0; }
-.worksite-completion-art .worksite-tile-art { background-position: 49% 91%; background-size: 158% auto; }
+.worksite-completion-art .worksite-tile-art { aspect-ratio: 1; background-position: 49% 91%; background-size: 158% auto; }
 .worksite-modal-refusal { margin: 0; }
 
 /* One tile per legal worksite, the current one pinned first and visually
