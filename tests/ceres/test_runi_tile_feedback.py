@@ -94,8 +94,15 @@ def test_runi_removal_marks_pending_removal_and_restore_repopulates_the_tile(liv
     browser, base_url = live_browser
     row = _real_row_with_runi(base_url)
     deed_uid = row["deed_uid"]
-    row["is_power_core_staked"] = True  # not the sole source -- no hazard modal
-    row["is_energized"] = False
+    # Not the sole source -- no hazard modal. The other source is an Energized worker, not a
+    # Power Core: with a Power Core staked the power slot draws the core as its large tile
+    # (editor.js renderPowerSlot) and the Runi's pending-removal tile only shows when no core
+    # takes that place.
+    row["is_power_core_staked"] = False
+    row["is_energized"] = True
+    row["bonus"] = dict(row.get("bonus") or {}, power_core=None)
+    if isinstance(row.get("staking_facts"), dict):
+        row["staking_facts"] = dict(row["staking_facts"], is_power_core_staked=False, is_energized=True)
     runi_asset_ref = next(w["asset_ref"] for w in row["workers"] if w["slot"] == 0)
 
     removal_response = dict(REMOVAL_IMPACT_TEMPLATE, deed_uid=deed_uid, removed=[
@@ -166,10 +173,11 @@ def test_runi_tooltip_leads_with_boost_and_omits_placeholders(live_browser: tupl
     runi_tile = page.locator(".slot-power .slot-tile[data-group-id='runi']").first
     runi_tile.wait_for(timeout=30_000)
     covered_title = (runi_tile.get_attribute("data-tip") or "").lower()
-    covered_key = runi_tile.get_attribute("data-tip-key") or ""
     covered_body = (runi_tile.get_attribute("data-tip-body") or "").lower()
     assert "runi" in covered_title
-    assert covered_key == "100%"
+    # The boost leads the tooltip in its title now ("Runi — +100% production, ..."); the
+    # separate `data-tip-key` figure is gone from the Runi tile.
+    assert covered_title.startswith("runi — +100% production"), covered_title
     assert "production boost" not in covered_body
     assert "sole proven power source" not in covered_body
     page.close()
@@ -187,5 +195,16 @@ def test_runi_tooltip_leads_with_boost_and_omits_placeholders(live_browser: tupl
     runi_tile2 = page2.locator(".slot-power .slot-tile[data-group-id='runi']").first
     runi_tile2.wait_for(timeout=30_000)
     sole_aria = (runi_tile2.get_attribute("aria-label") or "").lower()
-    assert "sole proven power source" in sole_aria
+    # The tile tooltip is one line per always-true fact now (editor.js editorRuniTip, "Gate
+    # document #5"): it still leads with the boost in the sole-power state, and the
+    # "sole proven power source" statement moved to where it decides something -- the
+    # removal hazard dialog (hazard.js), opened by the tile's own remove button.
+    assert sole_aria.startswith("runi — +100% production"), sole_aria
+    page2.locator(".slot-power").first.hover()
+    runi_tile2.hover()
+    settle(page2)
+    runi_tile2.locator(".slot-remove").click(force=True, timeout=10_000)
+    overlay = page2.locator("#slot-hazard-overlay")
+    overlay.wait_for(timeout=30_000, state="visible")
+    assert "sole proven power source" in overlay.inner_text().lower()
     page2.close()
