@@ -81,15 +81,21 @@ NOW = datetime(2026, 8, 25, tzinfo=timezone.utc)
 # Job 1 -- canonical badge order
 
 def test_badge_order_matches_final_spec():
-    """ keeps the legacy API transport order aligned with its groups."""
+    """ keeps the legacy API transport order aligned with its groups.
+
+    `sole_ability_holder` was renamed `land_ability_card` (v0.9.513, "Keep Land Card and VoV
+    badges in the green category"; see test_badge_colours.py), and inside the neutral group
+    `idle` (group_order 0) now comes before `building_in_box` (group_order 1), which matches
+    BADGE_META's own within-group order."""
     assert BADGE_ORDER == [
         "unpowered", "unpowered_worker", "over_cap", "region_dec",
         "staged_changes", "staged_cooldown",
         "dark_discount_wasted", "no_worksite", "redundant_power_core", "underfilled",
         "bloodline_solo", "worksite_incomplete", "bloodline_paired",
-        "pending_change", "runi", "sole_ability_holder",
-        "building_in_box", "idle", "unstable_totem", "assets_not_loaded",
+        "pending_change", "runi", "land_ability_card",
+        "idle", "building_in_box", "unstable_totem", "assets_not_loaded",
     ]
+    assert BADGE_META["idle"]["group_order"] < BADGE_META["building_in_box"]["group_order"]
 
 
 def test_badge_rank_unknown_code_sorts_last():
@@ -419,6 +425,14 @@ def test_badge_row_stays_single_line_nowrap():
 
 
 def test_no_worksite_and_worksite_incomplete_have_css_rules():
-    source = CSS.read_text(encoding="utf-8")
-    assert ".badge-no_worksite" in source
-    assert ".badge-worksite_incomplete" in source
+    """Badge colour is no longer one CSS rule per code: badges.js gives every chip a
+    `badge-group-<group>` class from the shared badge table, and badge-colours.css paints
+    the groups. Both split codes must therefore sit in a painted group, and each chip still
+    gets its own `badge-<code>` class from badgeClasses()."""
+    colours = (CSS.parent / "badge-colours.css").read_text(encoding="utf-8")
+    for code in ("no_worksite", "worksite_incomplete"):
+        group = BADGE_META[code]["state_group"]
+        assert group == "warning", f"{code} must stay in the warning group, got {group!r}"
+        assert f".badge.badge-group-{group} {{" in colours
+    badges_js = (CSS.parent / "badges.js").read_text(encoding="utf-8")
+    assert "return ['badge', `badge-${cssCode}`, kind, `badge-group-${badgeGroup(code)}`]" in badges_js
