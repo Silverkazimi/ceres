@@ -7,7 +7,14 @@ import re
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres, wait_for_board
+from .conftest import LIVE_PLAYER, spawn_live_ceres, wait_for_board
+
+
+def _board_url(base_url: str) -> str:
+    """The fixture account's board. The app reads the account from the URL; the harness adds
+    it only for pages made with `browser.new_page()`, not for pages of an explicit context,
+    so these context pages opened the start page and never a board."""
+    return f"{base_url}/?player={LIVE_PLAYER}"
 
 
 def _open_badge_slideouts(page) -> None:
@@ -39,7 +46,7 @@ def _open_picker(live_browser: tuple[Browser, str]) -> tuple[Page, object]:
     browser, base_url = live_browser
     context = browser.new_context(viewport={"width": 1440, "height": 900})
     page = context.new_page()
-    page.goto(base_url)
+    page.goto(_board_url(base_url))
     wait_for_board(page)
     rows = page.locator("tr.plot-row")
     for index in range(rows.count()):
@@ -114,7 +121,7 @@ def test_idle_badge_uses_expanded_name(live_browser: tuple[Browser, str]) -> Non
     context = browser.new_context(viewport={"width": 1440, "height": 900})
     page = context.new_page()
     try:
-        page.goto(base_url)
+        page.goto(_board_url(base_url))
         wait_for_board(page)
         _open_badge_slideouts(page)
         idle = page.locator(".badge-idle").first
@@ -141,7 +148,7 @@ def test_transaction_guard_copy_is_identical(live_browser: tuple[Browser, str]) 
             "**/api/op-verify*",
             lambda route: route.fulfill(status=200, content_type="application/json", body='{"state":"domain-pending","notices":[]}'),
         )
-        page.goto(base_url)
+        page.goto(_board_url(base_url))
         wait_for_board(page)
         staged = False
         rows = page.locator("tr.plot-row")

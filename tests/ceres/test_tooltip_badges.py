@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-from tests.ceres.conftest import spawn_live_ceres, wait_for_board
+from tests.ceres.conftest import LIVE_PLAYER, spawn_live_ceres, wait_for_board
 
 
 def _open_badge_slideouts(page) -> None:
@@ -29,7 +29,9 @@ def test_board_badge_tooltips():
     with spawn_live_ceres() as (browser, base_url):
         page = browser.new_page()
         try:
-            page.goto(f"{base_url}/", wait_until="domcontentloaded")
+            # The app reads the account from the URL; the harness only adds it to a bare
+            # origin, so a "/" URL opened the start page and never a board.
+            page.goto(f"{base_url}/?player={LIVE_PLAYER}", wait_until="domcontentloaded")
             wait_for_board(page)
             _open_badge_slideouts(page)
 
