@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import subprocess
 import urllib.parse
 import urllib.request
@@ -152,10 +153,13 @@ def test_energized_badge_placement_guard_is_red_when_badge_is_inside_tile() -> N
     """Guard 4 injection: moving the badge into the tile template leaves a div
     open at the badge index, so the sibling-depth assertion must fail."""
     source = read_entry_source()
-    mutated = source.replace(
-        '${tile}${energizedBadge}',
-        '${tile.slice(0, tile.lastIndexOf(\'</div>\'))}${energizedBadge}</div>',
-        1,
+    # The cell template may carry other siblings between the tile and the badge (the tile's Combine
+    # chip), so the badge is moved into the tile wherever it follows it in that template.
+    mutated = re.sub(
+        r"\$\{tile\}((?:\$\{[^}]*\})*?)\$\{energizedBadge\}",
+        lambda match: "${tile.slice(0, tile.lastIndexOf('</div>'))}${energizedBadge}</div>" + match.group(1),
+        source,
+        count=1,
     )
     assert mutated != source
     _assert_mismatch_red(_ENERGIZED_BADGE_BODY, mutated)
