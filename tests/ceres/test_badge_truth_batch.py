@@ -20,7 +20,7 @@ import json
 import re
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -70,6 +70,9 @@ def _open_worker_picker(page, base_url: str, deed_uid: str) -> None:
     page.goto(base_url)
     wait_for_board(page)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
+    # the band renders `preparing` first (placeholder tiles under a cover); the real,
+    # clickable tiles exist once it reports `ready`
+    page.locator(".editor-band[data-plot-state='ready']").first.wait_for(timeout=30_000)
     empty = page.locator(".slot-group[data-group-id='worker'] .slot-tile.is-empty").first
     empty.wait_for(timeout=30_000)
     empty.click()
@@ -243,7 +246,8 @@ def test_expired_cooldown_reports_ready_state():
 def test_rendered_staked_candidate_tag_says_staked_not_cooling(live_browser: tuple[Browser, str]) -> None:
     """Census row 3: replaces the source-text scan of `cooldownTagHtml()`'s 'staked' branch.
     Route-mocks a worker candidate whose `cooldown` is `{state: 'staked'}` and reads the
-    rendered `.candidate-tag` text directly.
+    rendered status directly. The status pill of a staked card is "On land" with the source
+    plot's plaque, and its tooltip says where it is staked (candidates.js onLandBadgeHtml).
 
     Named injection (not applied here; independently watched): `cooldownTagHtml()`'s staked
     branch template literal `staked${plot ? ...}` changed to `cooling${plot ? ...}`. Expected
@@ -263,11 +267,13 @@ def test_rendered_staked_candidate_tag_says_staked_not_cooling(live_browser: tup
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.route(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*", fulfill)
     _open_worker_picker(page, base_url, deed_uid)
-    tag = page.locator(".candidate-row .candidate-tag.is-info").first
+    tag = page.locator(".candidate-row .candidate-status-onland").first
     tag.wait_for(timeout=30_000)
     text = tag.inner_text().lower()
-    assert "staked" in text
-    assert "cooling" not in text, f"a staked candidate's visible tag must never say cooling, got: {text!r}"
+    assert "on land" in text
+    assert (tag.get_attribute("data-tip-body") or "").startswith("Staked on ")
+    status = page.locator(".candidate-row .candidate-status").first.inner_text().lower()
+    assert "cooling" not in status, f"a staked candidate's visible status must never say cooling, got: {status!r}"
     page.close()
 
 
@@ -351,11 +357,15 @@ def test_rendered_staked_tag_shows_source_plot_not_source_deed_uid(live_browser:
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.route(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*", fulfill)
     _open_worker_picker(page, base_url, deed_uid)
-    tag = page.locator(".candidate-row .candidate-tag.is-info").first
+    tag = page.locator(".candidate-row .candidate-status-onland").first
     tag.wait_for(timeout=30_000)
     text = tag.inner_text()
-    assert "65-10-88" in text, f"staked tag must show the real plot number, got: {text!r}"
-    assert "I-999-internalonly" not in text, "staked tag must never leak the internal deed_uid"
+    # the plaque prints the plot number in the board's zero-padded form
+    assert "065-10-088" in text, f"staked tag must show the real plot number, got: {text!r}"
+    assert "plot 65-10-88" in (tag.get_attribute("data-tip-body") or "")
+    readable = [text, tag.get_attribute("data-tip-body") or "", tag.get_attribute("aria-label") or ""]
+    readable += tag.locator("[aria-label]").evaluate_all("els => els.map(el => el.getAttribute('aria-label'))")
+    assert not any("I-999-internalonly" in value for value in readable), "staked tag must never leak the internal deed_uid"
     page.close()
 
 
@@ -365,16 +375,20 @@ def test_rendered_cooling_candidate_tag_is_humanized_and_drops_seconds(live_brow
     (visible label) and `when.relative` (tooltip). Route-mocks a genuinely-cooling candidate
     and reads the actual rendered tag text and its tooltip (`data-tip`).
 
-    Named injection (not applied here; independently watched): `cooldownTagHtml()`'s cooling
-    branch's visible template `cooling until ${when ? esc(when.absolute) : ...}` changed to
-    interpolate `when.relative` instead of `when.absolute`. Expected red: the visible text no
-    longer contains a formatted absolute date/time (`Aug`/`Sep`-style month token) and instead
-    reads e.g. 'cooling until in 18h'."""
+    The pill now reads "Cooling · ready in <compact countdown>" and its tooltip states the
+    absolute ready time (candidates.js candidateStatusHtml). The ready time is set 18 hours
+    ahead of the run: the fixed 2026-08-26 date this guard was written with is in the past
+    now, which renders the countdown as "now".
+
+    Named injection (not applied here; independently watched): the tooltip body built from
+    `when.relative` instead of `when.absolute`. Expected red: the tooltip no longer contains
+    a formatted absolute date/time (`Aug`/`Sep`-style month token)."""
     browser, base_url = live_browser
     row = _real_board_row_with_open_slot(base_url)
     deed_uid = row["deed_uid"]
     candidate = _real_worker_candidate_template(base_url, deed_uid)
-    candidate["cooldown"] = {"ready": False, "state": "cooling", "ready_at": "2026-08-26T00:00:00Z"}
+    ready_at = (datetime.now(timezone.utc) + timedelta(hours=18)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    candidate["cooldown"] = {"ready": False, "state": "cooling", "ready_at": ready_at}
 
     def fulfill(route) -> None:
         route.fulfill(status=200, content_type="application/json", body=json.dumps({
@@ -384,15 +398,16 @@ def test_rendered_cooling_candidate_tag_is_humanized_and_drops_seconds(live_brow
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.route(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*", fulfill)
     _open_worker_picker(page, base_url, deed_uid)
-    tag = page.locator(".candidate-row .candidate-tag.is-warn").first
+    tag = page.locator(".candidate-row .candidate-status-badge.is-warn").first
     tag.wait_for(timeout=30_000)
     text = tag.inner_text().lower()
-    assert "cooling until" in text
+    assert "cooling" in text
     assert not re.search(r"\d{1,2}:\d{2}:\d{2}", text), f"visible cooling label must not carry second precision, got: {text!r}"
+    # the relative form is the visible compact countdown
+    assert re.search(r"ready in \d+[dhm]", text), f"visible cooling label must carry the relative countdown, got: {text!r}"
     tip = tag.get_attribute("data-tip-body") or ""
-    assert "ready to restake" in tip.lower(), f"tooltip must state the absolute ready time, got: {tip!r}"
-    assert re.search(r"\(in \d|\( \d|\(\d+[dh]", tip) or "ago" in tip, (
-        f"tooltip must also carry the relative form alongside the absolute one, got: {tip!r}"
+    assert re.fullmatch(r"Reported ready time: [A-Z][a-z]{2} \d{1,2}, \d{4}, \d{1,2}:\d{2}\s?[AP]M UTC\.", tip), (
+        f"tooltip must state the absolute ready time, got: {tip!r}"
     )
     page.close()
 
