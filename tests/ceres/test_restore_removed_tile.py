@@ -152,10 +152,12 @@ def test_empty_tile_renders_add_when_genuinely_empty_and_restore_when_pending_re
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
     page.locator(".slot-editor:visible").wait_for(timeout=30_000)
+    # the band mounts with placeholder frames while the detail is read; tiles are drawn when ready
+    page.locator(".slot-editor:visible .editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
     worker = page.locator(".slot-editor:visible .slot-group[data-group-id='worker']")
 
     # Case (a): a genuinely empty slot, untouched, keeps the ordinary "add" affordance.
-    empty_tile = worker.locator(".slot-tile.is-empty").first
+    empty_tile = worker.locator(".slot-tile.is-empty[data-group-id='worker']").first
     empty_tile.wait_for(timeout=30_000)
     assert empty_tile.get_attribute("data-slot-action") == "add"
     assert "is-pending-removal" not in (empty_tile.get_attribute("class") or "")

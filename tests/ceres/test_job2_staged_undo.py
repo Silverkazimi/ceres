@@ -82,6 +82,7 @@ def test_staged_add_undo_uses_checkout_path_and_live_opposite_direction_stages(
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
     page.locator(".slot-editor:visible").wait_for(timeout=30_000)
+    page.locator(".slot-editor:visible .editor-band[data-plot-state='ready']").wait_for(timeout=30_000)  # tiles drawn once the detail is read
     worker = page.locator(".slot-editor:visible .slot-group[data-group-id='worker']")
 
     removal_impact_requests: list[str] = []
@@ -143,6 +144,7 @@ def test_real_worker_undo_reannotates_solo_bloodline_holder(live_browser: tuple[
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
     page.locator(".slot-editor:visible").wait_for(timeout=30_000)
+    page.locator(".slot-editor:visible .editor-band[data-plot-state='ready']").wait_for(timeout=30_000)  # tiles drawn once the detail is read
     worker = page.locator(".slot-editor:visible .slot-group[data-group-id='worker']")
 
     def stage_candidate(candidate: dict) -> None:

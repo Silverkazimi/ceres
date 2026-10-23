@@ -26,7 +26,7 @@ import re
 import pytest
 from playwright.sync_api import Browser, Page
 
-from .conftest import spawn_live_ceres, wait_for_board
+from .conftest import settle, spawn_live_ceres, wait_for_board
 
 
 
@@ -157,6 +157,7 @@ def test_picker_survives_rerender_without_stale_or_leaked_dropdown(live_browser:
     name_input = picker.locator("input[data-picker-filter='q']")
     with page.expect_response("**/api/plots/*/candidates*"):
         name_input.fill("zzz-no-such-card-zzz")
+    settle(page)  # the response is drawn after it arrives; read the re-rendered picker, not the old one
 
     # After the filter round-trip, the rarity select must still be wrapped
     # and still openable -- the fetch path (fetchPickerPage -> updatePickerRegion)

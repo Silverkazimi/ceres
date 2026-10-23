@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -81,7 +82,7 @@ def _real_detail_row(base_url: str) -> dict:
 def _open_worker_picker(page, base_url: str, row: dict, candidates: list[dict]):
     deed_uid = row["deed_uid"]
     page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
     page.route(

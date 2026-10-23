@@ -112,6 +112,10 @@ def _expand_deed(page: Page, deed_uid: str):
         row.click()
     expand = row.locator("+ tr.expand-row")
     expand.locator(".slot-editor").wait_for(timeout=30_000)
+    # The editor band mounts while the plot's detail is still being read ("preparing"); the
+    # cards are drawn once it is ready -- the open now reads the plot through POST .../expand
+    # (the page load's capture drops earlier per-plot reads), which takes a moment longer.
+    expand.locator(".editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
     return expand
 
 
