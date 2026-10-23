@@ -31,7 +31,7 @@ export function configureEos(callbacks) {
   let rootFont = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
   if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => {
     const geometry = hooks.geometry();
-    if (viewportWidth === geometry.width && rootFont === geometry.font) return;
+    if (viewportWidth === geometry.width && rootFont === geometry.font) return; // V
     viewportWidth = geometry.width;
     rootFont = geometry.font;
     sessions.forEach((session) => {
@@ -997,14 +997,14 @@ function cancelCentre(session) {
 // ease-out under the viewport lease. It used to centre the plot in the window.
 export function centreReservedPlot(session, frame) {
   if (!session.scrollLease || !hooks.leaseIsCurrent(session.scrollLease)) return;
-  const { scrollX: x, scrollY: y } = window;
+  const { scrollX: x, scrollY: y } = window; // V
   const plotRow = frame.closest('tr.expand-row')?.previousElementSibling;
   // Re-read every frame: the page is still growing while the plot opens, so a goal fixed at the start lands short.
   const goal = () => {
-    const rowTop = (plotRow || frame).getBoundingClientRect().top;
-    const headerLine = Math.max(0, ...['header.board-header', '#table-head-sticky'].map((selector) => document.querySelector(selector)?.getBoundingClientRect().bottom || 0));
-    const extent = Math.max(0, document.documentElement.getBoundingClientRect().height - window.innerHeight);
-    return Math.max(0, Math.min(extent, window.scrollY + rowTop - headerLine));
+    const rowTop = (plotRow || frame).getBoundingClientRect().top; // V
+    const headerLine = Math.max(0, ...['header.board-header', '#table-head-sticky'].map((selector) => document.querySelector(selector)?.getBoundingClientRect().bottom || 0)); // V
+    const extent = Math.max(0, document.documentElement.getBoundingClientRect().height - window.innerHeight); // V
+    return Math.max(0, Math.min(extent, window.scrollY + rowTop - headerLine)); // V
   };
   const target = goal();
   const lease = session.scrollLease;

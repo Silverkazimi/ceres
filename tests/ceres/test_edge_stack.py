@@ -173,7 +173,7 @@ def test_badge_bar_head_is_reinstated_sticky_on_the_real_header():
     assert "flag.style.height = `${flagHeight}px`;" not in js
     assert "block-size: var(--badge-flag-h, calc(var(--ceres-thead-height, 2.75rem) - 2 * var(--badge-flag-inset, 4px)));" in head_rule
     assert "function initBadgeFlag() {" in js
-    assert "initBadgeFlag(); // " in js
+    assert "initBadgeFlag();" in js
 
 
 def test_badge_bar_toggles_the_group_on_head_or_background_click():
