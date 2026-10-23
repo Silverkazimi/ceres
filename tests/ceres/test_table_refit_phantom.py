@@ -15,6 +15,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import settle, spawn_live_ceres, wait_ready
+from .table_edge import OVERHANG_JS, TABLE_EXTRA_WIDTH_PX, TABLE_OVERHANG_PX, overhang_problems
 
 
 FULL_PLOT_COUNT = 129
@@ -52,15 +53,19 @@ def _metrics(page: Page) -> dict:
                 clipped: [...document.querySelectorAll('#plot-tbody tr.plot-row td')]
                   .filter(td => td.scrollWidth > td.clientWidth + 2).length,
                 columns: first ? [...first.children].map(td => Math.round(td.getBoundingClientRect().width * 10) / 10) : [],
+                overhang: (""" + OVERHANG_JS + """)(),
             };
         }"""
     )
 
 
 def _assert_fits(measured: dict) -> None:
-    assert measured["over"] <= 1, measured
+    # The table spans its scroller plus the deliberate 8px edge budget, whose
+    # clipped strip is the last column's reserve padding (table_edge.py).
+    assert measured["over"] <= TABLE_OVERHANG_PX + 1, measured
+    assert not overhang_problems(measured["overhang"]), (overhang_problems(measured["overhang"]), measured)
     assert measured["pageOver"] <= 0, measured
-    assert abs(measured["tableWidth"] - measured["scrollerClientWidth"]) <= 1, measured
+    assert abs(measured["tableWidth"] - measured["scrollerClientWidth"] - TABLE_EXTRA_WIDTH_PX) <= 1, measured
     assert measured["clipped"] == 0, measured
 
 
