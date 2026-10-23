@@ -22,7 +22,6 @@ from praetoria.land_reallocate import (
     evaluate_candidates_for_plot,
     plot_abilities_boost,
     plot_bloodline_boost,
-    score_candidates_for_plot,
     _scoring_allocation,
 )
 
@@ -770,7 +769,14 @@ def _donor_delta(
     plot_rows_by_id: dict[str, dict[str, Any]],
     details_by_id: dict[int, dict[str, Any]],
     group_id: str | None = None,
-) -> float | None:
+) -> tuple[float | None, str | None] | None:
+    """The donor plot's own PP change when a staked candidate leaves it.
+
+    None: there is no donor plot to price (not a staked card, or its plot is unknown).
+    `(value, None)`: the donor-side change is a point value.
+    `(None, reason)`: the donor plot holds the card but its change cannot be derived
+    (e.g. `cap_allocation_failed`); the move's plot impact is then unknown, never the
+    destination gain alone."""
     if row.bucket != "staked" or not row.card.source_uid or row.card.source_uid not in plots:
         return None
     donor = plots[row.card.source_uid]
@@ -790,7 +796,7 @@ def _donor_delta(
         after_powered = power_satisfied(after_facts)
         if source_rule[2] is not None:
             after_mult -= _number(staking_facts.get(source_rule[2]))
-    scored = score_candidates_for_plot(
+    evaluations = evaluate_candidates_for_plot(
         donor,
         [replace(row.card, base=0.0, current_harvest=0.0)],
         target_slot_occupant=row.card,
@@ -801,7 +807,12 @@ def _donor_delta(
         before_mult=before_mult,
         after_mult=after_mult,
     )
-    return scored[0][1] if scored else None
+    if not evaluations:
+        return None
+    evaluation = evaluations[0]
+    if evaluation.compatibility_score is None:
+        return None, (evaluation.plot_impact or {}).get("reason") or "donor_plot_impact_unknown"
+    return evaluation.compatibility_score, None
 
 
 def plot_removal_delta(
@@ -1855,8 +1866,18 @@ def rank_candidates(
                         "reason": "donor_terrain_modifier_unknown",
                     }
                 else:
-                    donor_delta = _donor_delta(row, plots, plot_rows_by_id, details_by_id, group_id)
-                    if donor_delta is not None:
+                    donor_result = _donor_delta(row, plots, plot_rows_by_id, details_by_id, group_id)
+                    donor_delta, donor_reason = donor_result if donor_result is not None else (None, None)
+                    if donor_reason is not None:
+                        # The donor side is unknown, so the move's net impact is too; the
+                        # destination-only figure must not be shown as the whole move's gain.
+                        row.score = None
+                        row.breakdown = None
+                        row.plot_impact = {
+                            "status": "unknown", "value": None, "low": None, "high": None,
+                            "reason": donor_reason,
+                        }
+                    elif donor_delta is not None:
                         row.score += donor_delta
                         row.breakdown = dict(row.breakdown or {})
                         row.breakdown["donor_plot_delta"] = donor_delta

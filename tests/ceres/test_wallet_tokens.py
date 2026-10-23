@@ -192,7 +192,7 @@ for (const symbol of ['VOUCHER', 'SPS']) {
   if (!html.includes(`data-lp-symbol="${symbol}"`) || !html.includes('data-dec="lp:flip"')) throw new Error(symbol + ' card: ' + html);
   if (html.includes('data-lp-region') || html.includes('ch-plot-badge')) throw new Error(symbol + ' must have no region: ' + html);
   if (!html.includes('in your wallet')) throw new Error(symbol + ' pays from the wallet: ' + html);
-  // : the game does an SPS sale in one click -- no "two signatures" / "Step 2" copy anywhere.
+  // the game does an SPS sale in one click -- no "two signatures" / "Step 2" copy anywhere.
   if (/two signatures|Step 2|Active key/i.test(html)) throw new Error(symbol + ' two-step copy: ' + html);
 }
 swapState('player0005', 'SPS').direction = 'buy';
@@ -248,7 +248,7 @@ const target = {{ closest: () => ({{ dataset: {{ lpSymbol: 'SPS' }} }}) }};
   if (!card.includes('data-dec="lp:swap"') || !card.includes('Swap 1.000 SPS → 8.124 DEC') || /two signatures|Step 2/.test(card)) throw new Error('one Swap button: ' + card);
   // ONE click.
   await swapAction(ctx, 'swap', target);
-  for (let i = 0; i < 400 && !(st.stage === 'funding' && !signing); i++) await new Promise(r => setTimeout(r, 2));  // : the click returns at once; the check loop runs on
+  for (let i = 0; i < 400 && !(st.stage === 'funding' && !signing); i++) await new Promise(r => setTimeout(r, 2));  // the click returns at once; the check loop runs on
   const paths = order.map(o => o[0]).join(',');
   if (paths !== 'preview,verify,sps-funding') throw new Error('requests in order: ' + paths);
   const preview = order[0][1];
@@ -261,10 +261,10 @@ const target = {{ closest: () => ({{ dataset: {{ lpSymbol: 'SPS' }} }}) }};
   if ((retry.match(/data-dec="lp:fund"/g) || []).length !== 1 || !retry.includes('Send SPS to the pool') || /error|failed|rejected|cancel|two signatures|Step 2/i.test(retry)) throw new Error('retry card: ' + retry);
   await swapAction(ctx, 'fund', target);
   if (order.filter(o => o[0] === 'sps-funding').length !== 1) throw new Error('the kept transfer is signed again, not rebuilt');
-  //  (stuck states): the sale is not "done" at the transfer -- it waits for the pool to settle, no quote shown.
+  // (stuck states): the sale is not "done" at the transfer -- it waits for the pool to settle, no quote shown.
   if (__signed.length !== 3 || __signed[2].authority !== 'Active' || st.stage !== 'settling' || st.receipt.funding_tx !== 'b'.repeat(40) || st.receipt.output !== null) throw new Error('retry settling: ' + st.stage);
   if (!swapHtml('SPS', wallet, 'player0005', true).includes('Waiting for the pool to settle')) throw new Error('receipt');
-  process.exit(0);  // : the settlement loop keeps real timers alive; the checks are done
+  process.exit(0);  // the settlement loop keeps real timers alive; the checks are done
 }})().catch(error => {{ console.error(error); process.exit(1); }});
 """
     run_in_module_context(body_js, entry=STATIC / "wallet-lp.js", source=source, extra_context_js=extra)

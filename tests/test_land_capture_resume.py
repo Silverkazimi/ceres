@@ -35,7 +35,10 @@ class CountingLandClient:
 
     def bundle(self, player):
         self.bundle_calls += 1
-        deeds = [{"deed_uid": uid} for uid in self.deed_uids]
+        # Every real bundle deed carries `plot_status`; without it capture_quick()
+        # rightly judges the bundle incomplete (`_bulk_bundle_completeness`) and spends one
+        # extra live bundle read on a retry, which would skew the call counts below.
+        deeds = [{"deed_uid": uid, "plot_status": "natural"} for uid in self.deed_uids]
         return _response({"status": "success", "data": {"deeds": deeds, "worksite_details": [], "staking_details": []}})
 
     def owned_deed_counts(self, player):
