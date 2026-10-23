@@ -18,7 +18,7 @@ function element(key) {
     style: {setProperty() {}, removeProperty() {}},
     addEventListener(type, listener) { (this.listeners[type] ||= []).push(listener); },
     removeEventListener() {},
-    //  start page (/): loadBoard() calls hideStartPage()/showStartPage(),
+    // start page (/): loadBoard() calls hideStartPage()/showStartPage()
     // which touch these on whatever document.getElementById(...) returns.
     remove() {}, setAttribute() {}, removeAttribute() {}, getAttribute() { return null; },
     appendChild() {}, prepend() {}, replaceChildren() {}, focus() {},
@@ -40,8 +40,8 @@ populateFilterOptions = populateSortOptions = syncFilterDropdowns = () => {};
 renderCheckoutSurface = restoreInFlightRecords = ensureHazardOverlay = () => {};
 renderTotalsStrip = prefetchIdleCardsCache = () => {};
 matchesFilters = () => true;
-// / fixture gap: the sandbox publishes one global per bare top-level
-// declaration name, but four DIFFERENT modules each declare their own private,
+// fixture gap: the sandbox publishes one global per bare top-level
+// declaration name, but four DIFFERENT modules each declare their own private
 // unrelated "function render(...)" (table.js's real one plus unexported local ones in
 // harvest-modal.js/regional-dec.js/fill-plot.js); whichever evaluates last wins the
 // global, so board.js's own bare `render(true)` call can silently invoke someone else's
@@ -145,7 +145,7 @@ def test_sort_binding_below_initial_load_injection_goes_red() -> None:
     start = source.rindex("document.querySelectorAll('#plot-table thead [data-key]').forEach((control) => {")
     end = source.index("  document.getElementById('close-all-plots')", start)
     binding = source[start:end]
-    load_line = "  if (CURRENT_PLAYER) await loadBoard(); else showStartPage(); // : no player in the URL -> start page, no table\n"
+    load_line = "  if (CURRENT_PLAYER) await loadBoard(); else showStartPage(); // no player in the URL -> start page, no table\n"
     # The binding block and the loadBoard() call are no longer adjacent (other init() wiring
     # close-all-plots, open-all-plots, resize listeners -- sits between them since 's rework)
     # so move the block from its own spot to directly ahead of loadBoard() instead of swapping two

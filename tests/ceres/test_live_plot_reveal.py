@@ -401,7 +401,7 @@ async def _fit(fixture, *, strict=True, baseline=None):
           overs.push({cls:node.className,scroll:node.scrollWidth});
       }
       const scroller=document.querySelector('#plot-table-scroll');
-      // : the table scroller clips on x; anything wider than it would be hidden.
+      // the table scroller clips on x; anything wider than it would be hidden.
       return {width,scrollWidth:document.documentElement.scrollWidth,overs,
         tableFits:!scroller||getComputedStyle(scroller).display==='none'||scroller.scrollWidth<=scroller.clientWidth+.5};
     }""")
