@@ -30,7 +30,7 @@ assert(card.includes(badges), 'mobile card must embed badgeHtml(row) unchanged')
 assert(card.includes(fmtWorkPerHour(row)), 'Harvest/hr must use the desktop formatter');
 assert(!card.includes('<dt>Workers</dt>'), 'Mobile board omits worker count');
 assert(card.includes('Rare') && card.includes('plot-card-classification'), 'rarity is visible');
-// : a production building's card zooms ~2.5x into its full-size scene (thumbnails blur); others keep thumbnails.
+// a production building's card zooms ~2.5x into its full-size scene (thumbnails blur); others keep thumbnails.
 assert(/\/(thumbs|web)\/land\/terrain-backgrounds\/[^'"]+\.webp/.test(card), 'mobile card uses webp terrain art');
 assert(card.includes(`<dd>${num(row.harvest_pp, 0)}</dd>`), 'Total PP must use num(row.harvest_pp, 0)');
 assert(card.includes(formatPlotLabel(row.plot)), 'plot label must use the desktop formatter');

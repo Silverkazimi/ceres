@@ -293,7 +293,7 @@ for (const [status, text] of [['no_hive_account', 'no Hive account'], ['no_splin
   const card = swapHtml('GRAIN', wallet, 'player0005');
   if (!card.includes(text) || !card.includes('is-danger') || !/lp:transfer-review"[^>]*disabled/.test(card)) throw new Error(status + ': ' + card);
 }
-// : a recipient with no land picks any region, and the card says they own no land there.
+// a recipient with no land picks any region, and the card says they own no land there.
 st.xfer.recipient = { status: 'ok', account: 'player0004', no_land: true, regions: [{ region_uid: 'PR-PNW-1', name: '001 - Viritas', plots_owned: 0 }, { region_uid: 'PR-BRL-41', name: '041 - Pandon Reach', plots_owned: 0 }] };
 html = swapHtml('GRAIN', wallet, 'player0005');
 if (!html.includes('They own no land in this region.') || !html.includes('Region 1 · Viritas') || /lp:transfer-review"[^>]*disabled/.test(html)) throw new Error('no land: ' + html);
@@ -420,8 +420,6 @@ def test_regional_dec_binds_the_transfer_fields_and_css_uses_tokens_only():
     regional = (STATIC / "regional-dec.js").read_text(encoding="utf-8")
     assert "transferInput(swapContext(), event.target)" in regional and "transferSelect(swapContext(), event.target)" in regional
     css = (STATIC / "wallet.css").read_text(encoding="utf-8")
-    # The Transfer section starts at its own section comment; the export scrub had emptied this
-    # anchor to "" (so the whole file, including `white-space`, was scanned).
-    block = css[css.index("Transfer, shared Swap/Transfer tabs"):]
+    block = css[css.index(".wallet-transfer"):]
     import re
     assert not re.search(r"#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|\bwhite\b", block)

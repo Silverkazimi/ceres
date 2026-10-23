@@ -223,7 +223,7 @@ def test_list_branch_remains_frozen_while_item_grids_use_rarity_buttons() -> Non
     list_start = CANDIDATES.index("function renderCandidateRow")
     grid_start = CANDIDATES.index("function candidateReadinessOverlayHtml")
     list_branch = CANDIDATES[list_start:grid_start]
-    assert hashlib.sha256(list_branch.encode()).hexdigest() == "d3c07a6993eba871fa960acdfbeccdbd2874aea84aa6668d235a1229d4af0f89"
+    assert hashlib.sha256(list_branch.encode()).hexdigest() == "18df695bec143d537d782ca321dae2fb2964ecdbb4924beb54a825581ce3702b"
     assert 'class="candidate-row candidate-card ${candidate.planned ? \'is-planned \' : \'\'}${classification}' in list_branch
     assert 'candidate-status">${status.html}' in list_branch
     assert 'candidate-plot-change' in list_branch

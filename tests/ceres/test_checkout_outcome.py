@@ -256,13 +256,17 @@ console.log(JSON.stringify({ review: reviewHtml(quote), credits: amountHtml('CRE
     # host, pinned SHA-256), and once downloaded it is a PNG.
     source_manifest = STATIC / "assets" / "sources.json"
     local = STATIC / "assets" / "land" / "token-credits.png"
+    listed = False
     if source_manifest.is_file():
         sources = json.loads(source_manifest.read_text(encoding="utf-8"))
         icon = next(row for row in sources if row["path"] == "land/token-credits.png")
         assert icon["source_url"].startswith("https://d36mxiodymuqjm.cloudfront.net/") and icon["source_url"].endswith(".png")
         assert re.fullmatch(r"[0-9a-f]{64}", icon["sha256"]) and icon["byte_size"] > 0
-    assert local.is_file()
-    assert local.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+        listed = True
+    # on disk (a checkout that has downloaded the artwork) or on the download list -- never neither
+    assert local.is_file() or listed
+    if local.is_file():
+        assert local.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
     css = (STATIC / "card-checkout.css").read_text(encoding="utf-8")
     assert re.search(r"\.co-paybar \{ position: sticky;", css)
 

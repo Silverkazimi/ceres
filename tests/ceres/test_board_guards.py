@@ -18,7 +18,7 @@ function element(key) {
     style: {setProperty() {}, removeProperty() {}},
     addEventListener(type, listener) { (this.listeners[type] ||= []).push(listener); },
     removeEventListener() {},
-    //  start page (/): loadBoard() calls hideStartPage()/showStartPage(),
+    // start page (/): loadBoard() calls hideStartPage()/showStartPage()
     // which touch these on whatever document.getElementById(...) returns.
     remove() {}, setAttribute() {}, removeAttribute() {}, getAttribute() { return null; },
     appendChild() {}, prepend() {}, replaceChildren() {}, focus() {},
@@ -40,8 +40,8 @@ populateFilterOptions = populateSortOptions = syncFilterDropdowns = () => {};
 renderCheckoutSurface = restoreInFlightRecords = ensureHazardOverlay = () => {};
 renderTotalsStrip = prefetchIdleCardsCache = () => {};
 matchesFilters = () => true;
-// / fixture gap: the sandbox publishes one global per bare top-level
-// declaration name, but four DIFFERENT modules each declare their own private,
+// fixture gap: the sandbox publishes one global per bare top-level
+// declaration name, but four DIFFERENT modules each declare their own private
 // unrelated "function render(...)" (table.js's real one plus unexported local ones in
 // harvest-modal.js/regional-dec.js/fill-plot.js); whichever evaluates last wins the
 // global, so board.js's own bare `render(true)` call can silently invoke someone else's

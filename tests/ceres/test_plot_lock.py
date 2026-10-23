@@ -50,7 +50,7 @@ if (!locked.includes('aria-label="Locked · unlocks ' + new Date(row.unlock_date
 if (!locked.includes('M8 10V7a4 4 0 0 1 8 0v3')) throw Error('locked row did not render a closed-lock icon');
 const unlocked = plotLockIconHtml({ ...row, lock_days: null, unlock_date: null });
 if (!unlocked.includes('aria-label="Unlocked"')) throw Error('unlocked label missing');
-// : the maintainer's pair B () -- the open shackle swings clear of the body.
+// the maintainer's pair B () -- the open shackle swings clear of the body.
 if (!unlocked.includes('M8 10V6.8a4 4 0 0 0-7.1-2.5L.3 5')) throw Error('unlocked row did not render an open-lock icon');
 process.exit(0);
 """,
@@ -170,7 +170,7 @@ def test_three_day_review_and_hiveauth_refusal_are_visible_without_inputs() -> N
         and '${lockSigningHtml}' in signing
     )
     # the separate review/row-sign buttons were removed (); their disable checks went with them.
-    review = checkout[checkout.index('function plotLockPlanHtml'):checkout.index('\n}\n', checkout.index('function plotLockPlanHtml'))]  # the function body itself
+    review = checkout[checkout.index('function plotLockPlanHtml'):checkout.index('function statusHtml', checkout.index('function plotLockPlanHtml'))]
     assert '<input' not in review
     assert "lockDays: 3" in PLOT_LOCK.read_text()
     assert 'review.prepared.transaction.operations' in PLOT_LOCK.read_text()

@@ -26,8 +26,7 @@ def test_fill_tooltips_use_the_approved_copy() -> None:
 
 
 def test_fill_style_and_alchemical_arrow_override_are_scoped() -> None:
-    start = CSS.index("button.slot-bulk.fill-action")
-    styles = CSS[start : CSS.index("/*", start)]  # up to the next comment, the end of the fill-action rules
+    styles = CSS[CSS.index("button.slot-bulk.fill-action") : CSS.index("non-selected tiles fade softly into AND out")]
     assert ".picker-bar-end .picker-keep-open.fill-action" in styles
     assert "background: color-mix(in srgb, var(--primary) 18%, var(--bg3))" in styles
     assert "border-color: var(--primary)" in styles

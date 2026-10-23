@@ -174,7 +174,7 @@ def test_board_header_links_to_the_card_browser():
 
 
 def test_card_browser_css_is_page_scoped():
-    assert ".card-browser" not in (STATIC / "ceres.css").read_text(encoding="utf-8")  # no card-browser rule in the board stylesheet
+    assert ".card-browser" not in (STATIC / "ceres.css").read_text(encoding="utf-8")
     page = (STATIC / "cards.html").read_text(encoding="utf-8")
     assert page.index("/static/buttons.css") < page.index("/static/card-browser.css")
     assert "card-browser.css" not in (STATIC / "index.html").read_text(encoding="utf-8")

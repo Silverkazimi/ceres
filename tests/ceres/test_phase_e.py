@@ -90,7 +90,7 @@ const body = {
   querySelector(selector) { return selector === '.editor-band' ? band : selector === '.mobile-plot-worksite' ? worksite : selector === '.slot-editor-footer' ? actions : null; },
   appendChild(node) { this.appended = node; }, replaceChildren() { this.html = ''; },
 };
-// style.setProperty added for  (v0.9.530) mobile picker header terrain overlay.
+// style.setProperty added for (v0.9.530) mobile picker header terrain overlay.
 const sheet = { dataset: {}, hidden: true, classList, removeAttribute() {}, style: { setProperty() {} } };
 const title = { textContent: '' }; const subtitle = { textContent: '' };
 const close = { classList, setAttribute() {}, focus() { calls.focus++; } };

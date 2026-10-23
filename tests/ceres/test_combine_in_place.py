@@ -234,11 +234,11 @@ def test_find_combinables_is_the_filter_row_pill():
     header = page[page.index('<header class="board-header">'):page.index("</header>")]
     row = page[page.index('<div class="controls-row cb-controls" id="cb-controls">'):page.index('<main id="cb-main"')]
     assert "cb-mode-combine" not in header and "Find combinables" not in header
-    # My cards / Market (+ the Plots | Cards switcher's two halves, links)
-    assert header.count('<button type="button" id="cb-mode-') == 2
-    assert header.count('class="ceres-btn ceres-btn--choice" data-control-density="header"') == 4
-    # the visible label is "Combinables"; the name and the tooltip keep "Find combinables"
-    pill = '<label class="picker-toggle board-filter-pill ceres-btn ceres-btn--choice cb-only" data-control-density="compact" data-tip="Find combinables"><span class="ceres-btn__check" aria-hidden="true"></span><input type="checkbox" id="cb-mode-combine" aria-label="Find combinables"><span>Combinables</span></label>'
+    # My cards / Market / My purchases (+ the Plots | Cards switcher's two halves, links)
+    assert header.count('<button type="button" id="cb-mode-') == 3
+    assert header.count('class="ceres-btn ceres-btn--choice" data-control-density="header"') == 5
+    # the visible label is "Combine"; the name and the tooltip keep "Find combinables"
+    pill = '<label class="picker-toggle board-filter-pill ceres-btn ceres-btn--choice cb-only" data-control-density="compact" data-tip="Find combinables"><span class="ceres-btn__check" aria-hidden="true"></span><input type="checkbox" id="cb-mode-combine" aria-label="Find combinables"><span>Combine</span></label>'
     assert pill in row
     # the end of the row, after Maxed and before Sort
     assert row.index('id="cb-maxed"') < row.index(pill) < row.index('id="cb-sort"')
