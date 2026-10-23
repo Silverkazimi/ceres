@@ -162,7 +162,7 @@ def test_inconclusive_uncertain_request_blocks_and_same_envelope_never_rebroadca
     run_in_module_context(
         r"""
 (async () => {
-  const nativeSetTimeout = setTimeout;  // : the budget wait checks once a second; run those waits at once here
+  const nativeSetTimeout = setTimeout;  // the budget wait checks once a second; run those waits at once here
   setTimeout = (callback, delay) => delay === 1000 ? Promise.resolve().then(callback) : nativeSetTimeout(callback, delay);
   const op = nonce => ['custom_json', { id: 'sm_land_operation', required_auths: [], required_posting_auths: ['alice'], json: JSON.stringify({ n: nonce }) }];
   let walletCalls = 0;
@@ -201,7 +201,7 @@ def test_one_stale_operation_plus_four_operation_clear_does_not_block() -> None:
     callback({ success: true, result: { id: 'clear-tx' }, data: { key: 'Posting' } });
   } };
   await BroadcastGate.broadcast('alice', [op('clear-power'), op('clear-workers'), op('clear-totem'), op('clear-build')]);
-  if (walletCalls !== 1 || probes !== 0) throw Error('one stale operation incorrectly blocked a four-operation transaction');  // : within budget, no inclusion read
+  if (walletCalls !== 1 || probes !== 0) throw Error('one stale operation incorrectly blocked a four-operation transaction');  // within budget, no inclusion read
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """,
         entry=GATE,
@@ -224,7 +224,7 @@ def test_txid_lookup_failure_stays_blocked_in_plain_words() -> None:
   let walletCalls = 0;
   window.hive_keychain = { requestBroadcast() { walletCalls += 1; } };
   const blocked = await BroadcastGate.broadcast('alice', [op('clear-power'), op('clear-workers'), op('clear-totem'), op('clear-build')]).catch(error => error);
-  if (probes !== 31 ||  /* : 30 one-second checks + the release pass */ walletCalls !== 0 || !blocked.message.includes('still being checked') || !blocked.message.includes('not sent')) throw Error('lookup failure did not retain the row with a plain refusal');
+  if (probes !== 31 ||  /* 30 one-second checks + the release pass */ walletCalls !== 0 || !blocked.message.includes('still being checked') || !blocked.message.includes('not sent')) throw Error('lookup failure did not retain the row with a plain refusal');
   if (JSON.parse(localStorage.getItem('ceres:pending-custom-ops:v1:alice')).length !== 1
     || JSON.parse(localStorage.getItem('ceres:broadcast-claims:v1:alice')).length !== 2) throw Error('lookup failure released uncertain state');
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });

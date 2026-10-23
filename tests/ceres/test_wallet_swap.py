@@ -26,7 +26,7 @@ if (!grain.includes('ceres-wide-input')) throw new Error('amount must use the sh
 if (swapHtml('WOOD', wallet, 'player0005', true) !== '') throw new Error('no card without a balance to sell');
 for (const tab of ['DEC', 'SPS', 'VOUCHER', 'RESEARCH', 'AURA'])
   if (swapHtml(tab, wallet, 'player0005', true) !== '') throw new Error(tab + ' must not get a swap card');
-// : the phone shows the same swap card (was hidden by ).
+// the phone shows the same swap card (was hidden by ).
 if (!swapHtml('GRAIN', wallet, 'player0005').includes('class="wallet-card wallet-swap"')) throw new Error('phone gets the swap card');
 if (swapHtml('GRAIN', { ...wallet, swap: null }, 'player0005', true) !== '') throw new Error('unreadable pools hide the card silently');
 
@@ -40,13 +40,13 @@ const st = swapState('player0005', 'STONE');
 st.amount = '5'; st.quoted = '5';
 st.quote = { kind: 'swap_sell', input: '5', output: '0.4', minimum: '0.39', pool_cost: '0.5', slippage: '2.5', resource_symbol: 'STONE' };
 const stone = swapHtml('STONE', wallet, 'player0005', true);
-//  (maintainer-approved simplification): the big receive figure; fee, minimum and balances-after sit behind Details.
+// (maintainer-approved simplification): the big receive figure; fee, minimum and balances-after sit behind Details.
 if (!stone.includes('0.400 DEC') || !stone.includes('Swap 5.000 Stone → 0.400 DEC')) throw new Error('receive figure / action: ' + stone);
 st.moreOpen = true;
 const stoneOpen = swapHtml('STONE', wallet, 'player0005', true);
 if (!stoneOpen.includes('Pool fee · 10%') || !stoneOpen.includes('0.500 Stone') || !stoneOpen.includes('You get at least') || !stoneOpen.includes('0.390 DEC')) throw new Error('details: ' + stoneOpen);
 if (!stoneOpen.includes('Wallet DEC after') || !stoneOpen.includes('12.400') || !stoneOpen.includes('Region 65 Stone after') || !stoneOpen.includes('2.000')) throw new Error('after rows: ' + stoneOpen);
-// : one Swap button, no Review/Edit anywhere.
+// one Swap button, no Review/Edit anywhere.
 if (/lp:review|lp:edit|lp:sign|Check and sign/.test(stoneOpen)) throw new Error('no review stage: ' + stoneOpen);
 // No wallet ready: the chooser sits left of Swap (OM:6100) and Swap waits for it.
 const noWallet = swapHtml('STONE', { ...wallet, swap: { ...wallet.swap, signing_enabled: true } }, 'player0005', true);
@@ -68,7 +68,7 @@ if (swapLocked('player0005') !== 'STONE') throw new Error('an open wallet prompt
 
 def test_swap_css_is_scoped_and_uses_shared_controls():
     css = (ROOT / "ceres" / "static" / "ceres.css").read_text()
-    start = css.index("/* : the wallet pool swap card")
+    start = css.index("/* the wallet pool swap card")
     block = css[start:css.index(".wallet-swap .dec-receipt-amount > img", start)]
     for line in block.splitlines():
         if line.startswith(".") or line.startswith("#"):
@@ -121,7 +121,7 @@ st.quote = { kind: 'swap_buy', input: '1', output: '104.201', minimum: '101.595'
 const quoted = swapHtml('GRAIN', wallet, 'player0005', true);
 st.moreOpen = true;
 const quotedOpen = swapHtml('GRAIN', wallet, 'player0005', true);
-if (!quoted.includes('data-lp-receive="GRAIN"') || !quoted.includes('value="104.201"') ||  // : "You receive" is an input
+if (!quoted.includes('data-lp-receive="GRAIN"') || !quoted.includes('value="104.201"') ||  // "You receive" is an input
     !quotedOpen.includes('101.595 Grain') || !quotedOpen.includes('0.100 DEC')) throw new Error('buy figures: ' + quotedOpen);
 if (!quotedOpen.includes('11.000') || !quotedOpen.includes('Region 41 Grain after') || !quotedOpen.includes('9,104.201')) throw new Error('buy after rows: ' + quotedOpen);
 // No resource anywhere: the card still offers the buy side (nothing to sell, so no flip).

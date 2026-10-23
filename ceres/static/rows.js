@@ -735,7 +735,7 @@ export function closeMobilePlotSheet({ restoreFocus = true } = {}) {
   if (sheet) { sheet.hidden = true; sheet.classList.remove('is-picker-focused'); sheet.removeAttribute('data-deed-uid'); }
   document.getElementById('mobile-plot-sheet-body')?.replaceChildren();
   document.body.classList.remove('mobile-plot-sheet-open');
-  window.scrollTo(0, MOBILE_PLOT_SCROLL_Y);
+  window.scrollTo(0, MOBILE_PLOT_SCROLL_Y); // V->L
   if (restoreFocus) MOBILE_PLOT_RETURN_TARGET?.focus?.();
   MOBILE_PLOT_RETURN_TARGET = null;
   return true;
