@@ -36,6 +36,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import LIVE_PLAYER, spawn_live_ceres
+from .idle_pool import serve_idle_cards
 from .vm_context import ENTRY, read_entry_source, run_in_module_context
 
 APP_JS = ENTRY
@@ -84,9 +85,11 @@ if (groups.size !== 2 || groups.get('7|14|1')?.length !== 1 || groups.get('7|14|
         run_in_module_context(check_js, entry=ENTRY, source=mutated)
 
 
+# Edition 13 (Rebellion soulbound) art lives in `cards_soulboundrb`, as in the official app bundle;
+# `cards_soulbound` answers 403 for those cards (static/icons.js, CARD_CDN_SET).
 _CDN_MAPPING_JS = r"""
 const expected = {
-  12: 'cards_rebellion', 13: 'cards_soulbound', 15: 'cards_v2.2', 18: 'cards_v2.2',
+  12: 'cards_rebellion', 13: 'cards_soulboundrb', 15: 'cards_v2.2', 18: 'cards_v2.2',
 };
 for (const [edition, folder] of Object.entries(expected)) {
   const url = editorCardImage({card_name: 'Synthetic Card', edition: Number(edition), foil: 0});
@@ -104,11 +107,11 @@ def test_known_modern_editions_resolve_card_art_urls() -> None:
 def test_known_cdn_mapping_mutation_is_red() -> None:
     """Injected defect: remove the edition-13 CDN mapping; the rendered resolver must stop returning its card-art URL."""
     source = read_entry_source(ENTRY)
-    mutated = source.replace("CARD_CDN_SET[13] = 'cards_soulbound';\n", "", 1)
+    mutated = source.replace("CARD_CDN_SET[13] = 'cards_soulboundrb';\n", "", 1)
     assert mutated != source, "CARD_CDN_SET[13] mutation target is missing"
     check_js = r"""
 const url = editorCardImage({card_name: 'Synthetic Card', edition: 13, foil: 0});
-if (url !== 'https://d36mxiodymuqjm.cloudfront.net/cards_soulbound/Synthetic%20Card.jpg') {
+if (url !== 'https://d36mxiodymuqjm.cloudfront.net/cards_soulboundrb/Synthetic%20Card.jpg') {
   throw new Error(`known edition mapping returned no card-art URL: ${url} (exit 1)`);
 }
 """
@@ -167,17 +170,18 @@ def _open_slot_candidate_template(base_url: str) -> tuple[str, dict]:
 
 
 def _mock_plot_detail(page: Page, deed_uid: str, detail: dict) -> None:
-    page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
-        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(detail)),
-    )
+    """Serve `detail` for the plot: opening a row reads it live through `POST /api/plots/{uid}/expand`
+    (same PlotRow shape as `GET /api/plots/{uid}`), so both routes answer with the fixture."""
+    quoted = urllib.parse.quote(deed_uid, safe='')
+    for pattern in (f"**/api/plots/{quoted}?*", f"**/api/plots/{quoted}/expand*"):
+        page.route(
+            pattern,
+            lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(detail)),
+        )
 
 
 def _mock_idle_cards(page: Page, copies: list[dict]) -> None:
-    page.route(
-        "**/api/idle-cards*",
-        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"cards": copies})),
-    )
+    serve_idle_cards(page, copies)
 
 
 def _mock_candidates(page: Page, deed_uid: str, candidate: dict) -> None:

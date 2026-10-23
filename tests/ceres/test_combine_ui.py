@@ -40,6 +40,7 @@ import pytest
 from playwright.sync_api import Browser
 
 from .conftest import LIVE_PLAYER, settle, spawn_live_ceres, wait_for_board
+from .idle_pool import report_idle_pool_loaded
 
 ROOT = Path(__file__).parents[2]
 CSS = ROOT / "ceres/static/ceres.css"
@@ -122,6 +123,7 @@ def _open_combine_dialog(
         body = preview_response if status == 200 else {"code": "combine_refused", "message": preview_response.get("message", "refused"), "preview": preview_response}
         route.fulfill(status=status, content_type="application/json", body=json.dumps(body))
 
+    report_idle_pool_loaded(page)  # the board says the pool is loaded; the pool is this test's copies
     page.route("**/api/idle-cards*", fulfill_idle_cards)
     page.route("**/api/combine/preview*", fulfill_preview)
     with page.expect_response("**/api/idle-cards*", timeout=30_000):
@@ -243,7 +245,9 @@ def test_rendered_combine_dialog_lists_every_owned_copy_including_blocked_ones(
     overlay = page.locator("#combine-dialog-overlay")
     rows = overlay.locator(".combine-copy-row")
     assert rows.count() == 3, f"all 3 owned copies (2 eligible + 1 blocked) must be listed, got {rows.count()}"
-    blocked_row = overlay.locator(f".combine-copy-row:has(code:text-is('{blocked_copy['uid']}'))")
+    # The row names the copy by where it is, not by its Card ID; the ID stays on the row's `data-uid`
+    # (combineCopyRowsHtml, static/combine.js).
+    blocked_row = overlay.locator(f".combine-copy-row:has(code[data-uid='{blocked_copy['uid']}'])")
     blocked_row.wait_for(timeout=10_000)
     assert "is-blocked" in (blocked_row.get_attribute("class") or "")
     assert blocked_row.get_attribute("title") == blocked_copy["blocked_reason"] or "staked" in (blocked_row.get_attribute("title") or "").lower()
@@ -266,8 +270,12 @@ def test_dialog_contract_and_layout_scope() -> None:
     assert ".combine-dialog-overlay" in css
     assert ".combine-copy-row" in css
     assert ".combine-editor-layout" in css
-    assert "grid-template-columns: 18rem minmax(0, 1fr)" in css
-    assert "width: min(60rem, 96vw)" in css
+    # The editor stacks hero, outcome and selection in one column; from 601px the outcome splits into
+    # two equal columns (the earlier fixed 18rem hero column is gone). The panel is capped at 60rem or
+    # 96% of the viewport, written with the page's `--ceres-vw` unit.
+    assert ".combine-editor-layout { display: flex; flex-direction: column;" in css
+    assert ".combine-editor-result { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);" in css
+    assert "width: min(60rem, calc(var(--ceres-vw) * 96))" in css
     assert ".combine-copy-list" in css and "max-height: 13.5rem" in css
     modal_css = css[css.index(".combine-dialog-overlay"):css.index(".combine-arrival")]
     assert not any(line.lstrip().startswith(".plot-table") for line in modal_css.splitlines())

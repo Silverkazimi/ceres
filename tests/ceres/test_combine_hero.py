@@ -19,6 +19,7 @@ import pytest
 from playwright.sync_api import Browser
 
 from tests.ceres.conftest import LIVE_PLAYER, spawn_live_ceres, wait_for_board
+from tests.ceres.idle_pool import report_idle_pool_loaded
 
 ROOT = Path(__file__).parents[2]
 NOTICES = ROOT / "ceres/notices.py"
@@ -88,6 +89,7 @@ def _open_combine_dialog(page, base_url: str) -> tuple[str, dict]:
             "observed_at": "2026-09-02T00:00:00Z",
         }))
 
+    report_idle_pool_loaded(page)  # the board says the pool is loaded; the pool is this test's copies
     page.route("**/api/idle-cards*", fulfill_idle_cards)
     page.route("**/api/combine/preview*", fulfill_preview)
     with page.expect_response("**/api/idle-cards*", timeout=30_000):
@@ -106,7 +108,9 @@ def _open_combine_dialog(page, base_url: str) -> tuple[str, dict]:
     chip.click()
     overlay = page.locator("#combine-dialog-overlay")
     overlay.wait_for(state="visible", timeout=30_000)
-    page.locator("#combine-dialog-overlay .combine-freshness").wait_for(timeout=30_000)
+    # the preview has loaded once the sign button is enabled (the dialog no longer prints a separate
+    # "observed at" freshness note; the observation time appears only in a refusal)
+    page.locator("#combine-dialog-overlay button.combine-sign:not([disabled])").wait_for(timeout=30_000)
     return deed_uid, occupant
 
 
@@ -133,7 +137,9 @@ def test_rendered_combine_hero_editor_keeps_hero_art_ledger_and_freshness_drops_
 
     assert overlay.locator(".combine-hero-art").count() == 1, "hero art must render exactly once"
     assert overlay.locator(".combine-copy-row").count() >= 1, "copy list must render at least one real row"
-    assert overlay.locator(".combine-freshness").count() == 1, "freshness note must be present once a preview has loaded"
+    assert overlay.locator(".combine-consequence").inner_text() == "One copy survives · 1 copy destroyed", (
+        "the outcome of the loaded preview must be stated"
+    )
 
     # Retired copy/markup from the old subtitle/hazard-line/survivor-line design
     # must never reappear.
