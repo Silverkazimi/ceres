@@ -42,9 +42,10 @@ plot) filling its row:
   the grid -- e.g. 6 per row at a ~1478 px grid, not 5).
 Phone/tablet tier (1280x720@1.5 is the card view BY DESIGN, content <= 1279):
 the picker opens in the mobile plot sheet, whose column count belongs to the
-mobile branch ( phase E rule: 3 columns, 2 at <= 767, 1 at <= 544;
- will set 2 cards side by side on phones). There the guard asserts that
-rule's count, that the tracks fill the grid row, no card spills and no side
+mobile branch: since 2026-09-16 (test_mobile_plot_view.py) the focused phone
+picker is auto-fit with its own 10rem card minimum, no fixed 2 columns. There the
+guard asserts the count that rule fits, that the tracks fill the grid row, no card
+spills and no side
 scrolling -- not the desktop auto-fill count.
 """
 
@@ -126,7 +127,9 @@ def _launch(live_server, width: int, height: int, dpr: float):
         device_scale_factor=dpr,
     )
     context.add_init_script(_CLASSIC_SCROLLBAR_INIT)
-    context.add_init_script("try { localStorage.setItem('ceres:picker-view:v1:player0005', 'grid'); } catch (e) {}")
+    # The grid picker view is remembered per account (picker-actions.js); the
+    # fixture board's account is sample01.
+    context.add_init_script("try { localStorage.setItem('ceres:picker-view:v1:sample01', 'grid'); } catch (e) {}")
     page = context.new_page()
     page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function(
@@ -254,7 +257,25 @@ _PICKER_JS = """() => {
   const doc = document.documentElement;
   const cls = doc.classList;
   return {
-    phoneCols: 2,
+    // The column rule that applies to this grid (the focused phone picker has its
+    // own auto-fit minimum, mobile-plot.css): the last matching stylesheet rule
+    // with a grid-template-columns `minmax(min(100%, <n>rem), 1fr)`.
+    phoneCols: (() => {
+      let minRem = null;
+      for (const sheet of document.styleSheets) {
+        let rules;
+        try { rules = sheet.cssRules; } catch (e) { continue; }
+        for (const rule of rules) {
+          const cols = rule.style && rule.style.gridTemplateColumns;
+          const m = cols && /minmax\\(min\\(100%,\\s*([\\d.]+)rem\\)/.exec(cols);
+          if (m && rule.selectorText && grid.matches(rule.selectorText)) minRem = parseFloat(m[1]);
+        }
+      }
+      const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const minPx = minRem === null ? cardMin : minRem * rootPx;
+      return Math.min(grid.querySelectorAll(':scope > .candidate-grid-card').length,
+        Math.max(1, Math.floor((content + gap) / (Math.min(content, minPx) + gap))));
+    })(),
     trackSum: tracks.reduce((a, b) => a + b, 0),
     tracks: tracks.length, minTrack: Math.min(...tracks), cardMin, gap, content,
     fits: Math.min(grid.querySelectorAll(':scope > .candidate-grid-card').length, Math.max(1, Math.floor((content + gap) / (Math.min(content, cardMin) + gap)))),
@@ -338,7 +359,7 @@ def _check_picker(grid: dict, phone: bool = False) -> list[str]:
     if phone:
         filled = grid["trackSum"] + grid["gap"] * (grid["tracks"] - 1)
         if grid["tracks"] != grid["phoneCols"]:
-            failures.append(f"phone picker shows {grid['tracks']} per row, the mobile rule says {grid['phoneCols']}")
+            failures.append(f"phone picker shows {grid['tracks']} per row, the mobile rule fits {grid['phoneCols']}")
         if abs(filled - grid["content"]) > 1:
             failures.append(f"phone picker tracks fill {filled:.0f}px of a {grid['content']:.0f}px row")
         if grid["spill"]:
