@@ -4099,12 +4099,12 @@ body:has(#reload-banner:not([hidden])) header.board-header {
 [data-theme="light"] .terrain-affinity,
 [data-theme="light"] .terrain-affinity-scroll {
   --affinity-bonus: #2a804a;
-  --affinity-penalty: #b52a38;
+  --affinity-penalty: #b12937;
 }
 [data-theme="wood"] .terrain-affinity,
 [data-theme="wood"] .terrain-affinity-scroll {
   --affinity-bonus: #227a47;
-  --affinity-penalty: #b32633;
+  --affinity-penalty: #af2532;
 }
 .terrain-affinity-badge[data-affinity-state="favoured"] { color: var(--affinity-bonus); }
 .terrain-affinity-badge[data-affinity-state="penalised"] { color: var(--affinity-penalty); }
