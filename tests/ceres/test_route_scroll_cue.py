@@ -1,4 +1,4 @@
-"""//: the route list scrolls without a visible bar; the cue for that costs the list NO space. History: /0.11.8
+"""// the route list scrolls without a visible bar; the cue for that costs the list NO space. History: /0.11.8
 put pill rows above and below the list; the maintainer rejected them (they cut space and left a gap on the side without an active pill, so
 the list no longer lined up with the box beside it). Now: a counter with two page buttons in the SUMMARY row ("23-36 of 36"), and a soft
 fade on the list edge that has more routes. The list has no wrapper and no extra rows. Also: the route chips show the DEC icon ()."""

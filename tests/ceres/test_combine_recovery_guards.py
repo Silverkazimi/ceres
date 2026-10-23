@@ -203,7 +203,7 @@ function fakeEvent(dataset) {
 }
 
 (async () => {
-  // --- Case A: exactly ONE qualifying worker on the plot -- click must open
+  // Case A: exactly ONE qualifying worker on the plot -- click must open
   // the real dialog directly, no intermediate chooser.
   S.IDLE_CARDS_CACHE = [
     { uid: 'A1', card_detail_id: 100, edition: 1, foil: false, bcx: 1, bcx_max: 10, available: true, name: 'Card A' },
@@ -214,7 +214,7 @@ function fakeEvent(dataset) {
   if (openCombineGroupDialogCalls[0] !== combineGroupKey({ card_detail_id: 100, edition: 1, foil: false })) process.exit(71);
   if (openPlotCombineChooserCalls.length !== 0) process.exit(72);
 
-  // --- Case B: TWO qualifying workers -- click must open the chooser, not the
+  // Case B: TWO qualifying workers -- click must open the chooser, not the
   // dialog directly.
   openCombineGroupDialogCalls.length = 0;
   openPlotCombineChooserCalls.length = 0;
@@ -227,7 +227,7 @@ function fakeEvent(dataset) {
   if (openPlotCombineChooserCalls.length !== 1) process.exit(74);
   if (openPlotCombineChooserCalls[0].candidates.length !== 2) process.exit(75);
 
-  // --- Case C: the idle-card cache was cleared after this button rendered --
+  // Case C: the idle-card cache was cleared after this button rendered
   // the stale click must be a no-op because there are no current candidates.
   openCombineGroupDialogCalls.length = 0;
   openPlotCombineChooserCalls.length = 0;

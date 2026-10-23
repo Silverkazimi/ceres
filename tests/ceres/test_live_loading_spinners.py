@@ -52,9 +52,9 @@ def live_browser() -> tuple[Browser, str]:
 
 
 def _route_with_injected_anchor(route: Route, anchor: str, replacement: str, injection_seen: dict) -> None:
-    """Shared (b-mut) handler for the `**/static/*.js*` glob (campaign plan
-    revision 3, §2.3 G2): the board serves every static module with a
-    `?v=<version>` query token, so a bare `**/static/app.js` route never matches
+    """Shared (b-mut) handler for the `**/static/* .js*` glob (campaign plan
+ revision 3, §2.3 G2): the board serves every static module with a
+ `?v=<version>` query token, so a bare `* */static/app.js` route never matches
     and the guard silently serves the real, unmutated file -- this is why
     `test_header_hide_guard_actually_guards` and
     `test_spinner_hide_on_completion_guard_actually_guards` were void (confirmed

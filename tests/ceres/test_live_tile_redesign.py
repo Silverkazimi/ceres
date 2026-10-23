@@ -216,7 +216,7 @@ def test_band_contains_rail_and_preserves_tile_and_pp_y_anchors(live_browser: tu
           }; };
           // Each tile carries its OWN `data-group-id` (editor.js's slot-tile template). The
           // band renders the Runi tile and the item tiles inside the `worker` SECTION, so
-          // scoping by the section alone matched five occupied tiles -- "One Line",
+          // scoping by the section alone matched five occupied tiles -- "One Line"
           // "Two Line Worker Name", "Runi", "Epic Totem", "The Mystic" -- not the two workers
           // this fixture builds. The tile-level attribute is the discriminator.
           const tiles = [...band.querySelectorAll('.slot-group[data-group-id="worker"] .slot-tile[data-group-id="worker"]:not(.is-empty)')];

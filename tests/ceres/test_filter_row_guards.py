@@ -144,7 +144,7 @@ assert(boardFiltersActive() === false, 'no filter set must read as inactive');
 syncBoardFilterChrome();
 assert(clearBtn.hidden === true, 'Clear must start hidden with nothing active');
 
-// Any one of the eight dimensions flips it active -- confirm all eight are checked,
+// Any one of the eight dimensions flips it active -- confirm all eight are checked
 // not just a couple.
 const cases = [
   () => { textFilter.value = 'plot'; },
@@ -274,5 +274,5 @@ def test_detail_replacement_refilters_an_active_badge_view() -> None:
     # commit 8d787322 ("fix(ceres): refresh mobile idle plots with
     # active badge filters", v0.9.528) inserted a mobile-sheet redraw between the two
     # calls this guard originally checked as adjacent lines.
-    assert "renderTable();\n      // The filtered board rebuild does not redraw the separate mobile sheet.\n      if (MOBILE_PLOT_UID === deedUid) updateMountedRow(deedUid, { readiness: true });\n      queueMicrotask(syncCloseAll);" in ROWS_SOURCE
+    assert "renderTable();\n      // The filtered board rebuild does not redraw the separate mobile sheet.\n if (MOBILE_PLOT_UID === deedUid) updateMountedRow(deedUid, { readiness: true });\n queueMicrotask(syncCloseAll)" in ROWS_SOURCE
     assert "else if (BOARD) updateMountedRow(deedUid, { readiness: true });" in ROWS_SOURCE

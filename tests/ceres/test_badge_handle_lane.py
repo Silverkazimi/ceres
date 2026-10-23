@@ -1,4 +1,4 @@
-"""Rendered right-edge badge-handle guard for //."""
+"""Rendered right-edge badge-handle guard for """
 
 from __future__ import annotations
 

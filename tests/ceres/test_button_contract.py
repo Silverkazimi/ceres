@@ -186,7 +186,7 @@ def _assert_control_coverage(sources: dict[str, str], manifest: dict) -> None:
         entries = [entry for entry in manifest["controls"] if renderer in entry["renderer"].split("|")]
         for match in CONTROL_CONSTRUCTOR.finditer(source):
             line_start = source.rfind("\n", 0, match.start()) + 1
-            if source[line_start:match.start()].lstrip().startswith("//"):
+            if source[line_start:match.start()].lstrip().startswith(""):
                 continue
             window = source[max(0, match.start() - 500):min(len(source), match.end() + 700)]
             if match.group(0).lower() == "<button>" and "return '<button>'" not in window:

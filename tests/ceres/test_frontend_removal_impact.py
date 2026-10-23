@@ -96,7 +96,7 @@ fetch = (url, opts) => {
   if (!entry1 || !entry2) process.exit(13);
   // Deltas come from the SERVER's own_harvest_pp (42, 13), plus the shared
   // plot_residual_delta landing on the first priced entry only. The pre-fix bug
-  // negated the client-side occupant.current_harvest_pp instead (999, 500) --
+  // negated the client-side occupant.current_harvest_pp instead (999, 500)
   // distinct sentinel values, so a regression to that pattern fails these checks.
   if (entry1.delta !== -45) process.exit(14);
   if (entry2.delta !== -13) process.exit(15);
@@ -298,7 +298,7 @@ CURRENT_PLAYER = 'someone-else';
 if (currentRemovalRow('plot-h', ctx) !== null) process.exit(13);
 CURRENT_PLAYER = 'player0005';
 
-// Row identity: a NEW object with the same deed_uid (a board reload) must not match --
+// Row identity: a NEW object with the same deed_uid (a board reload) must not match
 // `currentRow === context.row`, never a deed_uid equality check.
 const row1Reloaded = { ...row1 };
 BOARD = { plots: [row1Reloaded], player: 'player0005' };

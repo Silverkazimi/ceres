@@ -38,7 +38,7 @@ def _render_card_art(page, base_url: str, record: dict) -> None:
           host.innerHTML = editorCardImageHtml(record, { alt: `${record.name} card art` });
           document.body.append(host);
           // editorCardImageHtml() emits loading="lazy". Appended to the bottom of a
-          // 129-row board the host lands ~4000px below a 720px-tall headless viewport,
+          // 129-row board the host lands ~4000px below a 720px-tall headless viewport
           // and Chromium defers the fetch INDEFINITELY -- so neither load nor error
           // ever fires and the request is never even issued. Measured 2026-09-04: that
           // is indistinguishable from an ORB-blocked response from the outside, and it

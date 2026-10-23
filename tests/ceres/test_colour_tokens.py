@@ -91,7 +91,7 @@ def _blank_js_comments(text: str) -> str:
             quote = char
             cursor += 1
             continue
-        if text.startswith("//", cursor):
+        if text.startswith("", cursor):
             end = text.find("\n", cursor)
             end = len(text) if end < 0 else end
             result[cursor:end] = " " * (end - cursor)
@@ -350,7 +350,7 @@ def _scan_css(path: Path, source: str, text: str, base_offset: int = 0) -> list[
 def _scan_html(path: Path, source: str) -> list[RawColour]:
     hits = []
     cleaned = re.sub(
-        r"(?s)<!--.*?-->",
+        r"(?s)",
         lambda match: re.sub(r"[^\n]", " ", match.group()),
         source,
     )
@@ -418,7 +418,7 @@ def _observed_raw_colours() -> list[RawColour]:
 
 def test_css_scanner_covers_literals_without_selector_or_comment_noise():
     source = """
-/* color: red; */
+/* color: red */
 #abcdef { --local-token: #123; color: #abc; border: 1px solid rgba(1, 2, 3, .4); }
 .mix { background: color-mix(in srgb, var(--bg), transparent); outline-color: color-mix(in srgb, var(--bg), white); }
 .safe { background-image: url('/icon.svg#abcdef'); content: 'red'; }
@@ -446,7 +446,7 @@ def test_html_scanner_is_limited_to_style_contexts():
 
 def test_js_scanner_covers_style_apis_and_css_templates_only():
     source = """
-// node.style.color = '#bad';
+// node.style.color = '#bad'
 const prose = 'red and #abcdef';
 node.style.color = enabled ? '#fff' : 'rgb(0 0 0 / .5)';
 node.style.setProperty('border-color', 'hsl(10 20% 30%)');

@@ -76,7 +76,7 @@ def test_ledger_after_figures_mutation_is_red() -> None:
 # 2. PP never extrapolates past the printing's max-BCX ceiling (the internal rules).
 
 _PP_CEILING_JS = r"""
-// survivor must stay the HIGHEST-bcx copy (combineCurrentSurvivor's own rule),
+// survivor must stay the HIGHEST-bcx copy (combineCurrentSurvivor's own rule)
 // so it is bcx 10 here and copyA is bcx 8 -- their sum (18) still clears the
 // bcx_max ceiling of 15.
 const survivor = { uid: 'S', bcx: 10, base_pp: 1000, level: 3, bcx_max: 15, level_bcx_thresholds: [1, 5, 10, 15] };
