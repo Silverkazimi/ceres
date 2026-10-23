@@ -10,7 +10,7 @@ IRIS_TOKENS = {"bg", "bg2", "bg3", "body", "heading", "meta", "link", "primary",
 
 
 def block():
-    start = CSS.index("/*  : ready notification colour")
+    start = CSS.index("/* ready notification colour")
     end = CSS.index("@media (prefers-reduced-motion: reduce)", start)
     return CSS[start:end + 200]
 

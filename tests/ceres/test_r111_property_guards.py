@@ -79,6 +79,19 @@ _RETIRED_CONTROL_EXEMPTIONS = {
                                "reason": "Combine flow guidance, not the retired board control"},
     "editor_reload": {"origin": "editor.js", "value": _ANY_VALUE, "word": "reload",
                        "reason": "Combine cooldown guidance, not the retired board control"},
+    # Reached once the dev-only pill-preview.html is absent (the public tree): three strings that tell the
+    # player to reload the browser PAGE after an error, or name the live new-version banner -- none names the
+    # retired board Refresh/Full-capture controls or a freshness indicator. Exact values where the string is
+    # plain copy; the style guide's banner specimen is matched by file and word.
+    "card_browser_read_failed_reload": {"origin": "card-browser.js",
+                                         "value": "The cards could not be read. Check the connection and reload the page.",
+                                         "word": "reload", "reason": "/cards read-failure error state: reload the browser page"},
+    "combine_board_refresh_failed_reload": {"origin": "combine.js",
+                                             "value": "The combine is confirmed, but the board could not be refreshed. "
+                                                      "Reload the page to see the combined card.",
+                                             "word": None, "reason": "Combine success with a failed board re-read: reload the browser page"},
+    "styleguide_version_banner": {"origin": "styleguide.js", "value": _ANY_VALUE, "word": "reload",
+                                   "reason": "living style guide specimen of the live .reload-banner (new-version banner)"},
     # notices.py/routes_*.py: R-111's own ruling carved this out explicitly -- "when the
     # game cannot be reached, the surface must still not show a figure that is untrue...
     # that is an error state, not a freshness state." These are that error state's copy
@@ -287,11 +300,15 @@ def _retired_control_findings() -> list[str]:
     collect(html_visible, "index.html")
     for path in sorted(STATIC.glob("*.js")):
         collect(_visible_client_strings(path.read_text(encoding="utf-8")), str(path))
-    pill_preview = (STATIC / "pill-preview.html").read_text(encoding="utf-8")
-    _pill_ids, pill_visible = _scan_markup(pill_preview)
-    collect(pill_visible, "pill-preview.html")
-    for script in re.findall(r"<script\b[^>]*>(.*?)</script>", pill_preview, re.DOTALL | re.IGNORECASE):
-        collect(_visible_client_strings(script), "pill-preview.html")
+    # pill-preview.html is a dev-only catalogue page (a source exclusion, see test_ui_standard.py's
+    # DEV_ONLY_PAGES); the public tree does not ship it, so it is scanned only where it exists.
+    pill_preview_path = STATIC / "pill-preview.html"
+    if pill_preview_path.is_file():
+        pill_preview = pill_preview_path.read_text(encoding="utf-8")
+        _pill_ids, pill_visible = _scan_markup(pill_preview)
+        collect(pill_visible, "pill-preview.html")
+        for script in re.findall(r"<script\b[^>]*>(.*?)</script>", pill_preview, re.DOTALL | re.IGNORECASE):
+            collect(_visible_client_strings(script), "pill-preview.html")
     collect(_notice_messages_from_source(), "ceres/notices.py message")
     collect(_route_details_from_source(), "ceres/routes_*.py HTTPException detail")
     return findings
@@ -632,9 +649,10 @@ def test_combine_verification_performs_the_post_combine_collection_read(tmp_path
             return {"cards": [{"uid": "CARD-SURVIVOR"}]}
 
     class FakeCardVerificationSpec:
-        def __init__(self, fetch_collection, *, expected_records):
+        def __init__(self, fetch_collection, *, expected_records, intent=None):
             self.fetch_collection = fetch_collection
             self.expected_records = expected_records
+            self.intent = intent
 
         def check_domain(self, _operation_name, _operations):
             self.fetch_collection()
@@ -646,7 +664,7 @@ def test_combine_verification_performs_the_post_combine_collection_read(tmp_path
     monkeypatch.setattr(routes_op_preview.capture_mod, "latest_snapshot", lambda _config, _player: (_combine_report("2026-08-29T01:00:00Z"), object()))
     monkeypatch.setattr(routes_op_preview.capture_mod, "is_running", lambda _account: False)
     monkeypatch.setattr(routes_op_preview.capture_mod, "start_refresh", lambda _config, _account: True)
-    monkeypatch.setattr(routes_op_preview.combine_evidence, "load", lambda _config, _nonce, account: None)
+    monkeypatch.setattr(routes_op_preview.combine_evidence, "load", lambda _config, _nonce, account, unresolved=False: None)
 
     response = routes_op_preview.op_verify(
         {

@@ -46,7 +46,7 @@ assert(rowHasBadge(solo, 'bloodline_solo'), 'SOLO must use the solo chip truth')
 
 // v0.9.513 ("retain green Land Card identity"): every row.ability_holders entry renders its
 // chip regardless of row.badges, including cards whose abilities are shared with another worker
-// -- the old badges-array gate before the chip could show was deliberately dropped.
+// the old badges-array gate before the chip could show was deliberately dropped.
 const sole = {...baseRow, badges: [], workers: [{asset_ref: 'card', land_abilities: [['GRAIN', 0.1]]}],
   ability_holders: [{asset_ref: 'card', name: 'Land card', level: 1, card_detail_id: 866, sole_holder_for: ['GRAIN']}]};
 assert(rowHasBadge(sole, 'sole_ability_holder'), 'a rendered ability holder must match regardless of the badges gate');

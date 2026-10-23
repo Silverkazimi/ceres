@@ -36,6 +36,12 @@ _ICON_PATH = re.compile(
     re.search(r"const ICON_PATH = /(.+)/i;", (STATIC / "tooltip.js").read_text(encoding="utf-8")).group(1),
     re.IGNORECASE,
 )
+# The public tree carries no game artwork: an icon counts when it is on disk (a maintainer checkout or an earlier
+# download) or on the reviewed, hash-pinned list Ceres downloads it from on first use (ceres/asset_sources.py).
+_SOURCES = STATIC / "assets" / "sources.json"
+_DOWNLOADABLE = frozenset(
+    row["path"] for row in (json.loads(_SOURCES.read_text(encoding="utf-8")) if _SOURCES.is_file() else [])
+)
 
 
 class _FragmentParser(HTMLParser):
@@ -105,7 +111,8 @@ def _assert_icon_contract(record: dict[str, str]) -> int:
         icon = str(attrs["data-tip-icon"] or "")
         assert icon, f"{record['kind']} emitted an empty data-tip-icon"
         assert _ICON_PATH.fullmatch(icon), f"{record['kind']} emitted unsafe icon path {icon!r}"
-        assert (STATIC / "assets" / icon).is_file(), f"{record['kind']} icon asset is absent: {icon}"
+        assert (STATIC / "assets" / icon).is_file() or icon in _DOWNLOADABLE, (
+            f"{record['kind']} icon asset is neither shipped nor downloadable: {icon}")
         src = attrs.get("src")
         if src:
             assert str(src).endswith(f"/assets/{icon}"), f"trigger src and tooltip icon differ: {src!r} != {icon!r}"
