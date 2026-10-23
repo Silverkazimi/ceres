@@ -222,7 +222,7 @@ def test_batch_source_keeps_fixed_slots_legible_and_uses_existing_endpoints() ->
     assert "line('<span aria-hidden=\"true\"></span>', net)" in ledger
     assert "${routingEntryHtml()}<div class=\"hm-batch-grid\"" in modal
     assert "M.v2?.action" in modal and "M.v2?.change" in modal and "M.v2?.record" in modal
-    batch_css = css[css.index("/* : known resource slots"):css.index("/* : reserve balances")]
+    batch_css = css[css.index("/* known resource slots"):css.index("/* reserve balances")]
     assert not re.search(r"#[0-9a-fA-F]{3,8}\b", batch_css)
     endpoints = set(re.findall(r"['\"](/api/[^'\"?]+)", modal))
     assert endpoints == {
