@@ -28,10 +28,15 @@ def _open_picker(live_browser: tuple[Browser, str]) -> tuple[Page, object]:
         expand = row.locator("+ tr.expand-row")
         try:
             expand.locator(".slot-editor").wait_for(timeout=30_000)
+            # the band renders `preparing` first (placeholder tiles under a cover); the
+            # real, clickable tiles exist once it reports `ready`. The worker group's row also
+            # holds the plot's empty Totem/Title/Power Core tiles, so the empty slot is picked
+            # by its worker group id.
+            expand.locator(".editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
         except Exception:
             row.click()
             continue
-        empty = expand.locator(".slot-group[data-group-id='worker'] .slot-grid .slot-tile.is-empty")
+        empty = expand.locator(".slot-group[data-group-id='worker'] .slot-grid .slot-tile.is-empty[data-group-id='worker'][data-slot-action='add']")
         if empty.count() == 0:
             row.click()
             continue
@@ -118,7 +123,8 @@ def test_transaction_guard_copy_is_identical(live_browser: tuple[Browser, str]) 
                 row.click()
             expand = row.locator("+ tr.expand-row")
             expand.locator(".slot-editor").wait_for(timeout=30_000)
-            empty = expand.locator(".slot-group[data-group-id='worker'] .slot-grid .slot-tile.is-empty")
+            expand.locator(".editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
+            empty = expand.locator(".slot-group[data-group-id='worker'] .slot-grid .slot-tile.is-empty[data-group-id='worker'][data-slot-action='add']")
             if empty.count() == 0:
                 continue
             with page.expect_request("**/api/plots/*/candidates*"):

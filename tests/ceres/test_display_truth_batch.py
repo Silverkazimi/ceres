@@ -1,8 +1,15 @@
-"""P1/P2/P3 display-truth guards for the Ceres browser surfaces."""
+"""P1/P2/P3 display-truth guards for the Ceres browser surfaces.
+
+The editor's per-card footer row now shows each card's Boostable PP -- its Base PP after
+the plot cap with this plot's terrain applied, "what this plot's boosts multiply" -- and the
+cell tooltip carries the parts: the card's Base PP, the terrain and what the cap takes
+(editor.js editorBasePpColumn). The cap guards below read the figure and those parts.
+"""
 
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timezone
 
 import pytest
@@ -116,7 +123,9 @@ def _install_cascade_fixture(page: Page) -> None:
                 "asset_ref": f"cascade-worker-{slot}", "uid": f"cascade-worker-{slot}", "card_uid": f"cascade-worker-{slot}",
                 "slot": slot, "name": name, "card_name": name, "card_detail_id": 41000 + slot,
                 "editions": "2", "edition": 2, "card_set": "chaos", "foil": 0, "gold": 0, "level": 1,
-                "base_pp": base_pp, "base_pp_after_cap": after_cap, "construction_pp": 0,
+                # Boostable PP is Base PP after the cap with terrain applied (0% here), as the
+                # game reports it; the footer row shows this figure.
+                "base_pp": base_pp, "base_pp_after_cap": after_cap, "construction_pp": after_cap,
                 "harvest_pp": 0, "terrain_boost": 0, "land_abilities": [], "badges": [], "sole_holder_for": [],
             }
             for slot, (name, base_pp, after_cap) in enumerate(CASCADE_FIGURES, start=1)
@@ -228,13 +237,35 @@ def _open_cascade_fixture(page: Page) -> Page:
     row.click()
     editor = page.locator(".slot-editor:visible")
     editor.wait_for(timeout=30_000)
+    # the band renders `preparing` first; its footer figures exist once it is `ready`
+    editor.locator(".editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
     return editor
+
+
+def _base_after_cap(cell_body: str) -> float:
+    """A footer cell's Base PP after the cap, from its tooltip parts
+    ("<raw> Base PP · <terrain>[ · the plot's <cap> cap takes <n>]")."""
+    raw = re.match(r"([\d,]+) Base PP", cell_body)
+    assert raw, cell_body
+    taken = re.search(r"cap takes ([\d,]+)", cell_body)
+    return float(raw.group(1).replace(",", "")) - (float(taken.group(1).replace(",", "")) if taken else 0.0)
 
 
 def _page(live_browser: tuple[Browser, str]) -> Page:
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
     page.goto(base_url)
+    # A fixture route can still be inside `route.fetch` when a test closes its page; that
+    # fetch then fails after the close and Playwright reports it on the NEXT test's
+    # `new_page` (TargetClosedError), failing a test that did nothing wrong. Closing drops
+    # the routes first.
+    close = page.close
+
+    def close_after_routes(*args, **kwargs):
+        page.unroute_all(behavior="ignoreErrors")
+        return close(*args, **kwargs)
+
+    page.close = close_after_routes
     return page
 
 
@@ -293,19 +324,21 @@ def test_g1_served_clipping_uses_each_workers_after_cap_value(live_browser: tupl
 
 
 def test_g2_clipped_cell_explains_its_base_pp_shortfall(live_browser: tuple[Browser, str]) -> None:
-    """G2: a clipped cell keeps the Base PP name and exposes the interim tooltip model.
+    """G2: a clipped cell shows the figure after the cap and explains the shortfall.
 
-    Injection: keep the old pre-clip figure and ``after cap`` fragment in the cell.
-    The displayed figure, title/key/body/foot, and accessible loss label then go red.
+    The cell is named for what it shows now (Boostable PP: Base PP after the cap, with
+    terrain); its tooltip names the card's own Base PP and what the plot cap takes.
+    Injection: keep the old pre-clip figure in the cell. The displayed figure, key and
+    accessible loss label then go red.
     """
     page = _page(live_browser)
     editor = _open_cascade_fixture(page)
     clipped = editor.locator(".editor-base-pp-cell").nth(3)
-    assert clipped.get_attribute("aria-label") == "Base PP 2,059, reduced 5,441 by the plot cap"
-    assert clipped.get_attribute("data-tip") == "Base PP"
+    assert clipped.get_attribute("aria-label") == "Boostable PP 2,059, reduced 5,441 by the plot cap"
+    assert clipped.get_attribute("data-tip") == "Boostable PP"
     assert clipped.get_attribute("data-tip-key") == "2,059"
-    assert clipped.get_attribute("data-tip-body") == "This card's Base PP after the plot's cap absorbs a shortfall here. Terrain 0% on this plot. Boostable 0."
-    assert clipped.get_attribute("data-tip-foot") == "Measured from live plots; no official source documents this."
+    assert clipped.get_attribute("data-tip-body") == "7,500 Base PP · neutral terrain · the plot's 100,000 cap takes 5,441. What this plot's boosts multiply."
+    assert clipped.get_attribute("data-tip-foot") is None
     page.close()
 
 
@@ -321,7 +354,8 @@ def test_g5_capped_zero_is_filled_red_and_marked(live_browser: tuple[Browser, st
     assert zero.inner_text() == "0"
     assert "is-filled" in zero.get_attribute("class")
     assert "is-cap-clipped" in zero.get_attribute("class")
-    assert zero.locator("b").evaluate("node => getComputedStyle(node, '::before').content") == '"↘ "'
+    # the clipped/penalised mark is a small down triangle now ("\\25BC\\00A0", ceres.css)
+    assert zero.locator("b").evaluate("node => getComputedStyle(node, '::before').content") == '"\u25bc\u00a0"'
     page.close()
 
 
@@ -356,26 +390,35 @@ def test_g11_staged_worker_changes_cap_figures_and_preserves_total(live_browser:
     row.click()
     editor = page.locator(".slot-editor:visible")
     editor.wait_for(timeout=30_000)
+    editor.locator(".editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
     before = editor.locator(".editor-base-pp-cell").all_inner_texts()
 
     editor.locator(".slot-group[data-group-id='worker'] .slot-tile[data-slot-index='3']").click()
     editor.locator(".inline-picker:visible .candidate-row").first.wait_for(timeout=30_000)
     editor.locator(".inline-picker:visible .candidate-row").first.click()
+    editor.locator(".slot-group[data-group-id='worker'] .slot-tile.is-staged").first.wait_for(timeout=30_000)
     after = editor.locator(".editor-base-pp-cell").all_inner_texts()
 
     assert any(previous != current for previous, current in zip(before, after))
-    worker_cells = editor.locator(".editor-base-pp-cell[data-group-id='worker']").all_inner_texts()
-    rendered = [float(value.replace(",", "")) for value in worker_cells if value.strip()]
+    # the figures shown are Boostable (terrain applied); the cap acts on Base PP, which each
+    # cell's tooltip states with what the cap takes
+    bodies = editor.locator(".editor-base-pp-cell[data-group-id='worker'][data-tip-body]").evaluate_all(
+        "els => els.map(el => el.getAttribute('data-tip-body'))"
+    )
+    rendered = [_base_after_cap(body) for body in bodies]
     raw = [40_000.0, 32_941.176, 25_000.0, 1_500.0, 2_200.0]
-    assert sum(rendered) == pytest.approx(min(sum(raw), 100_000.0), abs=0.01)
+    assert len(rendered) == len(raw), bodies
+    assert sum(rendered) == pytest.approx(min(sum(raw), 100_000.0), abs=2)
     page.close()
 
 
 def test_g3_staged_worker_keeps_plot_terrain_in_tile_tooltip(live_browser: tuple[Browser, str]) -> None:
     """G3: a staged worker retains the plot terrain in its hover-only tile tooltip.
 
+    The worker tooltip is a structured list now; its terrain line names the plot's terrain
+    ("Forest: +10%").
     Injection: restore ``terrain_boost: null`` in ``mutateEditorSlot``. The staged tile
-    then loses the fixture's ``+10%`` terrain text and this assertion goes red.
+    then loses the fixture's ``+10%`` terrain line and this assertion goes red.
     """
     page = _page(live_browser)
     _install_plot_fixture(page, CASCADE_DEED_UID, _candidate(0.1))
@@ -383,13 +426,15 @@ def test_g3_staged_worker_keeps_plot_terrain_in_tile_tooltip(live_browser: tuple
     page.locator(".inline-picker:visible .candidate-row").first.click()
     staged = page.locator(".slot-editor:visible .slot-group[data-group-id='worker'] .slot-tile.is-staged").first
     staged.wait_for(timeout=30_000)
-    assert "+10% terrain boost" in (staged.get_attribute("data-tip-body") or "")
+    assert f"{recording.OVERCAP.terrain}: +10%" in (staged.get_attribute("data-tip-body") or "")
     page.close()
 
 
 def test_g4_missing_terrain_is_named_and_never_faked_as_zero(live_browser: tuple[Browser, str]) -> None:
     """G4: a missing terrain value stays visibly not calculated, never a fake 0%.
 
+    The metric's caption is the plain "Terrain" label now; the reason moved to its tooltip
+    ("Terrain effect not reported").
     Injection: change the fixture candidate's missing ``terrain_boost`` to ``0.0``.
     The metric then incorrectly becomes ``0%`` and this assertion goes red.
     """
@@ -398,7 +443,9 @@ def test_g4_missing_terrain_is_named_and_never_faked_as_zero(live_browser: tuple
     _open_fixture_picker(page, CASCADE_DEED_UID)
     metric = page.locator(".inline-picker:visible .candidate-row").first.locator(".candidate-terrain")
     assert metric.locator("strong").inner_text() == "—"
-    assert metric.locator("small").inner_text() == "Terrain not calculated"
+    assert metric.locator("small").text_content() == "Terrain"
+    assert metric.get_attribute("data-tip") == "Terrain effect not reported"
+    assert (metric.get_attribute("data-tip-body") or "").startswith("No modifier is known for ")
     assert "0%" not in metric.inner_text()
     assert "isn't known" in (page.locator(".inline-picker:visible .candidate-row").first.get_attribute("aria-label") or "")
     page.close()

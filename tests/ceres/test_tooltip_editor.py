@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 import re
 from collections import Counter
 
@@ -24,6 +25,9 @@ def _open_editor(page, base_url: str, plot: str) -> None:
         raise AssertionError(f"Rendered plot rows did not include {plot!r}: {rendered_rows[:20]!r}")
     row.click()
     page.locator(".slot-editor").first.wait_for(timeout=10_000)
+    # The band is rendered first in a `preparing` state (tiles, controls and footer arrive
+    # with the plot's data); the tooltips under test exist once it reports `ready`.
+    page.locator(".editor-band[data-plot-state='ready']").first.wait_for(timeout=30_000)
 
 
 def _open_editor_with_worker(page, base_url: str):
@@ -36,6 +40,7 @@ def _open_editor_with_worker(page, base_url: str):
         editor = page.locator("tr.expand-row").nth(index).locator(".slot-editor")
         try:
             editor.wait_for(timeout=30_000)
+            editor.locator(".editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
         except PlaywrightTimeoutError:
             row.click()
             continue
@@ -78,33 +83,44 @@ def editor_page():
 
 
 def test_occupied_worker_tooltips_have_one_nonduplicated_key(editor_page):
-    # INJECTION: duplicate data-tip-key or copying the key into data-tip-body.
+    """Occupied worker tiles carry one structured worker tooltip with no duplicated headline.
+
+    The worker tooltip moved to the structured worker layout (`data-tip-layout="worker"`):
+    identity and level lines in the head, then one Production list whose first row is the
+    card's Base PP. The old one-line `data-tip-key` headline went with it, so the guard is
+    that the Base PP line appears exactly once and the level line is not repeated below.
+    INJECTION: copying the level into the body, or duplicating the Base PP row.
+    """
     page, base_url = editor_page
     _open_editor(page, base_url, PLOT_WITH_RUNI)
-    tiles = page.locator('.slot-group[data-group-id="worker"] .slot-tile').filter(
+    # worker cards only: the Power Core, totem and title tiles share the group's row
+    tiles = page.locator('.slot-group[data-group-id="worker"] .slot-tile[data-group-id="worker"]').filter(
         has=page.locator(".slot-remove")
     )
     assert tiles.count() > 0
     for index in range(tiles.count()):
         tile = tiles.nth(index)
-        assert tile.get_attribute("data-tip-key")
-        assert tile.get_attribute("data-tip-key").count("\n") == 0
+        assert tile.get_attribute("data-tip-layout") == "worker"
+        assert tile.get_attribute("data-tip-key") is None
+        level = tile.get_attribute("data-tip-level") or ""
+        assert level and level.count("\n") == 0
         assert tile.get_attribute("data-tip-foot") is None
-        key = tile.get_attribute("data-tip-key")
         body = tile.get_attribute("data-tip-body") or ""
-        if not body:
-            continue
-        assert body.count("Base PP") >= 1
+        assert body.count("Base PP") == 1, body
+        assert level not in body
 
 
 def test_remove_button_uses_explain_tooltip(editor_page):
-    # peer-group depth replaces the retired label-kind presentation.
+    # peer-group depth replaces the retired label-kind presentation. The control now says
+    # what it does ("Stage an unstake") and its body names the cooldown and that nothing
+    # is signed here (editor.js renderEditorTile; styleguide.js uses the same label).
     page, base_url = editor_page
     _open_editor(page, base_url, PLOT_WITH_RUNI)
     remove = page.locator('.slot-group[data-group-id="worker"] .slot-remove').first
-    assert remove.get_attribute("data-tip") == "Unstake from this slot"
+    assert remove.get_attribute("data-tip") == "Stage an unstake"
     assert remove.get_attribute("data-tip-kind") == "explain"
-    assert remove.get_attribute("data-tip-body") is None
+    assert remove.get_attribute("data-tip-body") == "Worker cards: 72-hour cooldown · signed only in Changes."
+    assert (remove.get_attribute("aria-label") or "").startswith("Stage an unstake")
 
 
 def test_add_buttons_distinguish_actionable_and_disabled_states(editor_page):
@@ -122,12 +138,18 @@ def test_add_buttons_distinguish_actionable_and_disabled_states(editor_page):
 
 
 def test_sole_holder_flag_explains_plot_scope(editor_page):
-    # INJECTION: replacing the row-41 sole-holder body or dropping its plot-wide warning.
+    """The plot-wide ability of the plot's sole holder states its plot scope.
+
+    The separate "Sole ability holder" flag was retired with the land-ability rename
+    (`sole_ability_holder` -> `land_ability_card`); the holder's plot-wide ability icon
+    (Toil and Kin, from the shared bloodlineAbilityTip() decoder) now carries the scope.
+    INJECTION: dropping the plot-wide sentence from bloodlineAbilityTip().
+    """
     page, base_url = editor_page
     _open_editor(page, base_url, PLOT_WITH_RUNI)
-    flag = page.locator(".slot-editor").locator("[data-tip=\"Sole ability holder\"]").first
-    assert flag.get_attribute("data-tip") == "Sole ability holder"
-    assert "every worker on this plot" in (flag.get_attribute("data-tip-body") or "")
+    flag = page.locator(".slot-editor").locator(".ability-icon[data-tip=\"Toil and Kin\"]").first
+    assert flag.get_attribute("data-tip") == "Toil and Kin"
+    assert (flag.get_attribute("data-tip-body") or "").endswith("Affects every worker on this plot.")
 
 
 def test_slot_editor_tooltips_have_no_banned_jargon(editor_page):
@@ -172,10 +194,10 @@ def test_slot_editor_tooltips_never_render_object_object(editor_page):
 
 
 def test_worker_tile_base_pp_matches_its_correlated_cell(editor_page):
-    """Worker tiles name the capped Base PP shown by their matching cell.
+    """Worker tiles name the capped Base PP that their matching cell is built from.
 
-    Injection: revert the worker key to ``occupant.base_pp``. A clipped worker
-    then disagrees with the cell carrying the same group and slot identity.
+    Injection: revert the worker tooltip's Base PP to ``occupant.base_pp``. A clipped
+    worker then disagrees with the cell carrying the same group and slot identity.
     """
     page, base_url = editor_page
     _open_editor(page, base_url, PLOT_WITH_RUNI)
@@ -186,9 +208,18 @@ def test_worker_tile_base_pp_matches_its_correlated_cell(editor_page):
         slot_index = tile.get_attribute("data-slot-index")
         cell = page.locator(f'.slot-editor .editor-base-pp-cell[data-group-id="{group_id}"][data-slot-index="{slot_index}"]')
         assert cell.count() == 1
-        tile_key = tile.get_attribute("data-tip-key") or ""
-        assert tile_key.startswith("Base PP ")
-        assert tile_key.removeprefix("Base PP ") == cell.get_attribute("data-tip-key")
+        # The tile's worker tooltip opens its Production list with "Base PP: <after cap>"
+        # (plus "(capped from <raw>)" when clipped); the footer cell shows Boostable PP and
+        # states the card's Base PP and what the cap takes. Both must name the same capped
+        # Base PP.
+        tile_base = re.match(r"Base PP: ([\d,]+)", tile.get_attribute("data-tip-body") or "")
+        assert tile_base, tile.get_attribute("data-tip-body")
+        cell_body = cell.get_attribute("data-tip-body") or ""
+        raw = re.match(r"([\d,]+) Base PP", cell_body)
+        assert raw, cell_body
+        taken = re.search(r"cap takes ([\d,]+)", cell_body)
+        after_cap = int(raw.group(1).replace(",", "")) - (int(taken.group(1).replace(",", "")) if taken else 0)
+        assert int(tile_base.group(1).replace(",", "")) == after_cap, (tile_base.group(0), cell_body)
 
 
 def test_base_pp_cell_tooltips_do_not_use_picker_label(editor_page):
@@ -222,7 +253,9 @@ def test_base_pp_tooltip_fragments_are_terminated_sentences(editor_page):
     """
     page, base_url = editor_page
     _open_editor(page, base_url, PLOT_WITH_RUNI)
-    bodies = page.locator('.slot-editor .editor-base-pp-cell[data-tip-body]').evaluate_all(
+    # worker cells carry the terrain/construction prose; the totem/title cells beside them
+    # carry a one-line boost ("+100% production for this plot")
+    bodies = page.locator('.slot-editor .editor-base-pp-cell[data-group-id="worker"][data-tip-body]').evaluate_all(
         "els => els.map(el => el.getAttribute('data-tip-body')).filter(Boolean)"
     )
     for body in bodies:
@@ -282,16 +315,19 @@ def test_worksite_modal_keyboard_focus_still_opens_tooltip(editor_page):
 
 
 def test_worker_tile_tooltip_lists_the_pp_chain(editor_page):
-    """The worker tile exposes the rendered Base PP-to-total chain."""
+    """The worker tile exposes the rendered Base PP-to-total chain.
+
+    The worker tooltip's Production list carries the chain in order: "Base PP" (after the
+    plot cap, "(capped from <raw>)" when the cap took some), then "Boostable" (terrain
+    applied), then "Total" (every boost applied)."""
     page, base_url = editor_page
     tile = _open_editor_with_worker(page, base_url)
-    key = tile.get_attribute("data-tip-key") or ""
-    expected_base_pp = key.removeprefix("Base PP ")
+    items = json.loads(tile.get_attribute("data-tip-items") or "[]")
+    names = [item["name"] for item in items]
+    assert names[:3] == ["Base PP", "Boostable", "Total"], names
+    assert all(re.match(r"[\d,]+", item["effect"]) for item in items[:3]), items[:3]
     body = tile.get_attribute("data-tip-body") or ""
-    assert expected_base_pp and f"Base PP {expected_base_pp}" in body
-    assert "After cap" in body
-    assert "Boostable" in body
-    assert "Total PP" in body
+    assert body.startswith(f"Base PP: {items[0]['effect']}"), body
 
 
 def test_worksite_resource_tooltip_names_worksite(editor_page):
@@ -302,13 +338,18 @@ def test_worksite_resource_tooltip_names_worksite(editor_page):
     """
     page, base_url = editor_page
     _open_editor(page, base_url, PLOT_WITH_RUNI)
-    icons = page.locator(".resource-cell img.resource-icon")
+    # a worksite under construction shares its build marker's tooltip ("<worksite> building");
+    # the icons that carry their own tooltip are the built worksites'
+    icons = page.locator(".resource-cell img.resource-icon[data-tip]")
     if icons.count() == 0:
         pytest.skip("No built worksite resource icon rendered on the supplied plots")
     for index in range(icons.count()):
         icon = icons.nth(index)
         assert icon.get_attribute("data-tip")
-        assert icon.get_attribute("data-tip-body") == icon.get_attribute("alt")
+        # the body now reads "Produces <resource icon><Resource>"; without the inline icon
+        # token it names the same resource as the image's alt text
+        body = re.sub(r"\{\{ic:[^}]+\}\}", "", icon.get_attribute("data-tip-body") or "")
+        assert body == f"Produces {icon.get_attribute('alt')}"
         assert icon.get_attribute("data-tip") != icon.get_attribute("data-tip-body")
 
 
