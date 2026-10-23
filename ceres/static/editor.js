@@ -1619,7 +1619,8 @@ function renderChangeBadges(basePpEstimate, harvestDelta, stagedCount, stageTota
   // change in brackets -- a plot has one Base PP; the old separate "Base +X" badge said the same change twice.
   if (stageTotal?.estimate?.status === 'point') {
     const change = stageTotal.effectiveAfter - stageTotal.effectiveNow;
-    const cls = change < 0 ? 'is-negative' : 'is-positive';
+    // A move the cap fully absorbs changes nothing: no gain or loss frame.
+    const cls = change < 0 ? 'is-negative' : change > 0 ? 'is-positive' : 'is-neutral';
     const cap = stageTotal.loss > 0
       ? ` <span class="change-badge-cap">· cap <strong>−${num(stageTotal.loss)}</strong></span>`
       : '';
