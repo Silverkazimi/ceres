@@ -355,11 +355,10 @@ function applyScene(session) {
     art.style.setProperty('--art-r', geometry.r);
     art.style.setProperty('--art-ratio', geometry.ratio);
   }
-  frame.querySelectorAll(SCENE_BADGES).forEach((badges) => {
+  [...(frame.querySelectorAll?.(SCENE_BADGES) || [])].forEach((badges) => {
     badges.inert = !session.sceneReleased;
     badges.setAttribute('aria-hidden', String(!session.sceneReleased));
-    // `visible`, not '': the badges show while their row still hides its gated controls.
-    badges.style.visibility = session.sceneReleased ? 'visible' : 'hidden';
+    badges.style.visibility = session.sceneReleased ? '' : 'hidden';
   });
   const veil = frame.querySelector('.eos-scenic-veil');
   if (veil) veil.hidden = true;
