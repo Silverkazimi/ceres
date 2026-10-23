@@ -58,6 +58,9 @@ import pytest
 from playwright.sync_api import Browser, Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
+from .fixture_live import install_routes
+from .conftest import LIVE_FIXTURES
+
 from .conftest import settle, spawn_live_ceres, wait_ready
 
 
@@ -124,7 +127,17 @@ def _launch(live_server, width: int, height: int, dpr: float):
     context = browser.new_context(
         viewport={"width": width, "height": height},
         device_scale_factor=dpr,
+        service_workers="block",
+        reduced_motion="reduce",
     )
+    # This browser is launched here (headless choice above), not by the shared
+    # offline launcher, so give its context the same offline routing the shared
+    # browser's contexts get (conftest._offline_browser): upstream calls from the
+    # fixture set, art the checkout lacks from a placeholder, nothing else, inert
+    # WebSockets. Without it, every missing art image renders as a broken image
+    # with its alt text and widens its column (Title, Harvest/hr).
+    install_routes(context, LIVE_FIXTURES, overlays=["browser-combine"])
+    context.route_web_socket("**/*", lambda ws: None)
     context.add_init_script(_CLASSIC_SCROLLBAR_INIT)
     context.add_init_script("try { localStorage.setItem('ceres:picker-view:v1:player0005', 'grid'); } catch (e) {}")
     page = context.new_page()
