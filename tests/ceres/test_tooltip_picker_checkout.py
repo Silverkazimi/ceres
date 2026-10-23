@@ -174,8 +174,9 @@ def test_transaction_guard_copy_is_identical(live_browser: tuple[Browser, str]) 
             pytest.skip("No reachable open worker slot exists for a browser-only staged transaction")
         page.locator("#checkout-btn").click()
         panel = page.locator("#checkout-panel")
-        panel.locator("button[data-checkout-action='prepare']").click()
-        panel.locator(".op-preview-review").wait_for(timeout=30_000)
+        # The Changes panel prepares its review on open (no Prepare button any more) and
+        # signs from the one Sign button in its footer.
+        panel.locator(".op-preview-review:not([aria-busy='true'])").wait_for(timeout=30_000)
         panel.locator("button[data-op-action='confirm']").click()
         expected = "Finish the current transaction first"
         page.wait_for_function(

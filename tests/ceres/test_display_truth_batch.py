@@ -513,6 +513,10 @@ def test_g4b_neutral_candidate_is_zero_terrain_point_at_ceres_boundary() -> None
 def test_g6_operation_review_uses_ops_disclosure_and_keeps_json(live_browser: tuple[Browser, str]) -> None:
     """G6: the operation-review disclosure has the operations class and still exposes JSON.
 
+    The Changes panel no longer has a Prepare button: opening it prepares the review by
+    itself (checkout.js requests the portfolio preview on open) and shows the compact
+    review, whose "Show Hive operations" disclosure (`details.op-c-details`) lists the
+    operations and nests the raw transaction JSON.
     Injection: restore any ``op-review-raw`` class or one of the four banned synonym
     strings at its named site. The class/word assertions go red while the disclosure
     remains a real browser interaction rather than a source-text check.
@@ -535,12 +539,12 @@ def test_g6_operation_review_uses_ops_disclosure_and_keeps_json(live_browser: tu
     )
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
-    review = panel.locator(".op-preview-review")
+    review = panel.locator(".op-preview-review:not([aria-busy='true'])")
     review.wait_for(timeout=30_000)
-    disclosure = review.locator("details.op-review-ops")
+    disclosure = review.locator("details.op-c-details")
     assert disclosure.count() == 1
-    disclosure.click()
+    disclosure.locator(":scope > summary").click()
+    disclosure.locator("details.op-c-raw > summary").click()
     disclosure_json = disclosure.locator("pre").inner_text()
     assert '"custom_json"' in disclosure_json
     assert "display-truth-worker" in disclosure_json
