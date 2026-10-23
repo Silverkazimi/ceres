@@ -83,13 +83,16 @@ def test_named_placeholder_appears_when_no_card_art_candidate_resolves(live_brow
             lambda route: route.fulfill(status=403, content_type="application/xml", body=NO_SUCH_KEY),
         )
     _render_card_art(page, base_url, HARKLAW)
+    # The named placeholder (renderCardImageFallback, static/editor.js): the card's name and a
+    # "no image" marker, read together as "Harklaw — no image".
     page.wait_for_function(
-        """() => document.querySelector('#card-art-guard .combine-arrival-art-fallback')?.textContent === 'Harklaw — no image'""",
+        """() => document.querySelector('#card-art-guard .card-art-fallback')?.getAttribute('aria-label') === 'Harklaw — no image'""",
         timeout=10_000,
     )
-    placeholder = page.locator("#card-art-guard .combine-arrival-art-fallback")
+    placeholder = page.locator("#card-art-guard .card-art-fallback")
     assert placeholder.is_visible()
-    assert placeholder.inner_text() == "Harklaw — no image"
+    assert placeholder.locator(".card-art-fallback-name").inner_text() == "Harklaw"
+    assert placeholder.locator(".card-art-fallback-marker").inner_text() == "no image"
     assert page.eval_on_selector("#card-art-guard img", "image => image.complete && image.naturalWidth === 0") is True
     page.close()
 
