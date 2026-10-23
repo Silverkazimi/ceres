@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -179,7 +180,7 @@ def test_bloodline_picker_reaches_server_with_sub_type_and_staged_metadata_survi
 
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
     page.route(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*", fulfill_candidates)
@@ -281,7 +282,7 @@ def test_bloodline_pair_break_removal_notice_reopens_a_working_companion_picker(
 
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
     page.route(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/removal-impact*", lambda route: route.fulfill(
