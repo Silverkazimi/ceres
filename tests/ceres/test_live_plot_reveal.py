@@ -108,8 +108,15 @@ PROBE = r"""(() => {
 
 def _payload(report, details_by_id, *, count=80, capacity=5, no_art=False, long=False):
     board = project_board(report, details_by_id)
-    template = next(row for row in board["plots"] if row["workers"])
-    worker = copy.deepcopy(template["workers"][0])
+    # A plain powered worker plot. The fixture report's worker plots are Runi plots whose
+    # slot-0 card is the Runi (card_detail_id 505): every Eos worker cloned from that card
+    # would be a Runi to the product (format.js isRuniWorker) and fill the Runi tile, and
+    # the template's staked Runi would add a Runi occupant. Clone a non-Runi worker and
+    # leave the Runi unstaked; power comes from the Power Core set below.
+    def _runi(worker):
+        return worker.get("runi_number") not in (None, "") or worker.get("card_detail_id") == 505 or str(worker.get("card_name") or worker.get("name") or "").strip().lower() == "runi"
+    template = next(row for row in board["plots"] if any(not _runi(worker) for worker in row["workers"]))
+    worker = copy.deepcopy(next(worker for worker in template["workers"] if not _runi(worker)))
     plots = []
     for index in range(count):
         row = copy.deepcopy(template)
@@ -120,7 +127,7 @@ def _payload(report, details_by_id, *, count=80, capacity=5, no_art=False, long=
         row["resource"] = "grain"
         row["plot_status"] = "natural"
         row["assets_loaded"] = True
-        row["capacity"].update(potential_card_capacity=capacity, display=f"{capacity}/{capacity}")
+        row["capacity"].update(potential_card_capacity=capacity, display=f"{capacity}/{capacity}", runi_staked=False, worker_count=capacity)
         row["workers"] = []
         row["bonus"] = {
             "power_core":{"name":"Power Core","asset_ref":f"power-{index}"},
@@ -128,6 +135,7 @@ def _payload(report, details_by_id, *, count=80, capacity=5, no_art=False, long=
             "title":{"name":"The Untamed","asset_ref":f"title-{index}","boost":0.1},
         }
         row.setdefault("staking_facts", {})["is_power_core_staked"] = True
+        row["staking_facts"]["is_runi_staked"] = False
         for slot in range(capacity):
             item = copy.deepcopy(worker)
             item.update(slot=slot + 1, name=f"Eos Worker {slot + 1}", card_name=f"Eos Worker {slot + 1}",
@@ -307,20 +315,26 @@ class EosBrowser:
         THE FIX MUST NOT BE TO OPEN THE GATES. That would make nineteen guards pass by
         removing the condition they test — verification theatre by construction.
 
-        Ceres ships NO web fonts: no `@font-face`, no remote font stylesheet, no `.woff`
-        anywhere under `ceres/`, and the page reports `document.fonts.size == 0`. So the
-        wait can never have anything to settle here, and skipping it costs no fidelity.
-
-        That assumption is CHECKED rather than asserted in a comment: if a web font is ever
-        added, `document.fonts.size` becomes non-zero and this falls back to the normal
-        screenshot, which waits. The bypass is self-limiting instead of permanent, and the
-        day a font arrives the guards go back to waiting for it rather than silently
-        capturing unstyled text.
+        Ceres now ships one local web face (badge-face.css, vendored Inter), so
+        `document.fonts.size` is no longer 0 and the old "no fonts, skip the wait" check
+        sent every capture back to `page.screenshot()` and its 30 s fonts timeout. The
+        no-unstyled-text property is kept per face instead: after a forced layout, every
+        face the page actually uses has left `unloaded`, and the capture first awaits each
+        such face's own `loaded` promise (a face that fails to load fails the guard). That
+        settles exactly the fonts on screen and never waits on the held document.
         """
         path = self.artifact / f"{name}.png"
-        if not await self.page.evaluate("() => document.fonts.size === 0"):
-            await self.page.screenshot(path=str(path))
-            return
+        # Ceres now ships one local web face (badge-face.css, vendored Inter). The
+        # no-unstyled-text property is kept per face instead of through
+        # `document.fonts.ready`: after a forced layout every face the page actually
+        # uses has left `unloaded`, so waiting on each such face's own `loaded`
+        # promise settles exactly the fonts on screen and never waits on the held
+        # document. A face that fails to load fails the guard.
+        await self.page.evaluate("""async () => {
+          document.body.getBoundingClientRect();
+          const used=[...document.fonts].filter(face=>face.status!=='unloaded');
+          await Promise.all(used.map(face=>face.loaded));
+        }""")
         if self._cdp is None:
             self._cdp = await self.page.context.new_cdp_session(self.page)
         shot = await self._cdp.send("Page.captureScreenshot", {"format": "png"})
