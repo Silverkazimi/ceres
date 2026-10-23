@@ -44,8 +44,8 @@ export function syncSortAriaState() {
 export function updateHeaderHeightVar() {
   const header = document.querySelector('header.board-header');
   if (!header) return;
-  const h = header.getBoundingClientRect().height; // V (no page zoom)
-  if (h > 0) document.documentElement.style.setProperty('--ceres-header-height', `${h}px`);
+  const h = header.getBoundingClientRect().height; // V
+  if (h > 0) document.documentElement.style.setProperty('--ceres-header-height', `${h}px`); // V
   // (maintainer: "the wallet and flag slider are still not sticky in their
   // respective rows") made `.controls-row` (the filter row) sticky too, at the
   // same `--ceres-header-height` offset the thead used to use alone -- MEASURED
@@ -61,10 +61,10 @@ export function updateHeaderHeightVar() {
   // only), so this naturally collapses back to just the header height there
   // where `#table-head-sticky` is hidden anyway and never reads this var.
   const controlsRow = document.querySelector('.controls-row');
-  const controlsRowHeight = controlsRow?.getBoundingClientRect().height; // V (no page zoom)
+  const controlsRowHeight = controlsRow?.getBoundingClientRect().height; // V
   if (h > 0) {
     const combined = h + (controlsRowHeight > 0 ? controlsRowHeight : 0);
-    document.documentElement.style.setProperty('--ceres-header-row-height', `${combined}px`);
+    document.documentElement.style.setProperty('--ceres-header-row-height', `${combined}px`); // V
   }
   // (badge-bar amendment). `--ceres-thead-height` drives `.badge-bar-head`'s
   // own `block-size` (ceres.css) -- reinstated by after 's measured
@@ -74,8 +74,8 @@ export function updateHeaderHeightVar() {
   // constant, for the same reason `--ceres-header-height` itself is measured and not
   // hardcoded.
   const thead = document.getElementById('table-head-sticky');
-  const theadHeight = thead?.getBoundingClientRect().height; // V (no page zoom)
-  if (theadHeight > 0) document.documentElement.style.setProperty('--ceres-thead-height', `${theadHeight}px`);
+  const theadHeight = thead?.getBoundingClientRect().height; // V
+  if (theadHeight > 0) document.documentElement.style.setProperty('--ceres-thead-height', `${theadHeight}px`); // V
 }
 
 // Wrapped badges make plot rows unequal. Measure mounted rows in one batch and
@@ -277,7 +277,7 @@ function rebuildRowOffsets() {
 
 function measureMountedRowHeights() {
   const table = document.getElementById('plot-table');
-  const width = table?.getBoundingClientRect().width || 0; // V (no page zoom)
+  const width = table?.getBoundingClientRect().width || 0; // V
   const font = table ? getComputedStyle(table).fontSize : '';
   let changed = width !== ROW_MEASUREMENT_WIDTH || font !== ROW_MEASUREMENT_FONT;
   if (changed) {
@@ -288,7 +288,7 @@ function measureMountedRowHeights() {
   }
   for (const [index, nodes] of MOUNTED_NODES) {
     const uid = CURRENT_ROWS[index]?.deed_uid;
-    const height = nodes[0]?.getBoundingClientRect().height || 0; // V (no page zoom)
+    const height = nodes[0]?.getBoundingClientRect().height || 0; // V
     if (!uid || height <= 0) continue;
     if (ROW_HEIGHT === null) ROW_HEIGHT = height;
     if (Math.abs((MEASURED_ROW_HEIGHTS.get(uid) || 0) - height) > 0.25) {
@@ -364,9 +364,9 @@ function tableWindow() {
   const total = CURRENT_ROWS.length;
   if (!table || !total) return [0, 0];
   if (total <= VIRTUALIZE_THRESHOLD) return [0, total];
-  const tableTop = table.getBoundingClientRect().top; // V (no page zoom)
-  const viewportStart = -tableTop;
-  const viewportEnd = (window.innerHeight || 600) - tableTop; // V (no page zoom)
+  const tableTop = table.getBoundingClientRect().top; // V
+  const viewportStart = -tableTop; // V
+  const viewportEnd = (window.innerHeight || 600) - tableTop; // V
   const rawStart = Math.max(0, indexAtOffset(viewportStart) - VIRTUAL_BUFFER_ROWS);
   const rawEnd = Math.min(total, indexAtOffset(viewportEnd) + VIRTUAL_BUFFER_ROWS + 1);
   // Quantize to VIRTUAL_WINDOW_BLOCK-row boundaries -- start rounds DOWN, end rounds
@@ -419,7 +419,7 @@ if (typeof window !== 'undefined') {
     if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) cancelPlotViewportLease();
   }, true);
   document.addEventListener('pointerdown', (event) => {
-    if (event.target === document.documentElement || event.clientX >= document.documentElement.clientWidth || event.target.closest('.slot-editor, .candidate-picker')) cancelPlotViewportLease(); // V (no page zoom)
+    if (event.target === document.documentElement || event.clientX >= document.documentElement.clientWidth || event.target.closest('.slot-editor, .candidate-picker')) cancelPlotViewportLease(); // V
   }, true);
 }
 
@@ -427,7 +427,7 @@ export function captureTableAnchor() {
   for (const [index, nodes] of MOUNTED_NODES) {
     const row = nodes[0];
     if (!row || !row.classList.contains('plot-row')) continue;
-    const rect = row.getBoundingClientRect(); // V (no page zoom)
+    const rect = row.getBoundingClientRect(); // V
     if (rect.bottom >= 0) return { uid: CURRENT_ROWS[index]?.deed_uid, top: rect.top, viewportEpoch };
   }
   return null;
@@ -437,7 +437,7 @@ function restoreTableAnchor(anchor) {
   if (!anchor?.uid || viewportLease || anchor.viewportEpoch !== viewportEpoch) return;
   const row = document.querySelector(`tr.plot-row[data-deed-uid="${CSS.escape(anchor.uid)}"]`);
   if (!row) return;
-  const delta = row.getBoundingClientRect().top - anchor.top; // V (no page zoom)
+  const delta = row.getBoundingClientRect().top - anchor.top; // V
   if (Math.abs(delta) > 0.5) window.scrollBy(0, delta);
 }
 
@@ -447,14 +447,14 @@ function restoreTableAnchor(anchor) {
 // Callers: the plot open (eos.js centreReservedPlot), the picker (picker-actions.js), scrollPlotAfterSlotAdd and
 // revealPlotRow below.
 export function plotHeaderLine() {
-  return Math.max(0, ...['header.board-header', '#table-head-sticky'].map((selector) => document.querySelector(selector)?.getBoundingClientRect().bottom || 0)); // V (no page zoom)
+  return Math.max(0, ...['header.board-header', '#table-head-sticky'].map((selector) => document.querySelector(selector)?.getBoundingClientRect().bottom || 0)); // V
 }
 export function plotRowScrollGoal(deedUid) {
   const row = document.querySelector(`tr.plot-row[data-deed-uid="${CSS.escape(deedUid)}"]`);
   const index = CURRENT_INDEX_BY_UID.get(deedUid);
   const table = document.getElementById('plot-table');
-  const top = row ? row.getBoundingClientRect().top : index !== undefined && table ? table.getBoundingClientRect().top + rowOffset(index) : null; // V (no page zoom)
-  return top === null ? null : Math.max(0, window.scrollY + top - plotHeaderLine()); // V (no page zoom)
+  const top = row ? row.getBoundingClientRect().top : index !== undefined && table ? table.getBoundingClientRect().top + rowOffset(index) : null; // V
+  return top === null ? null : Math.max(0, window.scrollY + top - plotHeaderLine()); // V
 }
 export function scrollPlotUnderHeader(deedUid, { animate = false, owner = null, onDone = null } = {}) {
   const done = () => { onDone?.(); };
@@ -462,13 +462,13 @@ export function scrollPlotUnderHeader(deedUid, { animate = false, owner = null, 
   const first = goal();
   if (first === null) { done(); return; }
   const reduced = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  if (!animate || reduced || Math.abs(first - window.scrollY) < 2) { // V (no page zoom)
+  if (!animate || reduced || Math.abs(first - window.scrollY) < 2) { // V
     cancelPlotViewportLease();
-    if (Math.abs(first - window.scrollY) > 0.5) window.scrollTo({ top: first, behavior: 'instant' }); // V (no page zoom)
+    if (Math.abs(first - window.scrollY) > 0.5) window.scrollTo({ top: first, behavior: 'instant' }); // V
     done();
     return;
   }
-  const from = window.scrollY; // V (no page zoom)
+  const from = window.scrollY; // V
   const lease = acquirePlotViewportLease(owner || { deedUid }, done); // cancelled by the user's own input -> done
   const start = performance.now();
   const step = (now) => {
@@ -528,7 +528,7 @@ export function refreshVirtualLayout(deedUid, anchor) {
     const nodes = MOUNTED_NODES.get(index);
     const expand = nodes && nodes[1];
     if (expand && EXPANDED_ROWS.has(deedUid) && expand.style.display !== 'none') {
-      const height = expand.getBoundingClientRect().height; // V (no page zoom)
+      const height = expand.getBoundingClientRect().height; // V
       if (height > 0) EXPANDED_HEIGHTS.set(deedUid, height);
     } else {
       EXPANDED_HEIGHTS.delete(deedUid);
@@ -545,7 +545,7 @@ function mountedExpandedHeightChanges() {
     const uid = CURRENT_ROWS[index]?.deed_uid;
     const expand = nodes[1];
     if (!uid || !expand || !EXPANDED_ROWS.has(uid) || expand.style.display === 'none') continue;
-    const height = expand.getBoundingClientRect().height; // V (no page zoom)
+    const height = expand.getBoundingClientRect().height; // V
     if (height > 0 && Math.abs((EXPANDED_HEIGHTS.get(uid) || 0) - height) > 0.5) {
       EXPANDED_HEIGHTS.set(uid, height);
       changed = true;
