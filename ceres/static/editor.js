@@ -1510,7 +1510,7 @@ function renderEditorGroup(row, group, bundledGroups = [], leadingHtml = '', pow
           const hasEnergizedBubble = workerHasEnergizedBubble(column.occupant, group.capacity);
           const tile = renderEditorTile(row, column.group, column.index, column.occupant, { cell: true, hasEnergizedBubble });
           const energizedBadge = group.capacity > 20 ? '' : renderEnergizedBadge(column.occupant);
-          return `<div class="slot-tile-cell eos-permanent-frame" data-eos-permanent-frame="" data-reveal-group="worker-${esc(column.occupant?.asset_ref || column.index)}" data-reveal-wave="${Math.min(3, order)}">${tile}${energizedBadge}${warningPills('worker', column.index)}</div>`;
+          return `<div class="slot-tile-cell eos-permanent-frame" data-eos-permanent-frame="" data-reveal-group="worker-${esc(column.occupant?.asset_ref || column.index)}" data-reveal-wave="${Math.min(3, order)}">${tile}${combineTileActionHtml(row, column.group, column.index, column.occupant)}${energizedBadge}${warningPills('worker', column.index)}</div>`;
         }
         if (column.kind === 'divider') return '<span class="slot-grid-divider" aria-hidden="true"></span>';
         if (column.kind === 'power') return `<div class="eos-permanent-frame" data-eos-permanent-frame="" data-reveal-group="power" data-reveal-wave="3">${leadingHtml}${warningPills(column.group?.id, 0)}</div>`;
