@@ -12,7 +12,7 @@ from collections import Counter
 
 import pytest
 
-from .test_live_plot_reveal import _browser, _payload
+from .test_live_plot_reveal import FAST_ART_RECOVERY, _browser, _payload
 from .vm_context import STATIC, read_entry_source
 
 
@@ -565,3 +565,38 @@ def test_live_art_scene_retry_recovers_stale_unavailable_record(report, details_
     except AssertionError:
         return
     raise AssertionError("the stranded scene retry mutation did not invalidate recovery")
+
+
+@pytest.mark.browser  # drives Chromium through test_live_plot_reveal._browser
+def test_live_art_final_portrait_timeout_freezes_to_named_fallback(report, details_by_id, tmp_path):
+    """Portraits whose requests never answer must end as the named fallback.
+
+    Every portrait request is held for good (its gate is never released) while the scene,
+    the detail and the upgrade read answer. Each attempt then times out; after the last one
+    of the bounded schedule (run scaled 1/50) the art is frozen, and the plot must settle --
+    degraded, every worker shown by name under "Art unavailable", nothing left pending.
+    Before the fix the last timeout only froze the record: the tile stayed deferred, the
+    aperture pending, and the band "Preparing worker art…" forever."""
+    board, details = _payload(report, details_by_id, count=9, capacity=5)
+
+    async def run():
+        async with _browser(board, details, tmp_path / "final-timeout", mutation=FAST_ART_RECOVERY) as fixture:
+            fixture.release("scene", "detail", "upgrade")
+            await fixture.open()
+            await fixture.terminal()
+            assert not fixture.gates["portrait"].is_set() and fixture.active > 0, "portrait requests are still held"
+            state = await fixture.module(
+                "eos",
+                "m => { const s = m.getPlotPresentation(arg); return {pending: s.pendingArt.size, failed: s.failedArt.size}; }",
+                "eos-0008",
+            )
+            assert state["pending"] == 0 and state["failed"] > 0, state
+            band = fixture.band()
+            assert await band.get_attribute("data-plot-state") == "degraded"
+            assert await band.locator(".eos-art-fallback").count() >= 5
+            assert not await band.locator("img[data-eos-managed][data-eos-outcome='deferred']").count()
+            text = await band.inner_text()
+            assert "Art unavailable" in text and "Eos Worker 1" in text
+            assert "unavailable" in (await band.locator('[role="status"]').inner_text()).lower()
+
+    asyncio.run(run())
