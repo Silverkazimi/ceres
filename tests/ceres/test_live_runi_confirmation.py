@@ -40,6 +40,12 @@ def _runi_plot(page: Page) -> tuple[int, str, dict]:
             row.click()
         expanded = page.locator("tr.expand-row").nth(index)
         expanded.locator(".slot-editor").wait_for(timeout=30_000)
+        # The editor first draws a loading skeleton (no power state yet) until the
+        # plot's details arrive.
+        page.wait_for_function(
+            f"!document.querySelectorAll('tr.expand-row')[{index}]?.querySelector('.slot-editor .slot-loading-spinner')",
+            timeout=30_000,
+        )
         # The Runi occupies the shared Power slot's large tile, not a group of its
         # own -- `both` and `runi-only` are the two states where it is staked.
         runi_tile = expanded.locator(
@@ -112,10 +118,18 @@ def _install_card_mocks(
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(fresh)),
     )
     page.evaluate(
-        """window.__runiKeychain = {callback: false, requestBroadcast: (account, operations, key, callback) => {
-          setTimeout(() => { window.__runiKeychain.callback = true; callback({success: true, result: {id: 'FAKE-RUNI-TX'}}); }, 25);
+        """deedUid => {
+        window.__runiKeychain = {callback: false, requestBroadcast: (account, operations, key, callback) => {
+          // the recording's worksite feed is signed in the same run; it gets its own id
+          const own = JSON.stringify(operations).includes(deedUid);
+          setTimeout(() => {
+            if (own) window.__runiKeychain.callback = true;
+            callback({success: true, result: {id: own ? 'FAKE-RUNI-TX' : 'FAKE-RUNI-OTHER-TX'}});
+          }, 25);
         }};
-        window.hive_keychain = window.__runiKeychain;"""
+        window.hive_keychain = window.__runiKeychain;
+        }""",
+        deed_uid,
     )
 
 
@@ -142,13 +156,14 @@ def test_runi_confirmation_controls_tile_notice_and_keychain_surface(
     checkout = page.locator("#checkout-btn")
     checkout.click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
     page.wait_for_function("window.__runiKeychain.callback === true")
     page.wait_for_function(
+        # Signing the last transaction closes Changes (the Changes button itself stays for
+        # the recording's running worksite constructions).
         "document.querySelector('#checkout-panel button[data-op-action=confirm]')?.hidden === true"
-        " || document.querySelector('#checkout-btn')?.hidden === true",
+        " || !document.querySelector('#checkout-panel')?.checkVisibility()",
         timeout=30_000,
     )
 
@@ -157,7 +172,8 @@ def test_runi_confirmation_controls_tile_notice_and_keychain_surface(
             "document.querySelector('#checkout-btn')?.hidden === false && document.querySelector('.slot-tile.is-pending-removal')",
             timeout=30_000,
         )
-        assert page.locator("#ceres-confirmation-banner").count() == 0
+        # A pending verdict may show a "sent"/"awaiting" pill, never a confirmed one.
+        assert page.locator("#ceres-confirmation-banner.is-confirmed").count() == 0
     else:
         page.wait_for_function(
             "index => !document.querySelectorAll('tr.expand-row')[index]?.querySelector(\".slot-power .slot-power-large .slot-tile[data-group-id='runi'][data-occupied='1']\")",
@@ -187,23 +203,28 @@ def test_runi_not_applied_verdict_clears_in_flight_and_explains_re_stake(
 
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
+    # Not applied: the change is no longer in flight, so Changes offers signing again
+    # (the Runi removal is back to an ordinary, undoable staged change).
     page.wait_for_function(
         "document.querySelector('#checkout-btn')?.hidden === false && "
-        "document.querySelector('#checkout-panel .checkout-prepare')?.disabled === false",
+        "!!document.querySelector('.slot-tile.is-pending-removal')",
         timeout=30_000,
     )
+    if not panel.is_visible():
+        page.locator("#checkout-btn").click()
+    panel.locator(".ch-slot[data-group-id='runi'][data-checkout-action='strip-undo']").wait_for(timeout=30_000)
     banner = page.locator("#ceres-confirmation-banner")
     banner.wait_for(timeout=30_000)
     text = banner.inner_text()
     assert "landed on chain" in text
     assert "did not apply this change" in text
-    assert "Prepare and sign again" in text
-    assert page.locator("#checkout-panel .checkout-move-status").count() == 0
+    # the pill shortens its detail line; the full catalogue message is its title
+    assert "Prepare and sign again" in banner.locator(".worksite-banner-detail").get_attribute("title")
+    assert panel.locator(".ch-slot.is-in-flight").count() == 0
     assert page.evaluate(
-        "Object.keys(JSON.parse(localStorage.getItem('ceres:in-flight:v1:player0005') || '{\"records\":{}}').records).length"
+        "Object.keys(JSON.parse(localStorage.getItem('ceres:in-flight:v1:sample01') || '{\"records\":{}}').records).length"
     ) == 0
     page.close()
 
@@ -230,36 +251,50 @@ def test_below_floor_pending_keeps_one_broadcast_after_two_portfolio_confirms(
         "_http_rpc_call",
         lambda node, method, params: {"head_block_number": 119},
     )
+    # The below-floor read does not show the effect yet: the unstaked Runi is still on the
+    # plot (an empty read would prove the unstake and verify it as confirmed). The card uid
+    # is the one the signed operation names.
+    still_present: list[str] = []
     monkeypatch.setattr(
         capture_mod.MnemosyneEvidence,
         "assets",
-        lambda self, deed_uid: ResponseData({"status": "success", "data": {"cards": [], "items": []}}, "2026-09-05T00:00:00Z", 1),
+        lambda self, deed_uid: ResponseData({"status": "success", "data": {"cards": [{"uid": uid} for uid in still_present], "items": []}}, "2026-09-05T00:00:00Z", 1),
     )
     request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(ceres_config=config)))
 
     def _real_verify(route):
+        for operation in route.request.post_data_json.get("operations", []):
+            payload = json.loads(operation[1]["json"])
+            still_present.extend(card["card_uid"] for card in (payload.get("unstake") or {}).get("cards", []))
         result = op_verify(route.request.post_data_json, request, player="player0005")
         route.fulfill(status=200, content_type="application/json", body=result.body)
 
     page.route("**/api/op-verify*", _real_verify)
     page.evaluate(
-        """window.__floorBroadcastCount = 0;
+        """deedUid => {
+        window.__floorBroadcastCount = 0;
         window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
-          window.__floorBroadcastCount += 1;
-          callback({success: true, result: {id: 'FAKE-BELOW-FLOOR-TX'}});
-        }};"""
+          // only the Runi plot's own operation counts (the recording's worksite feed is signed in the same run)
+          const own = JSON.stringify(operations).includes(deedUid);
+          if (own) window.__floorBroadcastCount += 1;
+          callback({success: true, result: {id: own ? 'FAKE-BELOW-FLOOR-TX' : 'FAKE-BELOW-FLOOR-OTHER-TX'}});
+        }};
+        }""",
+        deed_uid,
     )
     _stage_runi_unstake(page, index)
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
-    page.wait_for_function("window.__floorBroadcastCount === 1 && document.querySelector('.checkout-move-status')", timeout=30_000)
+    page.wait_for_function("window.__floorBroadcastCount === 1 && CERES_STAGE.some((entry) => entry.txId)", timeout=30_000)
     settle(page)
     page.evaluate("confirmOperationBroadcast({scope: 'portfolio'})")
     assert page.evaluate("window.__floorBroadcastCount") == 1
-    entry = page.evaluate("({txId: CERES_STAGE[0]?.txId, broadcastAt: CERES_STAGE[0]?.broadcast_at})")
+    entry = page.evaluate(
+        "deedUid => { const staged = CERES_STAGE.find((item) => item.deed_uid === deedUid); return {txId: staged?.txId, broadcastAt: staged?.broadcast_at}; }",
+        deed_uid,
+    )
     assert entry["txId"] == "FAKE-BELOW-FLOOR-TX"
     assert entry["broadcastAt"]
     page.close()

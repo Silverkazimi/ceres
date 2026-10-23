@@ -37,6 +37,12 @@ def _expand(page: Page, index: int) -> None:
     if row.locator("xpath=following-sibling::tr[1]").evaluate("node => node.style.display") == "none":
         row.click()
     page.locator("tr.expand-row").nth(index).locator(".slot-editor").wait_for(timeout=30_000)
+    # The editor first draws a loading skeleton (view-only empty tiles with a spinner)
+    # until the plot's details arrive; only then are its empty slots real.
+    page.wait_for_function(
+        f"!document.querySelectorAll('tr.expand-row')[{index}]?.querySelector('.slot-editor .slot-loading-spinner')",
+        timeout=30_000,
+    )
 
 
 def _candidate_name(candidate) -> str:
@@ -55,7 +61,7 @@ def _stage_worker(page: Page, index: int, used_name: str | None = None) -> tuple
     worker = expanded.locator(".slot-group[data-group-id='worker']")
     if int(worker.locator(".slot-group-count").inner_text().split("/")[1]) == 0:
         raise AssertionError("selected plot has no worker capacity")
-    empty = worker.locator(".slot-grid .slot-tile.is-empty").first
+    empty = worker.locator(".slot-grid > .slot-tile-cell > .slot-tile.is-empty:not(.is-view-only)").first
     assert empty.count() == 1
     with page.expect_request("**/api/plots/*/candidates*"):
         empty.click()
@@ -147,8 +153,27 @@ def _stage_two_workers(page: Page) -> None:
     raise AssertionError("could not stage a second worker")
 
 
+def _verified_deed_uid(route) -> str | None:
+    """The deed a verify request is about: the first operation that names one. A Changes
+    batch can also carry operations without a deed field (e.g. a ready worksite feed)."""
+    for operation in route.request.post_data_json["operations"]:
+        try:
+            deed_uid = json.loads(operation[1]["json"]).get("deed_uid")
+        except (KeyError, TypeError, ValueError):
+            continue
+        if deed_uid:
+            return deed_uid
+    return None
+
+
 def _install_broadcast_probe(page: Page, reject_first: bool = False) -> None:
-    rejection = "callback({success: false, error: 'first chunk rejected'});" if reject_first else "callback({success: true, result: {id: txId}});"
+    # A stated wallet outcome ("canceled by the user") is a definite not-sent; an unclassified
+    # error string is treated as an unknown outcome by the broadcast gate (S10 / L2-01).
+    rejection = (
+        "callback({success: false, error: 'Request was canceled by the user.'});"
+        if reject_first
+        else "window.__ceresBroadcastEvents.push({type: 'callback', txId, at: performance.now()}); callback({success: true, result: {id: txId}});"
+    )
     page.add_init_script(
         f"""window.__ceresBroadcastEvents = [];
         let txNumber = 0;
@@ -197,21 +222,21 @@ def test_compact_review_keeps_signing_facts_visible(live_browser: tuple[Browser,
     _stage_two_workers(page)
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     review = panel.locator(".op-preview-review")
     review.wait_for(timeout=30_000)
 
-    assert review.locator(".op-review-chunk").count() == 2
-    assert review.locator(".op-review-chunk").nth(0).inner_text().startswith("Transaction 1 of 2")
-    assert review.locator(".op-review-chunk").nth(1).inner_text().startswith("Transaction 2 of 2")
-    assert review.locator(".op-review-op").count() == 8
-    assert review.locator(".op-review-auth").all_inner_texts() == ["Auth: Posting key"] * 8
-    review_text = review.inner_text()
-    assert "Unstake 1 card" in review_text
-    assert "Stake 1 card" in review_text
+    # The compact review lists one row per operation, each tagged with its transaction
+    # ("Tx 1" / "Tx 2") and its signing authority; the rows sit in a folded details.
+    operations = review.locator("ol.op-c-ops > li")
+    assert operations.count() == 8
+    assert [text.strip() for text in review.locator(".op-c-tx").all_text_contents()] == ["Tx 1"] * 4 + ["Tx 2"] * 4
+    assert [text.strip() for text in review.locator(".op-c-auth").all_text_contents()] == ["Posting key"] * 8
+    meanings = review.locator(".op-c-meaning").all_text_contents()
+    assert all("Unstake 1 card" in meaning for meaning in meanings), meanings
+    assert all("Stake 1 card" in meaning.replace("Unstake 1 card", "") for meaning in meanings), meanings
     assert "This removes the plot's only power source" in panel.inner_text()
     assert panel.locator('[data-notice-code="sole_power_source_removed"]').is_visible()
-    assert review.locator("details.op-review-ops").evaluate("element => element.open") is False
+    assert review.locator("details.op-c-details").evaluate("element => element.open") is False
     assert "sm_stake_change" in review.locator("pre").text_content()
     assert "CARD-1-0" in review.locator("pre").text_content()
 
@@ -249,15 +274,23 @@ def test_compact_review_keeps_refusal_reason_visible(live_browser: tuple[Browser
     _stage_two_workers(page)
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     review = panel.locator(".op-preview-review")
     review.wait_for(timeout=30_000)
-    assert "Preview refused" in review.inner_text()
+    assert "Cannot sign yet" in review.inner_text()
     assert "card is still in its 72-hour unstake cooldown" in review.inner_text()
     page.close()
 
 
-def test_chunk_broadcast_waits_for_previous_verification(live_browser: tuple[Browser, str]) -> None:
+def test_chunk_broadcasts_are_sequential_and_each_verified_once(live_browser: tuple[Browser, str]) -> None:
+    """A two-transaction batch opens one wallet request at a time: the second request
+    is only made after the first one's wallet callback returned, and each signed
+    transaction is verified exactly once, after its own broadcast.
+
+    The broadcast gate no longer puts a verification read between chunks that fit the
+    custom-operation budget ("the next wallet opens at once, with no validation read in
+    between", ceres/static/broadcast-gate.js); a batch that would exceed the budget waits
+    for on-chain inclusion instead. Verification runs after the signing loop.
+    """
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     _install_broadcast_probe(page)
@@ -268,15 +301,18 @@ def test_chunk_broadcast_waits_for_previous_verification(live_browser: tuple[Bro
 
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
     page.wait_for_function("window.__ceresBroadcastEvents?.filter((event) => event.type === 'verify-resolved').length === 2", timeout=30_000)
+    settle(page)
 
-    event_types = page.evaluate("window.__ceresBroadcastEvents.map((event) => event.type)")
-    assert event_types == ["broadcast", "verify-start", "verify-resolved", "broadcast", "verify-start", "verify-resolved"]
     events = page.evaluate("window.__ceresBroadcastEvents")
-    assert events[2]["at"] <= events[3]["at"]
+    sequence = [(event["type"], event["txId"]) for event in events]
+    assert sequence[:4] == [("broadcast", "FAKE-TX-1"), ("callback", "FAKE-TX-1"), ("broadcast", "FAKE-TX-2"), ("callback", "FAKE-TX-2")], sequence
+    assert [event for event in sequence if event[0] == "broadcast"] == [("broadcast", "FAKE-TX-1"), ("broadcast", "FAKE-TX-2")]
+    for tx_id in ("FAKE-TX-1", "FAKE-TX-2"):
+        assert sequence.count(("verify-start", tx_id)) == 1, sequence
+        assert sequence.index(("verify-start", tx_id)) > sequence.index(("callback", tx_id))
     page.close()
 
 
@@ -291,14 +327,20 @@ def test_rejected_first_chunk_aborts_remaining_broadcasts(live_browser: tuple[Br
 
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
-    page.wait_for_function("document.querySelectorAll('.op-state')[0]?.textContent.includes('Keychain rejected')", timeout=30_000)
-    page.wait_for_function("document.querySelectorAll('.op-state')[1]?.textContent.includes('not broadcast — aborted after chunk 1 failed')", timeout=30_000)
+    # The confirmation pill reports the stopped batch: its title is "Batch partially
+    # completed" only once a later transaction was marked aborted (markUnsentChunksAborted),
+    # and its detail carries the wallet's stated outcome for the first one.
+    banner = page.locator("#ceres-confirmation-banner")
+    page.wait_for_function(
+        "document.querySelector('#ceres-confirmation-banner .worksite-banner-title')?.textContent.includes('Batch partially completed')",
+        timeout=30_000,
+    )
+    assert "The wallet request was cancelled. This transaction was not sent." in banner.locator(".worksite-banner-detail").inner_text()
+    settle(page)
 
     assert page.evaluate("window.__ceresBroadcastEvents.filter((event) => event.type === 'broadcast').length") == 1
-    assert "not broadcast — aborted after chunk 1 failed" in panel.locator(".op-state").nth(1).inner_text()
     page.close()
 
 
@@ -326,12 +368,11 @@ def test_confirmed_broadcast_clears_the_stage(live_browser: tuple[Browser, str])
     )
 
     def _verify(route):
-        operation = route.request.post_data_json["operations"][0][1]
-        deed_uid = json.loads(operation["json"])["deed_uid"]
+        deed_uid = _verified_deed_uid(route)
         route.fulfill(
             status=200,
             content_type="application/json",
-            body=json.dumps({"state": "domain-confirmed", "refreshed_deeds": [deed_uid]}),
+            body=json.dumps({"state": "domain-confirmed", "refreshed_deeds": [deed_uid] if deed_uid else []}),
         )
 
     page.route(
@@ -353,10 +394,10 @@ def test_confirmed_broadcast_clears_the_stage(live_browser: tuple[Browser, str])
 
     checkout = page.locator("#checkout-btn")
     checkout.wait_for(timeout=15_000)
+    staged_count = int(page.locator("#checkout-count").text_content() or "0")
     checkout.click()
     panel = page.locator("#checkout-panel")
     panel.wait_for(timeout=15_000)
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
     # NOT waiting on `.op-state`'s own text here -- confirming clears the stage
@@ -366,12 +407,16 @@ def test_confirmed_broadcast_clears_the_stage(live_browser: tuple[Browser, str])
     # checkout button hiding IS the clear signal, and it is also the stronger
     # assertion: it proves the state actually reached CERES_STAGE, not just
     # that some text briefly appeared.
-    page.wait_for_function("document.getElementById('checkout-btn').hidden === true", timeout=30_000)
-
-    # The stage is empty and BOTH surfaces agree -- the checkout button hides
-    # (item 25's "connected to the checkout action" requirement) and the row's
-    # own hidden move-count reads 0.
+    # The Changes button no longer hides on an empty card stage: running worksite
+    # constructions on the board stay listed in Changes ("a running build still shows,
+    # as waiting"). The clear signal is the staged card move itself leaving BOTH
+    # surfaces -- the Changes count drops back and the row's move-count reads 0.
+    page.wait_for_function(
+        f"document.querySelectorAll('tr.expand-row')[{index}]?.querySelector('.slot-stage-summary b')?.textContent === '0'",
+        timeout=30_000,
+    )
     assert "0 moves staged" in page.locator("tr.expand-row").nth(index).inner_text()
+    assert int(page.locator("#checkout-count").text_content() or "0") < staged_count
     deed_uid = page.locator("#plot-tbody > tr.plot-row").nth(index).get_attribute("data-deed-uid")
     assert deed_uid
     assert any(url.split("?", 1)[0].rstrip("/") == f"{base_url}/api/plots/{deed_uid}" for url in plot_refresh_requests)
@@ -388,14 +433,23 @@ def test_pending_verification_rechecks_without_human_action(live_browser: tuple[
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(
+        # Changes also signs the recording's ready worksite feed in the same run; only
+        # the staged card change (sm_stake_change) is counted here.
         """window.__ceresBroadcastCount = 0;
+        let ceresCallNumber = 0;
         window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
-          window.__ceresBroadcastCount += 1;
-          callback({success: true, result: {id: 'FAKE-M8-TX'}});
+          const card = operations.some((operation) => operation[1]?.id === 'sm_stake_change');
+          if (card) window.__ceresBroadcastCount += 1;
+          callback({success: true, result: {id: `FAKE-M8-${card ? 'CARD' : 'OTHER'}-${++ceresCallNumber}`}});
         }};"""
     )
     verify_requests = []
-    page.on("request", lambda request: verify_requests.append(request) if "/api/op-verify" in request.url else None)
+    page.on(
+        "request",
+        lambda request: verify_requests.append(request)
+        if "/api/op-verify" in request.url and "FAKE-M8-CARD" in (request.post_data or "")
+        else None,
+    )
     page.route(
         "**/api/op-verify*",
         lambda route: route.fulfill(
@@ -418,12 +472,15 @@ def test_pending_verification_rechecks_without_human_action(live_browser: tuple[
     checkout = page.locator("#checkout-btn")
     checkout.click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
-    panel.locator(".op-state .ceres-notice[data-notice-code='verification_pending']").wait_for(timeout=30_000)
+    # The first verdict is pending; the per-chunk `.op-state` notice is not a stable
+    # signal in the Changes panel (the panel re-renders while signing), so wait on the
+    # request itself.
+    while len(verify_requests) < 1:
+        page.wait_for_event("request", lambda request: "/api/op-verify" in request.url and "FAKE-M8-CARD" in (request.post_data or ""), timeout=30_000)
     while len(verify_requests) < 2:  # the pending verdict schedules a second check
-        page.wait_for_event("request", lambda request: "/api/op-verify" in request.url, timeout=30_000)
+        page.wait_for_event("request", lambda request: "/api/op-verify" in request.url and "FAKE-M8-CARD" in (request.post_data or ""), timeout=30_000)
     settle(page)
     assert len(verify_requests) >= 2
     assert page.evaluate("window.__ceresBroadcastCount") == 1
@@ -440,10 +497,14 @@ def test_in_flight_marker_blocks_a_second_signature(live_browser: tuple[Browser,
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(
+        # Changes also signs the recording's ready worksite feed in the same run; only
+        # the staged card change (sm_stake_change) is counted here.
         """window.__ceresBroadcastCount = 0;
+        let ceresCallNumber = 0;
         window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
-          window.__ceresBroadcastCount += 1;
-          callback({success: true, result: {id: 'FAKE-M9-TX'}});
+          const card = operations.some((operation) => operation[1]?.id === 'sm_stake_change');
+          if (card) window.__ceresBroadcastCount += 1;
+          callback({success: true, result: {id: `FAKE-M9-${card ? 'CARD' : 'OTHER'}-${++ceresCallNumber}`}});
         }};"""
     )
     page.route(
@@ -463,20 +524,47 @@ def test_in_flight_marker_blocks_a_second_signature(live_browser: tuple[Browser,
     assert staged
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
-    marker = panel.locator(".checkout-move-status")
+    # The Changes panel shows the signed card move as an in-flight tile whose tip carries
+    # the in-flight copy, and the footer note gives the refusal for signing it again.
+    # Signing the last transaction closes Changes; reopen it to read the marker.
+    page.wait_for_function("window.__ceresBroadcastCount === 1", timeout=30_000)
+    settle(page)
+    if not panel.is_visible():
+        page.locator("#checkout-btn").click()
+    marker = panel.locator(".ch-slot.is-in-flight")
     marker.wait_for(timeout=30_000)
-    assert marker.text_content() == "Signed — waiting for the game to confirm."
-    assert panel.locator(".checkout-prepare").is_disabled()
+    assert marker.count() == 1
+    assert marker.get_attribute("data-tip-body") == "Signed — waiting for the game to confirm."
+    assert panel.locator(".ch-signing-note").inner_text() == "This change is already signed and waiting for the game to confirm."
+    sign = panel.locator(".hm-foot .hm-btn.is-primary")
+    assert sign.count() == 1 and sign.is_disabled()
     preview_requests = []
     page.on("request", lambda request: preview_requests.append(request) if "/api/op-preview" in request.url else None)
-    panel.locator(".checkout-prepare").evaluate("button => { button.disabled = false; button.click(); }")
+    # Force a second attempt through the panel's own delegated handlers: the old
+    # "Prepare transaction" action and the review's confirm action.
+    panel.evaluate(
+        """panel => {
+          const prepare = document.createElement('button');
+          prepare.type = 'button';
+          prepare.dataset.checkoutAction = 'prepare';
+          panel.append(prepare);
+          prepare.click();
+        }"""
+    )
     settle(page)
     assert not preview_requests
-    confirm = panel.locator("button[data-op-action='confirm']")
-    confirm.evaluate("button => { button.hidden = false; button.disabled = false; button.click(); }")
+    panel.evaluate(
+        """panel => {
+          const confirm = document.createElement('button');
+          confirm.type = 'button';
+          confirm.dataset.opAction = 'confirm';
+          confirm.dataset.previewScope = 'portfolio';
+          panel.append(confirm);
+          confirm.click();
+        }"""
+    )
     settle(page)
     assert page.evaluate("window.__ceresBroadcastCount") == 1
     page.close()
@@ -493,15 +581,14 @@ def test_refresh_errors_render_a_confirmed_terminal_state(live_browser: tuple[Br
     )
 
     def _verify(route):
-        operation = route.request.post_data_json["operations"][0][1]
-        deed_uid = json.loads(operation["json"])["deed_uid"]
+        deed_uid = _verified_deed_uid(route)
         route.fulfill(
             status=200,
             content_type="application/json",
             body=json.dumps({
                 "state": "domain-confirmed",
                 "refreshed_deeds": [],
-                "refresh_errors": [{"deed_uid": deed_uid, "error": "board refresh failed; retry later"}],
+                "refresh_errors": [{"deed_uid": deed_uid, "error": "board refresh failed; retry later"}] if deed_uid else [],
             }),
         )
 
@@ -519,14 +606,19 @@ def test_refresh_errors_render_a_confirmed_terminal_state(live_browser: tuple[Br
     assert staged
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
     banner = page.locator("#ceres-confirmation-banner")
     banner.wait_for(timeout=30_000)
-    assert banner.locator(".worksite-banner-title").inner_text() == "Confirmed in game"
-    assert banner.locator(".worksite-banner-detail").inner_text() == "The change is confirmed. This plot's numbers could not be updated automatically — press Refresh to see them."
-    assert page.locator("#checkout-btn").is_hidden()
+    page.wait_for_function("document.querySelector('#ceres-confirmation-banner')?.classList.contains('is-confirmed-stale')", timeout=30_000)
+    # One row: the catalogue message (verification_refresh_failed) already says it is confirmed;
+    # the pill's title is the message, shortened to fit, and its action re-reads the plot.
+    assert banner.locator(".worksite-banner-title").inner_text().strip().startswith("The change is confirmed.")
+    assert banner.locator("button[data-confirmation-action='refresh']").inner_text().strip() == "Re-read"
+    page.wait_for_function(
+        f"document.querySelectorAll('tr.expand-row')[{index}]?.querySelector('.slot-stage-summary b')?.textContent === '0'",
+        timeout=30_000,
+    )
     page.close()
 
 
@@ -558,19 +650,21 @@ def test_failed_broadcast_leaves_the_stage_intact(live_browser: tuple[Browser, s
 
     checkout = page.locator("#checkout-btn")
     checkout.wait_for(timeout=15_000)
+    staged_count = page.locator("#checkout-count").text_content()
     checkout.click()
     panel = page.locator("#checkout-panel")
     panel.wait_for(timeout=15_000)
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
+    # A stated cancellation is reported as "not sent" in the confirmation pill.
     page.wait_for_function(
-        "document.querySelector('.op-state')?.textContent.includes('Keychain rejected')", timeout=30_000
+        "document.querySelector('#ceres-confirmation-banner')?.textContent.includes('The wallet request was cancelled. This transaction was not sent.')",
+        timeout=30_000,
     )
 
-    # Stage is fully intact: checkout button still shows, count is still 1, and
+    # Stage is fully intact: checkout button still shows, its count is unchanged, and
     # the row still reports its staged move.
     assert checkout.is_visible()
-    assert checkout.inner_text().strip().endswith("1")
+    assert page.locator("#checkout-count").text_content() == staged_count
     assert "1</b> moves staged" in page.locator("tr.expand-row").nth(index).inner_html()
     page.close()
