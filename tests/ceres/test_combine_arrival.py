@@ -35,6 +35,7 @@ from typing import Any
 from playwright.sync_api import Page
 
 from .conftest import LIVE_PLAYER, settle, spawn_live_ceres, wait_for_board
+from .idle_pool import serve_idle_cards
 
 CARD_CDN_BASE = "https://d36mxiodymuqjm.cloudfront.net"
 # Mirrors ceres/static/app.js's own CARD_CDN_SET table (editions 0-21) -- kept in
@@ -112,29 +113,30 @@ def _expected_art_url(copy: dict) -> str:
 
 
 def _install_idle_cards_mock(page: Page, copies: list[dict]) -> None:
-    page.route(
-        "**/api/idle-cards*",
-        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"cards": copies})),
-    )
+    serve_idle_cards(page, copies)
 
 
-def _mock_combine_preview(page: Page, survivor_uid: str, destroyed_uids: list[str]) -> None:
-    body = json.dumps({
+def _mock_combine_preview(page: Page, survivor_uid: str, destroyed_uids: list[str]) -> dict:
+    preview = {
         "account": "player0005", "buildable": True,
         "predicted_survivor_uid": survivor_uid,
         "hazard": {"destroyed_uids": destroyed_uids},
         "observed_at": None,
-    })
+    }
+    body = json.dumps(preview)
     page.route(
         "**/api/combine/preview*",
         lambda route: route.fulfill(status=200, content_type="application/json", body=body),
     )
+    return preview
 
 
-def _mock_combine_build(page: Page) -> None:
+def _mock_combine_build(page: Page, preview: dict) -> None:
+    """The build answers with the operation and the preview it was built from; the dialog signs only when
+    that preview matches the one the player reviewed (`combineReviewMatches`, static/combine-dialog.js)."""
     body = json.dumps({"operation": ["custom_json", {
         "id": "sm_combine_cards", "json": "{}", "required_auths": [], "required_posting_auths": ["player0005"],
-    }]})
+    }], "preview": preview})
     page.route(
         "**/api/combine/build*",
         lambda route: route.fulfill(status=200, content_type="application/json", body=body),
@@ -201,8 +203,8 @@ def test_confirmed_verdict_renders_arrival_state() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, survivor["uid"], [consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, survivor["uid"], [consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-confirmed", "combine_refresh": None}])
             _open_dialog(page, base_url, row, worker)
@@ -238,8 +240,8 @@ def test_confirmed_survivor_art_renders_real_card_image() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, survivor["uid"], [consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, survivor["uid"], [consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-confirmed", "combine_refresh": None}])
             _open_dialog(page, base_url, row, worker)
@@ -271,8 +273,8 @@ def test_confirmed_survivor_skinned_art_renders_skin_path() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, survivor["uid"], [consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, survivor["uid"], [consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-confirmed", "combine_refresh": None}])
             _open_dialog(page, base_url, row, worker)
@@ -306,8 +308,8 @@ def test_destroyed_copies_render_as_cards_and_precede_the_survivor() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, survivor["uid"], [consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, survivor["uid"], [consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-confirmed", "combine_refresh": None}])
             _open_dialog(page, base_url, row, worker)
@@ -319,7 +321,10 @@ def test_destroyed_copies_render_as_cards_and_precede_the_survivor() -> None:
             card = body.locator(".combine-arrival-consumed-card")
             assert card.count() == 1
             assert card.locator(".combine-arrival-consumed-art").count() == 1
-            assert card.locator("code.combine-arrival-consumed-uid").inner_text() == consumed["uid"]
+            # The destroyed copy is identified by its name (and foil); its Card ID stays internal and never
+            # enters visible or accessible text (combineArrivalConsumedCardHtml, static/combine-dialog.js).
+            assert card.locator(".combine-arrival-consumed-name").text_content() == consumed["name"]
+            assert consumed["uid"] not in card.evaluate("el => el.outerHTML")
 
             order = body.evaluate(
                 "el => { const a = el.querySelector('.combine-arrival-consumed-row'); "
@@ -344,8 +349,8 @@ def test_headline_leads_the_confirmed_panel() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, survivor["uid"], [consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, survivor["uid"], [consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-confirmed", "combine_refresh": None}])
             _open_dialog(page, base_url, row, worker)
@@ -379,8 +384,8 @@ def test_pending_verdict_stays_optimistic_never_claims_confirmation() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, survivor["uid"], [consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, survivor["uid"], [consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-pending", "notices": []}])
             _open_dialog(page, base_url, row, worker)
@@ -420,8 +425,8 @@ def test_pending_verdict_schedules_and_counts_polls() -> None:
             # override at load time) so the test doesn't wait a real 3s/8s/...
             page.add_init_script("window.__ceresOperationPollSchedule = [300, 600, 900];")
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, survivor["uid"], [consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, survivor["uid"], [consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             requests = _mock_op_verify(page, [{"state": "domain-pending", "notices": []}])
             _open_dialog(page, base_url, row, worker)

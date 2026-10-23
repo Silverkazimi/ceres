@@ -16,8 +16,8 @@ THEMES = ("alchemical", "dark", "light", "wood")
 PALETTE = {
     "alchemical": ("#74c98b", "#cf5555", 2.0),
     "dark": ("#7bd59a", "#d45b62", 2.0),
-    "light": ("#2a804a", "#b52a38", 1.30),
-    "wood": ("#227a47", "#b32633", 1.25),
+    "light": ("#2a804a", "#b12937", 1.30),
+    "wood": ("#227a47", "#af2532", 1.25),
 }
 STATES = {"favoured", "penalised", "unchanged", "unknown"}
 MOUNTAIN = {"red": 0.1, "blue": -0.5, "green": -0.5, "white": None, "black": 0.1, "gold": 0}
@@ -72,8 +72,10 @@ def _collect(page):
       const rect = element => { const box = element.getBoundingClientRect(); return [box.x, box.y, box.width, box.height]; };
       const root = css(document.documentElement);
       const picker = document.querySelector('.inline-picker');
+      const row = document.querySelector('.slot-group-controls > .editor-splinter-affinity');
       return {
         rootSize: parseFloat(root.fontSize),
+        rowBlock: row ? parseFloat(css(row).minBlockSize) : null,
         bg: root.getPropertyValue('--bg').trim(), bg2: root.getPropertyValue('--bg2').trim(),
         heading: root.getPropertyValue('--heading').trim(), pickerBg: css(picker).backgroundColor,
         editorZ: css(document.querySelector('.editor-main')).zIndex,
@@ -113,6 +115,10 @@ def _set_view(page, theme, width=1920, root=16):
     page.evaluate("([theme, root]) => { document.documentElement.dataset.theme = theme; document.documentElement.style.fontSize = `${root}px`; }", [theme, root])
 
 
+def _layers(value):
+    return {layer.strip() for layer in value.split(",")}
+
+
 def _assert_contract(page, theme, baseline):
     observed = _collect(page)
     bonus, penalty, pair_floor = PALETTE[theme]
@@ -121,7 +127,11 @@ def _assert_contract(page, theme, baseline):
     assert _rgb(observed["pickerBg"]) == _rgb(observed["bg2"]), "PICKER_SURFACE"
     assert all(_rgb(host["bonus"]) == _rgb(bonus) and _rgb(host["penalty"]) == _rgb(penalty) for host in observed["hosts"]), "TOKEN_SCOPE_OR_THEME"
     assert int(observed["editorZ"]) < int(observed["veilZ"]), "LIFT_EDITOR: editor escaped reveal veil"
-    assert len(observed["badges"]) == 12 and {badge["state"] for badge in observed["badges"]} == STATES, "REAL_BOARD_STATES"
+    # six plot facts on the editor's splinter row; the picker's filter bar adds the Neutral chip
+    # (terrainAffinity.js: only the interactive 'picker' surface lists Neutral), so it carries seven.
+    surfaces = [badge["surface"] for badge in observed["badges"]]
+    assert (surfaces.count("editor-row"), surfaces.count("picker"), len(surfaces)) == (6, 7, 13), "REAL_BOARD_STATES"
+    assert {badge["state"] for badge in observed["badges"]} == STATES, "REAL_BOARD_STATES"
     signs = {badge["state"]: next(item for item in observed["badges"] if item["state"] == badge["state"]) for badge in observed["badges"]}
     assert _contrast(signs["favoured"]["color"], signs["penalised"]["color"]) >= pair_floor, "PAIR_SEPARATION"
     for badge in observed["badges"]:
@@ -129,7 +139,10 @@ def _assert_contract(page, theme, baseline):
         assert _rgb(badge["color"]) == _rgb(expected), f"COLOR:{theme}:{badge['state']}"
         assert _rgb(badge["disc"]) == _rgb(observed["bg"]), "THEMED_INNER_DISC"
         assert _rgb(badge["background"]) == _rgb(observed["bg"]), "BADGE_BACKGROUND"
-        assert badge["opacity"] == "1" and badge["size"] == [1.5 * observed["rootSize"]] * 2, "BADGE_FOOTPRINT"
+        # picker filter chips keep the base 1.5rem disc; the editor's splinter row scales the same
+        # disc to its controls row height (ceres.css `--eos-splinter-row-size`), rings kept in proportion.
+        size = 1.5 * observed["rootSize"] if badge["surface"] == "picker" else observed["rowBlock"]
+        assert badge["opacity"] == "1" and badge["size"] == pytest.approx([size] * 2, abs=.01), "BADGE_FOOTPRINT"
         assert badge["image"]["filter"] == "none" and badge["image"]["mask"] in ("none", ""), "ICON_FILTER_OR_MASK"
         assert badge["image"]["webkitMask"] in ("none", "") and badge["image"]["blend"] == "normal", "ICON_PRESENTATION"
         assert all(ancestor == {"filter": "none", "opacity": "1", "blend": "normal"} for ancestor in badge["ancestors"]), "ANCESTOR_EFFECT"
@@ -139,11 +152,14 @@ def _assert_contract(page, theme, baseline):
         if badge["state"] == "penalised":
             assert "repeating-conic-gradient" in badge["gradient"] and "40deg" in badge["gradient"] and "60deg" in badge["gradient"], "PENALTY_SIX_ARCS"
             assert badge["color"] in badge["gradient"], "PENALTY_GRADIENT_COLOR"
-            assert float(badge["padding"].removesuffix("px")) == pytest.approx(0.1875 * observed["rootSize"]), "PENALTY_RING_WIDTH"
-            assert badge["mask"].count("linear-gradient") == 2 and badge["composite"] == "exclude", "PENALTY_MASK"
-            assert badge["webkitMask"].count("linear-gradient") == 2 and badge["webkitComposite"] == "xor", "PENALTY_WEBKIT_MASK"
+            assert float(badge["padding"].removesuffix("px")) == pytest.approx(0.125 * size, abs=.01), "PENALTY_RING_WIDTH"
+            # Chromium serialises the composite once per mask layer ("exclude, exclude"), and now
+            # aliases -webkit-mask-composite to the standard property, so the legacy `xor` reads
+            # back as its standard equivalent `exclude`.
+            assert badge["mask"].count("linear-gradient") == 2 and _layers(badge["composite"]) == {"exclude"}, "PENALTY_MASK"
+            assert badge["webkitMask"].count("linear-gradient") == 2 and _layers(badge["webkitComposite"]) in ({"xor"}, {"exclude"}), "PENALTY_WEBKIT_MASK"
         else:
-            expected_width = f"{int(observed['rootSize'] * (0.1875 if badge['state'] == 'favoured' else 0.0625))}px"
+            expected_width = f"{int(size * (1 / 8 if badge['state'] == 'favoured' else 1 / 24))}px"
             assert badge["ringWidth"] == expected_width, f"RING_WIDTH:{badge['state']}"
             assert badge["ringStyle"] == ("dotted" if badge["state"] == "unknown" else "solid"), f"RING_STYLE:{badge['state']}"
             assert _rgb(badge["ringColor"]) == _rgb(expected), f"RING_COLOR:{badge['state']}"
@@ -154,7 +170,27 @@ def _page_for_guard(live_browser, row):
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
     _mount(page, base_url, row)
     _open(page)
+    _select_every_picker_splinter(page)
     return page
+
+
+UNSELECTED_CHIP = "[data-terrain-affinity='picker'] .terrain-affinity-badge:not(.is-selected)"
+
+
+def _select_every_picker_splinter(page):
+    # The picker's affinity run is now also its Splinter filter, seeded with the plot's bonus and
+    # neutral splinters (picker-actions.js seedSplinterSelection); unselected chips are greyed and
+    # faded on purpose (ceres.css `.picker-bar .terrain-affinity:has(.is-selected)`). Choose every
+    # chip through the real filter so the medallions show their own affinity paint, not the
+    # filter's selection dimming.
+    for _ in range(8):
+        remaining = page.locator(UNSELECTED_CHIP).count()
+        if not remaining:
+            break
+        page.locator(UNSELECTED_CHIP).first.click()
+        page.wait_for_function("([selector, count]) => document.querySelectorAll(selector).length < count", arg=[UNSELECTED_CHIP, remaining])
+    assert page.locator(UNSELECTED_CHIP).count() == 0, "every picker splinter chip selected"
+    page.wait_for_function("() => [...document.querySelectorAll('.picker-bar .terrain-affinity-badge')].every(el => getComputedStyle(el).opacity === '1')")
 
 
 def _neutral_baseline(page):
@@ -165,7 +201,12 @@ def _neutral_baseline(page):
 
 
 @pytest.mark.parametrize("theme", THEMES)
-@pytest.mark.parametrize("width,root", [(1920, 16), (1280, 20), (375, 16)])
+# The guarded surfaces (the desktop editor's splinter row and the inline worker picker) exist
+# only on the table tier: below 1280 effective px (window minus scrollbar, scaled by the root font
+# -- index.html's `ceres-lw-le-1279`) the board switches to the card list and the mobile plot sheet
+# (table.js isMobileBoardTier), which renders neither. Cover the narrowest table-tier width at 16px
+# and an enlarged 20px root at the same narrow effective width.
+@pytest.mark.parametrize("width,root", [(1920, 16), (1640, 20), (1300, 16)])
 def test_real_board_affinity_colour_contract(live_browser, real_board_row, theme, width, root):
     with closing(_page_for_guard(live_browser, real_board_row)) as page:
         _set_view(page, theme, width, root)
@@ -194,7 +235,9 @@ MUTATIONS = {
     "UNKNOWN_SOLID": '[data-affinity-state="unknown"]::before{border-style:solid!important}',
     "TINT_ICON": ".terrain-affinity-badge .splinter-icon{filter:grayscale(1)!important}",
     "ENLARGE_BADGE": ".terrain-affinity-badge{inline-size:2rem!important;block-size:2rem!important;flex-basis:2rem!important}",
-    "GROW_BAND": ".editor-band{--eos-band-height:20rem!important}",
+    # the desktop band is sized by the scene-scaled --eos-content-height (ceres.css), which
+    # wins over the old fixed --eos-band-height fallback, so the growth fault targets that token.
+    "GROW_BAND": ".editor-band{--eos-content-height:20rem!important}",
     "LIFT_EDITOR": ".editor-band>.editor-main{z-index:5!important}",
     "NEUTRAL_GREEN": '[data-affinity-state="unchanged"],[data-affinity-state="unknown"]{color:var(--affinity-bonus)!important}',
     "ANCESTOR_TINT": ".terrain-affinity{filter:grayscale(1)!important}",

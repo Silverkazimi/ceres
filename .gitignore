@@ -5,3 +5,12 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+# Game artwork Ceres downloads on first use from ceres/static/assets/sources.json (ceres/asset_sources.py);
+# never committed, and not a local change to the served release (tests/ceres/test_artwork_gitignore.py).
+/ceres/static/assets/land/
+/ceres/static/assets/rarity/
+/ceres/static/assets/resources/
+/ceres/static/assets/sets/
+/ceres/static/assets/splinter/
+/ceres/static/assets/titles/
+/ceres/static/assets/totems/

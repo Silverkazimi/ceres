@@ -7,7 +7,7 @@ Retired per  (source-string slicing is banned) and campaign §3.1 batch C
 row 6. Replaced with a route-mocked live board: `/api/board` is served a real
 129-plot snapshot with exactly one plot's `bonus.totem`/`bonus.title` swapped
 for each scenario's shape (`ceres/board.py::_bonus_for_plot`'s own output
-shape, by deed), and the assertion reads the rendered `.totem-title-cell` slot
+shape, by deed), and the assertion reads the rendered Totem (`td.totem-cell`) or Title (`td.title-cell`) slot
 icon's real `data-tip` attribute -- the same text `tipAttrs()`
 (app.js:532) puts there for `initTooltips()` to show on hover, not a
 source-string search.
@@ -22,7 +22,7 @@ never fires). Second named injection: in `bonusResolutionHtml()` (~line 2564),
 add a branch `if (bonus.resolution === 'resolved') return '<span class="bonus-resolution bonus-resolved" data-tip="Loaded from the staked asset.">Loaded</span>';`
 before the `conflict` check. Expected red:
 `test_resolved_asset_renders_no_pill_and_no_provenance_note` finds
-`bonus-resolution` and `Loaded` in the `.totem-title-cell` HTML it asserts absent.
+`bonus-resolution` and `Loaded` in the `td.totem-cell` HTML it asserts absent.
 """
 
 from __future__ import annotations
@@ -72,7 +72,10 @@ def _render_cell(page, base_url: str, board: dict, deed_uid: str, cell_selector:
     )
     cell = page.locator(f"tr.plot-row[data-deed-uid='{urllib.parse.quote(deed_uid, safe='')}'] {cell_selector}").first
     cell.wait_for(timeout=30_000)
-    icon = cell.locator("[data-tip]").first
+    # The Title cell owns its tooltip model on the <td> itself (rows.js titleTipAttrs, so both
+    # icons drive one tooltip); the Totem cell's icon carries its own. Take the cell's own
+    # tooltip when it has one, else its first tooltip-bearing icon (document order).
+    icon = cell.locator("xpath=self::*[@data-tip] | .//*[@data-tip]").first
     tip = icon.get_attribute("data-tip") or ""
     html = cell.evaluate("(el) => el.outerHTML")
     return tip, html
@@ -89,7 +92,7 @@ def test_known_bulk_totem_renders_name_and_derived_provenance(live_browser: tupl
     }
     board, deed_uid = _board_with_bonus(base_url, totem=totem)
     page = browser.new_page(viewport={"width": 1400, "height": 900})
-    tip, html = _render_cell(page, base_url, board, deed_uid, ".totem-title-cell .totem-slot")
+    tip, html = _render_cell(page, base_url, board, deed_uid, "td.totem-cell")
     page.close()
     assert "Common Totem Land" in tip
     assert "bonus-resolution" not in html
@@ -104,7 +107,7 @@ def test_known_bulk_title_renders_class_and_derived_provenance(live_browser: tup
     }
     board, deed_uid = _board_with_bonus(base_url, title=title)
     page = browser.new_page(viewport={"width": 1400, "height": 900})
-    tip, html = _render_cell(page, base_url, board, deed_uid, ".totem-title-cell .title-slot")
+    tip, html = _render_cell(page, base_url, board, deed_uid, "td.title-cell")
     page.close()
     assert "Legendary Title" in tip
     assert "bonus-resolution" not in html
@@ -119,10 +122,12 @@ def test_unknown_nonzero_boost_is_named_not_question_mark(live_browser: tuple[Br
     }
     board, deed_uid = _board_with_bonus(base_url, title=title)
     page = browser.new_page(viewport={"width": 1400, "height": 900})
-    tip, html = _render_cell(page, base_url, board, deed_uid, ".totem-title-cell .title-slot")
+    tip, html = _render_cell(page, base_url, board, deed_uid, "td.title-cell")
     page.close()
     assert "Title present — identity unknown" in tip
-    assert "Unknown" in html
+    # the unmatched tier is named in the cell's tooltip items (format.js titleTooltipModel;
+    # was the bare word "Unknown")
+    assert "Title tier unmatched" in html
     assert ">?<" not in html
 
 
@@ -135,7 +140,7 @@ def test_conflicting_asset_renders_visible_warning(live_browser: tuple[Browser, 
     }
     board, deed_uid = _board_with_bonus(base_url, totem=totem)
     page = browser.new_page(viewport={"width": 1400, "height": 900})
-    _tip, html = _render_cell(page, base_url, board, deed_uid, ".totem-title-cell .totem-slot")
+    _tip, html = _render_cell(page, base_url, board, deed_uid, "td.totem-cell")
     page.close()
     assert "Conflict" in html
     assert "data-tip" in html
@@ -155,7 +160,7 @@ def test_resolved_asset_renders_no_pill_and_no_provenance_note(live_browser: tup
     }
     board, deed_uid = _board_with_bonus(base_url, totem=totem)
     page = browser.new_page(viewport={"width": 1400, "height": 900})
-    tip, html = _render_cell(page, base_url, board, deed_uid, ".totem-title-cell .totem-slot")
+    tip, html = _render_cell(page, base_url, board, deed_uid, "td.totem-cell")
     page.close()
     assert "bonus-resolution" not in html
     assert "Loaded" not in html

@@ -82,6 +82,7 @@ def test_staged_add_undo_uses_checkout_path_and_live_opposite_direction_stages(
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
     page.locator(".slot-editor:visible").wait_for(timeout=30_000)
+    page.locator(".slot-editor:visible .editor-band[data-plot-state='ready']").wait_for(timeout=30_000)  # tiles drawn once the detail is read
     worker = page.locator(".slot-editor:visible .slot-group[data-group-id='worker']")
 
     removal_impact_requests: list[str] = []
@@ -138,11 +139,17 @@ def test_real_worker_undo_reannotates_solo_bloodline_holder(live_browser: tuple[
             deed_uid = row["deed_uid"]
             break
     assert deed_uid, "no live plot has two open worker slots to stage a synthetic bloodline pair into"
+    # The pair must be the only one of its Bloodline on the plot: a worker already staked there
+    # with the same sub_type would pair the holder on arrival (the recorded plot holds an Elf).
+    with urllib.request.urlopen(f"{base_url}/api/plots/{deed_uid}", timeout=10) as response:
+        plot_sub_types = {str(w.get("sub_type")) for w in json.loads(response.read().decode("utf-8")).get("workers", [])}
+    kin = next(name for name in ("Elf", "Dwarf", "Divine Construct", "Golem", "Dragon") if name not in plot_sub_types)
 
     page.goto(base_url)
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
     page.locator(".slot-editor:visible").wait_for(timeout=30_000)
+    page.locator(".slot-editor:visible .editor-band[data-plot-state='ready']").wait_for(timeout=30_000)  # tiles drawn once the detail is read
     worker = page.locator(".slot-editor:visible .slot-group[data-group-id='worker']")
 
     def stage_candidate(candidate: dict) -> None:
@@ -159,20 +166,23 @@ def test_real_worker_undo_reannotates_solo_bloodline_holder(live_browser: tuple[
         page.unroute(pattern)
 
     holder = {
-        "name": "HK Solo Holder", "base_pp": 2000, "level": 1, "bucket": "idle",
-        "land_abilities": [["BLOODLINE", 0.3, "Elf", {"active": False, "companions": []}]],
+        "name": "HK Solo Holder", "asset_ref": "hk-solo-holder", "base_pp": 2000, "level": 1, "bucket": "idle",
+        "land_abilities": [["BLOODLINE", 0.3, kin, {"active": False, "companions": []}]],
     }
     stage_candidate(holder)
     holder_tile = worker.locator(".slot-tile.is-staged").filter(has_text="HK Solo Holder")
     holder_tile.wait_for(timeout=30_000)
-    assert holder_tile.locator(".slot-bloodline-badge").inner_text().strip() == "SOLO"
+    # The tile's Toil & Kin pill (`.slot-kin-badge`, badges.js bloodlineTileBadgesHtml) replaced
+    # the caption's SOLO/PAIRED word badge; the state is its class and accessible name.
+    assert holder_tile.locator(".slot-kin-badge").get_attribute("aria-label") == "Toil & Kin: Solo"
 
-    companion = {"name": "HK Elf Companion", "base_pp": 2000, "level": 1, "bucket": "idle", "sub_type": "Elf", "land_abilities": []}
+    companion = {"name": "HK Elf Companion", "asset_ref": "hk-kin-companion", "base_pp": 2000, "level": 1, "bucket": "idle", "sub_type": kin, "land_abilities": []}
     stage_candidate(companion)
     companion_tile = worker.locator(".slot-tile.is-staged").filter(has_text="HK Elf Companion")
     companion_tile.wait_for(timeout=30_000)
     # Staging the companion re-annotates the holder live -- PAIRED now, no page reload.
-    assert holder_tile.locator(".slot-bloodline-badge").inner_text().strip() == "PAIRED"
+    assert "is-paired" in (holder_tile.locator(".slot-kin-badge").get_attribute("class") or "")
+    assert (holder_tile.locator(".slot-kin-badge").get_attribute("aria-label") or "").startswith("Toil & Kin +")
 
     companion_tile.hover()
     companion_tile.locator(".slot-remove").click()
@@ -180,5 +190,5 @@ def test_real_worker_undo_reannotates_solo_bloodline_holder(live_browser: tuple[
         "() => !Array.from(document.querySelectorAll('.slot-tile')).some((el) => el.textContent.includes('HK Elf Companion'))",
         timeout=30_000,
     )
-    assert holder_tile.locator(".slot-bloodline-badge").inner_text().strip() == "SOLO", "undoing the staged companion add must re-flip the holder back to SOLO"
+    assert holder_tile.locator(".slot-kin-badge").get_attribute("aria-label") == "Toil & Kin: Solo", "undoing the staged companion add must re-flip the holder back to SOLO"
     page.close()

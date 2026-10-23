@@ -9,7 +9,7 @@ ROWS_SOURCE = (STATIC / "rows.js").read_text(encoding="utf-8")
 ALIGN_SOURCE = (
     "function alignCloseAll()"
     + ROWS_SOURCE.split("export function alignCloseAll()", 1)[1].split(
-        "\n// : the plots the board shows right now", 1
+        "\n// the plots the board shows right now", 1
     )[0]
 )
 ALIGN_MODULE_SOURCE = read_entry_source(STATIC / "scale.js") + "\n" + ALIGN_SOURCE

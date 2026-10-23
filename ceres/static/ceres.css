@@ -4099,12 +4099,12 @@ body:has(#reload-banner:not([hidden])) header.board-header {
 [data-theme="light"] .terrain-affinity,
 [data-theme="light"] .terrain-affinity-scroll {
   --affinity-bonus: #2a804a;
-  --affinity-penalty: #b52a38;
+  --affinity-penalty: #b12937;
 }
 [data-theme="wood"] .terrain-affinity,
 [data-theme="wood"] .terrain-affinity-scroll {
   --affinity-bonus: #227a47;
-  --affinity-penalty: #b32633;
+  --affinity-penalty: #af2532;
 }
 .terrain-affinity-badge[data-affinity-state="favoured"] { color: var(--affinity-bonus); }
 .terrain-affinity-badge[data-affinity-state="penalised"] { color: var(--affinity-penalty); }
@@ -5182,7 +5182,7 @@ html.ceres-lw-le-1099 .ceres-pill, html.ceres-lw-le-1099 .worksite-banner { min-
 .worksite-completion { display: flex; align-items: center; gap: .9rem; margin: 0; padding: 0; }
 .worksite-completion-lead { margin: 0; color: var(--body); font-size: .95rem; }
 .worksite-completion-art { flex: 0 0 7.5rem; aspect-ratio: 1; width: auto; margin: 0; }
-.worksite-completion-art .worksite-tile-art { background-position: 49% 91%; background-size: 158% auto; }
+.worksite-completion-art .worksite-tile-art { aspect-ratio: 1; background-position: 49% 91%; background-size: 158% auto; }
 .worksite-modal-refusal { margin: 0; }
 
 /* One tile per legal worksite, the current one pinned first and visually
@@ -5356,7 +5356,9 @@ html.ceres-lw-le-960 {
 .eos-status { position: absolute; z-index: 4; inset: auto .8rem .2rem auto; display: flex; align-items: center; gap: .4rem; max-inline-size: calc(100% - 1.6rem); color: var(--heading); font-size: .72rem; }
 .eos-status-text:not(:empty) { background: var(--bg3); padding: .15rem .3rem; }
 .eos-status [hidden], .eos-scenic-veil[hidden], .eos-worker-cover[hidden] { display: none; }
-.editor-band[data-plot-state="preparing"] [data-reveal-group]:not([data-eos-permanent-frame]) { visibility: hidden; }
+/* the worker controls row is gated control by control: its leading splinter badges belong to the scene (eos.js applyScene). */
+.editor-band[data-plot-state="preparing"] [data-reveal-group]:not([data-eos-permanent-frame]):not(.slot-group-controls),
+.editor-band[data-plot-state="preparing"] .slot-group-controls[data-reveal-group] > :not(.editor-splinter-affinity) { visibility: hidden; }
 .editor-band[data-plot-state="preparing"] [data-terrain-affinity="editor"] { visibility: hidden; }
 .eos-art-fallback { display: flex; flex-direction: column; justify-content: center; padding: .4rem; background: linear-gradient(145deg, var(--bg3), var(--bg)); color: var(--heading); }
 @media (prefers-reduced-motion: reduce) {

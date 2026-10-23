@@ -1,0 +1,18 @@
+{
+ "trx_info": {
+  "block_id": "d51d79386951d67affbcda7892b64f8e7d9f360c",
+  "block_num": 99000789,
+  "created_date": "2026-10-12T10:30:03.000Z",
+  "data": "{\"op\":\"tax_collection\",\"region_uid\":\"PR-BRL-23\",\"deed_uids\":[\"I-293-e52629d336199c\"],\"auto_buy_grain\":false,\"resource_symbol\":\"\",\"app\":\"ceres/1.0.0\",\"n\":\"f4d9eb57c9\"}",
+  "error": null,
+  "id": "2856995cbfef6de651fed3646f7eeab8c45658d1-2",
+  "is_owner_auth": false,
+  "player": "sample01",
+  "prev_block_id": "08ab537117a97b9185c2479b766a21c5902d6bd5",
+  "result": "{\"success\":true,\"result\":{\"success\":true,\"data\":{\"results\":[{\"deed_uid\":\"I-293-e52629d336199c\",\"region_number\":23,\"kingdom_grain_cost\":1000.0,\"tokens\":{\"tokens\":[{\"token\":\"GRAIN\",\"received\":3721.62},{\"token\":\"WOOD\",\"received\":1488.648},{\"token\":\"STONE\",\"received\":595.459},{\"token\":\"IRON\",\"received\":148.865}]},\"result_message\":\"Successful\"}]}}}",
+  "sbd_price": null,
+  "steem_price": null,
+  "success": true,
+  "type": "land_operation"
+ }
+}

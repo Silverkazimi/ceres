@@ -75,10 +75,14 @@ def _worker_slot_image_src(page, base_url: str, row: dict, worker_name: str) -> 
     (located by its accessible `alt="{name} card art"`, not tile position) -- or
     None if the tile rendered no art at all."""
     deed_uid = row["deed_uid"]
-    page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
-        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
-    )
+    # opening a row reads the plot live through `POST /api/plots/{uid}/expand` (same PlotRow shape as
+    # `GET /api/plots/{uid}`), so both routes answer with the mocked row
+    quoted = urllib.parse.quote(deed_uid, safe='')
+    for pattern in (f"**/api/plots/{quoted}?*", f"**/api/plots/{quoted}/expand*"):
+        page.route(
+            pattern,
+            lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
+        )
     page.goto(base_url)
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()

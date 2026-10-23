@@ -29,6 +29,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import LIVE_PLAYER, spawn_live_ceres
+from .idle_pool import serve_recorded_idle_pool
 
 
 @pytest.fixture(scope="module")
@@ -40,6 +41,9 @@ def live_browser() -> tuple[Browser, str]:
 def _page(live_browser: tuple[Browser, str]) -> Page:
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    # The account's real idle-card pool (recorded collection plus the `browser-combine` partner copies),
+    # read after every recorded plot was read; see tests/ceres/idle_pool.py.
+    serve_recorded_idle_pool(page, base_url)
     page.goto(f"{base_url}/?player={LIVE_PLAYER}")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     return page
@@ -184,9 +188,11 @@ def test_settle_and_arrive_run_together_end_to_end(live_browser: tuple[Browser, 
     candidate = _find_real_combine_candidate(page)
     _expand_plot(page, candidate["index"])
 
+    # The worker tile's Combine chip is the board's combine door (the plot-level
+    # `combine-plot` button was removed; see test_combine_reachability.py, door 1).
     combine_btn = page.locator("tr.expand-row").nth(candidate["index"]).locator(
-        "button[data-slot-action='combine-plot']"
-    )
+        f".tile-combine-chip[data-deed-uid='{candidate['deedUid']}']"
+    ).first
     combine_btn.wait_for(timeout=30_000)
     combine_btn.click()
 
@@ -239,6 +245,11 @@ def test_settle_and_arrive_run_together_end_to_end(live_browser: tuple[Browser, 
     page.locator(".combine-arrival").wait_for(timeout=30_000)
     assert "Combine confirmed" in page.locator("#combine-dialog-title").inner_text()
     page.screenshot(path=str(tmp_path / "02-arrival-state.png"))
+    # A combine opened from a worker tile then asks whether to stake the survivor there
+    # (door 2); this flow is about the board settling, so it declines.
+    skip = page.locator('[data-combine-stake-action="skip"]').last
+    skip.wait_for(timeout=30_000)
+    skip.click()
 
     # Settle: the "Updating board..." toast from the FIRST /api/capture/status
     # tick ('running') must appear -- this is the real poll loop firing, not a
@@ -267,6 +278,9 @@ def test_settle_and_arrive_run_together_end_to_end(live_browser: tuple[Browser, 
     # through the real render path, not a raw JSON diff.
     page.locator("#combine-dialog-body button[data-combine-action='close-dialog']").click()
     overlay.wait_for(state="hidden", timeout=30_000)
+    # The settle's board read is a fresh (non-quiet) loadBoard(), and a fresh read
+    # loads every plot closed (board.js), so the plot is opened again first.
+    _expand_plot(page, candidate["index"])
     combine_btn.click()
     chooser = page.locator(".combine-plot-chooser .picker-chip")
     if chooser.count():

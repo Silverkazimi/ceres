@@ -1,0 +1,14 @@
+{
+ "data": [
+  {
+   "created_date": "2026-10-12T10:30:03.000Z",
+   "deed_uid": "I-293-e52629d336199c",
+   "fragment_found": true,
+   "fragment_type": "TOTEMFC",
+   "labors_luck_uid": null,
+   "reward_action_id": 4100017,
+   "trx_id": "2856995cbfef6de651fed3646f7eeab8c45658d1-2"
+  }
+ ],
+ "status": "success"
+}

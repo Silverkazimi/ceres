@@ -112,6 +112,10 @@ def _expand_deed(page: Page, deed_uid: str):
         row.click()
     expand = row.locator("+ tr.expand-row")
     expand.locator(".slot-editor").wait_for(timeout=30_000)
+    # The editor band mounts while the plot's detail is still being read ("preparing"); the
+    # cards are drawn once it is ready -- the open now reads the plot through POST .../expand
+    # (the page load's capture drops earlier per-plot reads), which takes a moment longer.
+    expand.locator(".editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
     return expand
 
 
@@ -204,8 +208,11 @@ def test_removing_active_companion_stages_and_warns_by_name_non_blocking(live_br
     # "Disabled" here (if it happens) must be for the pre-existing, unrelated
     # "no Keychain detected" reason -- never because a bloodline warning
     # exists. Either the button is enabled, or its own tip names Keychain.
-    review_tip = expand.locator(".slot-review").get_attribute("data-tip") or ""
-    assert "Keychain" in review_tip or expand.locator(".slot-review").is_enabled()
+    # The per-plot Review button is retired: every staged change is reviewed from the one
+    # Changes button (#checkout-btn, checkout.js), which must show and stay usable.
+    changes = page.locator("#checkout-btn")
+    changes.wait_for(state="visible", timeout=15_000)
+    assert changes.is_enabled(), "the pair-break warning must never gate opening Changes"
 
     # The Kinbound Druid tile (the surviving half) re-renders live as SOLO.
     druid_badge = expand.locator(".slot-tile").filter(has_text="Kinbound Druid").first.locator(".slot-kin-badge")

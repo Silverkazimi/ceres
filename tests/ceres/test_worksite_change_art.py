@@ -23,6 +23,7 @@ rather than re-executed in a sandboxed slice."""
 from __future__ import annotations
 
 import json
+import re
 import urllib.parse
 import urllib.request
 
@@ -47,12 +48,19 @@ def _scene_worksite_url(page, base_url: str, deed_uid: str) -> str | None:
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
     band = page.locator(".editor-band")
     band.wait_for(timeout=30_000)
-    style = band.get_attribute("style") or ""
-    if "--scene-worksite: none" in style:
+    # The band is drawn with `--scene-worksite:none`; the plot-open sequence (eos.js
+    # applyScene) sets the resolved art once the scene has settled, so read the value
+    # after the band leaves its "preparing" state.
+    page.wait_for_function(
+        "() => { const band = document.querySelector('.editor-band'); return !!band && band.dataset.plotState !== 'preparing'; }",
+        timeout=30_000,
+    )
+    value = band.evaluate("el => getComputedStyle(el).getPropertyValue('--scene-worksite').trim()")
+    if value in ("", "none"):
         return None
-    marker = "--scene-worksite: url('"
-    start = style.index(marker) + len(marker)
-    return style[start:style.index("')", start)]
+    match = re.fullmatch(r"""url\((["']?)(.*)\1\)""", value)
+    assert match, value
+    return match.group(2)
 
 
 def test_plot_mid_worksite_change_resolves_art_for_its_incoming_worksite(live_browser: tuple[Browser, str]) -> None:
@@ -74,7 +82,10 @@ def test_plot_mid_worksite_change_resolves_art_for_its_incoming_worksite(live_br
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     url = _scene_worksite_url(page, base_url, MID_CHANGE_DEED)
     assert url is not None, "a plot mid worksite-change rendered as never-built land (no scene-worksite background)"
-    assert "wood" in url, f"resolved art for the wrong worksite: {url}"
+    # A plot mid worksite-change now shows the construction scaffold for its terrain
+    # (art.js constructionOverlayFile), with the incoming worksite's finished art as
+    # the fallback layer; either is art for THIS change, never bare ground.
+    assert "/land/constructions/construction_" in url or "wood" in url, f"resolved art for the wrong worksite: {url}"
     assert "forest" in url.lower(), f"resolved art for the wrong terrain: {url}"
     page.close()
 

@@ -26,6 +26,11 @@
   root.classList.toggle('start-page',!String(player||'').trim());
   function apply(){
     root.style.scrollbarGutter='stable';
+    // The same thin page scrollbar ceres.css gives html, set here because this block
+    // runs before that stylesheet loads: measured without it, the gutter is the classic
+    // one (15px instead of 10px in Chromium), so the first tier -- and the first render,
+    // table or cards -- was decided for a board 5px narrower than the one shown.
+    root.style.scrollbarWidth='thin';
     var probe=document.createElement('div');
     probe.style.cssText='display:block;height:0;margin:0;padding:0;border:0;visibility:hidden';
     root.appendChild(probe);
@@ -234,7 +239,7 @@
   <label class="board-filter-field"><span class="sr-only">Type</span><select id="status-filter" data-empty-label="Type"><option value="">All</option></select></label>
   <label class="board-filter-field"><span class="sr-only">Badges</span><select id="badge-filter" data-empty-label="Badge"><option value="">All</option></select></label>
   <span class="controls-sep" aria-hidden="true"></span>
-  <label class="picker-toggle board-filter-pill ceres-btn ceres-btn--choice" data-control-density="compact" data-tip="Staged filter" data-tip-body="Shows only plots with a staged change: ready to sign, waiting, or a card moving out to another plot."><span class="ceres-btn__check" aria-hidden="true"></span><input type="checkbox" id="staged-only"><span>Staged (<span id="staged-only-count">0</span>)</span></label>
+  <label class="picker-toggle board-filter-pill ceres-btn ceres-btn--choice" data-control-density="compact" data-tip="Staged filter" data-tip-body="Shows only plots with a staged change: ready to sign, waiting, or a card moving out to another plot." aria-label="Staged filter. Shows only plots with a staged change: ready to sign, waiting, or a card moving out to another plot."><span class="ceres-btn__check" aria-hidden="true"></span><input type="checkbox" id="staged-only"><span>Staged (<span id="staged-only-count">0</span>)</span></label>
   <!-- (maintainer: badges "could be cool as an opt-in overlay"): phone only; shows the badges over each card's art. -->
   <label class="picker-toggle board-filter-pill ceres-btn ceres-btn--choice card-badges-toggle" data-control-density="compact"><span class="ceres-btn__check" aria-hidden="true"></span><input type="checkbox" id="card-badges"><span>Badges on cards</span></label>
   <!-- Look 3: an X icon button, visible only while a filter is active

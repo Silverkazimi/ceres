@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -179,17 +180,27 @@ def test_bloodline_picker_reaches_server_with_sub_type_and_staged_metadata_survi
 
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
     page.route(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*", fulfill_candidates)
     page.goto(base_url)
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
-    badge = page.locator(".slot-editor .slot-bloodline-badge.is-solo").first
+    # The tile's SOLO mark is now the non-interactive Toil & Kin pill (`.slot-kin-badge.is-solo`,
+    # badges.js bloodlineTileBadgesHtml); the companion search for an untouched solo holder is
+    # the picker's own "Bloodline pairs" toggle (offered when the plot has a Bloodline holder).
+    # Open the holder's own tile (replace mode, as the old badge did) and switch it on.
+    badge = page.locator(".slot-editor .slot-group[data-group-id='worker'] .slot-kin-badge.is-solo").first
     badge.wait_for(timeout=30_000)
+    holder_tile = page.locator(".slot-editor .slot-tile[data-group-id='worker'][data-slot-index='0']")
     with page.expect_request(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*"):
-        badge.click()
+        holder_tile.click()
+    page.locator(".candidate-row").first.wait_for(timeout=30_000)
+    seen_requests.clear()
+    pairs_toggle = page.locator("label.picker-toggle:has(input[data-picker-filter='bloodline_pairs'])")
+    with page.expect_request(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*"):
+        pairs_toggle.click()
     page.locator(".candidate-row").first.wait_for(timeout=30_000)
 
     assert seen_requests, "clicking the SOLO badge did not open a picker that fetched candidates"
@@ -198,7 +209,7 @@ def test_bloodline_picker_reaches_server_with_sub_type_and_staged_metadata_survi
     assert params.get("bloodline_sub_type") == ["Elf"], f"picker did not filter by the holder's Bloodline sub_type: {params}"
 
     page.locator(".candidate-row").first.click()
-    new_badge = page.locator(".slot-group[data-group-id='worker'] .slot-bloodline-badge.is-solo").first
+    new_badge = page.locator(".slot-group[data-group-id='worker'] .slot-kin-badge.is-solo").first
     new_badge.wait_for(timeout=30_000)
     assert candidate["name"] in page.locator(".slot-group[data-group-id='worker'] .slot-name").first.inner_text()
     page.close()
@@ -281,7 +292,7 @@ def test_bloodline_pair_break_removal_notice_reopens_a_working_companion_picker(
 
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
     page.route(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/removal-impact*", lambda route: route.fulfill(
@@ -295,7 +306,10 @@ def test_bloodline_pair_break_removal_notice_reopens_a_working_companion_picker(
     companion_tile.wait_for(timeout=30_000)
     companion_tile.hover()
     companion_tile.locator(".slot-remove").click(force=True)
-    notice_button = page.locator(".ceres-notice .notice-action")
+    # The pair-break notice is a row of the plot warning list under the plot now, and its
+    # "Find a matching <Bloodline> companion" action is that row's primary button
+    # (plot-warnings.js plotWarningListHtml, same open-bloodline-pairs action).
+    notice_button = page.locator(".plot-warning-row[data-plot-warning-kind='bloodline'] .plot-warning-find")
     notice_button.wait_for(timeout=30_000)
     assert "companion" in notice_button.inner_text().lower()
     with page.expect_request(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*"):

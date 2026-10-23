@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import urllib.parse
 import urllib.request
 import pytest
@@ -189,7 +190,7 @@ def test_unpowered_editor_projects_non_five_capacity_and_keeps_tiles_actionable(
 
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
     page.goto(base_url)
@@ -210,8 +211,8 @@ def test_extreme_projected_capacity_fails_safe_to_zero_slots(live_browser: tuple
     r"""Second half of census row 20's first node test: `editorGroups()`'s own
     integer/range guard on `capacity.potential_card_capacity` (independent of, and
     a second layer behind, the Python-side `potential_worker_capacity()` safety
-    covered above) -- an absurd value must render ZERO worker tiles, not attempt
-    to build an enormous grid.
+    covered above) -- an absurd value counts as zero capacity (the five default empty
+    worker slots), never an attempt to build an enormous grid.
 
     Named injection, run and watched red, then reverted and watched green: in
     `ceres/static/app.js`'s `editorGroups()`, the capacity guard
@@ -229,16 +230,21 @@ def test_extreme_projected_capacity_fails_safe_to_zero_slots(live_browser: tuple
 
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
     page.goto(base_url)
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
+    page.locator(".editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
     worker_group = page.locator(".slot-group[data-group-id='worker']")
     worker_group.wait_for(timeout=30_000)
-    tiles = worker_group.locator(".slot-tile-cell .slot-tile")
-    assert tiles.count() == 0
+    tiles = worker_group.locator(".slot-tile-cell .slot-tile[data-group-id='worker']")
+    # The absurd capacity counts as zero, and a zero-capacity plot draws the game's five worker
+    # slots (editor.js DEFAULT_WORKER_SLOTS, "Unpowered plots must always show all five worker
+    # tiles"), all empty -- never the absurd figure.
+    assert tiles.count() == 5
+    assert tiles.evaluate_all("els => els.every((el) => el.classList.contains('is-empty'))")
     page.close()
 
 
@@ -276,7 +282,7 @@ def test_stage_reservation_reaches_every_picker_on_the_same_plot_and_releases_on
 
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
     page.route(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*", fulfill_candidates)

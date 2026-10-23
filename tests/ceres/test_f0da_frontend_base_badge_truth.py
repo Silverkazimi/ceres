@@ -40,6 +40,15 @@ browser mutation made that probe red with exactly one chip; restoring it made th
 probe green with both chips again.
 
 
+Since then the editor's change badges were redesigned (editor.js renderChangeBadges): the
+plot shows ONE Base badge, "Total Base <after> (<change>)", for the plot's whole Base PP after
+the cap, and an estimate that is not a point value gets no badge at all ("an unavailable
+estimate has no badge because the authoritative figure remains on the row"). The per-card
+footer row now shows each card's Boostable PP (Base PP after the cap, with terrain); its
+tooltip names the card's Base PP and what the cap takes. The guards below therefore compare
+the Total Base badge with the per-card Base PP after the cap read from those tooltips, and
+the unknown cases assert that no fabricated figure is shown.
+
 : G3, which read the plot header of the old checkout panel's `.checkout-plot-group` / `.checkout-move-delta` rows was retired; the Changes modal () renders no such elements and the dead CSS went with it.
 """
 
@@ -96,7 +105,7 @@ def _nonzero_terrain_case(base_url: str) -> tuple[dict, dict] | None:
             continue
         detail = _detail(base_url, row["deed_uid"])
         for worker in detail.get("workers", []):
-            if int(worker.get("slot", -1)) <= 0:
+            if _slot(worker) <= 0:
                 continue
             terrain = worker.get("terrain_boost")
             if terrain is not None and float(terrain) != 0:
@@ -111,7 +120,7 @@ def _positive_raw_replace_case(base_url: str) -> tuple[dict, dict, dict] | None:
             continue
         detail = _detail(base_url, row["deed_uid"])
         for worker in detail.get("workers", []):
-            slot = int(worker.get("slot", -1))
+            slot = _slot(worker)
             if slot <= 0:
                 continue
             payload = _candidate_payload(base_url, row["deed_uid"], slot - 1)
@@ -141,7 +150,7 @@ def _over_cap_replace_case(base_url: str) -> tuple[dict, dict, dict] | None:
         if not ((raw_base is not None and float(raw_base) > 100000) or worker_over):
             continue
         for worker in detail.get("workers", []):
-            slot = int(worker.get("slot", -1))
+            slot = _slot(worker)
             if slot <= 0:
                 continue
             payload = _candidate_payload(base_url, row["deed_uid"], slot - 1, limit=100)
@@ -167,7 +176,7 @@ def _null_terrain_replace_case(base_url: str) -> tuple[dict, dict, dict] | None:
         ):
             continue
         for worker in detail.get("workers", []):
-            slot = int(worker.get("slot", -1))
+            slot = _slot(worker)
             if slot <= 0:
                 continue
             payload = _candidate_payload(base_url, row["deed_uid"], slot - 1, limit=100)
@@ -189,7 +198,7 @@ def _point_raw_stake_case(base_url: str) -> tuple[dict, int, dict] | None:
         if capacity <= 0:
             continue
         detail = _detail(base_url, row["deed_uid"])
-        occupied = {int(worker.get("slot", -1)) for worker in detail.get("workers", [])}
+        occupied = {_slot(worker) for worker in detail.get("workers", [])}
         slot_index = next((index for index in range(capacity) if index + 1 not in occupied), None)
         if slot_index is None:
             continue
@@ -206,7 +215,15 @@ def _point_raw_stake_case(base_url: str) -> tuple[dict, int, dict] | None:
 def _editor(page: Page, deed_uid: str) -> Page:
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
     page.locator(f"tr.expand-row[data-deed-uid='{deed_uid}'] .slot-editor").wait_for(timeout=30_000)
+    # the band renders `preparing` first; the footer figures exist once it is `ready`
+    page.locator(f"tr.expand-row[data-deed-uid='{deed_uid}'] .editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
     return page
+
+
+def _slot(worker: dict) -> int:
+    """The worker's 1-based slot, or -1 for a row without one (a Runi or item row has `slot: null`)."""
+    slot = worker.get("slot")
+    return int(slot) if isinstance(slot, (int, float)) else -1
 
 
 def _open_editor(browser: Browser, base_url: str, deed_uid: str) -> Page:
@@ -217,24 +234,42 @@ def _open_editor(browser: Browser, base_url: str, deed_uid: str) -> Page:
 
 
 def _base_figures(page: Page) -> list[int]:
+    """Each worker slot's Base PP after the plot cap, as its footer cell's tooltip states it
+    ("<raw> Base PP · <terrain>[ · the plot's <cap> cap takes <n>]"); an empty slot is 0."""
     worker_slots = page.locator(".slot-group[data-group-id='worker'] .slot-tile-cell").count()
-    cells = page.locator(".editor-base-pp-row .editor-base-pp-cell")
+    cells = page.locator(".editor-base-pp-row .editor-base-pp-cell[data-group-id='worker']")
     values = []
     for index in range(worker_slots):
-        cell = cells.nth(index)
-        values.append(cell.locator("b").inner_text() if cell.locator("b").count() else "0")
-    return [int(value.replace(",", "").replace("−", "-")) for value in values]
+        body = (cells.nth(index).get_attribute("data-tip-body") or "") if index < cells.count() else ""
+        raw = re.match(r"([\d,]+) Base PP", body)
+        taken = re.search(r"cap takes ([\d,]+)", body)
+        value = int(raw.group(1).replace(",", "")) if raw else 0
+        values.append(value - (int(taken.group(1).replace(",", "")) if taken else 0))
+    return values
+
+
+def _raw_figures(page: Page) -> list[int]:
+    """Each worker slot's own Base PP before the cap, from its footer cell's tooltip; empty is 0."""
+    worker_slots = page.locator(".slot-group[data-group-id='worker'] .slot-tile-cell").count()
+    cells = page.locator(".editor-base-pp-row .editor-base-pp-cell[data-group-id='worker']")
+    values = []
+    for index in range(worker_slots):
+        body = (cells.nth(index).get_attribute("data-tip-body") or "") if index < cells.count() else ""
+        raw = re.match(r"([\d,]+) Base PP", body)
+        values.append(int(raw.group(1).replace(",", "")) if raw else 0)
+    return values
 
 
 def _base_badge(page: Page) -> str:
     for text in page.locator(".editor-change-badge").all_inner_texts():
-        if text.strip().startswith("Base "):
+        if text.strip().startswith("Total Base "):
             return text.strip()
-    raise AssertionError("staged editor rendered no Base change badge")
+    raise AssertionError("staged editor rendered no Total Base change badge")
 
 
 def _badge_value(text: str) -> int:
-    match = re.search(r"^Base\s+([+−-]?[\d,]+)$", text)
+    """The signed change in brackets: "Total Base 100,000 (−141) · cap −141" -> -141."""
+    match = re.search(r"^Total Base\s+[\d,]+\s+\(([+−-]?[\d,]+)\)", text)
     assert match, text
     return int(match.group(1).replace(",", "").replace("−", "-"))
 
@@ -336,35 +371,48 @@ def test_g2_replace_positive_raw_base_delta(live_browser: tuple[Browser, str]) -
     row, worker, candidate = case
     page = _open_editor(browser, base_url, row["deed_uid"])
     slot_index = int(worker["slot"]) - 1
-    before = _base_figures(page)[slot_index]
+    raw_before, before = _raw_figures(page), _base_figures(page)
     _stage_replace(page, base_url, row, worker, candidate)
-    after = _base_figures(page)[slot_index]
+    raw_after, after = _raw_figures(page), _base_figures(page)
     badge = _base_badge(page)
-    assert after - before > 0
-    assert _badge_value(badge) == after - before
+    # the replaced slot's own Base PP rises, and the plot's Total Base badge reports exactly
+    # the change of the per-card figures after the cap (on a capped plot that can be 0)
+    assert raw_after[slot_index] - raw_before[slot_index] > 0
+    assert _badge_value(badge) == sum(after) - sum(before)
 
 
 def _unknown_base_badge_assertion_js() -> str:
-    return f"""
-const rendered = renderChangeBadges(
-  {{status: 'unknown', value: null, low: null, high: null, reason: 'not reported'}},
-  0,
-  false,
+    return """
+const stageTotal = (status, now, after) => ({estimate: {status}, effectiveNow: now, effectiveAfter: after, cap: 100000, loss: 0});
+const unknown = renderChangeBadges(
+  {status: 'unknown', value: null, low: null, high: null, reason: 'not reported'},
+  NaN,
   1,
+  stageTotal('unknown', 50000, null),
+  null,
 );
-if (!rendered.includes('Base not calculated')) throw new Error('unknown Base reason-bearing label was not rendered');
-if (!rendered.includes('editor-change-badge is-unknown')) throw new Error('unknown Base badge lost is-unknown');
-if (rendered.includes('Base —')) throw new Error('unknown Base rendered a bare em dash');
-if (!rendered.includes('data-tip="Base PP after the change"')) throw new Error('unknown Base badge lost its row-48 title');
-if (!rendered.includes('data-tip-body="Not shown as a number — this plot has a staged move whose exact effect above the 100,000 cap can&#39;t be worked out yet."')) throw new Error('unknown Base badge lost its row-48 body');
-if (!rendered.includes('data-tip-foot="Not calculated — depends on which staged card absorbs the amount above the cap."')) throw new Error('unknown Base badge lost its row-48 foot');
+if (unknown.includes('Total Base')) throw new Error('an unknown Base estimate rendered a Total Base figure');
+if (unknown.includes('—')) throw new Error('an unknown Base estimate rendered a bare em dash');
+if (unknown !== '') throw new Error('an unknown estimate must render no badge, got: ' + unknown);
+const point = renderChangeBadges(
+  {status: 'point', value: -500, low: -500, high: -500, reason: null},
+  NaN,
+  1,
+  stageTotal('point', 50000, 49500),
+  null,
+);
+if (!point.includes('Total Base <strong>49,500</strong> (−500)')) throw new Error('a point Base estimate lost its Total Base figure: ' + point);
+if (!point.includes('data-tip="Total Base PP after the change"')) throw new Error('the Total Base badge lost its title');
+if (!point.includes('data-tip-body="Projected · −500 from 1 staged move against 50,000 now"')) throw new Error('the Total Base badge lost its projected body: ' + point);
 """
 
 
 def test_g6_unknown_base_badge_is_reason_bearing() -> None:
-    """The REAL ``renderChangeBadges()`` receives a fabricated unknown Base estimate
-    and must render ``Base not calculated`` with ``.is-unknown`` and the registry
-    tooltip, never a bare ``—``. Full app.js evaluation (via the shared
+    """The REAL ``renderChangeBadges()`` receives a fabricated unknown Base estimate and
+    must render no figure for it -- no Total Base badge and never a bare ``—`` (the
+    redesign drops a badge whose estimate is not a point value; the row keeps the
+    authoritative figure) -- while a point estimate renders the Total Base badge with
+    its projected tooltip. Full app.js evaluation (via the shared
     `tests/ceres/vm_context.py` sandbox, ) keeps this a non-live
     test without slicing source strings. Before the shared helper existed this
     test built its own context missing ``window`` and was RED on
@@ -376,28 +424,27 @@ def test_g6_unknown_base_badge_is_reason_bearing() -> None:
 
 
 def test_g6_unknown_base_badge_mutation_is_red() -> None:
-    """Injection: replacing the exact editor.js:676 label expression with the
-    unconditional ``Base ${estimateBadge(basePpEstimate)}`` rendered ``Base —``;
-    the synthetic harness exited red. Restoring the reason-bearing expression was
-    then green, proving this guard reaches the previously unreachable Base branch.
+    """Injection: dropping the point-estimate gate in renderChangeBadges() (always
+    rendering the Total Base badge) shows a figure for an unknown estimate; the synthetic
+    harness must exit red, proving this guard reaches the unknown branch.
     """
     source = read_entry_source()
     mutated = source.replace(
-        "const label = unknown ? 'Base not calculated' : `Base ${estimateBadge(basePpEstimate)}`;",
-        "const label = `Base ${estimateBadge(basePpEstimate)}`;",
+        "if (stageTotal?.estimate?.status === 'point') {",
+        "if (stageTotal) {",
         1,
     )
-    assert mutated != source, "editor.js:676 mutation target is missing"
+    assert mutated != source, "renderChangeBadges point-estimate gate mutation target is missing"
     with pytest.raises(subprocess.CalledProcessError):
         run_in_module_context(_unknown_base_badge_assertion_js(), entry=ENTRY, source=mutated)
 
 
 def test_g6_harvest_unknown_change_badge_has_visible_reason(live_browser: tuple[Browser, str]) -> None:
-    """G6 live guard: the over-cap replacement's unknown Harvest estimate renders
-    ``Harvest over cap`` with a visible reason. This deliberately does not claim
-    to exercise unknown Base: the 129-plot board scan found zero
-    ``base_pp_delta.status == "unknown"`` cases, because Phase 1 moved Base badges
-    to the pre-terrain, pre-cap point estimate.
+    """G6 live guard: an over-cap replacement whose candidate impact the picker reports
+    as unknown never shows a bare ``—`` or a fabricated figure in the editor. The editor
+    prices the staged plan itself (the stage impact), so every badge it does render is a
+    number; an estimate that is not a point value is dropped rather than shown as a
+    placeholder (``Harvest over cap`` went with that redesign).
     """
     browser, base_url = live_browser
     case = _over_cap_replace_case(base_url)
@@ -410,21 +457,16 @@ def test_g6_harvest_unknown_change_badge_has_visible_reason(live_browser: tuple[
     texts = [text.strip() for text in badges.all_inner_texts()]
     assert texts, "G6 staged case rendered no editor change badges"
     assert all(not text.endswith("—") for text in texts), texts
-    unknown_texts = [
-        text.strip()
-        for text in page.locator(".editor-change-badge.is-unknown").all_inner_texts()
-    ]
-    assert unknown_texts, f"G6 staged case rendered no unknown badge: {texts}"
-    assert unknown_texts == ["Harvest over cap"], unknown_texts
+    assert all(re.search(r"\d", text) for text in texts), texts
+    assert page.locator(".editor-change-badge.is-unknown").count() == 0, texts
 
 
 def test_g8_over_cap_change_renders_base_and_harvest_badges(live_browser: tuple[Browser, str]) -> None:
-    """G8 injection: restoring the ``harvestDelta !== 0`` suppression at
-    ``app.js:4339`` removed the unknown-Harvest chip, leaving one badge. The live
-    mutation was run and observed red with one chip; restoring the branch made it
-    green with two. This test discovers over-cap by raw ``base_pp > 100000`` (or
-    a worker whose ``base_pp_after_cap`` is below raw ``base_pp``), never by the
-    clamped derived ``over_cap`` flag.
+    """G8: an over-cap replacement renders both the plot's Total Base badge and its Total
+    (PP after every boost) badge. This test discovers over-cap by raw ``base_pp > 100000``
+    (or a worker whose ``base_pp_after_cap`` is below raw ``base_pp``), never by the
+    clamped derived ``over_cap`` flag. The Total Base change must equal the change of the
+    per-card Base PP after the cap, so the cap is applied, not the candidate's pre-cap delta.
     """
     browser, base_url = live_browser
     case = _over_cap_replace_case(base_url)
@@ -432,18 +474,20 @@ def test_g8_over_cap_change_renders_base_and_harvest_badges(live_browser: tuple[
         pytest.skip("G8 skipped loudly: live board has no raw-over-cap plot with an unknown-impact replacement and a nonzero Base delta")
     row, worker, candidate = case
     page = _open_editor(browser, base_url, row["deed_uid"])
+    before = _base_figures(page)
     _stage_replace(page, base_url, row, worker, candidate)
-    badges = page.locator(".editor-facts .editor-change-badge")
+    after = _base_figures(page)
+    badges = page.locator(".slot-group[data-group-id='worker'] > .slot-group-controls .editor-change-badge")
     texts = [text.strip() for text in badges.all_inner_texts()]
-    assert len(texts) == 2, texts
-    base_text = next(text for text in texts if text.startswith("Base "))
-    expected_base = int(round(float((candidate["base_pp_delta"] or {})["value"])))
-    assert _badge_value(base_text) == expected_base, (base_text, expected_base)
-    harvest = page.locator(".editor-change-badge.is-unknown")
-    assert harvest.count() == 1, texts
-    assert harvest.inner_text().strip() == "Harvest over cap"
-    assert len(harvest.inner_text().split()) >= 3
-    assert "above the 100,000 cap" in (harvest.get_attribute("data-tip-body") or "")
+    base_text = next((text for text in texts if text.startswith("Total Base ")), None)
+    assert base_text, texts
+    assert _badge_value(base_text) == sum(after) - sum(before), (base_text, before, after)
+    harvest = [text for text in texts if re.match(r"^Total [+−-][\d,]+$", text)]
+    assert len(harvest) == 1, texts
+    body = badges.filter(has_text="Total Base").first.get_attribute("data-tip-body") or ""
+    assert body.startswith("Projected · "), body
+    if "· cap" in base_text:
+        assert "cap takes" in body, body
 
 
 def test_g9_staged_card_base_tooltip_omits_null_terrain(live_browser: tuple[Browser, str]) -> None:

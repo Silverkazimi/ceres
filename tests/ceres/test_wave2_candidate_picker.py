@@ -15,7 +15,7 @@ Named injections (/, not performed here -- independent verification only):
    unconditionally for worker/runi groups. Expected red:
    `test_worker_query_uses_construction_sort_and_independent_filters` sees `preset` in
    the worker-group request params it asserts absent.
-2. `pickerResultNotice()` (app.js:4357): change the `negative_net_gain` branch's
+2. `pickerEmptyHtml()` (candidates.js; `pickerResultNotice()` was retired in v0.9.145): change the `negative_net_gain` branch's
    `noticeFor('negative_net_gain')` to `noticeFor('capacity')`. Expected red:
    `test_picker_empty_states_explain_all_decided_exclusion_reasons`'s negative-net-gain
    case reads the capacity message instead.
@@ -27,7 +27,8 @@ Named injections (/, not performed here -- independent verification only):
    term. Expected red:
    `test_power_core_click_stages_one_unreserved_core_and_tracks_count_left` stages the
    already-reserved `core-used` candidate on the first click instead of refusing with
-   "No unstaged Power Cores".
+   "No unstaged Power Cores". (Now in picker-actions.js; a successful stage shows the
+   staged tile, not a "Staged:" toast.)
 5. `updatePickerRegion()`'s sort-chip sync loop (around app.js:6795): remove the
    `chip.classList.toggle('is-active', ...)` call for the non-matching chips (leave only
    the matching chip's toggle). Expected red:
@@ -39,6 +40,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import urllib.parse
 import urllib.request
 
@@ -90,9 +92,13 @@ def _real_candidate_template(base_url: str, row: dict, group_id: str = "worker")
 
 
 def _route_detail(page, base_url: str, row: dict) -> None:
+    # A page load's capture drops earlier per-plot reads, so the board row is not
+    # `assets_loaded` and the open click reads the plot through POST .../expand rather
+    # than GET /api/plots/<deed> (rows.js). Both are the plot's detail row; serve the
+    # mocked row on either.
     deed_uid = row["deed_uid"]
     page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
 
@@ -222,6 +228,7 @@ def test_picker_empty_states_explain_all_decided_exclusion_reasons(live_browser:
     row = copy.deepcopy(_real_detail_row(base_url))
     row["workers"] = [w for w in row["workers"] if int(w.get("slot") or 0) != 1]
     deed_uid = row["deed_uid"]
+    catalog = _real_board(base_url)["notice_catalog"]
 
     scenarios = [
         ({"negative_net_gain": 4}, "negative_net_gain", "negative full-plot net gain"),
@@ -255,7 +262,10 @@ def test_picker_empty_states_explain_all_decided_exclusion_reasons(live_browser:
         empty_notice = page.locator(".picker-empty")
         empty_notice.wait_for(timeout=30_000)
         text = empty_notice.inner_text()
-        assert empty_notice.get_attribute("data-notice-code") == expected_code
+        # v0.9.145 retired the per-code `data-notice-code` notice list: the empty state is a
+        # single `.picker-empty` line carrying the served catalog message for the decided
+        # exclusion reason, so the code is identified by its exact catalog text.
+        assert text.strip() == catalog[expected_code]["message"], f"{excluded_counts} -> {text!r}"
         if expected_code != "terrain_penalty":
             assert expected_text in text, f"{excluded_counts} -> expected {expected_text!r} in {text!r}"
         page.close()
@@ -318,13 +328,17 @@ def test_power_core_click_stages_one_unreserved_core_and_tracks_count_left(live_
         *malformed_candidates,
         {"asset_ref": "  core-next  ", "name": "Power Core", "net_gain": 0},
     ]
-    with page.expect_request(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*"):
+    # A successful one-click stage shows no success toast any more ("the Power Core tile and
+    # the plot's change badges already show it", picker-actions.js): the slot turns into the
+    # staged Power Core tile, and the staged move names the first well-formed unreserved core.
+    with page.expect_request(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/stage-impact*") as impact:
         add_button_2.click()
-    page.wait_for_function(
-        "document.getElementById('ceres-stage-toast')?.textContent.includes('Staged: Power Core')", timeout=30_000,
-    )
-    filled_tile = page.locator(".slot-editor [data-group-id='power_core']:not([data-slot-action='add-power-core'])")
-    filled_tile.first.wait_for(timeout=30_000)
+    staged_tile = page.locator(".slot-editor .slot-tile.is-staged[data-group-id='power_core'][data-occupied='1']")
+    staged_tile.first.wait_for(timeout=30_000)
+    staged_body = impact.value.post_data or ""
+    assert '"core-used"' in staged_body, staged_body
+    assert "core-next" not in staged_body, "exactly one Power Core is staged per click"
+    assert page.locator(".slot-editor [data-group-id='power_core'][data-slot-action='add-power-core']").count() == 0
     page.close()
 
 
@@ -353,8 +367,8 @@ def test_power_core_tiles_never_open_a_candidate_picker(live_browser: tuple[Brow
     add_button.wait_for(timeout=30_000)
     assert add_button.evaluate("(el) => el.tagName.toLowerCase()") == "button"
     add_button.click()
-    page.wait_for_function(
-        "document.getElementById('ceres-stage-toast')?.textContent.length > 0", timeout=30_000,
-    )
+    # The one-click stage is shown by the staged Power Core tile (no success toast).
+    page.locator(".slot-editor .slot-tile.is-staged[data-group-id='power_core'][data-occupied='1']").first.wait_for(timeout=30_000)
+    settle(page)
     assert page.locator(".picker-region, .candidate-row").count() == 0, "Power Core must stage one-click, never open a picker"
     page.close()

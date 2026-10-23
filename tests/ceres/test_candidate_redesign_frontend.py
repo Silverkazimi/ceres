@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -81,7 +82,7 @@ def _real_detail_row(base_url: str) -> dict:
 def _open_worker_picker(page, base_url: str, row: dict, candidates: list[dict]):
     deed_uid = row["deed_uid"]
     page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
     page.route(
@@ -230,18 +231,23 @@ def test_unknown_edition_uses_neutral_local_icon_with_exact_label(live_browser: 
 
     nightmare = icon_of("Nightmare Edition Worker")
     assert "edition-generic.svg" in (nightmare.get_attribute("src") or "")
-    assert (nightmare.get_attribute("data-tip") or "") == "Nightmare"
+    # Identity tooltips are titled "Set: <label>" (icons.js setIconOnlyHtml, the shared card-tip convention).
+    assert (nightmare.get_attribute("data-tip") or "") == "Set: Nightmare"
 
     future = icon_of("Future Edition Worker")
     assert "edition-generic.svg" in (future.get_attribute("src") or "")
-    assert (future.get_attribute("data-tip") or "") == "Unknown edition (ID 99)"
+    # The set label falls back to the row's own card_set ("other"); the exact unknown-edition
+    # label is the identity's edition text (editionDisplayLabel), never an invented name.
+    assert (future.get_attribute("data-tip") or "") == "Set: Other"
+    future_identity = page.locator(".candidate-row", has_text="Future Edition Worker").first.locator(".candidate-identity")
+    assert "Unknown edition (ID 99)" in future_identity.inner_text()
 
     assert "/alpha.svg" in (icon_of("Alpha Edition Worker").get_attribute("src") or "")
     assert "/beta.svg" in (icon_of("Beta Edition Worker").get_attribute("src") or "")
     assert "/conclave-arcana.svg" in (icon_of("Conclave Edition Worker").get_attribute("src") or "")
 
     reward = icon_of("Reward Edition Worker")
-    assert (reward.get_attribute("data-tip") or "") == "Reward"
+    assert (reward.get_attribute("data-tip") or "") == "Set: Reward"
     page.close()
 
 
@@ -272,7 +278,8 @@ def test_worker_controls_and_candidate_layout_contract_are_scoped(live_browser: 
     # substring naming the array literal that builds them.
     chips = page.locator(".picker-sort-chips button[data-picker-action='sort']")
     assert chips.count() == 2
-    assert chips.nth(0).inner_text() == "Boostable"
+    # The construction_pp chip is labelled "Production" (candidates.js sort chips; tip "Sort by Production").
+    assert chips.nth(0).inner_text() == "Production"
     assert chips.nth(0).get_attribute("data-sort") == "construction_pp"
     assert chips.nth(1).inner_text() == "Name"
     assert chips.nth(1).get_attribute("data-sort") == "name"
@@ -287,7 +294,12 @@ def test_worker_controls_and_candidate_layout_contract_are_scoped(live_browser: 
     # The legend was removed on request -- must not exist anywhere in the
     # rendered picker (was a source-text absence check; now a real DOM count).
     assert page.locator(".candidate-legend").count() == 0
-    assert page.locator(".candidate-columns").count() == 1
+    # Worker cards caption every metric themselves -- the worker picker has no column header
+    # row (candidates.js renders `.candidate-columns` for Totem/Title lists only); the plot's
+    # terrain affinity, which used to sit in that header, is the filter row's splinter strip.
+    assert page.locator(".candidate-columns").count() == 0
+    worker_affinity = page.locator(".picker-bar-filters .candidate-worker-affinity [data-terrain-affinity]").first
+    assert worker_affinity.is_visible()
 
     slice_el = page.locator(".candidate-visible-slice")
     assert slice_el.count() == 1
@@ -301,28 +313,26 @@ def test_worker_controls_and_candidate_layout_contract_are_scoped(live_browser: 
         "the picker column header must hide via a real container query, not a viewport media query"
     )
 
-    page.set_viewport_size({"width": 700, "height": 900})
-    assert page.locator(".candidate-columns").evaluate("(el) => getComputedStyle(el).display") != "none"
-    assert page.locator(".candidate-columns > span:nth-child(2) [data-terrain-affinity]").is_visible()
-    assert page.locator(".candidate-columns > span:not(:nth-child(2))").evaluate_all(
-        "els => els.length === 6 && els.every(el => getComputedStyle(el).display === 'none')"
-    )
-    page.set_viewport_size({"width": 1920, "height": 1080})
-    assert page.locator(".candidate-columns").evaluate("(el) => getComputedStyle(el).display") != "none"
+    # (The old 700px step checked how the worker column header collapsed below the
+    # container-query threshold; that header no longer exists for worker pickers, and the
+    # visible slice's reflow is covered by test_live_candidate_layout.)
 
-    # An is-loss row's border-left resolves to the real --danger token, at
-    # full opacity (never faded), read off the actual rendered row.
+    # An is-loss row is marked in the real --danger token, at full opacity (never faded),
+    # read off the actual rendered row. The candidate cards no longer carry a coloured
+    # left border; the loss is the row's Total PP change figure (ceres.css
+    # `.candidate-plot-change > strong.is-negative`).
     loss_row = page.locator(".candidate-row", has_text="Loss Worker").first
     loss_row.wait_for(timeout=30_000)
     assert "is-loss" in (loss_row.get_attribute("class") or "")
     row_style = loss_row.evaluate(
-        "(el) => { const s = getComputedStyle(el); return {borderLeft: s.borderLeftColor, opacity: s.opacity}; }"
+        "(el) => { const s = getComputedStyle(el); const v = el.querySelector('.candidate-plot-change > strong'); "
+        "return {lossColor: v && getComputedStyle(v).color, opacity: s.opacity}; }"
     )
     expected_danger = page.evaluate(
         "() => { const p = document.createElement('div'); p.style.color = 'var(--danger)'; "
         "document.body.appendChild(p); const c = getComputedStyle(p).color; document.body.removeChild(p); return c; }"
     )
-    assert row_style["borderLeft"] == expected_danger, "is-loss border-left must resolve to the real --danger token"
+    assert row_style["lossColor"] == expected_danger, "an is-loss row's plot change must resolve to the real --danger token"
     assert row_style["opacity"] == "1", "is-loss must never render at reduced opacity"
 
     # No horizontal scrollbar anywhere inside the picker's visible slice

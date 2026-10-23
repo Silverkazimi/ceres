@@ -14,6 +14,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import spawn_live_ceres
+from .table_edge import OVERHANG_JS, TABLE_OVERHANG_PX, overhang_problems
 
 
 @pytest.fixture(scope="module")
@@ -22,9 +23,29 @@ def browser() -> tuple[Browser, str]:
         yield instance, base_url
 
 
-def _page(browser: tuple[Browser, str], *, slow_fill: bool = False) -> Page:
+# A saved avatar-builder character (GET /players/player_avatar/{name}, avatar.js)
+# for the fixture account. The board's refresh control is the account avatar
+# medallion, shown only once the avatar draws; the fixture recording has no
+# avatar for sample01, and adding one there would put the medallion into every
+# board test's header, so the one test that needs the control serves it here.
+_AVATAR = {
+    "race": "human", "gender": 1, "body": 1, "skin_color": 1, "background": 1,
+    "face": 1, "hair": 1, "hair_color": 1, "eyebrows": 1, "eyes": 1, "eyes_color": 1,
+    "nose": 1, "mouth": 1, "complexion": 0, "scars": 0, "tattoo": 0,
+    "earrings": 0, "earrings_color": 1, "accessory": 0, "accessory_color": 1,
+    "cloth": 1, "cloth_color": 1, "hat": 0, "hat_color": 1,
+}
+
+
+def _page(browser: tuple[Browser, str], *, slow_fill: bool = False, avatar: bool = False) -> Page:
     instance, base_url = browser
     page = instance.new_page(viewport={"width": 1366, "height": 900})
+    if avatar:
+        page.route(
+            "https://api.splinterlands.com/players/player_avatar/sample01*",
+            lambda route: route.fulfill(status=200, content_type="application/json",
+                                        headers={"Access-Control-Allow-Origin": "*"}, body=json.dumps(_AVATAR)),
+        )
     if slow_fill:
         page.add_init_script(
             """
@@ -142,9 +163,11 @@ def _metrics(page: Page) -> dict:
             - document.querySelector('#plot-table-scroll').clientWidth,
           pageOver: document.documentElement.scrollWidth - document.documentElement.clientWidth,
           windowTop: window.scrollY,
+          maxWindowTop: document.documentElement.scrollHeight - window.innerHeight,
           clipped: [...document.querySelectorAll('#plot-tbody tr.plot-row td')]
             .filter(td => td.scrollWidth > td.clientWidth + 2).length,
-          rows: document.querySelectorAll('#plot-tbody > tr.plot-row').length
+          rows: document.querySelectorAll('#plot-tbody > tr.plot-row').length,
+          overhang: (""" + OVERHANG_JS + """)()
         })
         """
     )
@@ -153,8 +176,10 @@ def _metrics(page: Page) -> dict:
 def _assert_unclipped(page: Page) -> dict:
     metrics = _metrics(page)
     assert metrics["clipped"] == 0, json.dumps(metrics, sort_keys=True)
-    # nothing is wider than the clipping scroller, nothing scrolls sideways.
-    assert metrics["scrollerOver"] <= 1 and metrics["pageOver"] <= 0, json.dumps(metrics, sort_keys=True)
+    # nothing but the deliberate 8px edge budget (the last column's reserve
+    # padding, table_edge.py) passes the clipping scroller, nothing scrolls sideways.
+    assert metrics["scrollerOver"] <= TABLE_OVERHANG_PX + 1 and metrics["pageOver"] <= 0, json.dumps(metrics, sort_keys=True)
+    assert not overhang_problems(metrics["overhang"]), json.dumps(metrics, sort_keys=True)
     assert metrics["left"] == 0, json.dumps(metrics, sort_keys=True)
     return metrics
 
@@ -195,7 +220,7 @@ def _full_width(browser: tuple[Browser, str], total: int, *, font_size: str | No
 def test_reload_while_filtered_then_clear_restores_full_width(
     browser: tuple[Browser, str], plot_count: int
 ) -> None:
-    page = _page(browser)
+    page = _page(browser, avatar=True)
     reference = _full_width(browser, plot_count)
     _wait_rows(page, plot_count)
     page.locator("#rarity-filter").select_option("common")
@@ -209,7 +234,9 @@ def test_reload_while_filtered_then_clear_restores_full_width(
         "**/api/capture/status**",
         lambda route: route.fulfill(status=200, content_type="application/json", body='{"state":"done"}'),
     )
-    page.locator("#reload-btn").click()
+    # The board's reload control is the account avatar now ("Refresh board",
+    # board.js refreshBoardFromAvatar()); the separate reload button is gone.
+    page.locator("#player-avatar").click()
     _wait_filtered_rows(page, plot_count)
     _wait_stable_width(page)
     filtered_metrics = _assert_unclipped(page)
@@ -305,7 +332,11 @@ def test_v0413_width_and_window_position_guarantees_hold(
     _wait_stable_width(page)
     after_filter = _assert_unclipped(page)
     assert after_filter["tableWidth"] == initial["tableWidth"]
-    assert after_filter["windowTop"] == preserved["windowTop"]
+    # The filter keeps the window where it was -- unless the filtered page is
+    # too short to scroll that far (the 40-plot fixture board is; the account
+    # this was written against was not), where the browser clamps it to the end.
+    assert preserved["windowTop"] == 500 and after_filter["maxWindowTop"] > 0, (preserved, after_filter)
+    assert after_filter["windowTop"] == min(preserved["windowTop"], after_filter["maxWindowTop"])
     page.evaluate(
         """() => {
           const input = document.querySelector('#text-filter');
@@ -316,7 +347,7 @@ def test_v0413_width_and_window_position_guarantees_hold(
     _wait_rows(page, plot_count)
     after_clear = _assert_unclipped(page)
     assert after_clear["tableWidth"] == initial["tableWidth"]
-    assert after_clear["windowTop"] == preserved["windowTop"]
+    assert after_clear["windowTop"] == after_filter["windowTop"]
     page.close()
 
 

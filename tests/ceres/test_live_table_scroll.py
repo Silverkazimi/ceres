@@ -17,6 +17,7 @@ import pytest
 from playwright.sync_api import Browser
 
 from .conftest import settle, spawn_live_ceres, wait_ready
+from .table_edge import OVERHANG_JS, TABLE_OVERHANG_PX, overhang_problems
 
 
 @pytest.fixture(scope="module")
@@ -41,10 +42,13 @@ _HSCROLL_JS = """
   const scroller = document.getElementById('plot-table-scroll');
   const doc = document.documentElement;
   return {
+    gutter: window.innerWidth - document.body.getBoundingClientRect().width,
     boxes,
     proxy: !!document.getElementById('table-hscroll-proxy'),
     scrollerOverflowX: getComputedStyle(scroller).overflowX,
-    tableHidden: scroller.scrollWidth > scroller.clientWidth + 1,
+    // the deliberate 8px edge budget (table_edge.py) is the only overhang.
+    tableHidden: scroller.scrollWidth > scroller.clientWidth + """ + str(TABLE_OVERHANG_PX) + """ + 1,
+    overhang: (""" + OVERHANG_JS + """)(),
     pageSW: doc.scrollWidth, pageCW: doc.clientWidth,
     tableVisible: getComputedStyle(scroller).display !== 'none',
   };
@@ -67,13 +71,16 @@ def test_no_horizontal_scrollbar_at_any_width(browser: tuple[Browser, str], widt
     got = page.evaluate(_HSCROLL_JS)
     page.close()
     assert got is not None
-    assert got["tableVisible"] == (width > 1294), got  # card view at content <= 1279
+    # card view at content <= 1279; content = window - the page's own scrollbar
+    # gutter (thin: 10px in Chromium, so 1289 is the last card-view window).
+    assert got["tableVisible"] == (width - got["gutter"] > 1279), got
     assert got["boxes"] == 0, f"horizontal scroll box at {width}px: {got}"
     assert got["proxy"] is False, got
     assert got["scrollerOverflowX"] == "clip", got
     assert got["pageSW"] <= got["pageCW"], got
     if got["tableVisible"]:
         assert got["tableHidden"] is False, f"table wider than its clipping scroller at {width}px: {got}"
+        assert not overhang_problems(got["overhang"]), f"{overhang_problems(got['overhang'])} at {width}px: {got}"
 
 
 def test_desktop_table_header_reaches_both_document_edges(browser: tuple[Browser, str]) -> None:

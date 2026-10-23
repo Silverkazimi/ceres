@@ -1,5 +1,7 @@
 """Rendered tooltip contracts for the Ceres board."""
 
+import re
+
 from .conftest import spawn_live_ceres, wait_for_board
 
 
@@ -11,15 +13,20 @@ def _loaded_page(browser, base_url):
 
 
 def test_totem_tooltips_split_name_and_boost():
-    """Bundled string passed back to totemIconHtml -> red naming img.totem-icon."""
+    """Bundled string passed back to totemIconHtml -> red naming img.totem-icon.
+
+    The totem's boost line reads "+100% production for this plot" now (format.js
+    fmtTotem); the name stays the title and the boost stays in the body."""
     with spawn_live_ceres() as (browser, base_url):
         page = _loaded_page(browser, base_url)
-        for element in page.locator("img.totem-icon[data-tip]").all():
+        totems = page.locator("img.totem-icon[data-tip]").all()
+        assert totems, "the fixture board shows no totem"
+        for element in totems:
             title = element.get_attribute("data-tip")
             body = element.get_attribute("data-tip-body")
             assert body
-            assert "Boosts" not in title
-            assert "Boosts" in body
+            assert "%" not in title and "production" not in title, title
+            assert re.fullmatch(r"\+\d+% production for this plot", body), body
 
 
 def test_title_tooltips_split_name_and_boost():

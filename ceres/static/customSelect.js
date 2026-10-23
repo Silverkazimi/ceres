@@ -489,6 +489,9 @@ function _wireDocumentOutsideClick() {
   _DOCUMENT_OUTSIDE_CLICK_WIRED = true;
   window.addEventListener("resize", _closeAll);
   document.addEventListener("scroll", (event) => {
+    // A text field scrolling its own text (a long search term scrolls back to its start when
+    // the field loses focus -- e.g. on the click that opens a drop-down) moves no anchor.
+    if (event.target instanceof Element && event.target.matches("input, textarea")) return;
     if (!(event.target instanceof Element) || !event.target.closest(".csel-list")) _closeAll();
   }, true);
   document.addEventListener("click", (e) => {

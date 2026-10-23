@@ -2189,6 +2189,29 @@
       "expiry_phase": 5
     },
     {
+      "selector": ".ch-signing-op > summary",
+      "properties": [
+        "cursor",
+        "padding"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2",
+      "reviewed": "signing-run operation disclosure (operations.js, details.ch-signing-op): a bare <summary> row, same E2 class as the other op-review summary entries"
+    },
+    {
+      "selector": ".ch-signing-op > summary:hover",
+      "properties": [
+        "background"
+      ],
+      "context": [],
+      "source": "ceres.css",
+      "kind": "exception",
+      "expiry_phase": "E2",
+      "reviewed": "hover tint of the signing-run operation disclosure above"
+    },
+    {
       "selector": ":is(.fill-panel, .changes-panel) .fp-tiles .slot-tile.is-empty:hover",
       "properties": [
         "border-color"

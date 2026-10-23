@@ -30,6 +30,21 @@ BOARD_TOOLTIP_KINDS = frozenset(
 HONEST_GAP_KINDS = frozenset({"set", "title"})
 
 
+def _pointer_onto(page, target) -> None:
+    """Bring a real pointer to rest on `target`, the way a user's pointer arrives.
+
+    After any scroll, tooltip.js opens nothing until the pointer has really moved more
+    than SCROLL_QUIET_PX (maintainer, 2026-09-29: "tooltips create hurdles when
+    scrolling"), and the board's own load-time scrolls (its filter selects) count as one.
+    Playwright's `hover()` is a single synthetic move, which only arms that check; a short
+    stepped approach is a real pointer move."""
+    box = target.bounding_box()
+    assert box, "hover target has no layout box"
+    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    page.mouse.move(max(0, x - 30), max(0, y - 30))
+    page.mouse.move(x, y, steps=6)
+
+
 def _asset_root() -> Path:
     source = (STATIC / "state.js").read_text(encoding="utf-8")
     match = re.search(r"export const ASSET_BASE = ['\"]([^'\"]+)['\"]", source)
@@ -174,7 +189,9 @@ def _open_worksite_modal(page: Page) -> None:
     rows = page.locator("#plot-tbody > tr.plot-row")
     for index in range(rows.count()):
         expanded = _expand(page, index)
-        button = expanded.locator("button.worksite-change-btn")
+        # The worksite window opens from the harvest-bar cog (`data-slot-action=
+        # "open-worksite-modal"`); the old `.worksite-change-btn` is no longer rendered.
+        button = expanded.locator("[data-slot-action='open-worksite-modal']")
         if button.count():
             button.first.click()
             modal = page.locator("#worksite-modal-overlay")
@@ -310,7 +327,8 @@ def test_rendered_key_contrast_meets_wcag_aa_for_all_theme_severity_combinations
         for theme in ("alchemical", "dark", "light", "wood"):
             page.evaluate("theme => { document.documentElement.dataset.theme = theme; }", theme)
             for severity in ("none", "caution", "danger"):
-                target.hover()
+                target.scroll_into_view_if_needed()
+                _pointer_onto(page, target)
                 tooltip = page.locator("#ceres-tooltip.is-visible")
                 tooltip.wait_for(timeout=5_000)
                 tooltip.evaluate(
@@ -342,7 +360,8 @@ def test_rendered_key_has_weight_size_position_and_name_empty_guard(
         expanded = _open_editor_with_empty_worker(page)
         target = expanded.locator("[data-tip-key]").first
         target.wait_for(timeout=10_000)
-        target.hover()
+        target.scroll_into_view_if_needed()
+        _pointer_onto(page, target)
         tooltip = page.locator("#ceres-tooltip.is-visible")
         tooltip.wait_for(timeout=5_000)
         metrics = tooltip.evaluate(
@@ -357,7 +376,8 @@ def test_rendered_key_has_weight_size_position_and_name_empty_guard(
         # kind; identify it by its empty body instead.
         label = page.locator("[data-tip]:not([data-tip-body]):visible").first
         label.wait_for(timeout=10_000)
-        label.hover()
+        label.scroll_into_view_if_needed()
+        _pointer_onto(page, label)
         tooltip.wait_for(timeout=5_000)
         assert tooltip.locator(".tip-body").evaluate("el => el.offsetHeight") == 0
     finally:
@@ -503,20 +523,34 @@ def test_clear_plot_button_keeps_danger_severity_and_foot(
         page.close()
 
 
+def _open_badge_slideouts(page) -> None:
+    """Open every plot's badge slide-out.
+
+    Board badges are no longer a table column: each plot's chips render in its own row of
+    the slide-out panel (`#badge-overlay .badge-overlay-row`), which badge-overlay.js fills
+    only once that plot's handle in the right-edge badge bar (`#badge-bar .badge-bar-row`)
+    is opened."""
+    handles = page.locator("#badge-bar .badge-bar-row")
+    handles.first.wait_for(timeout=30_000)
+    handles.evaluate_all("rows => rows.forEach(row => { if (row.getAttribute('aria-expanded') !== 'true') row.click(); })")
+    page.wait_for_function(
+        """() => {
+            const rows = [...document.querySelectorAll('#badge-overlay .badge-overlay-row')];
+            return rows.length > 0 && rows.every(row => row.classList.contains('is-open'));
+        }""",
+        timeout=30_000,
+    )
+
+
 def test_badged_plot_renders_badge_row(live_browser: tuple[Browser, str]) -> None:
     browser, base_url = live_browser
     page = _page(browser, base_url)
     try:
-        rows = page.locator("#plot-tbody > tr.plot-row")
-        badged = []
-        for index in range(rows.count()):
-            _expand(page, index)
-            if rows.nth(index).locator(".badge-row").count():
-                badged.append(index)
-                break
-            rows.nth(index).click()
+        _open_badge_slideouts(page)
+        slideouts = page.locator("#badge-overlay .badge-overlay-row")
+        badged = [index for index in range(slideouts.count()) if slideouts.nth(index).locator(".badge-row").count()]
         assert badged, "the offline board fixture has no badge-bearing plot"
-        assert rows.nth(badged[0]).locator(".badge-row > *").count() > 0
+        assert slideouts.nth(badged[0]).locator(".badge-row > *").count() > 0
     finally:
         page.close()
 

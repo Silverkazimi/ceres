@@ -25,7 +25,11 @@ def live_browser():
 def picker_page(live_browser):
     browser, base_url = live_browser
     row = copy.deepcopy(_real_detail_row(base_url))
-    page = browser.new_page(viewport={"width": 1920, "height": 1080})
+    # The offline harness (conftest._offline_browser) defaults every page to reduced motion,
+    # which the product honours by removing the moving arc. This contract is about the
+    # animated ring, so the page asks for motion explicitly; the reduced-motion test below
+    # switches it back on its own.
+    page = browser.new_page(viewport={"width": 1920, "height": 1080}, reduced_motion="no-preference")
     _mount(page, base_url, row, _candidates())
     # The mounted band re-renders while its data and art land; a tile clicked one frame too
     # early is replaced and the click is lost. Retry until a tile carries the focus class
@@ -110,13 +114,24 @@ def _assert_ring_contract(page):
 
 
 def _assert_head_travel(page):
-    before = _ring_state(page)
-    settle(page)
-    after = _ring_state(page)
-    delta = float(after["animationTime"]) - float(before["animationTime"])
-    path_length = float(after["pathLengthPixels"])
+    # Sample the arc's animation clock against the page clock over at least 100 ms in the page
+    # itself: the old check assumed settle() lasted 100 ms, which it does not on an idle page.
+    travel = page.evaluate(
+        """async () => {
+          const arc = document.querySelector('.slot-tile.is-picker-focus > .picker-focus-ring .picker-focus-ring-arc');
+          const animation = arc.getAnimations()[0];
+          const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+          await frame();
+          const wall0 = performance.now(), anim0 = animation.currentTime;
+          while (performance.now() - wall0 < 100) await frame();
+          return {wall: performance.now() - wall0, anim: animation.currentTime - anim0, length: arc.getTotalLength(),
+                  lap: Number(animation.effect.getComputedTiming().duration)};
+        }"""
+    )
+    assert travel["anim"] > 0, "arc head is moving"
     # (3): at 2.6 s per lap the head covers ~18.6 px per 100 ms on the product tile.
-    assert path_length * delta / 2600 >= 18, "arc head travels at least 18 CSS px in 100ms"
+    pixels_per_100ms = travel["length"] / travel["lap"] * travel["anim"] / travel["wall"] * 100
+    assert pixels_per_100ms >= 18, "arc head travels at least 18 CSS px in 100ms"
 
 
 def test_ariadne_ring_contract(picker_page):
