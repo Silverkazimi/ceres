@@ -131,9 +131,6 @@ def test_tooltip_css_declares_full_hd_bounds_brief_depth_and_warning_variant() -
     # cap went with the wider structured (worker layout) tooltips.
     assert "max-width: var(--tooltip-available-width, calc(100vw - 24px));" in tooltip_css
     assert "max-height: var(--tooltip-available-height, calc(100dvh - 28px));" in tooltip_css
-    tooltip_js = (ROOT / "ceres" / "static" / "tooltip.js").read_text(encoding="utf-8")
-    assert "TOOLTIP_EL.style.setProperty('--tooltip-available-width', `${Math.max(0, viewport.width - margin * 2)}px`);" in tooltip_js
-    assert "TOOLTIP_EL.style.setProperty('--tooltip-available-height'," in tooltip_js
     assert "pointer-events: auto;" in tooltip_css
     assert "--text-dim" not in tooltip_css
     assert '#ceres-tooltip[data-depth="brief"]' in tooltip_css

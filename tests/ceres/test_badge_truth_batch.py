@@ -427,12 +427,10 @@ def test_badge_row_stays_single_line_nowrap():
 def test_no_worksite_and_worksite_incomplete_have_css_rules():
     """Badge colour is no longer one CSS rule per code: badges.js gives every chip a
     `badge-group-<group>` class from the shared badge table, and badge-colours.css paints
-    the groups. Both split codes must therefore sit in a painted group, and each chip still
-    gets its own `badge-<code>` class from badgeClasses()."""
+    the groups. Both split codes must therefore sit in a painted group (the rendered
+    chips' classes are checked by the live badge tests in this file)."""
     colours = (CSS.parent / "badge-colours.css").read_text(encoding="utf-8")
     for code in ("no_worksite", "worksite_incomplete"):
         group = BADGE_META[code]["state_group"]
         assert group == "warning", f"{code} must stay in the warning group, got {group!r}"
         assert f".badge.badge-group-{group} {{" in colours
-    badges_js = (CSS.parent / "badges.js").read_text(encoding="utf-8")
-    assert "return ['badge', `badge-${cssCode}`, kind, `badge-group-${badgeGroup(code)}`]" in badges_js
