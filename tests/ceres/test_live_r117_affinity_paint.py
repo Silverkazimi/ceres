@@ -22,6 +22,7 @@ NAMES = ["Fire", "Water", "Earth", "Life", "Death", "Dragon"]
 PROFILE = "[data-terrain-affinity]"
 BADGE = ".terrain-affinity-badge"
 ASSET_SUFFIX = {name: f"/static/assets/splinter/{name.lower()}.svg" for name in NAMES}
+NEUTRAL_ASSET = "/static/assets/splinter/neutral.svg"
 STATES = ("favoured", "penalised", "unchanged", "unknown")
 STATIC = Path(__file__).resolve().parents[2] / "ceres" / "static"
 COLOURS = dict(zip(NAMES, ("EA7474", "5EBCF2", "5DD978", "FFE694", "B181F3", "DA9656")))
@@ -56,14 +57,20 @@ def _paint_fixture(page):
  for (const [i, surface] of ['editor','picker'].entries()) {
  const host = document.createElement('div');
  host.style.cssText = `position:absolute;left:24px;top:${100 + i * 60}px;width:400px`;
- host.innerHTML = terrainAffinityHtml(row, surface);
+ // the picker run is the worker picker's Splinter filter and lives in its bar
+ // (candidates.js: header.picker-bar > .candidate-worker-affinity); only that scope resets
+ // the <button> chips' UA chrome, so the fixture mounts it in the same scope.
+ host.innerHTML = surface === 'picker'
+   ? `<div class="picker-bar"><span class="candidate-worker-affinity">${terrainAffinityHtml(row, surface)}</span></div>`
+   : terrainAffinityHtml(row, surface);
  document.body.append(host);
  }
  await Promise.all([...document.querySelectorAll('.splinter-icon')].map(img => img.decode()));
  }""")
+    # six identities on the plain run plus seven filter chips (the picker adds the Neutral chip)
     page.wait_for_function("""() => {
       const images = [...document.querySelectorAll('[data-terrain-affinity] .splinter-icon')];
-      return images.length === 12 && images.every(img => img.complete && img.naturalWidth > 0);
+      return images.length === 13 && images.every(img => img.complete && img.naturalWidth > 0);
     }""")
 
 
@@ -221,9 +228,10 @@ def _assert_original_assets(page):
         blend: s.mixBlendMode, opacity: s.opacity, objectFit: s.objectFit,
         expected};
     }))""")
-    assert len(records) == 12 and all(record["complete"] and record["width"] > 0 for record in records), "G12 loaded original rasters"
-    assert {record["name"] for record in records} == set(NAMES), "G12 all six identities present"
-    assert all(record["src"].endswith(ASSET_SUFFIX[record["name"]]) for record in records), "G12 exact original asset URLs"
+    # six identities on each surface, plus the picker filter's Neutral chip (terrainAffinity.js)
+    assert len(records) == 13 and all(record["complete"] and record["width"] > 0 for record in records), "G12 loaded original rasters"
+    assert {record["name"] for record in records} == {*NAMES, "Neutral"}, "G12 all six identities present"
+    assert all(record["src"].endswith(ASSET_SUFFIX.get(record["name"], NEUTRAL_ASSET)) for record in records), "G12 exact original asset URLs"
     assert all(record["box"] == pytest.approx([16, 16], abs=.5) for record in records), "G12 16px original canvas"
     assert all(record["filter"] == "none" for record in records), "G12 no icon filter"
     assert all(record["mask"] in ("none", "") and record["blend"] == "normal" and record["opacity"] == "1" for record in records), "G12 no raster effects"
@@ -237,7 +245,9 @@ def _assert_original_assets(page):
         assert [record['x'] + 8, record['y'] + 8] == pytest.approx(
             [badge['x'] + 12, badge['y'] + 12], abs=.1
         ), "G12 original canvas centred"
-        original = tuple(int(COLOURS[record['name']][offset:offset + 2], 16) for offset in (0, 2, 4))
+        if record['name'] not in COLOURS:
+            continue  # the Neutral chip's artwork colour is not part of the R-117 identity reference
+        original =tuple(int(COLOURS[record['name']][offset:offset + 2], 16) for offset in (0, 2, 4))
         reference = record['expected']
         main_pixels = [
             (index // 4 % 16, index // 64, tuple(reference[index:index + 3]))
