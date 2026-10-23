@@ -201,7 +201,28 @@ _COLUMNS_JS = """() => {
         add(n.getBoundingClientRect());
       }
     }
+    // A deliberate inline inset on an in-flow box (the Lock icon's
+    // `margin-inline-start: 1rem`, ceres.css) is part of what the column must hold.
+    const walker2 = document.createTreeWalker(cell, NodeFilter.SHOW_ELEMENT);
+    for (let n = walker2.nextNode(); n; n = walker2.nextNode()) {
+      if (outOfFlow(n, cell) || !(hi > lo)) continue;
+      const r = n.getBoundingClientRect();
+      if (r.width <= 1 || r.height <= 1) continue;
+      const cs = getComputedStyle(n);
+      const ml = (parseFloat(cs.marginLeft) || 0) * f, mr = (parseFloat(cs.marginRight) || 0) * f;
+      if (ml > 0) lo = Math.min(lo, r.left - ml);
+      if (mr > 0) hi = Math.max(hi, r.right + mr);
+    }
     return hi > lo ? hi - lo : 0;
+  };
+  // A column's declared minimum width (ceres.css pins Terrain and DEC stake to
+  // their measured master widths with `min-inline-size`) is a need of that
+  // column, not slack it took from the others.
+  const declaredMin = (el) => {
+    const cs = getComputedStyle(el);
+    const min = parseFloat(cs.minWidth);
+    if (!Number.isFinite(min) || min <= 0) return 0;
+    return (cs.boxSizing === 'border-box' ? min * f : min * f + pad(el));
   };
   const badgeContent = (td) => {
     const badgeRow = td.querySelector('.badge-row');
@@ -222,6 +243,8 @@ _COLUMNS_JS = """() => {
   // A hidden column's computed padding is unaffected by display:none, so its measured
   // "content" above can be a nonzero phantom (padding alone) even though it renders
   // nothing -- zero it here so it can never inflate total_c against total_w.
+  heads.forEach((th, i) => { if (i < content.length) content[i] = Math.max(content[i], declaredMin(th)); });
+  if (row) [...row.children].forEach((td, i) => { content[i] = Math.max(content[i], declaredMin(td)); });
   hidden.forEach((h, i) => { if (h) content[i] = 0; });
   const clippedCells = rows.flatMap(tr => [...tr.children]).filter(td => td.scrollWidth > td.clientWidth + 1).length;
   const clippedHead = heads.filter(th => th.scrollWidth > th.clientWidth + 1).length;
