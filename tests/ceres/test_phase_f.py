@@ -79,8 +79,8 @@ def test_changes_links_route_back_to_the_mobile_plot_sheet() -> None:
 
 
 def test_phase_f_css_is_mobile_tier_scoped_and_keeps_scale_guards_flat() -> None:
-    block = CSS.split("/*  PHASE F MOBILE STAGING START */", 1)[1].split(
-        "/*  PHASE F MOBILE STAGING END */", 1
+    block = CSS.split("/* PHASE F MOBILE STAGING START */", 1)[1].split(
+        "/* PHASE F MOBILE STAGING END */", 1
     )[0]
     selectors = re.findall(r"([^{}]+)\{", re.sub(r"/\*.*?\*/", "", block, flags=re.S))
     assert selectors
