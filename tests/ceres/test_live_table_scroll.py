@@ -41,6 +41,7 @@ _HSCROLL_JS = """
   const scroller = document.getElementById('plot-table-scroll');
   const doc = document.documentElement;
   return {
+    gutter: window.innerWidth - document.body.getBoundingClientRect().width,
     boxes,
     proxy: !!document.getElementById('table-hscroll-proxy'),
     scrollerOverflowX: getComputedStyle(scroller).overflowX,
@@ -67,7 +68,9 @@ def test_no_horizontal_scrollbar_at_any_width(browser: tuple[Browser, str], widt
     got = page.evaluate(_HSCROLL_JS)
     page.close()
     assert got is not None
-    assert got["tableVisible"] == (width > 1294), got  # card view at content <= 1279
+    # card view at content <= 1279; content = window - the page's own scrollbar
+    # gutter (thin: 10px in Chromium, so 1289 is the last card-view window).
+    assert got["tableVisible"] == (width - got["gutter"] > 1279), got
     assert got["boxes"] == 0, f"horizontal scroll box at {width}px: {got}"
     assert got["proxy"] is False, got
     assert got["scrollerOverflowX"] == "clip", got

@@ -17,7 +17,10 @@ from playwright.sync_api import Browser, Page
 from .conftest import settle, spawn_live_ceres, wait_ready
 
 
-GUTTER = 15
+# The page scrollbar gutter: ceres.css sets `scrollbar-width: thin` on html,
+# 10px in Chromium (a classic gutter would be 15px; no case below is within 5px
+# of the 1279 switch, so either classifies every case the same way).
+GUTTER = 10
 
 
 def _table_view(width: int, root_font: int) -> bool:
