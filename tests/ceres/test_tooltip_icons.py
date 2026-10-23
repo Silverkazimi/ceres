@@ -179,7 +179,10 @@ def test_worksite_modal_needs_resources_keep_icons_without_worksite_tooltip_inpu
         worksite_cells = _column_cells(page, "Worksite").filter(has=page.locator("img"))
         assert worksite_cells.count()
         worksite_cells.first.click()
-        modal_button = page.locator("tr.expand-row button.worksite-change-btn").first
+        # The worksite window opens from the harvest-bar cog now (`data-slot-action=
+        # "open-worksite-modal"`); the old `.worksite-change-btn` is no longer rendered.
+        page.locator("tr.expand-row .editor-band[data-plot-state='ready']").first.wait_for(timeout=30_000)
+        modal_button = page.locator("tr.expand-row [data-slot-action='open-worksite-modal']").first
         modal_button.wait_for(timeout=10_000)
         modal_button.click()
         page.locator("#worksite-modal-overlay").wait_for(state="visible", timeout=10_000)
