@@ -51,7 +51,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -78,13 +78,15 @@ jobs:
           missing = [p for p in sorted(load_sources(root)) if fetch_asset(root, p) is None]
           print(f"artwork: {len(load_sources(root)) - len(missing)} present, {len(missing)} unavailable", missing[:5])
           PY
-      - name: browser tests (shard ${{ matrix.shard }} of 20)
+      - name: browser tests (shard ${{ matrix.shard }} of 10)
         env:
           CERES_CI_NO_NETWORK: "1"
-          CERES_TEST_SHARD: ${{ matrix.shard }}/20
+          CERES_TEST_SHARD: ${{ matrix.shard }}/10
+          # Unbuffered, so a shard stopped at the job time limit still shows how far it got.
+          PYTHONUNBUFFERED: "1"
         run: python -m pytest -m browser -q --junitxml=browser-shard.xml
       # Seconds per test file in this shard, for refreshing tests/ceres/browser_durations.json.
-      - name: browser test durations (shard ${{ matrix.shard }} of 20)
+      - name: browser test durations (shard ${{ matrix.shard }} of 10)
         if: always()
         run: |
           python - <<'PY'
