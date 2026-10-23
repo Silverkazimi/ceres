@@ -1,0 +1,18 @@
+{
+ "trx_info": {
+  "block_id": "35270d46e576fa9cda75cb33f700c8acde9e2209",
+  "block_num": 99000123,
+  "created_date": "2026-10-12T08:15:21.000Z",
+  "data": "{\"op\":\"harvest_all\",\"region_uid\":\"PR-BRL-23\",\"deed_uids\":[],\"auto_buy_grain\":false,\"resource_symbol\":\"ALL\",\"app\":\"ceres/1.0.0\",\"n\":\"d59ffd87d4\"}",
+  "error": null,
+  "id": "0c26f2c1f37026215e3f84b14c0a1d739bb57cb2",
+  "is_owner_auth": false,
+  "player": "sample01",
+  "prev_block_id": "99b88443b84ceed0e3bc80e20043982d0897118d",
+  "result": "{\"success\":true,\"result\":{\"success\":true,\"data\":{\"results\":[{\"deed_uid\":\"I-290-5a02f69344a267\",\"region_number\":23,\"resource_symbol\":\"GRAIN\",\"resource_amount\":21680.491,\"tax_amount\":1680.491,\"received_amount\":20000.0,\"grain_eaten\":5239.282,\"result_message\":\"Successful\"},{\"deed_uid\":\"I-300-3331771ae6720b\",\"region_number\":23,\"resource_symbol\":\"GRAIN\",\"resource_amount\":16260.368,\"tax_amount\":1260.368,\"received_amount\":15000.0,\"grain_eaten\":5239.282,\"result_message\":\"Successful\"},{\"deed_uid\":\"I-294-0fec753480c992\",\"region_number\":23,\"resource_symbol\":\"WOOD\",\"resource_amount\":28000.0,\"tax_amount\":7000.0,\"received_amount\":21000.0,\"grain_eaten\":5239.282,\"result_message\":\"Successful\"},{\"deed_uid\":\"I-294-0fec753480c992\",\"region_number\":23,\"resource_symbol\":\"SPS\",\"received_amount\":100.0,\"result_message\":\"Successful\"},{\"deed_uid\":\"I-296-7f16d4a7e655a7\",\"region_number\":23,\"resource_symbol\":\"WOOD\",\"resource_amount\":25314.031,\"tax_amount\":6328.508,\"received_amount\":18985.523,\"grain_eaten\":5239.282,\"result_message\":\"Successful\"},{\"deed_uid\":\"I-298-d2acaf622db6a6\",\"region_number\":23,\"resource_symbol\":\"STONE\",\"resource_amount\":10666.667,\"tax_amount\":2666.667,\"received_amount\":8000.0,\"grain_eaten\":5239.282,\"result_message\":\"Successful\"},{\"deed_uid\":\"I-298-d2acaf622db6a6\",\"region_number\":23,\"resource_symbol\":\"SPS\",\"received_amount\":85.836,\"result_message\":\"Successful\"},{\"deed_uid\":\"I-297-e74e1aaee40e0b\",\"region_number\":23,\"resource_symbol\":\"STONE\",\"resource_amount\":9151.481,\"tax_amount\":2287.87,\"received_amount\":6863.611,\"grain_eaten\":5239.282,\"result_message\":\"Successful\"},{\"deed_uid\":\"I-295-8135a00e9834b2\",\"region_number\":23,\"resource_symbol\":\"IRON\",\"resource_amount\":4000.0,\"tax_amount\":1000.0,\"received_amount\":3000.0,\"grain_eaten\":5239.282,\"result_message\":\"Successful\"},{\"deed_uid\":\"I-303-e1ebd1a2e8c330\",\"region_number\":23,\"resource_symbol\":\"IRON\",\"resource_amount\":3827.245,\"tax_amount\":956.811,\"received_amount\":2870.434,\"grain_eaten\":5239.285,\"result_message\":\"Successful\"}]}}}",
+  "sbd_price": null,
+  "steem_price": null,
+  "success": true,
+  "type": "land_operation"
+ }
+}
