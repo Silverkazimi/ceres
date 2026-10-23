@@ -297,7 +297,12 @@ def test_badge_lane_uses_svg_flag_and_shared_open_golden_style():
     assert "badge-clock-pulse" in css
     assert 'data-state="unused"' in html
     assert "flag.dataset.state = allOpen ? 'used' : 'unused';" in js
-    assert not re.search(r"(?:^|})\s*\.badge-bar-head:hover", re.sub(r"/\*.*?\*/", "", css, flags=re.S))
+    # The head's hover/focus glow was restored as approved (ceres.css, "restored from exactly
+    # as approved"): it is an interaction affordance in the --hi token, never a resting style.
+    css_rules = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    head_glow = re.search(r"(?:^|})\s*\.badge-bar-head:hover, \.badge-bar-head:focus-visible \{([^}]*)\}", css_rules)
+    assert head_glow and "box-shadow: 0 0 18px -3px var(--hi)" in head_glow.group(1)
+    assert all("box-shadow" not in body for body in re.findall(r"(?:^|})\s*\.badge-bar-head \{([^}]*)\}", css_rules))
 
 
 def test_row_joins_open_rows_on_first_mount_while_group_preference_is_open():
@@ -346,15 +351,20 @@ def test_node_check_badge_overlay_js():
 
 
 def test_flag_and_open_slideout_have_no_glow():
-    """The sidebar has no hover or open-state glow."""
+    """The sidebar never glows at rest or on the open rows themselves. The column glow on
+    hover, on flag hover/focus and while the slide-out is open was restored as approved
+    (ceres.css: "restored from exactly as approved ... no transition"), so it must come
+    only from those three interaction states, set as classes on the bar by
+    badge-overlay.js -- never through a page-wide `body:has(#badge-flag...)` selector."""
     css = (ROOT / "ceres" / "static" / "ceres.css").read_text(encoding="utf-8")
     js = BADGE_OVERLAY_JS.read_text(encoding="utf-8")
     css_rules = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
-    assert not re.search(r"\.badge-bar(?::hover|:focus-visible)[^{]*\{[^}]*box-shadow", css_rules)
-    assert "badge-bar.is-flag-hover" not in css_rules
+    glow_rules = re.findall(r"(?:^|})\s*([^{}]*\.badge-bar\b[^{}]*)\{([^}]*box-shadow[^}]*)\}", css_rules)
+    glow_selectors = {selector.strip() for selector, _body in glow_rules if ".badge-bar-head" not in selector}
+    assert glow_selectors == {".badge-bar:hover, .badge-bar.is-flag-hover, .badge-bar.is-group-open"}, glow_selectors
     assert "body:has(#badge-flag:is(" not in css_rules
-    assert "setFlagHover" not in js
-    assert "bar.classList.toggle('is-group-open', allOpen);" not in js
+    assert "bar.classList.toggle('is-flag-hover', on)" in js
+    assert "bar?.classList.toggle('is-group-open', allOpen);" in js
     open_rule = css.split(".badge-overlay-row.is-open {", 1)[1].split("}", 1)[0]
     assert "box-shadow:" not in open_rule
 

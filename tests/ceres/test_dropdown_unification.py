@@ -187,5 +187,13 @@ def test_no_raw_deed_uid_in_slot_editor_visible_label(live_browser: tuple[Browse
     # the VISIBLE label -- only a real plot number ("41-9-56" / "65-10-88").
     assert deed_uid not in visible_text
     assert not re.search(r"^[A-Z]-\d+-[0-9a-f]+$", visible_text.strip())
-    assert re.search(r"Plot \d{1,3}-\d{1,2}-\d{1,3}", visible_text)
+    # The editor no longer prints a "Plot 41-9-56" caption of its own (the plot row right above
+    # it names the plot); where the editor does name the plot -- its close control -- it uses
+    # the same plot number as that row, never the deed uid.
+    plot_label = row.locator("td").first.inner_text().strip()
+    assert re.fullmatch(r"\d{1,3}-\d{1,2}-\d{1,3}", plot_label), plot_label
+    close_label = expand.locator(".eos-close").first.get_attribute("aria-label") or ""
+    assert close_label == f"Close plot {plot_label}", close_label
+    labels = expand.locator(".slot-editor [aria-label]").evaluate_all("els => els.map((el) => el.getAttribute('aria-label'))")
+    assert not [label for label in labels if deed_uid in label]
     page.close()

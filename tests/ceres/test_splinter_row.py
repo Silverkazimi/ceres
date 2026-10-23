@@ -80,7 +80,9 @@ def test_divider_mirrors_the_pickers_own_bar_separator_proportions() -> None:
     # the divider now spans the button height (--ceres-control-min-block) instead
     # of a fixed 1.4rem, since the badge row itself now matches that button height.
     assert ".picker-bar-end .picker-bar-sep { flex: 0 0 1px; inline-size: 1px; align-self: stretch; min-block-size: 1.4rem; background: var(--border-bright); }" in CSS
-    assert ".slot-group-controls > .editor-splinter-affinity-sep { flex: 0 0 1px; inline-size: 1px; align-self: start; min-block-size: var(--ceres-control-min-block, 1.875rem); background: var(--border-bright); pointer-events: none; }" in CSS
+    # same 1px proportion; the plot-row divider is a plain opaque --primary line with the
+    # controls' pipe gap so it reads over the plot scene art (ceres.css comment on the rule)
+    assert ".slot-group-controls > .editor-splinter-affinity-sep { flex: 0 0 1px; inline-size: 1px; align-self: start; min-block-size: var(--ceres-control-min-block, 1.875rem); margin-inline: calc(var(--plot-control-pipe-gap) - .25rem); background: var(--primary); pointer-events: none; }" in CSS
 
 
 def test_affinity_row_is_vertically_centred_and_receives_pointer_events() -> None:
