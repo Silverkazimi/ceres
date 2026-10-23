@@ -125,8 +125,17 @@ def test_table_has_no_badge_column_any_more():
     assert colgroup_match, "could not find #plot-table colgroup"
     assert "col-w-badge-strip" not in colgroup_match.group(0)
     ths = re.findall(r"<th\b", thead)
-    # Totem/Title is one fixed cell; the shared cell still exposes two sort controls.
-    assert len(ths) == 17, f"expected 17 header cells (no badge column), found {len(ths)}"
+    # One header cell per table column: the header, the colgroup and the shared column count
+    # (state.js, used for the expand-row colspan) agree, so no hidden badge column remains.
+    # The table has grown real columns since this guard was written (Totem and Title are
+    # separate columns again, plus the lock and plot-count columns), so the count is read
+    # from the product's own column constant instead of a hand-typed number.
+    cols = re.findall(r"<col\b", colgroup_match.group(0))
+    column_count = re.search(r"export const PLOT_TABLE_COLUMN_COUNT = (\d+);", (STATIC / "state.js").read_text(encoding="utf-8"))
+    assert column_count, "state.js must declare PLOT_TABLE_COLUMN_COUNT"
+    assert len(ths) == len(cols) == int(column_count.group(1)), (
+        f"header cells ({len(ths)}), <col>s ({len(cols)}) and PLOT_TABLE_COLUMN_COUNT ({column_count.group(1)}) disagree"
+    )
 
 
 def test_regional_dec_button_stays_in_dom_for_mobile_but_hides_on_desktop():
@@ -148,7 +157,8 @@ def test_edge_tabs_positioned_from_the_same_picker_measurement_as_the_dock():
     fn_match = re.search(r"function centerThemePicker\(\) \{.*?\n\}\n", app, re.S)
     assert fn_match, "centerThemePicker source shape changed -- update this test's slice"
     body = fn_match.group(0)
-    assert "dock.style.top = `${dockY}px`;" in body
+    # The dock's own top is still written here, from the anchored picker measurement.
+    assert "dock.style.top = `${pickerPosition.top}px`;" in body
     # the wallet's own positioning moved OUT of centerThemePicker() into
     # its own function (updateEdgeTabsPosition(), same split updateBadgeFlagPosition()
     # already has) since it now needs a per-scroll-frame update centerThemePicker()'s
@@ -782,7 +792,7 @@ def test_rows_js_refresh_targets_the_bar_row_not_a_table_cell():
     rows = ROWS_JS.read_text(encoding="utf-8")
     assert "document.querySelector(`#badge-bar .badge-bar-row" in rows
     assert "badge-strip-cell" not in rows
-    fn_match = re.search(r"function plotRowCellsHtml\(row\) \{.*?\n\}\n", rows, re.S)
+    fn_match = re.search(r"function plotRowCellsHtml\(row(?:, rowIndex = null)?\) \{.*?\n\}\n", rows, re.S)
     assert fn_match, "plotRowCellsHtml source shape changed -- update this test's slice"
     assert "badgeStripHtml(row)" not in fn_match.group(0)
 
@@ -816,8 +826,12 @@ def test_changes_modal_tile_row_is_content_sized_again():
     assert ".changes-panel .fp-tiles.slot-grid .slot-tile, .changes-panel .fp-tiles.slot-grid .slot-power { flex: 1 1 6.5rem; max-inline-size: none; }" not in css
     assert ".changes-panel .fp-badge-row { inline-size: 100%; }" not in css
     assert ".changes-panel .fp-badge-row .editor-base-pp-cell { flex: 1 1 6.5rem; max-inline-size: none; }" not in css
-    # The per-plot card ends at its own last tile -- ceres.css's own comment.
-    assert ".changes-panel .ch-plot { inline-size: fit-content; max-inline-size: 100%; }" in css
+    # The per-plot card is capped at the modal's width. It later went back to spanning the
+    # panel (`inline-size: 100%`, pinned by test_changes_layout.py: the strip now holds only
+    # the changed slots and must fit the panel); the tiles inside it stay content-sized,
+    # which the four `not in` checks above still guard.
+    assert ".changes-panel .ch-plot { box-sizing: border-box; inline-size: 100%; min-inline-size: 0; max-inline-size: 100%; }" in css
+    assert ":is(.fill-panel, .changes-panel) .fp-tiles.slot-grid {" in css and "inline-size: max-content;" in css.split(":is(.fill-panel, .changes-panel) .fp-tiles.slot-grid {", 1)[1].split("}", 1)[0]
     # The modal's own strip-table width need () is untouched.
     assert ".harvest-panel.changes-panel { width: fit-content; min-width: min(68rem, calc(var(--ceres-vw, 1vw) * 100 - 2rem)); max-width: calc(var(--ceres-vw, 1vw) * 100 - 2rem); }" in css
     # The editor band has its own sizing (--eos-slot-w etc.) and is untouched by this change.
