@@ -136,8 +136,15 @@ EXPECTED_BAND = r"""band=>{
 
 def _payload(report, details_by_id, *, count=80, capacity=5, no_art=False, long=False):
     board = project_board(report, details_by_id)
-    template = next(row for row in board["plots"] if row["workers"])
-    worker = copy.deepcopy(template["workers"][0])
+    # A plain powered worker plot. The fixture report's worker plots are Runi plots whose
+    # slot-0 card is the Runi (card_detail_id 505): every Eos worker cloned from that card
+    # would be a Runi to the product (format.js isRuniWorker) and fill the Runi tile, and
+    # the template's staked Runi would add a Runi occupant. Clone a non-Runi worker and
+    # leave the Runi unstaked; power comes from the Power Core set below.
+    def _runi(worker):
+        return worker.get("runi_number") not in (None, "") or worker.get("card_detail_id") == 505 or str(worker.get("card_name") or worker.get("name") or "").strip().lower() == "runi"
+    template = next(row for row in board["plots"] if any(not _runi(worker) for worker in row["workers"]))
+    worker = copy.deepcopy(next(worker for worker in template["workers"] if not _runi(worker)))
     plots = []
     for index in range(count):
         row = copy.deepcopy(template)
@@ -148,7 +155,7 @@ def _payload(report, details_by_id, *, count=80, capacity=5, no_art=False, long=
         row["resource"] = "grain"
         row["plot_status"] = "natural"
         row["assets_loaded"] = True
-        row["capacity"].update(potential_card_capacity=capacity, display=f"{capacity}/{capacity}")
+        row["capacity"].update(potential_card_capacity=capacity, display=f"{capacity}/{capacity}", runi_staked=False, worker_count=capacity)
         row["workers"] = []
         row["bonus"] = {
             "power_core":{"name":"Power Core","asset_ref":f"power-{index}"},
@@ -156,6 +163,7 @@ def _payload(report, details_by_id, *, count=80, capacity=5, no_art=False, long=
             "title":{"name":"The Untamed","asset_ref":f"title-{index}","boost":0.1},
         }
         row.setdefault("staking_facts", {})["is_power_core_staked"] = True
+        row["staking_facts"]["is_runi_staked"] = False
         for slot in range(capacity):
             item = copy.deepcopy(worker)
             item.update(slot=slot + 1, name=f"Eos Worker {slot + 1}", card_name=f"Eos Worker {slot + 1}",
@@ -214,6 +222,19 @@ class EosBrowser:
             uid = path.split("/")[3]
             await route.fulfill(status=503 if self.fail_detail else 200,
                                 json={"detail":"Eos detail temporarily unavailable"} if self.fail_detail else self.details[uid])
+        elif path.endswith("/removal-impact"):
+            # A staged removal is priced first; the page refuses (and stages nothing) when
+            # the answer is not a well-formed impact, so the fixture prices each removed
+            # asset as a neutral, still-powered change.
+            refs = (request.post_data_json or {}).get("asset_refs") or []
+            await route.fulfill(json={
+                "deed_uid": path.split("/")[3], "before_powered": True, "after_powered": True,
+                "removed": [{"asset_ref": ref, "own_harvest_pp": 0, "own_construction_pp": 0, "own_base_pp": 0} for ref in refs],
+                "plot_residual_delta": 0, "plot_ability_delta": 0, "harvest_pp_delta": 0,
+                "own_construction_pp_delta": {"status": "point", "value": 0, "low": 0, "high": 0},
+                "own_base_pp_delta": {"status": "point", "value": 0, "low": 0, "high": 0},
+                "notices": [],
+            })
         elif "upgrade" in path:
             await self.gates["upgrade"].wait()
             await route.fulfill(json={"options":[], "candidates":[]})
@@ -343,20 +364,26 @@ class EosBrowser:
         THE FIX MUST NOT BE TO OPEN THE GATES. That would make nineteen guards pass by
         removing the condition they test — verification theatre by construction.
 
-        Ceres ships NO web fonts: no `@font-face`, no remote font stylesheet, no `.woff`
-        anywhere under `ceres/`, and the page reports `document.fonts.size == 0`. So the
-        wait can never have anything to settle here, and skipping it costs no fidelity.
-
-        That assumption is CHECKED rather than asserted in a comment: if a web font is ever
-        added, `document.fonts.size` becomes non-zero and this falls back to the normal
-        screenshot, which waits. The bypass is self-limiting instead of permanent, and the
-        day a font arrives the guards go back to waiting for it rather than silently
-        capturing unstyled text.
+        Ceres now ships one local web face (badge-face.css, vendored Inter), so
+        `document.fonts.size` is no longer 0 and the old "no fonts, skip the wait" check
+        sent every capture back to `page.screenshot()` and its 30 s fonts timeout. The
+        no-unstyled-text property is kept per face instead: after a forced layout, every
+        face the page actually uses has left `unloaded`, and the capture first awaits each
+        such face's own `loaded` promise (a face that fails to load fails the guard). That
+        settles exactly the fonts on screen and never waits on the held document.
         """
         path = self.artifact / f"{name}.png"
-        if not await self.page.evaluate("() => document.fonts.size === 0"):
-            await self.page.screenshot(path=str(path))
-            return
+        # Ceres now ships one local web face (badge-face.css, vendored Inter). The
+        # no-unstyled-text property is kept per face instead of through
+        # `document.fonts.ready`: after a forced layout every face the page actually
+        # uses has left `unloaded`, so waiting on each such face's own `loaded`
+        # promise settles exactly the fonts on screen and never waits on the held
+        # document. A face that fails to load fails the guard.
+        await self.page.evaluate("""async () => {
+          document.body.getBoundingClientRect();
+          const used=[...document.fonts].filter(face=>face.status!=='unloaded');
+          await Promise.all(used.map(face=>face.loaded));
+        }""")
         if self._cdp is None:
             self._cdp = await self.page.context.new_cdp_session(self.page)
         shot = await self._cdp.send("Page.captureScreenshot", {"format": "png"})
@@ -412,6 +439,12 @@ def _stable(trace):
         for key in ("bandHeight", "tdHeight", "bandTop", "nextTop"):
             if frame[key] is not None and reference[key] is not None:
                 assert abs(frame[key] - reference[key]) <= 0.5, (key, reference, frame)
+
+
+async def _staged_removal(f):
+    """A removal is staged only after its impact is priced (an async request), so wait
+    for the removed tile's restore control instead of reading the stage at once."""
+    await f.band().locator('[data-slot-action="restore"][data-group-id="worker"]').first.wait_for(state="attached")
 
 
 async def _no_new_gesture(fixture, action):
@@ -641,7 +674,7 @@ async def _g8(f):
     remove = f.band().locator('[data-slot-action="remove"][data-group-id="worker"]').first
     assert await remove.count(), "Representative fixture must expose a real stage control"
     await remove.click(force=True)
-    await asyncio.sleep(0.1)
+    await _staged_removal(f)
     staged = await f.module("staging", "m=>m.CERES_STAGE.length")
     assert staged == 1
     await f.terminal()
@@ -739,6 +772,7 @@ async def _g14(f, mutation=None):
     await f.terminal()
     remove = f.band().locator('[data-slot-action="remove"][data-group-id="worker"]').first
     await remove.click()
+    await _staged_removal(f)
     await f.module("staging", """(m,notices)=>{
       if(m.CERES_STAGE.length!==1)throw new Error('Expected one genuinely staged removal');
       m.CERES_STAGE[0]._notices=notices;
@@ -1105,6 +1139,7 @@ def test_g18_pending_write_cancellation_matrix(intent, count, report, details_by
                         )
                 remove = f.band().locator('[data-slot-action="remove"][data-group-id="worker"]').first
                 await remove.click(force=True)
+                await _staged_removal(f)
                 assert await f.module("staging", "m=>m.CERES_STAGE.length") == 1
             elif intent == "wheel":
                 await f.page.mouse.wheel(0, 120)
