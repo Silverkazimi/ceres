@@ -9,8 +9,13 @@ page is empty space in the badge column."
  forbids this guard from opening Chromium windows on the maintainer's desktop.
 It therefore runs headless by default, with each case's CSS viewport and DPR set
 on its browser context. Headless Chromium otherwise paints no classic scrollbar,
-so a test-only init style reserves a 15px always-present gutter; the guard asserts
-that the measured gutter is 14-18px before making any layout measurements. Run:
+so a test-only init style makes the page scrollbar always present (overflow-y:
+scroll + a stable gutter); its width is the page's own: ceres.css sets
+`scrollbar-width: thin` on html, which Chromium (121+) honours over any
+`::-webkit-scrollbar` width, so the gutter is the thin one (10px in Chromium's
+default theme) -- what every visitor with a classic-scrollbar Chrome gets. The
+guard asserts that a painted 8-18px gutter is present before making any layout
+measurements. Run:
   env -u DISPLAY -u WAYLAND_DISPLAY python3 -m pytest -q tests/ceres/test_scaling_guard.py
 
 The guarded headless Chromium context is measured at:
@@ -81,7 +86,6 @@ _CLASSIC_SCROLLBAR_INIT = """(() => {
   style.id = 'ceres-s9380-classic-scrollbar';
   style.textContent = `
     html { overflow-y: scroll !important; scrollbar-gutter: stable !important; }
-    ::-webkit-scrollbar { width: 15px !important; }
   `;
   document.documentElement.appendChild(style);
 })();"""
@@ -363,8 +367,10 @@ def real_window_measurement(live_server, request):
     browser, page = _launch(live_server, width, height, dpr)
     try:
         gutter = page.evaluate("innerWidth - document.documentElement.clientWidth")
-        assert 14 <= gutter <= 18, (
-            f"{name}: expected a 14-18px classic scrollbar gutter, got {gutter}px"
+        # The page's own thin scrollbar (10px in Chromium) or a classic one
+        # (15-17px); 0 would mean no painted gutter (--hide-scrollbars).
+        assert 8 <= gutter <= 18, (
+            f"{name}: expected a painted 8-18px page scrollbar gutter, got {gutter}px"
         )
         table = page.evaluate(
             "(() => { const s = document.getElementById('plot-table-scroll');"
