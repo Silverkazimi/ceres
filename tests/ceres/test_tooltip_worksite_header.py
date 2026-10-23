@@ -97,7 +97,10 @@ def _open_modal(live_browser: tuple[Browser, str]) -> Page:
     row.click()
     expanded = page.locator(f'tr.expand-row[data-deed-uid="{selected["uid"]}"] .slot-editor')
     expanded.wait_for(timeout=30_000)
-    page.locator(f'tr.expand-row[data-deed-uid="{selected["uid"]}"] button.worksite-change-btn').click()
+    # The worksite window opens from the harvest-bar cog (`data-slot-action=
+    # "open-worksite-modal"`, rendered once the band is ready); `.worksite-change-btn` is gone.
+    page.locator(f'tr.expand-row[data-deed-uid="{selected["uid"]}"] .editor-band[data-plot-state="ready"]').wait_for(timeout=30_000)
+    page.locator(f'tr.expand-row[data-deed-uid="{selected["uid"]}"] [data-slot-action="open-worksite-modal"]').click()
     page.locator("#worksite-modal-overlay").wait_for(state="visible", timeout=10_000)
     return page
 
@@ -134,29 +137,55 @@ def test_header_controls_use_rendered_tooltip_attributes(live_browser) -> None:
 
 
 def test_disabled_worksite_confirm_has_one_shared_rendered_name(live_browser) -> None:
-    """Mutation: restore either old Confirm string or omit the shared call-path value; the disabled rendered button assertion fails."""
+    """Before a worksite is picked, signing is off and the reason is stated once.
+
+    The footer became two actions (maintainer: "We need a stage change and sign with
+    keychain button"): "Stage change" and "Sign with <wallet>" (worksite.js
+    worksiteSignButtonHtml). With nothing picked the Sign button is disabled and the Stage
+    button is switched off with `aria-disabled` so its tooltip still shows; that tooltip is
+    the one place the "pick a worksite first" reason is rendered.
+    Mutation: restore a second copy of the reason on the Sign button, or drop it from Stage.
+    """
     page = _open_modal(live_browser)
     try:
         confirm = page.locator(".worksite-modal-confirm")
         assert confirm.is_disabled()
-        assert confirm.get_attribute("data-tip") == "Choose a worksite first"
-        assert confirm.get_attribute("aria-label") == "Choose a worksite first"
-        assert page.locator('[data-tip="Choose a worksite first"]').count() == 1
-        assert page.locator('[aria-label="Choose a worksite first"]').count() == 1
+        stage = page.locator(".worksite-modal-stage")
+        assert stage.get_attribute("aria-disabled") == "true"
+        reason = "First click one of the worksites above, then stage it."
+        assert stage.get_attribute("data-tip") == "Stage change"
+        assert stage.get_attribute("data-tip-body") == reason
+        assert page.locator(f'[data-tip-body="{reason}"]').count() == 1
     finally:
         page.close()
 
 
 def test_worksite_tile_key_is_only_present_for_a_solo_base_rate(live_browser) -> None:
-    """Mutation: assign a key to every tile or keep it after an extra line; the rendered key assertions fail for SPS or Wood."""
+    """A worksite tile's tooltip lists its base rate as its first line, never as a key.
+
+    The tile tooltip became a plain list of lines (worksite.js worksiteTileTooltipText:
+    the rate, then the native terrains or what the worksite is for, then any land-bonus or
+    permit line), so no tile carries a headline key any more; the solo base rate is the
+    first line of a rate-based worksite, SPS states a pool share instead of a rate, and a
+    tile gaining the land bonus adds that line after its own rate.
+    Mutation: assign a key to a tile, or drop the extra land-bonus line from Wood.
+    """
     page = _open_modal(live_browser)
     try:
         grain = page.locator('.worksite-tile[data-worksite-target="grain"]')
         sps = page.locator('.worksite-tile[data-worksite-target="sps"]')
         wood = page.locator('.worksite-tile[data-worksite-target="wood"]')
-        assert grain.get_attribute("data-tip-key") == "50 PP per Grain/hour"
-        assert sps.get_attribute("data-tip-key") is None
-        assert wood.get_attribute("data-tip-key") is None
+
+        def lines(tile) -> list[str]:
+            items = json.loads(tile.get_attribute("data-tip-items") or "[]")
+            return [re.sub(r"\{\{ic:[^}]+\}\}", "", item["effect"]) for item in items]
+
+        for tile in (grain, sps, wood):
+            assert tile.get_attribute("data-tip-key") is None
+        assert lines(grain)[0] == "Rate 1 Grain/hour per 50 PP"
+        assert lines(sps)[0].startswith("A share of the monthly SPS pool")
+        assert lines(wood)[0] == "Rate 1 Wood/hour per 200 PP"
+        assert any("land bonus, already in the rate" in line for line in lines(wood)[1:]), lines(wood)
     finally:
         page.close()
 
