@@ -79,6 +79,7 @@ from ceres.config import CeresConfig
 from ceres.routes_op_preview import op_preview, plot_op_preview
 
 from .conftest import LIVE_PLAYER, settle, spawn_live_ceres, wait_for_board, wait_ready
+from .idle_pool import serve_idle_cards
 from .vm_context import ENTRY, read_entry_source, run_in_module_context
 
 ROOT = Path(__file__).parents[2]
@@ -196,6 +197,9 @@ def test_picker_route_accepts_fresh_capture_provenance(tmp_path, monkeypatch):
     monkeypatch.setattr(capture_mod, "latest_snapshot", lambda config, player: (report, object()))
     body = _stake_survivor_body()
     body.pop("combine_verified_at")
+    # the account-level route has no deed in its path, so each move names its own deed
+    # (`_moves` fills the deed in only for /api/plots/{deed_uid}/op-preview)
+    body["moves"][0]["deed_uid"] = "deed-1"
     assert op_preview(body, _request(config)).status_code == 200
 
 
@@ -275,28 +279,29 @@ def _survivor_and_consumed(worker: dict) -> tuple[dict, dict]:
 
 
 def _install_idle_cards_mock(page: Page, copies: list[dict]) -> None:
-    page.route(
-        "**/api/idle-cards*",
-        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"cards": copies})),
-    )
+    serve_idle_cards(page, copies)
 
 
-def _mock_combine_preview(page: Page, *, buildable: bool, survivor_uid: str, destroyed_uids: list[str]) -> None:
-    body = json.dumps({
+def _mock_combine_preview(page: Page, *, buildable: bool, survivor_uid: str, destroyed_uids: list[str]) -> dict:
+    preview = {
         "account": "player0005", "buildable": buildable,
         "predicted_survivor_uid": survivor_uid,
         "hazard": {"destroyed_uids": destroyed_uids},
-    })
+    }
+    body = json.dumps(preview)
     page.route(
         "**/api/combine/preview*",
         lambda route: route.fulfill(status=200, content_type="application/json", body=body),
     )
+    return preview
 
 
-def _mock_combine_build(page: Page) -> None:
+def _mock_combine_build(page: Page, preview: dict) -> None:
+    """The build answers with the operation and the preview it was built from; the dialog signs only when
+    that preview matches the one the player reviewed (`combineReviewMatches`, static/combine-dialog.js)."""
     body = json.dumps({"operation": ["custom_json", {
         "id": "sm_combine_cards", "json": "{}", "required_auths": [], "required_posting_auths": ["player0005"],
-    }]})
+    }], "preview": preview})
     page.route(
         "**/api/combine/build*",
         lambda route: route.fulfill(status=200, content_type="application/json", body=body),
@@ -324,6 +329,16 @@ def _mock_op_verify(page: Page, responses: list[dict]) -> None:
     page.route("**/api/op-verify*", _handle)
 
 
+def _staged_change_count(page: Page) -> int:
+    """How many changes the Changes button counts (`#checkout-count`, hidden at zero; renderCheckoutSurface,
+    static/checkout.js). The button also counts changes the player did not stage here (the recorded board
+    has a finished construction ready to feed), so callers compare it with the count before the combine."""
+    count = page.locator("#checkout-count")
+    if page.locator("#checkout-btn").count() == 0 or page.locator("#checkout-btn").is_hidden() or count.is_hidden():
+        return 0
+    return int(count.inner_text())
+
+
 def _expand_row(page: Page, base_url: str, row: dict):
     page.goto(f"{base_url}/?player={LIVE_PLAYER}")
     wait_for_board(page)
@@ -334,6 +349,7 @@ def _expand_row(page: Page, base_url: str, row: dict):
     page_row.click()
     expanded = page.locator(f"tr.expand-row[data-deed-uid='{row['deed_uid']}']")
     expanded.locator(".slot-editor").wait_for(timeout=15_000)
+    settle(page)  # the row's live plot read has answered and the editor shows its real controls
     return expanded
 
 
@@ -430,7 +446,7 @@ def test_door2_verify_never_autostakes_via_real_browser() -> None:
     """Real browser, real running app. Signs a real (route-mocked) combine
     through the tile chip; /api/op-verify reports domain-confirmed. Asserts the
     stake-prompt overlay (`#combine-stake-prompt-overlay`) appears and that
-    nothing was staged yet (`#checkout-btn` stays hidden -- CERES_STAGE is
+    nothing was staged yet (the Changes button shows no staged count -- CERES_STAGE is
     empty) -- the shared verification path only ever OFFERS the choice, it must
     never stage the survivor itself. Injection this would catch: dropping the
     `if (tileContext) openCombineStakePrompt(...)` gate (app.js :7923) in favour
@@ -441,17 +457,18 @@ def test_door2_verify_never_autostakes_via_real_browser() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-confirmed", "combine_refresh": None}])
             _open_dialog_via_tile_chip(page, base_url, row, worker)
+            before = _staged_change_count(page)
 
             page.locator("#combine-dialog-body .combine-sign").click()
             overlay = page.locator("#combine-stake-prompt-overlay")
             overlay.wait_for(timeout=15_000)
-            checkout_btn = page.locator("#checkout-btn")
-            assert checkout_btn.count() == 0 or checkout_btn.is_hidden(), \
+            settle(page)
+            assert _staged_change_count(page) == before, \
                 "checkout shows a staged move before the player made a stake-prompt choice"
         finally:
             page.close()
@@ -475,18 +492,19 @@ def test_door2_prompt_choice_is_exclusive_via_real_browser() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-confirmed", "combine_refresh": None}])
             _open_dialog_via_tile_chip(page, base_url, row, worker)
+            before = _staged_change_count(page)
             page.locator("#combine-dialog-body .combine-sign").click()
             skip = page.locator('[data-combine-stake-action="skip"]').last
             skip.wait_for(timeout=15_000)
             skip.click()
             page.locator("#combine-stake-prompt-overlay").wait_for(state="hidden", timeout=15_000)
-            checkout_btn = page.locator("#checkout-btn")
-            assert checkout_btn.count() == 0 or checkout_btn.is_hidden(), "'skip' staged a move"
+            settle(page)
+            assert _staged_change_count(page) == before, "'skip' staged a move"
         finally:
             page.close()
 
@@ -494,11 +512,12 @@ def test_door2_prompt_choice_is_exclusive_via_real_browser() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
-            _mock_combine_build(page)
+            preview = _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
+            _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-confirmed", "combine_refresh": None}])
             _open_dialog_via_tile_chip(page, base_url, row, worker)
+            before = _staged_change_count(page)
             page.locator("#combine-dialog-body .combine-sign").click()
             stake = page.locator('[data-combine-stake-action="stake"]')
             stake.wait_for(timeout=15_000)
@@ -507,14 +526,15 @@ def test_door2_prompt_choice_is_exclusive_via_real_browser() -> None:
             checkout_btn = page.locator("#checkout-btn")
             checkout_btn.wait_for(timeout=15_000)
             assert not checkout_btn.is_hidden(), "'stake' did not stage a move"
-            assert page.locator("#checkout-count").inner_text() == "1", "'stake' staged more than one move"
+            settle(page)
+            assert _staged_change_count(page) == before + 1, "'stake' must stage exactly one move"
         finally:
             page.close()
 
 
-# Door 3 (candidate picker column) and the tile chip's rendered text, plus the
-# global Combines filter -- real functions, whole module (vm_context), no
-# hand-stubbed foil helpers.
+# Door 3 (candidate picker column) and the tile chip's rendered text and
+# eligibility -- real functions, whole module (vm_context), no hand-stubbed foil
+# helpers.
 
 _DOOR3_BODY = r"""
 S.IDLE_CARDS_CACHE = [
@@ -529,24 +549,23 @@ const candB = {uid: 'B1', card_detail_id: 200, edition: 1, foil: false, name: 'C
 const candC = {uid: 'C1', card_detail_id: 300, edition: 1, foil: false, name: 'Card C'}; // both copies maxed
 
 const htmlA = candidateCombineActionHtml(candA, 0);
-if (!htmlA.includes('class="picker-combine"') || htmlA.includes('picker-combine-dash')) process.exit(10);
+if (!htmlA.includes('class="picker-combine ') || !htmlA.includes('data-picker-action="combine"') || htmlA.includes('picker-combine-dash')) process.exit(10);
 const htmlB = candidateCombineActionHtml(candB, 1);
 if (!htmlB.includes('picker-combine-dash') || htmlB.includes('data-picker-action="combine"')) process.exit(11);
 const htmlC = candidateCombineActionHtml(candC, 2);
 if (!htmlC.includes('picker-combine-dash') || htmlC.includes('data-picker-action="combine"')) process.exit(12);
 
-// Filter OFF -- absent everywhere, not even the dash, on both the picker
-// column (door 3) and the tile chip (door 2), for a candidate/occupant that
-// WOULD otherwise show the real Combine control.
-S.COMBINES_FILTER_ENABLED = false;
-if (candidateCombineActionHtml(candA, 0) !== '') process.exit(13);
-const tileOff = combineTileActionHtml({deed_uid: 'p1'}, {id: 'worker'}, 0, {card_detail_id: 100, edition: 1, foil: false, name: 'Card A', bcx: 1, bcx_max: 10});
-if (tileOff !== '') process.exit(14);
+// Door 2 (tile chip): absent -- not disabled -- for an occupant whose printing has
+// no usable partner (a lone copy) or whose copies are all maxed. (The global
+// Combines filter these lines used to toggle was removed from the product:
+// no `COMBINES_FILTER_ENABLED` / `#combines-filter` remains in ceres/static.)
+const tileLone = combineTileActionHtml({deed_uid: 'p1'}, {id: 'worker'}, 0, {card_detail_id: 200, edition: 1, foil: false, name: 'Card B', bcx: 1, bcx_max: 10});
+if (tileLone !== '') process.exit(13);
+const tileMaxedCopies = combineTileActionHtml({deed_uid: 'p1'}, {id: 'worker'}, 0, {card_detail_id: 300, edition: 1, foil: false, name: 'Card C', bcx: 1, bcx_max: 10});
+if (tileMaxedCopies !== '') process.exit(14);
 
-// Filter back ON -- the same occupant/candidate now shows the real control again.
-S.COMBINES_FILTER_ENABLED = true;
 const tileOn = combineTileActionHtml({deed_uid: 'p1'}, {id: 'worker'}, 0, {card_detail_id: 100, edition: 1, foil: false, name: 'Card A', bcx: 1, bcx_max: 10});
-if (!tileOn.includes('class="tile-combine-chip"')) process.exit(15);
+if (!tileOn.includes('class="tile-combine-chip ')) process.exit(15);
 
 // Ruling (b), see module docstring: combineTileActionHtml's `label` is
 // literally 'Combine' (app.js :488), NOT 'Combine N' -- the count lives only
@@ -587,14 +606,15 @@ def test_door3_gate_mutation_is_red() -> None:
         run_in_module_context(_DOOR3_BODY, source=mutated)
 
 
-def test_combines_filter_mutation_is_red() -> None:
-    """Injected defect: candidateCombineActionHtml() ignores COMBINES_FILTER_ENABLED
-    entirely (as if one render path forgot the flag) -- the maintainer's ruling that OFF
-    means every combine affordance is absent, not merely disabled, must catch it."""
+def test_tile_chip_gate_mutation_is_red() -> None:
+    """Injected defect: combineTileActionHtml() drops its groupHasCombinableRow() check, so a
+    lone copy or an all-maxed printing would show the tile chip instead of nothing -- the
+    "absent, not disabled" rule for door 2. (Replaces the Combines-filter mutation: that
+    filter was removed from the product, so its injection site no longer exists.)"""
     source = read_entry_source()
     mutated = source.replace(
-        "function candidateCombineActionHtml(candidate, index) {\n  if (!S.COMBINES_FILTER_ENABLED) return '';\n",
-        "function candidateCombineActionHtml(candidate, index) {\n",
+        "  if (!copies || !groupHasCombinableRow(copies)) return '';\n  // Owner ruling (2026-08-29)",
+        "  if (!copies) return '';\n  // Owner ruling (2026-08-29)",
         1,
     )
     assert mutated != source
