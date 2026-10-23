@@ -598,6 +598,13 @@ def test_item_rarity_choose_stages_totem_and_replaces_title() -> None:
           context.editorSlotLabel = () => 'Totem';
           context.stageDeltaToastText = (delta) => String(delta);
           context.releaseFillRunHeight = () => {};
+          // handleSlotEditorClick first offers the event to the combine-chain upgrade window
+          // (combine-chain-ui.js handleUpgradeAction); none of these events is an upgrade action.
+          context.handleUpgradeAction = async () => false;
+          // candidates.js plannedPlacementReason: '' for any candidate that is not a planned chain card.
+          context.plannedPlacementReason = () => '';
+          // staging.js CERES_STAGE: nothing is staged yet, so the same card is never staged elsewhere.
+          context.CERES_STAGE = [];
           context.unbindCountdowns = () => {};
           context.abortWorkerUpgradeOptions = () => {};
           context.updateMountedRow = () => {};
