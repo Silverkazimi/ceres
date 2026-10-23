@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -128,11 +129,20 @@ def _open_modal(live_browser: tuple[Browser, str], state: str) -> tuple[Page, di
     row.click()
     expanded = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] .slot-editor')
     expanded.wait_for(timeout=30_000)
-    button = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] button.worksite-change-btn')
+    button = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] button[data-slot-action="open-worksite-modal"]')
     button.wait_for(timeout=30_000)
     button.click()
     page.locator("#worksite-modal-overlay").wait_for(state="visible", timeout=10_000)
     return page, selected
+
+
+def _title_parts(page: Page) -> tuple[str, str]:
+    """The modal title is the state's name followed by the plot's region badge."""
+    title = page.locator("#worksite-modal-title")
+    name = title.evaluate("el => [...el.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE).map((node) => node.textContent).join('').trim()")
+    badge = title.locator(".ch-plot-badge")
+    assert badge.count() == 1
+    return name, badge.inner_text().strip()
 
 
 def test_completion_state_title_names_completion(live_browser) -> None:
@@ -140,7 +150,9 @@ def test_completion_state_title_names_completion(live_browser) -> None:
     page, _ = _open_modal(live_browser, "completion")
     panel = page.locator(".worksite-modal-panel")
     assert panel.get_attribute("data-worksite-state") == "completion"
-    assert page.locator("#worksite-modal-title").inner_text().startswith("Complete worksite — Plot ")
+    name, plot = _title_parts(page)
+    assert name == "Complete worksite"
+    assert re.fullmatch(r"\d{3}-\d{2}-\d{3}", plot), plot
     page.close()
 
 
@@ -151,17 +163,27 @@ def test_worksite_modal_state_title_and_panel_state(live_browser, state: str) ->
     panel = page.locator(".worksite-modal-panel")
     assert panel.get_attribute("data-worksite-state") == state
     prefix = {"choose": "Change worksite", "refused": "Cannot change worksite"}[state]
-    assert page.locator("#worksite-modal-title").inner_text().startswith(f"{prefix} — Plot ")
+    name, plot = _title_parts(page)
+    assert name == prefix
+    assert re.fullmatch(r"\d{3}-\d{2}-\d{3}", plot), plot
     page.close()
 
 
 def test_completion_panel_is_compact(live_browser) -> None:
     """Mutation: remove the 34rem state-width rule; red result: the completion panel measured 1090px wide and the <=700px assertion failed."""
+    # The worksite window is a house modal now (`.harvest-panel.worksite-panel`, min 60rem
+    # wide like the Fill modal; the old 34rem state-width rules went with the old panel).
+    # Compact therefore means: no wider than that house width, no tile grid, and
+    # shorter than the same plot's choose state.
     page, _ = _open_modal(live_browser, "completion")
     rect = page.locator(".worksite-modal-panel").evaluate("el => { const r = el.getBoundingClientRect(); return {width: r.width, height: r.height}; }")
-    assert rect["width"] <= 700
-    assert rect["height"] <= 320
+    assert page.locator(".worksite-modal-body .worksite-tile-option").count() == 0
     page.close()
+    page, _ = _open_modal(live_browser, "choose")
+    choose = page.locator(".worksite-modal-panel").evaluate("el => { const r = el.getBoundingClientRect(); return {width: r.width, height: r.height}; }")
+    page.close()
+    assert rect["width"] <= 64 * 16, rect  # 60rem house width plus its own content; the old full-width panel measured 1090px
+    assert rect["height"] < choose["height"], (rect, choose)
 
 
 def test_completion_art_is_square_and_local(live_browser) -> None:
@@ -210,9 +232,9 @@ def test_build_in_progress_offers_no_dialog(live_browser) -> None:
     row.click()
     expanded = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] .slot-editor')
     expanded.wait_for(timeout=30_000)
-    button = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] button.worksite-change-btn')
+    button = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] button[data-slot-action="open-worksite-modal"]')
     assert button.count() == 0
-    page.evaluate("() => document.querySelector('button.worksite-change-btn')?.click()")
+    page.evaluate("() => document.querySelector(\"button[data-slot-action='open-worksite-modal']\")?.click()")
     assert page.locator("#worksite-modal-overlay").count() == 0 or page.locator("#worksite-modal-overlay").is_hidden()
     page.close()
 
@@ -221,7 +243,9 @@ def test_refused_state_is_narrow_and_has_no_confirm(live_browser) -> None:
     """Mutation: remove the refused/completion 34rem rule; red result: the refused panel measured 1090px wide and the <=700px assertion failed."""
     page, _ = _open_modal(live_browser, "refused")
     panel = page.locator(".worksite-modal-panel")
-    assert panel.bounding_box()["width"] <= 700
+    assert panel.get_attribute("data-worksite-state") == "refused"
+    # house-modal width (60rem, see test_completion_panel_is_compact), never the old full width
+    assert panel.bounding_box()["width"] <= 64 * 16
     assert page.locator(".worksite-modal-confirm").is_hidden()
     assert page.locator(".worksite-modal-tc").is_hidden()
     assert "cannot be changed" in page.locator(".worksite-modal-body").inner_text().lower()
@@ -265,6 +289,15 @@ def test_every_legal_target_terrain_resolves_to_a_local_file() -> None:
     result = subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True)
     paths = result.stdout.splitlines()
     assert len(paths) == sum(len(terrains) for terrains in LEGAL_TARGETS.values())
+    # The public tree carries no game artwork: an image counts when it is on disk (a maintainer
+    # checkout or an earlier download) or on the reviewed, hash-pinned list Ceres downloads it
+    # from on first use (ceres/asset_sources.py).
+    sources = ASSETS / "sources.json"
+    downloadable = {row["path"] for row in (json.loads(sources.read_text(encoding="utf-8")) if sources.is_file() else [])}
+    missing = []
     for path in paths:
         assert path.startswith("/static/assets/land/worksites/productionBuildingSquare/")
-        assert (ASSETS / path.removeprefix("/static/assets/")).is_file(), path
+        relative = path.removeprefix("/static/assets/")
+        if not ((ASSETS / relative).is_file() or relative in downloadable):
+            missing.append(relative)
+    assert not missing, f"worksite tile art is neither shipped nor downloadable: {missing}"

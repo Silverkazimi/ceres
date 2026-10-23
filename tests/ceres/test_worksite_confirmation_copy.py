@@ -35,9 +35,12 @@ def _worksite_api_route(
             status=200,
             content_type="application/json",
             body=json.dumps({
-                "account": "player0005",
+                # the board's own account, with the Posting authority a land operation carries
+                "account": "sample01",
+                # the preview names the worksite it builds, as the server's does
+                "target": (request.post_data_json or {}).get("target"),
                 "key_tier": "Posting",
-                "chunks": [{"operations": [["custom_json", {"id": "sm_land_operation", "json": "{}"}]]}],
+                "chunks": [{"operations": [["custom_json", {"id": "sm_land_operation", "json": "{}", "required_auths": [], "required_posting_auths": ["sample01"]}]]}],
                 "notices": [],
                 "time_crystals": False,
             }),
@@ -92,7 +95,14 @@ def _confirmed_worksite(live_browser: tuple[Browser, str]) -> tuple[Page, object
         row = rows.nth(index)
         if row.locator("xpath=following-sibling::tr[1]").evaluate("node => node.style.display") == "none":
             row.click()
-        button = page.locator("tr.expand-row").nth(index).locator("button.worksite-change-btn")
+        # The worksite control sits in the harvest bar, drawn once the plot's details
+        # have loaded (the editor first shows a loading skeleton).
+        page.locator("tr.expand-row").nth(index).locator(".slot-editor").wait_for(timeout=30_000)
+        page.wait_for_function(
+            f"!document.querySelectorAll('tr.expand-row')[{index}]?.querySelector('.slot-editor .slot-loading-spinner')",
+            timeout=30_000,
+        )
+        button = page.locator("tr.expand-row").nth(index).locator("button[data-slot-action='open-worksite-modal']")
         if button.count() == 0:
             continue
         if not button.is_visible():
@@ -118,16 +128,21 @@ def _confirmed_worksite(live_browser: tuple[Browser, str]) -> tuple[Page, object
         option = options.first
         selected_label["value"] = option.locator(".worksite-tile-name").inner_text()
         option.click()
-        modal.locator(".worksite-modal-confirm").click()
-        modal.locator("button[data-worksite-action='broadcast']").wait_for(timeout=30_000)
-        assert modal.locator("details.op-review-ops").count() == 1
-        assert modal.locator("details.op-review-ops").evaluate("element => element.open") is False
-        modal.locator("button[data-worksite-action='broadcast']").click()
-        verdict = modal.locator("[data-worksite-verdict]")
+        # Selecting a worksite prepares its preview; the footer's one primary button is
+        # then the Sign (broadcast) action -- there is no separate confirm step any more.
+        sign = modal.locator("button.worksite-modal-confirm[data-worksite-action='broadcast']:not([disabled])")
+        sign.wait_for(timeout=30_000)
+        assert modal.locator("details.op-c-details").count() == 1
+        assert modal.locator("details.op-c-details").evaluate("element => element.open") is False
+        sign.click()
+        # The modal closes once the wallet accepts; from there every verdict is the
+        # transaction pill's (worksite.js reportWorksiteVerdict). Wait for the verified one.
+        modal.wait_for(state="hidden", timeout=30_000)
+        verdict = page.locator("#ceres-confirmation-banner.phase-confirmed, #ceres-confirmation-banner.is-confirmed")
         verdict.wait_for(state="visible", timeout=30_000)
         assert page.locator("#worksite-banner").count() == 0
-        assert modal.locator("[data-worksite-verdict]").count() == 1
-        return page, modal, selected_label["value"] or ""
+        assert page.locator("#ceres-confirmation-banner").count() == 1
+        return page, page.locator("#ceres-confirmation-banner"), selected_label["value"] or ""
     pytest.fail("no live worksite-change button offered a selectable worksite")
 
 
@@ -143,25 +158,31 @@ def test_worksite_confirmation_copy_has_no_forbidden_phrases(live_browser) -> No
 def test_worksite_confirmation_copy_never_a_bare_success_or_done(live_browser) -> None:
     """Injected defect: set the live verdict title to bare `Done`; expected red assertion: its title is not one of the forbidden bare labels."""
     page, modal, _ = _confirmed_worksite(live_browser)
-    for element in (modal.locator(".worksite-verdict-title"), modal.locator(".worksite-verdict-detail")):
-        assert element.inner_text() not in {"Success", "Done"}
+    for element in (modal.locator(".worksite-banner-title"), modal.locator(".worksite-banner-detail")):
+        assert element.inner_text().strip() not in {"Success", "Done"}
     page.close()
 
 
 def test_worksite_confirmation_no_longer_auto_closes_the_modal(live_browser) -> None:
-    """Injected defect: restore the 1.2-second modal close timer; expected red assertion: the verdict modal is no longer visible after the timer."""
+    """Injected defect: restore a short close timer on the verdict; expected red assertion: the verdict is no longer visible after the timer.
+
+    The verdict surface is now the transaction pill (the worksite modal closes when the wallet
+    accepts); the property is unchanged: the verdict stays readable rather than vanishing."""
     page, modal, _ = _confirmed_worksite(live_browser)
     settle(page)
+    page.wait_for_timeout(1_500)
     assert modal.is_visible()
-    assert modal.locator("[data-worksite-verdict]").is_visible()
+    assert modal.locator(".worksite-banner-title").is_visible()
     page.close()
 
 
 def test_worksite_confirmed_copy_names_the_build_not_a_finished_state(live_browser) -> None:
     """Injected defect: replace the live detail with `Worksite changed`; expected red assertion: the rendered detail no longer names the building work in progress."""
     page, modal, selected_label = _confirmed_worksite(live_browser)
-    detail = modal.locator(".worksite-verdict-detail").inner_text()
-    assert "is now building" in detail
-    assert selected_label in detail
+    # The pill's detail says the build has started (its full text is the detail's title,
+    # the line itself is shortened) and its WHAT fact names the worksite being built.
+    detail = modal.locator(".worksite-banner-detail").get_attribute("title") or ""
+    assert "build has started" in detail
     assert "active" not in detail.lower()
+    assert modal.locator("[data-fact='what'] .ceres-pill-value").inner_text().strip() == f"Change to {selected_label}"
     page.close()
