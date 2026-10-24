@@ -1,4 +1,4 @@
-/* iris:v1.4.4 */
+/* iris:v1.4.5 */
 /* ─ Canonical CSS variables — cross-project color token hub ─────────────────
  Single source of truth for SHARED COLORS across Orpheus, Asdroid, Thoth,
  Mnemosyne, Calliope. Hub-and-spoke sync: any project that changes this file
@@ -8,6 +8,8 @@
  Canonical home: ~/Projects/Iris/canonical.css
  Consumer protocol: ~/Projects/Iris/docs/consumer-protocol.md
  Semver: PATCH = color tweak; MINOR = add theme/var; MAJOR = remove/rename.
+
+ Warn tokens belong only to destructive or irreversible actions and warning notices; ordinary buttons use the theme's normal action and surface tokens.
 
  Do not add component rules, resets, or selectors beyond theme blocks.
  ─────────────────────────────────────────────────────────────────────────── */
@@ -119,7 +121,7 @@
   /* Text */
   --body:    #a8b8c8;
   --heading: #c9a84c;
-  --meta:    #7c8898;
+  --meta:    #5a6470;
   --link:    #c9a84c;
 
   /* Accents */
@@ -127,7 +129,7 @@
   --gold:     #c9a84c;
   --gold-dim: #7a6330;
   --warn:     #e8843a;
-  --ok:       #3a9c8c;
+  --ok:       #2a7c6f;
   --danger:   #bd4a4a;
   --orchid:   #7b6b9e;
   --info:     #4a7fa5;
@@ -159,8 +161,8 @@
 [data-theme="light"] {
   --bg:#F3F1FA; --bg2:#DCD9E6; --bg3:#ccc7d8;
   --body:#2E2545; --heading:#453C68; --meta:#453C68; --link:#6F5CD6;
-  --primary:#4633B8; --gold:#664C08; --gold-dim:#5c440d;
-  --warn:#7E3806; --ok:#145C49; --danger:#962040;
+  --primary:#7D6BF2; --gold:#8B6914; --gold-dim:#5c440d;
+  --warn:#F4A261; --ok:#1E7A62; --danger:#962040;
   --orchid:#7054B8; --info:#2E6FA8; --accent:#6455C4;
   --border:rgba(109,92,214,.20); --border-bright:rgba(109,92,214,.45);
   --shadow:#453C68; --hi:#fff; --tint-base:#fff;
@@ -170,10 +172,10 @@
 /* ── Wood — parchment/forest ─────────────────────────────────────────────── */
 [data-theme="wood"] {
   --bg:#EDE4CE; --bg2:#DDD0B3; --bg3:#cfc0a0;
-  --body:#4A2E12; --heading:#3A2410; --meta:#5A4128; --link:#7A4B1A;
-  --primary:#1F5A3F; --gold:#5E3F04; --gold-dim:#8c6505;
-  --warn:#763508; --ok:#34501A; --danger:#962010;
-  --orchid:#8C6090; --info:#3F6E94; --accent:#23553D;
+  --body:#4A2E12; --heading:#3A2410; --meta:#7C6248; --link:#7A4B1A;
+  --primary:#2D7252; --gold:#C4900C; --gold-dim:#8c6505;
+  --warn:#BC5A18; --ok:#4A6B1E; --danger:#962010;
+  --orchid:#8C6090; --info:#3F6E94; --accent:#3D8262;
   --border:rgba(45,114,82,.20); --border-bright:rgba(45,114,82,.45);
   --shadow:#3A2410; --hi:#fff; --tint-base:#fff;
   --radius:11px; --page-max:1280px; --gutter:max(1rem,env(safe-area-inset-left));

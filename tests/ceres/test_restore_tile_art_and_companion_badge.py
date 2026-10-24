@@ -60,6 +60,8 @@ def _expand_deed(page: Page, deed_uid: str):
         row.click()
     expand = row.locator("+ tr.expand-row")
     expand.locator(".slot-editor").wait_for(timeout=30_000)
+    # the band renders `preparing` first; the occupied tiles exist once it reports `ready`
+    expand.locator(".editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
     return expand
 
 
@@ -75,8 +77,10 @@ def test_restore_survives_with_art_for_non_v22_card(live_browser: tuple[Browser,
     assert rennyn_tile.count() == 1, "Prince Rennyn not staked on this plot in the live snapshot"
     # Confirm it starts with real art (a `cards_beta` card -- the regression
     # that matters; a `cards_v2.2` card would pass even with the old bug).
-    assert rennyn_tile.locator("img").count() == 1
-    art_src_before = rennyn_tile.locator("img").get_attribute("src") or ""
+    # the card portrait is the tile's `.slot-art` image; the tile also carries small icon
+    # images (its ability/companion marks) that are not the art
+    assert rennyn_tile.locator(".slot-art img").count() == 1
+    art_src_before = rennyn_tile.locator(".slot-art img").get_attribute("src") or ""
     assert "cards_beta" in art_src_before
 
     rennyn_tile.hover()
@@ -105,7 +109,7 @@ def test_restore_survives_with_art_for_non_v22_card(live_browser: tuple[Browser,
     assert "is-pending-removal" not in (restored_tile.get_attribute("class") or "")
 
     # THE regression: art must survive, not go black/stripped.
-    art = restored_tile.locator("img")
+    art = restored_tile.locator(".slot-art img")
     assert art.count() == 1, f"restore via {click_target} stripped the <img> (black tile)"
     art_src_after = art.get_attribute("src") or ""
     assert "cards_beta" in art_src_after, f"restore via {click_target} resolved the wrong CDN set: {art_src_after!r}"

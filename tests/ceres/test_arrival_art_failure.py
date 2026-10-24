@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-from .conftest import spawn_live_ceres
+from .conftest import spawn_live_ceres, wait_ready
 
 ROOT = Path(__file__).parents[2]
 CSS = ROOT / "ceres/static/ceres.css"
@@ -57,7 +57,9 @@ def _render_failed_consumed_tile(css_source: str) -> dict:
         # a bare stylesheet-only page would leave --border unresolved and make
         # the guard meaningless regardless of which selector is live.
         page.goto(base_url)
-        page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
+        # at this 400px viewport the board is the phone layout (plot cards, no desktop table rows)
+        # so the page's own ready signal is what says it has loaded
+        wait_ready(page)
         # A guaranteed-to-fail art URL, on the SAME markup shape
         # combineArrivalConsumedCardHtml() renders.
         page.route("**/cards_v2.2/Nonexistent%20Ghost%20Card.jpg", lambda route: route.fulfill(status=404, body=""))
@@ -71,7 +73,7 @@ def _render_failed_consumed_tile(css_source: str) -> dict:
                 'onerror="this.closest(\\'.combine-arrival-consumed-card\\')?.classList.add(\\'is-none\\')">' +
                 '<span class="combine-arrival-consumed-strike" aria-hidden="true"></span>' +
                 '<span class="combine-arrival-consumed-name" aria-hidden="true">Ghost Card</span>' +
-                '</div><code class="combine-arrival-consumed-uid">C2-999-FAKE</code></div>');
+                '</div></div>');  // no Card ID: it stays internal
             }"""
         )
         page.wait_for_selector(".combine-arrival-consumed-card.is-none", timeout=10_000)

@@ -15,9 +15,13 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import settle, spawn_live_ceres, wait_ready
+from .table_edge import OVERHANG_JS, TABLE_OVERHANG_PX, overhang_problems
 
 
-GUTTER = 15
+# The page scrollbar gutter: ceres.css sets `scrollbar-width: thin` on html
+# 10px in Chromium (a classic gutter would be 15px; no case below is within 5px
+# of the 1279 switch, so either classifies every case the same way).
+GUTTER = 10
 
 
 def _table_view(width: int, root_font: int) -> bool:
@@ -42,10 +46,37 @@ def _audit(page: Page) -> dict:
             const over = [];
             const scrollers = [];
             const vendored = (el) => !!el.closest('.theme-picker, .theme-picker-dock');
+            // The right edge of what is actually painted: an element's box clipped by
+            // every ancestor that clips it (overflow-x other than visible) -- the
+            // closed wallet tray's options and a plot card's oversized scene art sit
+            // past the window inside an overflow:hidden box and show nothing there.
+            // An absolute box is clipped only from its containing block up, a fixed
+            // one by none of its ancestors. (A wide editor inside the clipping table
+            // scroller is still caught: it grows the scroller's tableOverflow.)
+            const paintedRight = (el) => {
+                let right = el.getBoundingClientRect().right;
+                let escaping = getComputedStyle(el).position;
+                for (let a = el.parentElement; a; a = a.parentElement) {
+                    const cs = getComputedStyle(a);
+                    if (escaping === 'fixed') break;
+                    if (escaping === 'absolute' && cs.position === 'static') continue;
+                    if (cs.overflowX !== 'visible') right = Math.min(right, a.getBoundingClientRect().right);
+                    escaping = cs.position === 'absolute' || cs.position === 'fixed' ? cs.position : 'static';
+                }
+                return right;
+            };
+            // Not painted at all: visibility hidden (inherited), or a fully
+            // transparent box on its ancestor chain (the closed badge status tray
+            // waits off the edge with visibility: hidden and opacity: 0).
+            const painted = (el) => {
+                if (getComputedStyle(el).visibility === 'hidden') return false;
+                for (let a = el; a; a = a.parentElement) if (getComputedStyle(a).opacity === '0') return false;
+                return true;
+            };
             document.querySelectorAll('*').forEach((el) => {
                 if (vendored(el)) return;
                 const r = el.getBoundingClientRect();
-                if (r.width > 0 && Math.round(r.right) > clientWidth + 1) {
+                if (r.width > 0 && Math.round(r.right) > clientWidth + 1 && Math.round(paintedRight(el)) > clientWidth + 1 && painted(el)) {
                     over.push({ cls: (el.className || el.tagName).toString().slice(0, 60),
                                 right: Math.round(r.right), width: Math.round(r.width) });
                 }
@@ -60,7 +91,8 @@ def _audit(page: Page) -> dict:
             return { clientWidth, pageScrollWidth: document.documentElement.scrollWidth,
                      over: over.slice(0, 8), scrollers: scrollers.slice(0, 8),
                      tableOverflow: (() => { const s = document.querySelector('#plot-table-scroll');
-                       return s && getComputedStyle(s).display !== 'none' ? s.scrollWidth - s.clientWidth : 0; })() };
+                       return s && getComputedStyle(s).display !== 'none' ? s.scrollWidth - s.clientWidth : 0; })(),
+                     overhang: (""" + OVERHANG_JS + """)() };
         }"""
     )
 
@@ -70,7 +102,10 @@ def _assert_fits(page: Page, state: str) -> None:
     assert audit["pageScrollWidth"] <= audit["clientWidth"], f"{state}: page is {audit}"
     assert not audit["over"], f"{state}: elements past client width -> {audit['over']}"
     assert not audit["scrollers"], f"{state}: horizontal scrollers -> {audit['scrollers']}"
-    assert audit["tableOverflow"] <= 1, f"{state}: the table is wider than its clipping scroller -> {audit}"
+    # Only the deliberate 8px edge budget, clipped inside the last column's
+    # reserve padding, may pass the clipping scroller (table_edge.py).
+    assert audit["tableOverflow"] <= TABLE_OVERHANG_PX + 1, f"{state}: the table is wider than its clipping scroller -> {audit}"
+    assert not overhang_problems(audit["overhang"]), f"{state}: {overhang_problems(audit['overhang'])} -> {audit}"
 
 
 def _board(live_browser: tuple[Browser, str], width: int, root_font: int) -> Page:
@@ -134,15 +169,22 @@ def test_every_plot_row_fits_full_hd(
     widest = page.evaluate(
         """() => {
             const clientWidth = document.documentElement.clientWidth;
+            const clipRight = Math.round(document.querySelector('#plot-table-scroll').getBoundingClientRect().right);
             let right = 0, which = '';
             document.querySelectorAll('#plot-tbody > tr.plot-row').forEach((row) => {
                 const edge = Math.round(row.getBoundingClientRect().right);
                 if (edge > right) { right = edge; which = row.textContent.trim().slice(0, 40); }
             });
-            return {right, clientWidth, which};
+            return {right, clientWidth, clipRight, which};
         }"""
     )
-    assert widest["right"] <= widest["clientWidth"] + 1, widest
+    # Every row ends at the clipping scroller's edge plus at most the deliberate
+    # 8px edge budget (reserve padding, clipped -- table_edge.py), and that clip
+    # edge is inside the window: no row content passes the client width.
+    assert widest["clipRight"] <= widest["clientWidth"] + 1, widest
+    assert widest["right"] <= widest["clipRight"] + TABLE_OVERHANG_PX + 1, widest
+    assert_overhang = page.evaluate(OVERHANG_JS)
+    assert not overhang_problems(assert_overhang), (overhang_problems(assert_overhang), assert_overhang)
     page.close()
 
 

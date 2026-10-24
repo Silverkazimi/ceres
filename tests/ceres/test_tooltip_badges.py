@@ -2,7 +2,26 @@ import re
 
 import pytest
 
-from tests.ceres.conftest import spawn_live_ceres, wait_for_board
+from tests.ceres.conftest import LIVE_PLAYER, spawn_live_ceres, wait_for_board
+
+
+def _open_badge_slideouts(page) -> None:
+    """Open every plot's badge slide-out.
+
+    Board badges are no longer a table column: each plot's chips render in its own row of
+    the slide-out panel (`#badge-overlay .badge-overlay-row`), which badge-overlay.js fills
+    only once that plot's handle in the right-edge badge bar (`#badge-bar .badge-bar-row`)
+    is opened."""
+    handles = page.locator("#badge-bar .badge-bar-row")
+    handles.first.wait_for(timeout=30_000)
+    handles.evaluate_all("rows => rows.forEach(row => { if (row.getAttribute('aria-expanded') !== 'true') row.click(); })")
+    page.wait_for_function(
+        """() => {
+            const rows = [...document.querySelectorAll('#badge-overlay .badge-overlay-row')];
+            return rows.length > 0 && rows.every(row => row.classList.contains('is-open'));
+        }""",
+        timeout=30_000,
+    )
 
 
 def test_board_badge_tooltips():
@@ -10,13 +29,21 @@ def test_board_badge_tooltips():
     with spawn_live_ceres() as (browser, base_url):
         page = browser.new_page()
         try:
-            page.goto(f"{base_url}/", wait_until="domcontentloaded")
+            # The app reads the account from the URL; the harness only adds it to a bare
+            # origin, so a "/" URL opened the start page and never a board.
+            page.goto(f"{base_url}/?player={LIVE_PLAYER}", wait_until="domcontentloaded")
             wait_for_board(page)
+            _open_badge_slideouts(page)
 
+            # The underfilled chip shows a live open-slot count now and its accessible
+            # tooltip states that count in plain words -- never the legacy "Underfilled" label.
+            # (Chips in the slide-out never raise a hover tooltip: tooltip.js NO_TIP_ZONE.)
+            underfilled = page.locator(".badge-underfilled").all()
+            assert underfilled, "the fixture board has underfilled plots"
             assert all(
-                badge.get_attribute("data-tip") is None
-                for badge in page.locator(".badge-underfilled").all()
-            )
+                re.fullmatch(r"\d+ of \d+ worker slots? empty", badge.get_attribute("data-tip") or "")
+                for badge in underfilled
+            ), [badge.get_attribute("data-tip") for badge in underfilled]
             assert all(
                 badge.get_attribute("data-tip") is None
                 for badge in page.locator(".foil-badge").all()
@@ -42,7 +69,8 @@ def test_board_badge_tooltips():
             if runi.count() == 0:
                 pytest.skip("No plot with a staked Runi is present in the live snapshot")
             for badge in runi.all():
-                assert badge.get_attribute("data-tip-key") == "+100%"
+                # the boost moved from a headline key into the title line
+                assert "+100% production" in (badge.get_attribute("data-tip") or "")
                 assert badge.get_attribute("data-tip-body")
 
             idle = page.locator(".badge-idle")
@@ -55,7 +83,11 @@ def test_board_badge_tooltips():
                 assert badge.get_attribute("data-tip-body") is None
 
             forbidden = re.compile(r"\b(?:pending|queued|in progress|complete|done)\b", re.IGNORECASE)
-            for badge in page.locator("[data-tip]").all():
+            # The right-edge badge bar sorts plots into status groups, one of them named
+            # "Pending change" (badges.js badgeStripStatus, with its "Show plots with pending
+            # changes" filter); that group name is the bar's own vocabulary. Every other
+            # tooltip, every badge chip included, stays free of the pending-state words.
+            for badge in page.locator("[data-tip]:not(#badge-bar *):not(#badge-filter-tray *)").all():
                 for attribute in ("data-tip", "data-tip-body", "data-tip-foot"):
                     assert not forbidden.search(badge.get_attribute(attribute) or "")
 

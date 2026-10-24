@@ -9,8 +9,13 @@ page is empty space in the badge column."
  forbids this guard from opening Chromium windows on the maintainer's desktop.
 It therefore runs headless by default, with each case's CSS viewport and DPR set
 on its browser context. Headless Chromium otherwise paints no classic scrollbar,
-so a test-only init style reserves a 15px always-present gutter; the guard asserts
-that the measured gutter is 14-18px before making any layout measurements. Run:
+so a test-only init style makes the page scrollbar always present (overflow-y:
+scroll + a stable gutter); its width is the page's own: ceres.css sets
+`scrollbar-width: thin` on html, which Chromium (121+) honours over any
+`::-webkit-scrollbar` width, so the gutter is the thin one (10px in Chromium's
+default theme) -- what every visitor with a classic-scrollbar Chrome gets. The
+guard asserts that a painted 8-18px gutter is present before making any layout
+measurements. Run:
   env -u DISPLAY -u WAYLAND_DISPLAY python3 -m pytest -q tests/ceres/test_scaling_guard.py
 
 The guarded headless Chromium context is measured at:
@@ -42,9 +47,10 @@ plot) filling its row:
   the grid -- e.g. 6 per row at a ~1478 px grid, not 5).
 Phone/tablet tier (1280x720@1.5 is the card view BY DESIGN, content <= 1279):
 the picker opens in the mobile plot sheet, whose column count belongs to the
-mobile branch ( phase E rule: 3 columns, 2 at <= 767, 1 at <= 544;
- will set 2 cards side by side on phones). There the guard asserts that
-rule's count, that the tracks fill the grid row, no card spills and no side
+mobile branch: the former  phase E fixed-column rule (and  phone
+follow-up) is superseded by the focused phone picker's auto-fit 10rem card
+minimum (test_mobile_plot_view.py, 2026-09-16). The guard checks the count that
+rule fits, that the tracks fill the grid row, no card spills and no side
 scrolling -- not the desktop auto-fill count.
 """
 
@@ -58,7 +64,11 @@ import pytest
 from playwright.sync_api import Browser, Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
+from .fixture_live import install_routes
+from .conftest import LIVE_FIXTURES
+
 from .conftest import settle, spawn_live_ceres, wait_ready
+from .table_edge import OVERHANG_JS, TABLE_EXTRA_WIDTH_PX, TABLE_OVERHANG_PX, overhang_problems
 
 
 CASES = [
@@ -81,7 +91,6 @@ _CLASSIC_SCROLLBAR_INIT = """(() => {
   style.id = 'ceres-s9380-classic-scrollbar';
   style.textContent = `
     html { overflow-y: scroll !important; scrollbar-gutter: stable !important; }
-    ::-webkit-scrollbar { width: 15px !important; }
   `;
   document.documentElement.appendChild(style);
 })();"""
@@ -124,9 +133,21 @@ def _launch(live_server, width: int, height: int, dpr: float):
     context = browser.new_context(
         viewport={"width": width, "height": height},
         device_scale_factor=dpr,
+        service_workers="block",
+        reduced_motion="reduce",
     )
+    # This browser is launched here (headless choice above), not by the shared
+    # offline launcher, so give its context the same offline routing the shared
+    # browser's contexts get (conftest._offline_browser): upstream calls from the
+    # fixture set, art the checkout lacks from a placeholder, nothing else, inert
+    # WebSockets. Without it, every missing art image renders as a broken image
+    # with its alt text and widens its column (Title, Harvest/hr).
+    install_routes(context, LIVE_FIXTURES, overlays=["browser-combine"])
+    context.route_web_socket("**/*", lambda ws: None)
     context.add_init_script(_CLASSIC_SCROLLBAR_INIT)
-    context.add_init_script("try { localStorage.setItem('ceres:picker-view:v1:player0005', 'grid'); } catch (e) {}")
+    # The grid picker view is remembered per account (picker-actions.js); the
+    # fixture board's account is sample01.
+    context.add_init_script("try { localStorage.setItem('ceres:picker-view:v1:sample01', 'grid'); } catch (e) {}")
     page = context.new_page()
     page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function(
@@ -196,7 +217,28 @@ _COLUMNS_JS = """() => {
         add(n.getBoundingClientRect());
       }
     }
+    // A deliberate inline inset on an in-flow box (the Lock icon's
+    // `margin-inline-start: 1rem`, ceres.css) is part of what the column must hold.
+    const walker2 = document.createTreeWalker(cell, NodeFilter.SHOW_ELEMENT);
+    for (let n = walker2.nextNode(); n; n = walker2.nextNode()) {
+      if (outOfFlow(n, cell) || !(hi > lo)) continue;
+      const r = n.getBoundingClientRect();
+      if (r.width <= 1 || r.height <= 1) continue;
+      const cs = getComputedStyle(n);
+      const ml = (parseFloat(cs.marginLeft) || 0) * f, mr = (parseFloat(cs.marginRight) || 0) * f;
+      if (ml > 0) lo = Math.min(lo, r.left - ml);
+      if (mr > 0) hi = Math.max(hi, r.right + mr);
+    }
     return hi > lo ? hi - lo : 0;
+  };
+  // A column's declared minimum width (ceres.css pins Terrain and DEC stake to
+  // their measured master widths with `min-inline-size`) is a need of that
+  // column, not slack it took from the others.
+  const declaredMin = (el) => {
+    const cs = getComputedStyle(el);
+    const min = parseFloat(cs.minWidth);
+    if (!Number.isFinite(min) || min <= 0) return 0;
+    return (cs.boxSizing === 'border-box' ? min * f : min * f + pad(el));
   };
   const badgeContent = (td) => {
     const badgeRow = td.querySelector('.badge-row');
@@ -217,6 +259,8 @@ _COLUMNS_JS = """() => {
   // A hidden column's computed padding is unaffected by display:none, so its measured
   // "content" above can be a nonzero phantom (padding alone) even though it renders
   // nothing -- zero it here so it can never inflate total_c against total_w.
+  heads.forEach((th, i) => { if (i < content.length) content[i] = Math.max(content[i], declaredMin(th)); });
+  if (row) [...row.children].forEach((td, i) => { content[i] = Math.max(content[i], declaredMin(td)); });
   hidden.forEach((h, i) => { if (h) content[i] = 0; });
   const clippedCells = rows.flatMap(tr => [...tr.children]).filter(td => td.scrollWidth > td.clientWidth + 1).length;
   const clippedHead = heads.filter(th => th.scrollWidth > th.clientWidth + 1).length;
@@ -228,6 +272,7 @@ _COLUMNS_JS = """() => {
     growIdx, tableEndReserve, hidden, rows: rows.length, container: scroller.getBoundingClientRect().width,
     scrollerCW: scroller.clientWidth, scrollerSW: scroller.scrollWidth,
     docCW: doc.clientWidth, docSW: doc.scrollWidth, clippedCells, clippedHead,
+    overhang: (""" + OVERHANG_JS + """)(),
   };
 }"""
 
@@ -254,7 +299,25 @@ _PICKER_JS = """() => {
   const doc = document.documentElement;
   const cls = doc.classList;
   return {
-    phoneCols: 2,
+    // The column rule that applies to this grid (the focused phone picker has its
+    // own auto-fit minimum, mobile-plot.css): the last matching stylesheet rule
+    // with a grid-template-columns `minmax(min(100%, <n>rem), 1fr)`.
+    phoneCols: (() => {
+      let minRem = null;
+      for (const sheet of document.styleSheets) {
+        let rules;
+        try { rules = sheet.cssRules; } catch (e) { continue; }
+        for (const rule of rules) {
+          const cols = rule.style && rule.style.gridTemplateColumns;
+          const m = cols && /minmax\\(min\\(100%,\\s*([\\d.]+)rem\\)/.exec(cols);
+          if (m && rule.selectorText && grid.matches(rule.selectorText)) minRem = parseFloat(m[1]);
+        }
+      }
+      const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const minPx = minRem === null ? cardMin : minRem * rootPx;
+      return Math.min(grid.querySelectorAll(':scope > .candidate-grid-card').length,
+        Math.max(1, Math.floor((content + gap) / (Math.min(content, minPx) + gap))));
+    })(),
     trackSum: tracks.reduce((a, b) => a + b, 0),
     tracks: tracks.length, minTrack: Math.min(...tracks), cardMin, gap, content,
     fits: Math.min(grid.querySelectorAll(':scope > .candidate-grid-card').length, Math.max(1, Math.floor((content + gap) / (Math.min(content, cardMin) + gap)))),
@@ -324,12 +387,16 @@ def _check_columns(got: dict) -> list[str]:
         ratios.append(w / c)
     if ratios and max(ratios) / min(ratios) > MAX_SPREAD:
         failures.append(f"growth spread {max(ratios) / min(ratios):.2f} > {MAX_SPREAD}")
-    if abs(total_w - got["container"]) > 2 * got["f"]:
-        failures.append(f"table {total_w:.0f}px does not span its container {got['container']:.0f}px")
+    # The table spans its container plus the deliberate 8px edge budget whose
+    # clipped strip is the last column's reserve padding (table_edge.py).
+    if abs(total_w - got["container"] - TABLE_EXTRA_WIDTH_PX) > 2 * got["f"]:
+        failures.append(f"table {total_w:.0f}px does not span its container {got['container']:.0f}px"
+                        f" + the {TABLE_EXTRA_WIDTH_PX}px edge budget")
     if got["clippedCells"] or got["clippedHead"]:
         failures.append(f"clipped cells {got['clippedCells']}, clipped headers {got['clippedHead']}")
-    if got["docSW"] > got["docCW"] + 1 or got["scrollerSW"] > got["scrollerCW"] + 1:
+    if got["docSW"] > got["docCW"] + 1 or got["scrollerSW"] > got["scrollerCW"] + TABLE_OVERHANG_PX + 1:
         failures.append(f"side scrolling: page {got['docSW']}/{got['docCW']}, table {got['scrollerSW']}/{got['scrollerCW']}")
+    failures += overhang_problems(got.get("overhang") or {})
     return failures
 
 
@@ -338,7 +405,7 @@ def _check_picker(grid: dict, phone: bool = False) -> list[str]:
     if phone:
         filled = grid["trackSum"] + grid["gap"] * (grid["tracks"] - 1)
         if grid["tracks"] != grid["phoneCols"]:
-            failures.append(f"phone picker shows {grid['tracks']} per row, the mobile rule says {grid['phoneCols']}")
+            failures.append(f"phone picker shows {grid['tracks']} per row, the mobile rule fits {grid['phoneCols']}")
         if abs(filled - grid["content"]) > 1:
             failures.append(f"phone picker tracks fill {filled:.0f}px of a {grid['content']:.0f}px row")
         if grid["spill"]:
@@ -363,8 +430,10 @@ def real_window_measurement(live_server, request):
     browser, page = _launch(live_server, width, height, dpr)
     try:
         gutter = page.evaluate("innerWidth - document.documentElement.clientWidth")
-        assert 14 <= gutter <= 18, (
-            f"{name}: expected a 14-18px classic scrollbar gutter, got {gutter}px"
+        # The page's own thin scrollbar (10px in Chromium) or a classic one
+        # (15-17px); 0 would mean no painted gutter (--hide-scrollbars).
+        assert 8 <= gutter <= 18, (
+            f"{name}: expected a painted 8-18px page scrollbar gutter, got {gutter}px"
         )
         table = page.evaluate(
             "(() => { const s = document.getElementById('plot-table-scroll');"

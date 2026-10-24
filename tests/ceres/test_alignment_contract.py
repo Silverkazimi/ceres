@@ -78,6 +78,10 @@ def _non_contiguous_worker_row(base_url: str) -> dict:
         if 2 in workers_by_slot and 4 in workers_by_slot:
             detail["capacity"] = dict(detail["capacity"], potential_card_capacity=4)
             detail["workers"] = [w for w in detail["workers"] if w["slot"] in (0, 2, 4)]
+            # The editor draws at least as many worker tiles as the plot has staked
+            # cards (editor.js stakedCardSlots(): capacity.worker_count, Runi
+            # excluded), so the thinned fixture's count must match its worker list.
+            detail["capacity"]["worker_count"] = len(detail["workers"])
             return detail
     raise AssertionError("no live plot has real worker cards in both slot 2 and slot 4 to build this fixture from")
 
@@ -100,10 +104,14 @@ def test_non_contiguous_worker_slots_keep_their_addressable_numbers(live_browser
     row = _non_contiguous_worker_row(base_url)
     deed_uid = row["deed_uid"]
     page = browser.new_page(viewport={"width": 1400, "height": 900})
-    page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
-        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
-    )
+    # A plot whose assets the board row does not carry yet is opened with
+    # POST /api/plots/{deed}/expand (rows.js), which answers the same PlotRow
+    # shape as GET /api/plots/{deed}; serve the thinned row for either.
+    for detail_path in ("", "/expand"):
+        page.route(
+            f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}{detail_path}?*",
+            lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
+        )
     page.goto(base_url)
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
@@ -120,9 +128,11 @@ def test_non_contiguous_worker_slots_keep_their_addressable_numbers(live_browser
     assert "is-empty" in (empty_1.get_attribute("class") or "")
     assert empty_1.locator(".empty-label").inner_text() == "Add Worker 1"
 
+    # The occupied tile's label reads "Worker slot N" (editor.js singularises the
+    # group label "Workers slot" for the tile copy).
     occupied_2 = tiles.nth(1)
     assert "is-empty" not in (occupied_2.get_attribute("class") or "")
-    assert "Workers slot 2" in (occupied_2.get_attribute("aria-label") or "")
+    assert "Worker slot 2" in (occupied_2.get_attribute("aria-label") or "")
 
     empty_3 = tiles.nth(2)
     assert "is-empty" in (empty_3.get_attribute("class") or "")
@@ -130,7 +140,7 @@ def test_non_contiguous_worker_slots_keep_their_addressable_numbers(live_browser
 
     occupied_4 = tiles.nth(3)
     assert "is-empty" not in (occupied_4.get_attribute("class") or "")
-    assert "Workers slot 4" in (occupied_4.get_attribute("aria-label") or "")
+    assert "Worker slot 4" in (occupied_4.get_attribute("aria-label") or "")
     page.close()
 
 
@@ -140,18 +150,22 @@ def test_land_ability_copy_is_plot_wide_and_click_targeted():
     load (`vm_context`) that calls the REAL functions that produce this copy
     and markup, and drives the REAL delegated click handler `initTooltips()`
     registers -- proving the plot-wide sentence is what `bloodlineAbilityTip`
-    and `soleBadgeInfo` actually return, that the ability icon markup
-    `abilityIconHtml` builds actually carries the `data-ability-tip="1"`
-    attribute the click router keys on, and that clicking an element bearing
-    that attribute is actually routed differently (short-circuited via
-    `preventDefault`/`stopPropagation`) than a plain element -- not merely
-    that the string `findAbilityTarget` appears somewhere in the file."""
+    actually returns (for the holder and for its companion card), that the ability icon markup
+    `abilityIconHtml` builds actually carries `data-ability-tip="1"` and is a
+    `[data-tip]` tooltip trigger, and that a click on such an element is
+    routed differently from a plain element (the open tooltip stays for the
+    trigger, closes for anything else) -- not merely that a helper name appears
+    somewhere in the file."""
     run_in_module_context(
         r"""
+        // Other modules of the loaded graph register their own document click
+        // listeners at import time; the one under test is the single listener
+        // initTooltips() itself adds.
+        const clickListenersBefore = (__ceresListeners['doc:click'] || []).length;
         initTooltips();
-        const clickListeners = __ceresListeners['doc:click'] || [];
+        const clickListeners = (__ceresListeners['doc:click'] || []).slice(clickListenersBefore);
         if (clickListeners.length !== 1) {
-          throw new Error('expected exactly one delegated click listener, got ' + clickListeners.length);
+          throw new Error('expected exactly one delegated click listener from initTooltips(), got ' + clickListeners.length);
         }
         const onClick = clickListeners[0];
 
@@ -169,60 +183,70 @@ def test_land_ability_copy_is_plot_wide_and_click_targeted():
           throw new Error('abilityIconHtml did not emit data-ability-tip="1": ' + iconHtml);
         }
 
-        // The sole-holder badge's tooltip carries the plot-wide consequence
-        // line (the "Moving it removes..." sentence), read off the real
-        // soleBadgeInfo() return value for a land-card-ranged holder.
-        const sole = soleBadgeInfo('Test Holder', 1, 866, [['GRAIN']], ['GRAIN']);
-        if (!sole.tip.includes('Moving it removes these from every worker on this plot.')) {
-          throw new Error('soleBadgeInfo dropped the consequence line: ' + sole.tip);
+        // The separate sole-holder badge (soleBadgeInfo(), "Moving it removes
+        // these from every worker on this plot.") is retired: badges.js folds
+        // `sole_ability_holder` into the land-card chip and the editor's sole
+        // flag is empty. The other surface of the plot-wide copy is the
+        // companion card's view of the same Bloodline entry, read off the real
+        // function: it must end with the same plot-wide sentence.
+        const companionTip = bloodlineAbilityTip(['BLOODLINE', 0.3, 'Elf', { active: true, companions: ['Prince Rennyn'] }], { role: 'companion', holderName: 'Test Holder' });
+        if (companionTip.body.split('\n').pop() !== 'Affects every worker on this plot.'
+            || !companionTip.body.includes('Test Holder')) {
+          throw new Error('the companion Bloodline tip lost its plot-wide line: ' + companionTip.body);
         }
 
-        // Click targeting: an element carrying data-ability-tip is picked out
-        // by the real delegated click handler and short-circuited (preventDefault
-        // + stopPropagation) before the normal touch-tooltip handling runs.
-        let prevented = false;
-        let stopped = false;
+        // Click targeting: the per-ability click short-circuit is retired --
+        // an ability icon is now an ordinary `[data-tip]` trigger (hover/focus,
+        // touch long-press), which is what makes it click-targetable. The real
+        // delegated click handler keeps an open tooltip for a click ON a trigger
+        // (an ability icon) and closes it for a click anywhere else.
+        if (!/\bdata-tip="/.test(iconHtml)) {
+          throw new Error('abilityIconHtml is not a tooltip trigger (no data-tip): ' + iconHtml);
+        }
+        const tooltipEl = __ceresCreated[0];  // initTooltips()'s own #ceres-tooltip
         const abilityEl = {
-          closest(sel) { return sel === '[data-ability-tip]' ? this : null; },
-          getAttribute() { return null; },
+          closest(sel) { return sel === '[data-tip]' ? this : null; },
+          getAttribute(name) { return name === 'data-ability-tip' ? '1' : null; },
         };
-        onClick({
-          target: abilityEl,
-          preventDefault() { prevented = true; },
-          stopPropagation() { stopped = true; },
-        });
-        if (!prevented || !stopped) {
-          throw new Error('an element carrying data-ability-tip was not click-targeted by the real handler');
+        tooltipEl.hidden = false;
+        onClick({ target: abilityEl, preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {} });
+        if (tooltipEl.hidden) {
+          throw new Error('a click on an ability icon (a tooltip trigger) closed its tooltip');
         }
 
-        // A plain element (matching neither selector) must NOT be treated as
-        // an ability-tip click target -- proves the selector discriminates.
-        prevented = false;
-        stopped = false;
+        // A plain element (no trigger) must close it -- proves the handler
+        // discriminates between the two.
         const plainEl = { closest() { return null; }, getAttribute() { return null; } };
-        onClick({
-          target: plainEl,
-          preventDefault() { prevented = true; },
-          stopPropagation() { stopped = true; },
-        });
-        if (prevented || stopped) {
-          throw new Error('a plain element was wrongly short-circuited as an ability-tip click target');
+        onClick({ target: plainEl, preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {} });
+        if (!tooltipEl.hidden) {
+          throw new Error('a click on a plain element did not close the tooltip');
         }
         """,
         extra_context_js=(
             "context.__ceresListeners = __ceresListeners;\n"
+            # initTooltips() repositions an open tooltip when its content box
+            # resizes (a ResizeObserver on `.tip-inner`); the vm sandbox has no
+            # layout, so an inert observer stands in for the browser's.
+            "context.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };\n"
             # initTooltips() builds its own `#ceres-tooltip` elements via
             # document.createElement() and sets `.dataset.variant` on them
             # the shared sandbox's bare createElement() stub has no
             # `dataset`; extended here rather than in vm_context.py, since no
             # other current caller of the shared loader calls initTooltips().
+            "context.__ceresCreated = [];\n"
             "document.createElement = function () {\n"
-            "  return {\n"
+            "  const el = {\n"
             "    style: {}, dataset: {}, setAttribute() {}, removeAttribute() {},\n"
+            # initTooltips() looks for an existing `.tip-inner` child of the
+            # tooltip element before creating one.
+            "    querySelector() { return null; },\n"
             "    appendChild() {}, append() {}, replaceChildren() {},\n"
             "    addEventListener() {}, removeEventListener() {},\n"
             "    classList: { add() {}, remove() {}, toggle() {} },\n"
+            "    contains(node) { return node === el; },\n"
             "  };\n"
+            "  context.__ceresCreated.push(el);\n"
+            "  return el;\n"
             "};"
         ),
     )
@@ -299,7 +323,21 @@ def test_iris_close_never_publishes_transition_widths_to_other_edge_handles(
     page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.wait_for_selector("#badge-flag", state="visible", timeout=10_000)
-    page.locator("#badge-flag").click()
+    # Open every badge slide-out. On desktop the flag opens its status tray
+    # (badge-overlay.js); "all visible plots" is offered there once a status has
+    # been chosen, and a flag click with slide-outs open closes them all.
+    flag = page.locator("#badge-flag")
+    tray_open = "document.getElementById('badge-filter-tray')?.dataset.open === 'true'"
+    flag.click()
+    page.wait_for_function(tray_open)
+    page.locator("#badge-filter-tray .badge-filter-opt").first.click()
+    page.wait_for_function(f"!({tray_open})")
+    if flag.get_attribute("aria-expanded") != "true":
+        if page.evaluate("document.querySelector('.badge-bar-row[aria-expanded=\"true\"]') !== null"):
+            flag.click()  # closes the status's slide-outs
+        flag.click()
+        page.wait_for_function(tray_open)
+        page.locator("#badge-filter-tray .badge-filter-opt[data-filter='all']").click()
     page.wait_for_function("document.getElementById('badge-flag')?.getAttribute('aria-expanded') === 'true'")
 
     settled = page.evaluate(
@@ -612,7 +650,10 @@ def test_badge_flag_hit_target_survives_scroll(live_browser: tuple[Browser, str]
 def test_slot_text_is_centered_and_badges_never_wrap():
     tile_start = CSS.index("\n.slot-tile { ") + 1
     tile = CSS[tile_start:CSS.index("}", tile_start)]
-    caption = CSS[CSS.index(".slot-caption { "):CSS.index("}", CSS.index(".slot-caption { "))]
+    # The base `.slot-caption` rule starts its own line; a bare substring search
+    # first hits the descendant `.slot-tile .slot-caption { transition: ... }` rule.
+    caption_start = CSS.index("\n.slot-caption { ") + 1
+    caption = CSS[caption_start:CSS.index("}", caption_start)]
     badges_start = CSS.index(".slot-badges { display: block;")
     badges = CSS[badges_start:CSS.index("}", badges_start)]
     assert "text-align: center" in tile

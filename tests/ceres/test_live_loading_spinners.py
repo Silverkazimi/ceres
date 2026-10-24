@@ -30,6 +30,7 @@ thread`) -- the sync API's route objects are bound to the thread that received t
 
 from __future__ import annotations
 
+import re
 import time
 from pathlib import Path
 from typing import Callable
@@ -78,7 +79,7 @@ def _route_with_injected_anchor(route: Route, anchor: str, replacement: str, inj
     route.fulfill(status=200, content_type="application/javascript", body=mutated)
 
 
-def _capture_pending_request(page: Page, url_pattern: str, trigger: Callable[[], None]) -> Route:
+def _capture_pending_request(page: Page, url_pattern, trigger: Callable[[], None]) -> Route:
     """Runs `trigger()` (an action expected to fire a request matching `url_pattern`)
     and returns the resulting `Route` object BEFORE it is continued/fulfilled -- so
     the caller can assert on the page's pending-state UI, then release the request on
@@ -140,97 +141,103 @@ def test_board_spinner_does_not_flash_on_a_fast_load(live_browser: tuple[Browser
     page.close()
 
 
+def _record_go_button_busy(page: Page) -> None:
+    """Record every aria-busy/aria-label change of the player Go button (the switch is quick
+    on the fixture server, so the busy state is observed, not polled)."""
+    page.evaluate(
+        """() => {
+          window.__goBusy = [];
+          const button = document.getElementById('player-go-btn');
+          new MutationObserver(() => window.__goBusy.push({busy: button.getAttribute('aria-busy'), label: button.getAttribute('aria-label')}))
+            .observe(button, {attributes: true, attributeFilter: ['aria-busy', 'aria-label']});
+        }"""
+    )
+
+
 def test_profile_spinner_shows_next_to_go_button_during_switch(live_browser: tuple[Browser, str]) -> None:
-    """Switches to `player0001` (470 deeds; its own board load measured ~1s, well past
-    SPINNER_SHOW_DELAY_MS's 200ms) rather than the default `player0005` -- see the module
-    docstring for why a click-triggered request uses a real slower fetch rather than a
-    held/delayed one."""
+    """The profile switch shows its loading state ON the Go button the user just pressed.
+    The separate `#player-loading` spinner element is gone from the markup; board.js
+    `setPlayerLoading()` marks the button itself busy (`aria-busy="true"`, accessible name
+    "Switch player. Loading profile.") for the whole switch and clears it when the load
+    ends. (The recorded fixture has one account, so the switch goes to a player with no
+    snapshot -- the busy state covers that load just the same.)"""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
-    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=15_000)
+    button = page.locator("#player-go-btn")
+    assert button.get_attribute("aria-busy") in (None, "false")
 
-    page.fill("#player-input", "player0001")
+    _record_go_button_busy(page)
+    page.fill("#player-input", "zzznonexistent99")
     page.click("#player-go-btn")
-
-    player_spinner = page.locator("#player-loading")
-    player_spinner.wait_for(state="visible", timeout=5_000)
-    assert player_spinner.get_attribute("role") == "status"
-    assert player_spinner.get_attribute("aria-live") == "polite"
-    # The board spinner is expected to show alongside it (viaPlayerSwitch shows both
-    # the content area AND the surface the user just acted on).
-    assert page.locator("#board-loading").is_visible()
-    page.locator(".player-switch").screenshot(path=str(SCREEN_DIR / "profile_load_pending.png"))
-
-    page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=15_000)
-    player_spinner.wait_for(state="hidden", timeout=5_000)
+    page.wait_for_function("window.__goBusy.some((s) => s.busy === 'true')", timeout=5_000)
+    page.wait_for_function("document.getElementById('player-go-btn').getAttribute('aria-busy') === 'false'", timeout=30_000)
+    states = page.evaluate("window.__goBusy")
+    busy = [state for state in states if state["busy"] == "true"]
+    assert busy and all(state["label"] == "Switch player. Loading profile." for state in busy), states
+    assert button.get_attribute("aria-label") == "Switch player"
     page.close()
+
+
+def _switch_to_unknown_player(page: Page, base_url: str) -> None:
+    page.goto(f"{base_url}/?player=sample01")
+    page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=15_000)
+    page.fill("#player-input", "zzznonexistent99")
+    page.click("#player-go-btn")
 
 
 def test_no_snapshot_player_shows_readable_message_not_silence(live_browser: tuple[Browser, str]) -> None:
     """The defect being fixed: switching to a player with no captured snapshot
     previously changed the URL and left the PREVIOUS player's table on screen with no
-    indication anything happened. Now the table is hidden and a plain-language message
-    with a next step takes its place."""
+    indication anything happened. Now the previous player's rows are gone and a
+    plain-language board notice with a next step takes their place. (The dedicated
+    `#board-empty-state` panel was replaced by the board's own `capture_failed` notice,
+    board.js loadBoard(): "The board read did not finish. Reload to try again.")"""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
-    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
-    page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=15_000)
+    _switch_to_unknown_player(page, base_url)
 
-    page.fill("#player-input", "zzznonexistent99")
-    page.click("#player-go-btn")
-
-    empty_state = page.locator("#board-empty-state")
-    empty_state.wait_for(state="visible", timeout=10_000)
-    text = empty_state.inner_text().lower()
-    assert "zzznonexistent99" in text
-    assert "refresh" in text
-    assert page.locator("#plot-table-scroll").is_hidden()
-    assert page.locator("#table-head-sticky").is_hidden()
+    notice = page.locator(".ceres-notice[data-notice-code='capture_failed']")
+    notice.first.wait_for(state="visible", timeout=10_000)
+    text = notice.first.inner_text().lower()
+    assert "did not finish" in text and "reload" in text, text
+    assert "player=zzznonexistent99" in page.url
+    assert page.locator("#plot-tbody > tr.plot-row").count() == 0, "the previous player's table must not stay on screen"
+    SCREEN_DIR.mkdir(parents=True, exist_ok=True)
     page.screenshot(path=str(SCREEN_DIR / "no_snapshot_message.png"))
     page.close()
 
 
 def test_plot_open_spinner_shows_in_the_expanding_row(live_browser: tuple[Browser, str]) -> None:
-    """Expands a plot on `player0001` rather than the default (`player0005`) board -- most
-    of its deeds carry `assets_loaded: false`, so expanding one is a REAL network
-    fetch against the live Splinterlands API (measured ~9.6s), comfortably past
-    SPINNER_SHOW_DELAY_MS (200ms). player0005's rows are all already cached
-    (`assets_loaded: true`) and resolve in ~0.4s -- a much thinner, flakier margin.
-    See the module docstring for why a click-triggered request uses a real slow
-    fetch rather than a held/delayed one.
-
-    Picks the deed to click via a fresh `/api/board` read taken right before
-    clicking, rather than assuming the first row is uncached -- a run of this same
-    suite (or of this file's manual exploration) permanently caches whichever deed
-    it expands, so "the first row is always uncached" silently stopped being true
-    partway through this batch's own development and one run went flaky on exactly
-    that."""
+    """A plot whose detail is still being read 400 ms after the click shows a small
+    spinner in each of its placeholder tiles (rows.js markSlowOpen -> `tr.expand-row
+    .is-slow-open`, the ghost tiles' `.slot-loading-spinner`). The recorded fixture
+    answers in milliseconds, so the plot's detail read (POST .../expand -- a page load's
+    capture leaves the board row unread) is held open by the test and released once the
+    pending state has been read; the old version relied on a large real account's
+    network-bound read, which the recording does not have."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
-    page.goto(f"{base_url}/?player=player0001")
+    page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=15_000)
+    row = page.locator("#plot-tbody > tr.plot-row").first
+    deed_uid = row.get_attribute("data-deed-uid")
+    detail = re.compile(rf"/api/plots/{re.escape(deed_uid)}(/expand)?(\?|$)")  # GET detail or POST expand
+    held = _capture_pending_request(page, detail, row.click)
 
-    board = page.evaluate("() => fetch('/api/board?player=player0001').then(r => r.json())")
-    uncached_uids = {p["deed_uid"] for p in board["plots"] if not p.get("assets_loaded")}
-    assert uncached_uids, "player0001 has no uncached (assets_loaded: false) plot left to exercise a real expand fetch"
-    # Intersect with what's actually MOUNTED right now, not the full 470-deed list
-    # player0001 exceeds VIRTUALIZE_THRESHOLD (400), so only a scrolled-into-view window
-    # of rows exists in the DOM; a locator for an unmounted deed_uid would just time out.
-    mounted_uids = page.eval_on_selector_all("#plot-tbody tr.plot-row", "els => els.map(el => el.dataset.deedUid)")
-    target_uid = next((uid for uid in mounted_uids if uid in uncached_uids), None)
-    assert target_uid is not None, "no currently-mounted row is uncached -- widen the mounted window or pick differently"
-    row = page.locator(f"tr.plot-row[data-deed-uid='{target_uid}']")
-    row.click()
-
-    row_spinner = page.locator(".expand-loading")
-    row_spinner.wait_for(state="visible", timeout=5_000)
-    assert row_spinner.get_attribute("role") == "status"
-    assert "loading worker" in row_spinner.inner_text().lower()
+    expand = page.locator(f"tr.expand-row[data-deed-uid='{deed_uid}']")
+    page.locator(f"tr.expand-row.is-slow-open[data-deed-uid='{deed_uid}']").wait_for(timeout=5_000)
+    spinner = expand.locator(".slot-loading-spinner").first
+    spinner.wait_for(state="visible", timeout=5_000)
+    assert expand.locator(".editor-band").get_attribute("aria-busy") == "true"
     SCREEN_DIR.mkdir(parents=True, exist_ok=True)
     row.screenshot(path=str(SCREEN_DIR / "plot_open_pending.png"))
 
-    row_spinner.wait_for(state="detached", timeout=30_000)
+    held.fulfill(response=held.fetch())
+    expand.locator(".editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
+    assert "is-slow-open" not in (expand.get_attribute("class") or "")
+    assert expand.locator(".slot-loading-spinner:visible").count() == 0
     page.close()
 
 
@@ -282,49 +289,47 @@ def test_table_hidden_during_load_reveals_at_final_width(live_browser: tuple[Bro
     page.close()
 
 
-def test_header_hide_guard_actually_guards(live_browser: tuple[Browser, str]) -> None:
-    """MUTATION TEST for the hide-before-measure fix, against the REAL server.
-    Injection performed: `loadBoard()`'s `hideBoardTable();` call is deleted from
-    the served `/static/app.js` -- i.e. the header is never hidden and reveals (is
-    visible) immediately, before rows exist, reproducing the exact defect being
-    fixed ("reveal the header before rows are ready"). Confirmed this makes the
-    sibling test's during-load `visibility: hidden` assertion fail (red); restoring
-    the real, unmodified source makes it pass again (green). Re-anchored (campaign
-    plan revision 3, §2.3 G1/G2): the routing half of the void was
-    `page.route("**/static/app.js", ...)` never matching the real request
-    (`/static/app.js?v=<version>`, per `ceres/app.py`'s cache-busting token), so the
-    real, unmutated file was always served underneath -- fixed by asserting the
-    anchor is present and unique before mutating, routing the widened
-    `**/static/*.js*` glob through the shared whichever-module-has-the-anchor
-    handler, and asserting the injection was actually observed (all now true and
-    verified live, this batch). STILL VOID FOR A SECOND, DEEPER REASON not named
-    by the campaign plan or census: `index.html:280` ships `table-head-sticky` with
-    the `board-content-hidden` class already baked into the static markup, so on a
-    fresh `page.goto()` the header reads `visibility: hidden` regardless of whether
-    `hideBoardTable()` ran at all -- removing that call changes nothing observable
-    on first navigation. Confirmed live: with the routing fixed and the injection
-    verified `hit`, this assertion still fails identically. Detecting this specific
-    defect needs a scenario where `revealBoardTable()` has already run once (e.g. a
-    player switch triggering a second `loadBoard()`), which is a scenario redesign,
-    not a re-anchor -- left as-is and reported rather than guessed at."""
-    browser, base_url = live_browser
-    real_source = read_entry_source()
-    anchor = "  hideBoardTable();"
-    assert real_source.count(anchor) == 1, "loadBoard()'s hideBoardTable() call moved or is no longer unique; update this test's injection anchor"
-    replacement = "  // hideBoardTable(); -- MUTATED OUT for test_header_hide_guard_actually_guards"
+def _header_visibility_during_switch(page: Page, base_url: str) -> str:
+    """Load the board, then switch player while the new capture is held: `loadBoard()`
+    hides the table again before it reads. Returns the header's computed visibility
+    during that second load (the first navigation cannot tell, because index.html ships
+    the header with `board-content-hidden` already set)."""
+    page.goto(f"{base_url}/?player=sample01")
+    page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=15_000)
+    assert page.eval_on_selector("#table-head-sticky", "el => getComputedStyle(el).visibility") == "visible"
+    page.fill("#player-input", "zzznonexistent99")
+    held = _capture_pending_request(page, "**/api/capture/refresh*", lambda: page.click("#player-go-btn"))
+    visibility = page.eval_on_selector("#table-head-sticky", "el => getComputedStyle(el).visibility")
+    held.fulfill(response=held.fetch())
+    return visibility
 
+
+def test_header_hide_guard_actually_guards(live_browser: tuple[Browser, str]) -> None:
+    """MUTATION TEST for the hide-before-measure fix, against the REAL server, in the
+    scenario that can tell: a SECOND `loadBoard()` (a player switch), after the first
+    load has already revealed the table. The real build hides the header for the new
+    load; with `loadBoard()`'s `hideBoardTable();` call deleted from the served module
+    (board.js, via the shared whichever-module-has-the-anchor route) the header stays
+    visible -- the exact defect ("reveal the header before rows are ready"). Both halves
+    run here, so the guard proves its own sensitivity."""
+    browser, base_url = live_browser
+    page = browser.new_page(viewport={"width": 1920, "height": 1080})
+    assert _header_visibility_during_switch(page, base_url) == "hidden", "the real build must hide the header while the next player's board loads"
+    page.close()
+
+    real_source = read_entry_source()
+    anchor = "    hideBoardTable();"
+    assert real_source.count(anchor) == 1, "loadBoard()'s hideBoardTable() call moved or is no longer unique; update this test's injection anchor"
+    replacement = "    // hideBoardTable(); -- MUTATED OUT for test_header_hide_guard_actually_guards"
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
     injection_seen: dict = {}
     page.route(
         "**/static/*.js*",
         lambda route: _route_with_injected_anchor(route, anchor, replacement, injection_seen),
     )
-    route = _capture_pending_request(page, "**/api/board*", lambda: page.goto(f"{base_url}/?player=sample01"))  # no ?player= opens the start page
-    assert injection_seen.get("hit"), "injected app.js response was not intercepted"
-    head_vis = page.eval_on_selector("#table-head-sticky", "el => getComputedStyle(el).visibility")
-    route.continue_()
-    page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=15_000)
-    assert head_vis != "hidden", "expected the mutated build to skip hiding the header (that is the injected defect)"
+    visibility = _header_visibility_during_switch(page, base_url)
+    assert injection_seen.get("hit"), "injected module response was not intercepted"
+    assert visibility != "hidden", "expected the mutated build to skip hiding the header (that is the injected defect)"
     page.close()
 
 
@@ -366,22 +371,17 @@ def test_player0017_real_slow_load_screenshot(live_browser: tuple[Browser, str])
 def test_spinner_hide_on_completion_guard_actually_guards(live_browser: tuple[Browser, str]) -> None:
     """MUTATION TEST for the board spinner's finally-block hide, against the REAL
     server. Injection performed: `loadBoard()`'s finally block's
-    `boardSpinnerGate.hide();` line is deleted from the served `/static/app.js` (via
-    page.route, never the checked-in file on disk) -- the exact "spins forever" defect
-    the mutation standard names. Confirmed this makes the sibling test's
-    spinner-becomes-hidden assertion time out (red); restoring the real, unmodified
-    source makes it pass again (green). Re-anchored (campaign plan revision 3,
-    §2.3 G1/G2): this guard was void for the same reason as
-    `test_header_hide_guard_actually_guards` -- the bare `**/static/app.js` route
-    never matched the versioned `?v=<version>` request, so the real file was
-    always served underneath. Now asserts the anchor is present and unique before
-    mutating, routes through the widened `**/static/*.js*` shared handler, and
-    asserts the injection was actually observed."""
+    `if (spinnerHeld) boardSpinnerGate.hide();` line is deleted from the served module
+    (board.js, via page.route, never the checked-in file on disk) -- the exact "spins
+    forever" defect the mutation standard names. With it deleted the sibling test's
+    spinner-becomes-hidden assertion times out (red); the real source passes (green).
+    Re-anchored: the bare `boardSpinnerGate.hide();` line now also appears in the
+    early-reveal path, so the anchor is the finally block's own guarded call."""
     browser, base_url = live_browser
     real_source = read_entry_source()
-    anchor = "    boardSpinnerGate.hide();"
+    anchor = "    if (spinnerHeld) boardSpinnerGate.hide();"
     assert real_source.count(anchor) == 1, "loadBoard()'s finally-block hide() call moved or is no longer unique; update this test's injection anchor"
-    replacement = "    // boardSpinnerGate.hide(); -- MUTATED OUT for test_spinner_hide_on_completion_guard_actually_guards"
+    replacement = "    // if (spinnerHeld) boardSpinnerGate.hide(); -- MUTATED OUT for test_spinner_hide_on_completion_guard_actually_guards"
 
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
     injection_seen: dict = {}
@@ -390,7 +390,7 @@ def test_spinner_hide_on_completion_guard_actually_guards(live_browser: tuple[Br
         lambda route: _route_with_injected_anchor(route, anchor, replacement, injection_seen),
     )
     route = _capture_pending_request(page, "**/api/board*", lambda: page.goto(f"{base_url}/?player=sample01"))  # no ?player= opens the start page
-    assert injection_seen.get("hit"), "injected app.js response was not intercepted"
+    assert injection_seen.get("hit"), "injected module response was not intercepted"
     page.locator("#board-loading").wait_for(state="visible", timeout=5_000)
     route.continue_()
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=15_000)
@@ -401,30 +401,28 @@ def test_spinner_hide_on_completion_guard_actually_guards(live_browser: tuple[Br
 
 
 def test_no_snapshot_message_guard_actually_guards(live_browser: tuple[Browser, str]) -> None:
-    """MUTATION TEST for the 503/no-snapshot empty-state branch, against the REAL
-    server. Injection performed: `loadBoard()`'s `setBoardEmptyState(...)` call inside
-    the 503 branch is deleted from the served `/static/app.js` -- the exact silent
-    dead end this batch fixes (URL changes, no content, no feedback). Confirmed this
-    makes the sibling test's empty-state-becomes-visible assertion time out (red);
-    restoring the real, unmodified source makes it pass again (green)."""
+    """MUTATION TEST for the failed-read message, against the REAL server. Injection
+    performed: `loadBoard()`'s failed-read branch publishes its board with no notice
+    (`notices: []` instead of the `capture_failed` "did not finish ... Reload" notice) in
+    the served module -- the exact silent dead end this batch fixes (URL changes, no
+    content, no feedback). The sibling test's notice-becomes-visible assertion then
+    times out (red); the real source passes (green). Re-anchored from the retired
+    503-branch `setBoardEmptyState()` call."""
     browser, base_url = live_browser
     real_source = read_entry_source()
-    real_line = '      setBoardEmptyState(`No data captured yet for "${playerName}". Click Refresh above to fetch it.`);'
-    assert real_line in real_source, "loadBoard()'s 503-branch setBoardEmptyState() call moved; update this test's injection string"
-    broken_source = real_source.replace(real_line, "      // setBoardEmptyState(...) -- MUTATED OUT for test_no_snapshot_message_guard_actually_guards", 1)
-    assert broken_source != real_source
+    anchor = "notices: [{ ...catalogNotice('capture_failed'), message: 'The board read did not finish. Reload to try again.' }]"
+    assert real_source.count(anchor) == 1, "loadBoard()'s failed-read notice moved; update this test's injection string"
+    replacement = "notices: [] /* MUTATED OUT for test_no_snapshot_message_guard_actually_guards */"
 
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
+    injection_seen: dict = {}
     page.route(
         "**/static/*.js*",
-        lambda route: route.fulfill(status=200, content_type="application/javascript", body=broken_source),
+        lambda route: _route_with_injected_anchor(route, anchor, replacement, injection_seen),
     )
-    page.goto(f"{base_url}/?player=sample01")  # no ?player= opens the start page
-    page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=15_000)
-
-    page.fill("#player-input", "zzznonexistent99")
-    page.click("#player-go-btn")
+    _switch_to_unknown_player(page, base_url)
+    assert injection_seen.get("hit"), "injected module response was not intercepted"
 
     with pytest.raises(Exception):
-        page.locator("#board-empty-state").wait_for(state="visible", timeout=3_000)
+        page.locator(".ceres-notice[data-notice-code='capture_failed']").first.wait_for(state="visible", timeout=3_000)
     page.close()

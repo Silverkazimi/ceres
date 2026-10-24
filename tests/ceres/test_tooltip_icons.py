@@ -16,6 +16,11 @@ def _loaded_page():
     return context, page
 
 
+def _plain(text: str) -> str:
+    """Tooltip text without its inline icon tokens (`{{ic:<asset path>}}`)."""
+    return re.sub(r"\{\{ic:[^}]+\}\}", "", text)
+
+
 def _column_cells(page, heading):
     header = page.locator("th").filter(has_text=re.compile(rf"^{re.escape(heading)}$"))
     assert header.count() == 1
@@ -29,6 +34,11 @@ def test_lane_icons_use_explain_tooltips():
     """Revert splinterIconHtml to a bare string -> red naming .splinter-icon."""
     context, page = _loaded_page()
     try:
+        # An icon is explained by its own tooltip, or by the tooltip of the cell/control it
+        # sits in (the title gem, the magical element mark and a worksite build icon now
+        # share their container's tooltip), or it is a decorative glyph (alt="") printed
+        # beside its own visible name (Gate document #70: the terrain cell shows the
+        # terrain name, so its emblem has no tooltip; the filter dropdown's rarity gems).
         attributes = page.locator(
             "img.rarity-gem, img.terrain-emblem, img.resource-icon, "
             "img.type-mark, img.splinter-icon, img.set-icon"
@@ -39,11 +49,16 @@ def test_lane_icons_use_explain_tooltips():
                 kind: element.getAttribute('data-tip-kind'),
                 body: element.getAttribute('data-tip-body'),
                 key: element.getAttribute('data-tip-key'),
+                container: !!element.parentElement.closest('[data-tip]'),
+                labelled: element.getAttribute('alt') === '' && (element.parentElement.textContent || '').trim().length > 0,
+                cls: element.className,
             }))"""
         )
         tipped = [item for item in attributes if item["hasTip"]]
         assert attributes
-        assert all(item["hasTip"] for item in attributes)
+        unexplained = [item for item in attributes if not (item["hasTip"] or item["container"] or item["labelled"])]
+        assert not unexplained, unexplained
+        assert tipped
         label_tipped = [item for item in tipped if item["body"] is None]
         resource_tipped = [item for item in tipped if item["body"] is not None]
         # peer-group depth owns presentation; a title-only tooltip is
@@ -88,13 +103,17 @@ def test_set_label_loses_tooltip_but_icon_keeps_it():
 
 
 def test_lane_icon_tooltips_do_not_say_magical():
-    """Restore the Magical prefix on the element tooltip -> red."""
+    """Restore the Magical prefix on the element tooltip -> red.
+
+    The element mark shares its type cell's tooltip ("Magical plot"); the element itself
+    is named on its own "Element: <name>" line, which must not carry the Magical prefix."""
     context, page = _loaded_page()
     try:
         tips = page.locator("img.type-mark-element").evaluate_all(
-            """elements => elements
-            .map(element => element.getAttribute('data-tip'))
-            .filter(tip => tip !== null)"""
+            """elements => elements.map(element => {
+                const owner = element.closest('[data-tip]');
+                return owner ? (owner.getAttribute('data-tip-body') || '') : '';
+            }).flatMap(body => body.split('\\n').filter(line => line.startsWith('Element:')))"""
         )
         assert tips
         assert all("Magical" not in tip for tip in tips)
@@ -124,7 +143,9 @@ def test_lane_icon_aria_labels_match_tooltips():
         label_attributes = [item for item in attributes if item["body"] is None]
         assert all(item["aria"] == item["tip"] for item in label_attributes)
         assert all(item["aria"].startswith(item["tip"]) for item in resource_attributes)
-        assert all(item["body"] in item["aria"] for item in resource_attributes)
+        # a body may carry inline icon tokens ("Produces {{ic:resources/wood_200.webp}}Wood")
+        # the accessible name carries the same words without them
+        assert all(_plain(item["body"]) in item["aria"] for item in resource_attributes), resource_attributes
     finally:
         page.close()
         context.__exit__(None, None, None)
@@ -179,7 +200,10 @@ def test_worksite_modal_needs_resources_keep_icons_without_worksite_tooltip_inpu
         worksite_cells = _column_cells(page, "Worksite").filter(has=page.locator("img"))
         assert worksite_cells.count()
         worksite_cells.first.click()
-        modal_button = page.locator("tr.expand-row button.worksite-change-btn").first
+        # The worksite window opens from the harvest-bar cog now (`data-slot-action=
+        # "open-worksite-modal"`); the old `.worksite-change-btn` is no longer rendered.
+        page.locator("tr.expand-row .editor-band[data-plot-state='ready']").first.wait_for(timeout=30_000)
+        modal_button = page.locator("tr.expand-row [data-slot-action='open-worksite-modal']").first
         modal_button.wait_for(timeout=10_000)
         modal_button.click()
         page.locator("#worksite-modal-overlay").wait_for(state="visible", timeout=10_000)

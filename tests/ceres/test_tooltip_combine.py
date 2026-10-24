@@ -79,12 +79,20 @@ def test_plot_wide_tooltip_body_has_scope_sentence() -> None:
 def test_rendered_labels_are_player_facing() -> None:
     with _live_page() as page:
         _expand_until_ability_tooltip(page)
+        # The header logo link (added with the start page) is the product's own brand mark
+        # its visible content is the "Ceres" logo, so its accessible name must contain the
+        # word (WCAG 2.5.3, label in name). Every other label stays free of the tool name.
+        logo = page.locator("a.board-logo-link")
+        assert logo.get_attribute("data-tip") == "Start page"
+        assert logo.locator("img").get_attribute("alt") == "Ceres"
         fields = page.locator("[data-tip], [data-tip-body], [data-tip-foot], [aria-label]")
         for index in range(fields.count()):
             element = fields.nth(index)
+            is_logo = element.evaluate("el => el.matches('a.board-logo-link')")
             for attribute in ("data-tip", "data-tip-body", "data-tip-foot", "aria-label"):
                 value = element.get_attribute(attribute) or ""
-                assert "Ceres" not in value, f"{attribute} exposes the tool name: {value!r}"
+                if not (is_logo and attribute == "aria-label"):
+                    assert "Ceres" not in value, f"{attribute} exposes the tool name: {value!r}"
                 assert not re.search(r"\bserver\b", value, re.IGNORECASE), f"{attribute} exposes server vocabulary: {value!r}"
 
 

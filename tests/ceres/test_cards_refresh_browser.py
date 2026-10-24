@@ -10,7 +10,7 @@ import pytest
 from playwright.sync_api import sync_playwright
 
 from tests.ceres.test_cards_no_jump_browser import CARDS, ORIGIN, PIXEL, STATIC, _page_html
-from .conftest import settle, wait_ready
+from .conftest import settle
 
 pytestmark = pytest.mark.browser
 
@@ -54,7 +54,9 @@ def test_cards_refresh_once_and_preserves_filter_and_scroll():
             page.goto(f"{ORIGIN}/cards?player=sample01")
             page.wait_for_selector('body[data-view-ready="true"] #cb-grid > .cb-tile')
             page.locator("#cb-q").fill("Goblin")
-            wait_ready(page)
+            # cards states it is drawn with `body[data-view-ready]` (card-browser.js); `window.__ceresReady`
+            # is published by the board page only, so `wait_ready` never resolves here
+            page.wait_for_selector('body[data-view-ready="true"] #cb-grid > .cb-tile')
             settle(page)
             page.evaluate("window.scrollTo(0, 350)")
             before = page.evaluate("window.scrollY")

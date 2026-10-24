@@ -200,7 +200,7 @@ function centerThemePicker() {
     }
   }
   const viewportRect = document.documentElement.getBoundingClientRect(); // V
-  const viewport = { left: viewportRect.left, top: 0, right: viewportRect.right, bottom: window.innerHeight };
+  const viewport = { left: viewportRect.left, top: 0, right: viewportRect.right, bottom: window.innerHeight }; // V
   const triggerRect = headerRect?.height
     ? headerRect
     : toggleRect?.height
@@ -543,7 +543,7 @@ function closeMobilePlotAndHistory({ restoreFocus = true, closeSelection = true 
   if (!ownsHistoryEntry) return;
   // the phone sheet scrolls with the page, so the browser's own restore on history.back() would put the board
   // back at the top; re-apply the board position closeMobilePlotSheet() just restored once that step is done.
-  const boardY = window.scrollY;
+  const boardY = window.scrollY; // V (no page zoom)
   window.addEventListener?.('popstate', () => globalThis.requestAnimationFrame?.(() => window.scrollTo?.(0, boardY)), { once: true });
   history.back();
 }
@@ -799,7 +799,7 @@ async function init() {
   // shown once the page is a screen down.
   const scrollTop = document.getElementById('scroll-top-btn');
   if (scrollTop) {
-    const syncScrollTop = () => { scrollTop.hidden = window.scrollY < window.innerHeight * 0.9; };
+    const syncScrollTop = () => { scrollTop.hidden = window.scrollY < window.innerHeight * 0.9; }; // V (no page zoom)
     window.addEventListener('scroll', syncScrollTop, { passive: true });
     scrollTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
     syncScrollTop();

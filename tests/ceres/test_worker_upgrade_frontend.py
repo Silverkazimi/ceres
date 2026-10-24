@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import urllib.parse
 import urllib.request
 
 import pytest
 from playwright.sync_api import Browser
 
-from .conftest import spawn_live_ceres
+from .conftest import settle, spawn_live_ceres
 
 # (): this file used to load `app.js` as text and
 # slice individual functions out of it by string position -- forbidden by the
@@ -104,7 +105,7 @@ def test_upgrade_chip_renders_only_for_the_eligible_worker_not_the_maxed_one(
 
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.route(
-        f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}?*",
+        re.compile(rf"/api/plots/{re.escape(urllib.parse.quote(deed_uid, safe=''))}(/expand)?(\?|$)"),  # GET detail or POST expand
         lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(row)),
     )
     page.route(
@@ -132,8 +133,12 @@ def test_upgrade_chip_renders_only_for_the_eligible_worker_not_the_maxed_one(
 
     maxed_row = page.locator('.candidate-row[data-candidate-index="0"]')
     eligible_row = page.locator('.candidate-row[data-candidate-index="1"]')
+    # Upgrade options are fetched after the list is drawn (deferred, R-138); read the chips
+    # once those fetches are done, not on the first paint.
+    settle(page)
     assert maxed_row.locator(".candidate-upgrade").count() == 0, "maxed worker's matching candidate must not show the upgrade chip"
     eligible_chip = eligible_row.locator(".candidate-upgrade")
     assert eligible_chip.count() == 1, "eligible worker's matching candidate must show exactly one upgrade chip"
-    assert "1 combinable copy owned" in eligible_chip.inner_text()
+    # chip wording is "<n> combinable copy/copies" (candidates.js renderCandidateRow; "owned" was dropped)
+    assert eligible_chip.inner_text().strip() == "1 combinable copy"
     page.close()

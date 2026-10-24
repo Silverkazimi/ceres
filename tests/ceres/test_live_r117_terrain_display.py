@@ -77,8 +77,12 @@ def _mount(page, base_url, row, candidates=None, *, baseline=False):
             page.route(f"**/static/{filename}*", lambda route, body=content, kind=mime:
                        route.fulfill(status=200, content_type=kind, body=body))
     deed = urllib.parse.quote(row["deed_uid"], safe="")
-    page.route(f"**/api/plots/{deed}?*", lambda route:
-               route.fulfill(status=200, content_type="application/json", body=json.dumps(row)))
+    # rows.js::loadPlotDetail() reads the detail with GET /api/plots/{deed} only when the board
+    # row is already `assets_loaded`; otherwise it POSTs /api/plots/{deed}/expand. Both return
+    # the same detail row, so the fixture answers both or the page draws the live plot instead.
+    for pattern in (f"**/api/plots/{deed}?*", f"**/api/plots/{deed}/expand*"):
+        page.route(pattern, lambda route:
+                   route.fulfill(status=200, content_type="application/json", body=json.dumps(row)))
     rows = _candidates() if candidates is None else candidates
     page.route(f"**/api/plots/{deed}/candidates*", lambda route:
                route.fulfill(status=200, content_type="application/json", body=json.dumps({

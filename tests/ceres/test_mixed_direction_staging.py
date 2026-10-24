@@ -77,6 +77,8 @@ def _expand_deed(page: Page):
     if expand.evaluate("node => node.style.display") == "none":
         row.click()
     expand.locator(".slot-editor").wait_for(timeout=30_000)
+    # the band mounts with placeholder frames while the detail is read; tiles are drawn when ready
+    expand.locator(".editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
     return expand
 
 
@@ -147,9 +149,17 @@ def test_mixed_direction_preserves_pending_add_marker(live_browser: tuple[Browse
 
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
+    # No separate Prepare click any more: opening Changes prepares the preview of the staged
+    # batch automatically (checkout.js renderCheckoutSurface, "the preview is prepared
+    # automatically"), then the footer Sign confirms it.
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
+    # reload only once the signed change is recorded as in flight (the marker the reload restores)
+    page.wait_for_function(
+        "Object.keys(localStorage).some((key) => key.startsWith('ceres:in-flight:')"
+        " && (localStorage.getItem(key) || '').includes('MIXED-DIRECTION-TEST-TX'))",
+        timeout=30_000,
+    )
     page.reload()
     wait_for_board(page)
     expand = _expand_deed(page)

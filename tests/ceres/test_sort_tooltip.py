@@ -68,6 +68,9 @@ def test_worker_group_control_band_has_no_sort_button(live_browser: tuple[Browse
         group = expanded.locator(".slot-group[data-group-id='worker']")
         try:
             group.wait_for(timeout=10_000)
+            # the band renders `preparing` first (an inert, empty controls line); the
+            # controls exist once it reports `ready`
+            expanded.locator(".editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
         except Exception:
             rows.nth(index).click()
             continue
@@ -83,7 +86,11 @@ def test_worker_group_control_band_has_no_sort_button(live_browser: tuple[Browse
     # button reappears in the worker band, which is what he asked never to see again.
     # Empty worker slots are still their own `data-slot-action="add"` buttons and still
     # open the same picker, so nothing is stranded -- asserted directly below.
-    assert control_labels == ["Clear workers", "Clear plot"], control_labels
+    # Since then the band gained "Fill plot" (data-slot-action="fill_plot", fill-plot.js): it
+    # proposes a whole-plot fill in its own window and stages nothing until accepted -- a
+    # different control from the removed per-group "Fill empty slots" (data-slot-action="fill")
+    # which the next assertion still keeps out.
+    assert control_labels == ["Fill plot", "Clear workers", "Clear plot"], control_labels
     assert worker_group.locator('[data-slot-action="fill"]').count() == 0, (
         "R-143: the worker group must render no fill button"
     )
