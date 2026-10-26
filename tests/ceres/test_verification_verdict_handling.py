@@ -26,6 +26,7 @@ from playwright.sync_api import Browser, Page
 from ceres.notices import verification_notice
 
 from .conftest import spawn_live_ceres, wait_for_board
+from .stage_harness import hide_running_constructions
 
 ROOT = Path(__file__).parents[2]
 
@@ -193,12 +194,7 @@ def _two_chunk_preview(deed_a: str, deed_b: str) -> dict:
 
 def _keychain_stub() -> str:
     return (
-        # Changes also signs the recording's ready worksite feed in the same run; only
-        # the staged card changes (sm_stake_change) are counted and numbered here.
         "window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {"
-        "  if (!operations.some((operation) => operation[1]?.id === 'sm_stake_change')) {"
-        "    callback({success: true, result: {id: 'FAKE-VERDICT-OTHER-TX'}}); return;"
-        "  }"
         "  window.__ceresBroadcastCount = (window.__ceresBroadcastCount || 0) + 1;"
         f"  callback({{success: true, result: {{id: `FAKE-VERDICT-TX-${{window.__ceresBroadcastCount}}`}}}});"
         "}};"
@@ -226,12 +222,8 @@ def test_unrecognised_verdict_does_not_abort_the_batch(live_browser: tuple[Brows
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(_keychain_stub())
     verify_requests: list = []
-    page.on(
-        "request",
-        lambda request: verify_requests.append(request)
-        if "/api/op-verify" in request.url and "FAKE-VERDICT-TX-" in (request.post_data or "")
-        else None,
-    )
+    page.on("request", lambda request: verify_requests.append(request) if "/api/op-verify" in request.url else None)
+    hide_running_constructions(page)
     page.goto(base_url)
     wait_for_board(page)
     deed_a, deed_b = _stage_two_workers(page)
@@ -286,6 +278,7 @@ def test_domain_mismatch_clears_only_the_matching_entry(live_browser: tuple[Brow
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(_keychain_stub())
+    hide_running_constructions(page)
     page.goto(f"{base_url}?ir1882-guard=1")
     wait_for_board(page)
     deed_a, deed_b = _stage_two_workers(page)

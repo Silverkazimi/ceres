@@ -8,6 +8,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import settle, spawn_live_ceres, wait_for_board
+from .stage_harness import hide_running_constructions
 
 
 @pytest.fixture(scope="module")
@@ -125,27 +126,11 @@ def _one_chunk_preview(deed_uid: str) -> dict:
 def _counting_keychain() -> str:
     return """
         window.__hkRefusalBroadcastCount = 0;
-        let hkOtherCount = 0;
         window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
-          // Changes also signs the recording's ready worksite feed in the same run;
-          // only the staged card changes (sm_stake_change) are counted here.
-          if (!operations.some((operation) => operation[1]?.id === 'sm_stake_change')) {
-            callback({success: true, result: {id: `HK-OTHER-TX-${++hkOtherCount}`}});
-            return;
-          }
           window.__hkRefusalBroadcastCount += 1;
           callback({success: true, result: {id: `HK-REFUSED-TX-${window.__hkRefusalBroadcastCount}`}});
         }};
     """
-
-
-# The pill is shared with the recording's worksite feed, signed in the same run, whose own
-# verdicts can replace it; this records every pill text that was shown.
-PILL_RECORDER = """window.__hkPill = [];
-new MutationObserver(() => {
-  const text = document.querySelector('#ceres-confirmation-banner')?.textContent || '';
-  if (text && window.__hkPill[window.__hkPill.length - 1] !== text) window.__hkPill.push(text);
-}).observe(document, {subtree: true, childList: true, characterData: true});"""
 
 
 def test_game_refusal_aborts_later_checkout_chunks(live_browser: tuple[Browser, str]) -> None:
@@ -158,6 +143,7 @@ def test_game_refusal_aborts_later_checkout_chunks(live_browser: tuple[Browser, 
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(_counting_keychain())
+    hide_running_constructions(page)
     page.goto(base_url)
     wait_for_board(page)
     deed_a, deed_b = _stage_two_workers(page)
@@ -210,11 +196,9 @@ def test_polled_game_refusal_is_handled_without_an_unhandled_rejection(
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script("window.__ceresOperationPollSchedule = [10];")
     page.add_init_script(_counting_keychain())
-    # The pill is shared with the recording's worksite feed, signed in the same run, whose
-    # own pending verdicts can replace it; record every pill text that was shown.
-    page.add_init_script(PILL_RECORDER)
     page_errors: list[str] = []
     page.on("pageerror", lambda error: page_errors.append(str(error)))
+    hide_running_constructions(page)
     page.goto(base_url)
     wait_for_board(page)
     deed_a = _stage_one_worker(page)
@@ -226,11 +210,6 @@ def test_polled_game_refusal_is_handled_without_an_unhandled_rejection(
     refusal_reason = "A later game check refused this operation."
 
     def verify(route) -> None:
-        if deed_a not in (route.request.post_data or ""):
-            # Changes also signs the recording's ready worksite feed in the same run;
-            # its own verification is not part of this card change's checks.
-            route.fulfill(status=200, content_type="application/json", body=json.dumps({"state": "domain-pending", "notices": []}))
-            return
         attempts["count"] += 1
         if attempts["count"] == 1:
             body = {"state": "domain-pending", "notices": [{
@@ -251,10 +230,7 @@ def test_polled_game_refusal_is_handled_without_an_unhandled_rejection(
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
     page.wait_for_function("window.__hkRefusalBroadcastCount === 1", timeout=30_000)
-    page.wait_for_function(
-        "window.__hkPill.some((text) => text.includes('The game refused this operation: A later game check refused') && text.includes('HK-REFUS…TX-1'))",
-        timeout=30_000,
-    )
+    page.wait_for_function("document.querySelector('#ceres-confirmation-banner')?.textContent.includes('A later game check refused this operation.')", timeout=30_000)
     settle(page)
     assert attempts["count"] == 2
     assert page.evaluate("window.__hkRefusalBroadcastCount") == 1

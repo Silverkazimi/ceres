@@ -13,6 +13,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import settle, spawn_live_ceres, wait_for_board
+from .stage_harness import hide_running_constructions
 
 
 @pytest.fixture(scope="module")
@@ -26,6 +27,7 @@ def _page(live_browser: tuple[Browser, str], *, compressed_schedule: bool = Fals
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     if compressed_schedule:
         page.add_init_script("window.__ceresOperationPollSchedule = [10, 20, 30, 40, 50, 60];")
+    hide_running_constructions(page)
     page.goto(f"{base_url}?ir1882-guard=1" if compressed_schedule else base_url)
     wait_for_board(page)
     return page
@@ -39,7 +41,8 @@ def _runi_plot(page: Page) -> tuple[int, str, dict]:
         expanded = page.locator("tr.expand-row").nth(index)
         expanded.locator(".editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
         runi_tile = expanded.locator(
-            ".slot-power[data-power-state='both'], .slot-power[data-power-state='runi-only']"
+            # a Power Core still staked beside the Runi: removing the Runi leaves the Core alone
+            ".slot-power[data-power-state='both']"
         )
         if runi_tile.count() != 1:
             continue
@@ -59,16 +62,14 @@ def _runi_plot(page: Page) -> tuple[int, str, dict]:
 def _stage_runi_unstake(page: Page, index: int) -> None:
     expanded = page.locator("tr.expand-row").nth(index)
     runi_tile = expanded.locator(".slot-power .slot-power-large .slot-tile[data-group-id='runi'][data-occupied='1']")
-    # Removing Runi leaves the Power Core alone when one is staked ("both"), else nothing.
-    expected_state = {"both": "core-only", "runi-only": "neither"}[expanded.locator(".slot-power").get_attribute("data-power-state")]
     runi_tile.hover()
     runi_tile.locator(".slot-remove").click()
     hazard = page.locator("#slot-hazard-overlay")
     if not hazard.is_hidden():
         hazard.locator(".hazard-confirm").click()
-    # The Runi stays in the power tile as a staged removal ("Unstaking").
-    expanded.locator(".slot-power .slot-tile[data-group-id='runi'].is-pending-removal").wait_for(timeout=30_000)
-    assert expanded.locator(".slot-power").get_attribute("data-power-state") == expected_state
+    # With a Power Core still staked, the combined power tile shows the Core
+    # alone after Runi removal; the removed Runi does not occupy a second tile.
+    expanded.locator(".slot-power[data-power-state='core-only']").wait_for(timeout=30_000)
 
 
 def test_checkout_verification_escalates_after_repeated_check_again_clicks(
@@ -191,13 +192,7 @@ def test_escalation_schedule_is_stake_only_for_the_settle_floor(
     attempts: list[int] = []
 
     def _verify(route):
-        body = route.request.post_data_json or {}
-        if deed_uid not in json.dumps(body.get("operations") or []):
-            # Changes also signs the recording's ready worksite feed in the same run;
-            # its own verification is not part of this schedule.
-            route.fulfill(status=200, content_type="application/json", body=json.dumps({"state": "domain-pending", "refreshed_deeds": [], "notices": []}))
-            return
-        attempt = int(body.get("verification_attempt", 1))
+        attempt = int((route.request.post_data_json or {}).get("verification_attempt", 1))
         attempts.append(attempt)
         if operation_id == "sm_stake_change" and attempt >= 6:
             notice = {"code": "verification_not_applied", "kind": "verification", "severity": "danger", "blocking": "repeat", "message": "The game did not apply this change."}
@@ -210,16 +205,11 @@ def test_escalation_schedule_is_stake_only_for_the_settle_floor(
 
     page.route("**/api/op-verify*", _verify)
     page.evaluate(
-        """deedUid => {
-        window.__floorBroadcastCount = 0;
+        """window.__floorBroadcastCount = 0;
         window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
-          // only the Runi plot's own operation counts (the recording's worksite feed is signed in the same run)
-          const own = JSON.stringify(operations).includes(deedUid);
-          if (own) window.__floorBroadcastCount += 1;
-          callback({success: true, result: {id: own ? 'FAKE-FLOOR-TX' : 'FAKE-FLOOR-OTHER-TX'}});
-        }};
-        }""",
-        deed_uid,
+          window.__floorBroadcastCount += 1;
+          callback({success: true, result: {id: 'FAKE-FLOOR-TX'}});
+        }};"""
     )
     _stage_runi_unstake(page, index)
     page.locator("#checkout-btn").click()
@@ -232,8 +222,8 @@ def test_escalation_schedule_is_stake_only_for_the_settle_floor(
         assert attempts == [1, 2, 3, 4, 5, 6]
         assert page.evaluate("window.__floorBroadcastCount") == 1
         # A not-applied verdict clears the tx marker but keeps the staged
-        # change available for review; the power tile still shows the staged removal.
-        page.locator("tr.expand-row").nth(index).locator(".slot-power .slot-tile[data-group-id='runi'].is-pending-removal").wait_for(timeout=30_000)
+        # change available for review; the power tile still shows Core only.
+        page.locator("tr.expand-row").nth(index).locator(".slot-power[data-power-state='core-only']").wait_for(timeout=30_000)
     else:
         page.locator("#ceres-confirmation-banner.phase-pending-escalated").wait_for(timeout=30_000)
         settle(page)

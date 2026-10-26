@@ -11,6 +11,7 @@ from ceres.notices import NOTICE_REGISTRY
 from tests.ceres.conftest import spawn_live_ceres, wait_for_board
 from tests.ceres.test_live_checkout import _expand, _stage_worker
 from .conftest import settle, wait_ready
+from .stage_harness import hide_running_constructions
 
 
 @pytest.fixture(scope="module")
@@ -19,32 +20,13 @@ def live_browser() -> tuple[Browser, str]:
         yield value
 
 
-# Changes also signs the recording's ready worksite feed (an sm_land_operation) in the same
-# run; only the staged card change (sm_stake_change) is counted and numbered here.
 STUB = """
-let otherBroadcastCount = 0;
 window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
-  if (!operations.some((operation) => operation[1]?.id === 'sm_stake_change')) {
-    callback({success: true, result: {id: 'FAKE-IR1882-OTHER-' + (++otherBroadcastCount)}});
-    return;
-  }
   const count = Number(sessionStorage.getItem('__ir1882BroadcastCount') || '0') + 1;
   sessionStorage.setItem('__ir1882BroadcastCount', String(count));
   callback({success: true, result: {id: 'FAKE-IR1882-TX-' + count}});
 }};
 """
-
-
-SEEN = """
-window.__noticeSeen = [];
-new MutationObserver(() => {
-  for (const selector of ['#ceres-stage-toast', '#ceres-confirmation-banner']) {
-    const text = document.querySelector(selector)?.textContent || '';
-    if (text && window.__noticeSeen[window.__noticeSeen.length - 1] !== text) window.__noticeSeen.push(text);
-  }
-}).observe(document, {subtree: true, childList: true, characterData: true});
-"""
-
 
 
 def _pending(route) -> None:
@@ -57,8 +39,8 @@ def _open(live_browser: tuple[Browser, str], *, schedule: bool = False) -> Page:
     if schedule:
         page.add_init_script("if (sessionStorage.getItem('__ir1882ShrinkPoll') === '1') window.__ceresOperationPollSchedule = [100, 200, 300];")
     page.add_init_script(STUB)
-    page.add_init_script(SEEN)
     page.route("**/api/op-verify*", _pending)
+    hide_running_constructions(page)
     page.goto(f"{base_url}?player=sample01&ir1882-guard=1")
     wait_for_board(page)
     return page
@@ -163,10 +145,6 @@ def test_g2_marker_is_written_before_verification_io(live_browser: tuple[Browser
     page.add_init_script("""
 window.__ir1882G2 = {seen: false};
 window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
-  if (!operations.some((operation) => operation[1]?.id === 'sm_stake_change')) {
-    callback({success: true, result: {id: 'FAKE-IR1882-OTHER-G2'}});
-    return;
-  }
   const count = Number(sessionStorage.getItem('__ir1882BroadcastCount') || '0') + 1;
   sessionStorage.setItem('__ir1882BroadcastCount', String(count));
   callback({success: true, result: {id: 'FAKE-IR1882-TX-G2'}});
@@ -175,6 +153,7 @@ window.hive_keychain = {requestBroadcast: (account, operations, key, callback) =
 }};
 """)
     page.route("**/api/op-verify*", lambda route: None)
+    hide_running_constructions(page)
     page.goto(_test_url(base_url))
     wait_for_board(page)
     _stage_first_available(page)
@@ -222,8 +201,7 @@ def test_g4_expired_marker_is_swept_and_announced(live_browser: tuple[Browser, s
     }""")
     page.reload()
     wait_for_board(page)
-    # The Changes button stays for the recording's running worksite constructions; the
-    # expired card entry itself is not restored to the stage.
+    assert not page.locator("#checkout-btn").is_visible()
     assert page.evaluate("CERES_STAGE.length") == 0
     banner = page.locator("#ceres-confirmation-banner")
     banner.wait_for()
@@ -271,6 +249,7 @@ def test_g6_restored_poll_resumes_and_clears_confirmed_marker(live_browser: tupl
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(STUB)
     page.route("**/api/op-verify*", route)
+    hide_running_constructions(page)
     page.goto(_test_url(base_url))
     wait_for_board(page)
     _stage_first_available(page)
@@ -297,12 +276,7 @@ def test_g6b_restored_poll_is_bounded(live_browser: tuple[Browser, str]) -> None
     _sign(page)
     page.evaluate("sessionStorage.setItem('__ir1882ShrinkPoll', '1')")
     requests = []
-    page.on(
-        "request",
-        lambda request: requests.append(request)
-        if "/api/op-verify" in request.url and "FAKE-IR1882-TX-" in (request.post_data or "")
-        else None,
-    )
+    page.on("request", lambda request: requests.append(request) if "/api/op-verify" in request.url else None)
     page.reload()
     wait_for_board(page)
     # the restored poller runs its (shrunk) schedule to the end and stops
@@ -329,6 +303,7 @@ def test_g7_confirmed_and_mismatched_verdicts_clear_store(live_browser: tuple[Br
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(STUB)
     page.route("**/api/op-verify*", route)
+    hide_running_constructions(page)
     page.goto(_test_url(base_url))
     wait_for_board(page)
     first_index, first_name, _ = _stage_first_available(page)
@@ -387,14 +362,14 @@ Storage.prototype.setItem = function(key, value) {
 };
 """)
     page.add_init_script(STUB)
-    page.add_init_script(SEEN)
     page.route("**/api/op-verify*", _pending)
+    hide_running_constructions(page)
     page.goto(_test_url(base_url))
     wait_for_board(page)
     _stage_first_available(page)
     _sign(page)
-    # The feed signed in the same run may replace the toast; the recorder keeps what was shown.
-    page.wait_for_function("window.__noticeSeen.some((seen) => seen.includes('could not save the signed-change marker'))", timeout=10_000)
+    page.locator("#ceres-stage-toast").wait_for()
+    assert "could not save the signed-change marker" in page.locator("#ceres-stage-toast").inner_text()
     page.evaluate("async () => { await requestOperationPreview({scope: 'portfolio'}); await confirmOperationBroadcast({scope: 'portfolio'}); }")
     wait_ready(page)
     settle(page)

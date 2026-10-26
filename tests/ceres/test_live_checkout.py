@@ -13,6 +13,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import settle, spawn_live_ceres, wait_for_board
+from .stage_harness import hide_running_constructions
 
 
 
@@ -27,6 +28,7 @@ def live_browser() -> tuple[Browser, str]:
 def _page(live_browser: tuple[Browser, str]) -> Page:
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
+    hide_running_constructions(page)
     page.goto(base_url)
     wait_for_board(page)
     return page
@@ -217,6 +219,7 @@ def test_compact_review_keeps_signing_facts_visible(live_browser: tuple[Browser,
         "**/api/op-preview*",
         lambda route: route.fulfill(status=200, content_type="application/json", body=preview_body),
     )
+    hide_running_constructions(page)
     page.goto(base_url)
     wait_for_board(page)
     _stage_two_workers(page)
@@ -269,6 +272,7 @@ def test_compact_review_keeps_refusal_reason_visible(live_browser: tuple[Browser
         "**/api/op-preview*",
         lambda route: route.fulfill(status=409, content_type="application/json", body=refusal),
     )
+    hide_running_constructions(page)
     page.goto(base_url)
     wait_for_board(page)
     _stage_two_workers(page)
@@ -286,6 +290,7 @@ def test_chunk_broadcast_waits_for_previous_verification(live_browser: tuple[Bro
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     _install_broadcast_probe(page)
     _mock_two_chunk_preview(page, {"state": "domain-pending"})
+    hide_running_constructions(page)
     page.goto(base_url)
     wait_for_board(page)
     _stage_two_workers(page)
@@ -294,14 +299,12 @@ def test_chunk_broadcast_waits_for_previous_verification(live_browser: tuple[Bro
     panel = page.locator("#checkout-panel")
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
-    # Changes signs the recording's ready worksite feed after the card batch, so the two
-    # card chunks are the first two wallet requests and open the event log.
-    page.wait_for_function("window.__ceresBroadcastEvents?.some((event) => event.type === 'verify-resolved' && event.txId === 'FAKE-TX-2')", timeout=30_000)
+    page.wait_for_function("window.__ceresBroadcastEvents?.filter((event) => event.type === 'verify-resolved').length === 2", timeout=30_000)
 
-    event_types = page.evaluate("window.__ceresBroadcastEvents.slice(0, 6).map((event) => event.type)")
+    event_types = page.evaluate("window.__ceresBroadcastEvents.map((event) => event.type)")
     assert event_types == ["broadcast", "verify-start", "verify-resolved", "broadcast", "verify-start", "verify-resolved"]
     events = page.evaluate("window.__ceresBroadcastEvents")
-    assert [event["txId"] for event in events[:6]] == ["FAKE-TX-1"] * 3 + ["FAKE-TX-2"] * 3
+    assert [event["txId"] for event in events] == ["FAKE-TX-1"] * 3 + ["FAKE-TX-2"] * 3
     assert events[2]["at"] <= events[3]["at"]
     page.close()
 
@@ -311,6 +314,7 @@ def test_rejected_first_chunk_aborts_remaining_broadcasts(live_browser: tuple[Br
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     _install_broadcast_probe(page, reject_first=True)
     _mock_two_chunk_preview(page, {"state": "domain-pending"})
+    hide_running_constructions(page)
     page.goto(base_url)
     wait_for_board(page)
     _stage_two_workers(page)
@@ -362,6 +366,7 @@ def test_confirmed_broadcast_clears_the_stage(live_browser: tuple[Browser, str])
         "**/api/op-verify*",
         _verify,
     )
+    hide_running_constructions(page)
     page.goto(base_url)
     wait_for_board(page)
 
@@ -377,7 +382,6 @@ def test_confirmed_broadcast_clears_the_stage(live_browser: tuple[Browser, str])
 
     checkout = page.locator("#checkout-btn")
     checkout.wait_for(timeout=15_000)
-    staged_count = int(page.locator("#checkout-count").text_content() or "0")
     checkout.click()
     panel = page.locator("#checkout-panel")
     panel.wait_for(timeout=15_000)
@@ -390,16 +394,12 @@ def test_confirmed_broadcast_clears_the_stage(live_browser: tuple[Browser, str])
     # checkout button hiding IS the clear signal, and it is also the stronger
     # assertion: it proves the state actually reached CERES_STAGE, not just
     # that some text briefly appeared.
-    # The Changes button no longer hides on an empty card stage: running worksite
-    # constructions on the board stay listed in Changes ("a running build still shows,
-    # as waiting"). The clear signal is the staged card move itself leaving BOTH
-    # surfaces -- the Changes count drops back and the row's move-count reads 0.
-    page.wait_for_function(
-        f"document.querySelectorAll('tr.expand-row')[{index}]?.querySelector('.slot-stage-summary b')?.textContent === '0'",
-        timeout=30_000,
-    )
+    page.wait_for_function("document.getElementById('checkout-btn').hidden === true", timeout=30_000)
+
+    # The stage is empty and BOTH surfaces agree -- the checkout button hides
+    # (item 25's "connected to the checkout action" requirement) and the row's
+    # own hidden move-count reads 0.
     assert "0 moves staged" in page.locator("tr.expand-row").nth(index).inner_text()
-    assert int(page.locator("#checkout-count").text_content() or "0") < staged_count
     deed_uid = page.locator("#plot-tbody > tr.plot-row").nth(index).get_attribute("data-deed-uid")
     assert deed_uid
     assert any(url.split("?", 1)[0].rstrip("/") == f"{base_url}/api/plots/{deed_uid}" for url in plot_refresh_requests)
@@ -416,23 +416,14 @@ def test_pending_verification_rechecks_without_human_action(live_browser: tuple[
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(
-        # Changes also signs the recording's ready worksite feed in the same run; only
-        # the staged card change (sm_stake_change) is counted here.
         """window.__ceresBroadcastCount = 0;
-        let ceresCallNumber = 0;
         window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
-          const card = operations.some((operation) => operation[1]?.id === 'sm_stake_change');
-          if (card) window.__ceresBroadcastCount += 1;
-          callback({success: true, result: {id: `FAKE-M8-${card ? 'CARD' : 'OTHER'}-${++ceresCallNumber}`}});
+          window.__ceresBroadcastCount += 1;
+          callback({success: true, result: {id: 'FAKE-M8-TX'}});
         }};"""
     )
     verify_requests = []
-    page.on(
-        "request",
-        lambda request: verify_requests.append(request)
-        if "/api/op-verify" in request.url and "FAKE-M8-CARD" in (request.post_data or "")
-        else None,
-    )
+    page.on("request", lambda request: verify_requests.append(request) if "/api/op-verify" in request.url else None)
     page.route(
         "**/api/op-verify*",
         lambda route: route.fulfill(
@@ -441,6 +432,7 @@ def test_pending_verification_rechecks_without_human_action(live_browser: tuple[
             body='{"state":"domain-pending","notices":[]}',
         ),
     )
+    hide_running_constructions(page)
     page.goto(base_url)
     wait_for_board(page)
     staged = False
@@ -459,7 +451,7 @@ def test_pending_verification_rechecks_without_human_action(live_browser: tuple[
     panel.locator("button[data-op-action='confirm']").click()
     panel.locator(".op-state .ceres-notice[data-notice-code='verification_pending']").wait_for(timeout=30_000)
     while len(verify_requests) < 2:  # the pending verdict schedules a second check
-        page.wait_for_event("request", lambda request: "/api/op-verify" in request.url and "FAKE-M8-CARD" in (request.post_data or ""), timeout=30_000)
+        page.wait_for_event("request", lambda request: "/api/op-verify" in request.url, timeout=30_000)
     settle(page)
     assert len(verify_requests) >= 2
     assert page.evaluate("window.__ceresBroadcastCount") == 1
@@ -476,20 +468,17 @@ def test_in_flight_marker_blocks_a_second_signature(live_browser: tuple[Browser,
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(
-        # Changes also signs the recording's ready worksite feed in the same run; only
-        # the staged card change (sm_stake_change) is counted here.
         """window.__ceresBroadcastCount = 0;
-        let ceresCallNumber = 0;
         window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
-          const card = operations.some((operation) => operation[1]?.id === 'sm_stake_change');
-          if (card) window.__ceresBroadcastCount += 1;
-          callback({success: true, result: {id: `FAKE-M9-${card ? 'CARD' : 'OTHER'}-${++ceresCallNumber}`}});
+          window.__ceresBroadcastCount += 1;
+          callback({success: true, result: {id: 'FAKE-M9-TX'}});
         }};"""
     )
     page.route(
         "**/api/op-verify*",
         lambda route: route.fulfill(status=200, content_type="application/json", body='{"state":"domain-pending","notices":[]}'),
     )
+    hide_running_constructions(page)
     page.goto(base_url)
     wait_for_board(page)
     staged = False
@@ -572,6 +561,7 @@ def test_refresh_errors_render_a_confirmed_terminal_state(live_browser: tuple[Br
         )
 
     page.route("**/api/op-verify*", _verify)
+    hide_running_constructions(page)
     page.goto(base_url)
     wait_for_board(page)
     staged = False
@@ -596,6 +586,7 @@ def test_refresh_errors_render_a_confirmed_terminal_state(live_browser: tuple[Br
     # and the player must be able to read all of it on the pill.
     assert banner.locator(".worksite-banner-title").inner_text().strip().startswith("The change is confirmed.")
     assert "The change is confirmed. This plot's figures could not be re-read." in banner.inner_text()
+    assert page.locator("#checkout-btn").is_hidden()
     assert banner.locator("button[data-confirmation-action='refresh']").inner_text().strip() == "Re-read"
     page.wait_for_function(
         f"document.querySelectorAll('tr.expand-row')[{index}]?.querySelector('.slot-stage-summary b')?.textContent === '0'",
@@ -617,6 +608,7 @@ def test_failed_broadcast_leaves_the_stage_intact(live_browser: tuple[Browser, s
           callback({success: false, error: 'user cancelled'});
         }};"""
     )
+    hide_running_constructions(page)
     page.goto(base_url)
     wait_for_board(page)
 
@@ -646,6 +638,7 @@ def test_failed_broadcast_leaves_the_stage_intact(live_browser: tuple[Browser, s
     # Stage is fully intact: checkout button still shows, its count is unchanged, and
     # the row still reports its staged move.
     assert checkout.is_visible()
+    assert checkout.inner_text().strip().endswith("1")
     assert page.locator("#checkout-count").text_content() == staged_count
     assert "1</b> moves staged" in page.locator("tr.expand-row").nth(index).inner_html()
     page.close()
