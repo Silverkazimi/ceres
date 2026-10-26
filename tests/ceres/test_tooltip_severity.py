@@ -38,10 +38,10 @@ CANONICAL = ROOT / "ceres" / "static" / "canonical.css"
 # test_canonical_theme_tokens_match_fixture below, same pattern as
 # test_power_warning_contrast.py's THEME_TOKENS.
 THEME_TOKENS = {
-    "alchemical": ("#c9a84c", "#1a1714", "#e8843a", "#bd4a4a", "#3a9c8c", "#7b6b9e"),
+    "alchemical": ("#c9a84c", "#1a1714", "#e8843a", "#bd4a4a", "#2a7c6f", "#7b6b9e"),
     "dark": ("#CABEE4", "#231f30", "#F4A261", "#E0527A", "#4ECBA8", "#9B8DF5"),
-    "light": ("#453C68", "#ccc7d8", "#7E3806", "#962040", "#145C49", "#6455C4"),
-    "wood": ("#3A2410", "#cfc0a0", "#763508", "#962010", "#34501A", "#23553D"),
+    "light": ("#453C68", "#ccc7d8", "#F4A261", "#962040", "#1E7A62", "#6455C4"),
+    "wood": ("#3A2410", "#cfc0a0", "#BC5A18", "#962010", "#4A6B1E", "#3D8262"),
 }
 
 WCAG_AA_MIN = 4.5
