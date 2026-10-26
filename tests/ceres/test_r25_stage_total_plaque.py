@@ -18,11 +18,15 @@ from . import board_basic_recording as recording
 ORDINARY = recording.ORDINARY.uid
 CASCADE = recording.OVERCAP.uid
 RUNI = recording.RUNI_SLOT5.uid
+PENDING = recording.PENDING.uid
 THEMES = ("alchemical", "dark", "light", "wood")
 VIEWPORTS = (1920, 1745, 1536)
 PLAQUE_DEED = ORDINARY
 PLAQUE_SLOT = 1
 CHANGE_BADGES = ".editor-change-badges .editor-change-badge"
+# The plot-facts line is gone (editor.js renders `facts = ''`); the change badges now sit
+# at the end of the worker group's controls line, which is the row these guards bound.
+BADGE_ROW = ".editor-band .slot-group-controls"
 
 
 @pytest.fixture(scope="module")
@@ -43,7 +47,10 @@ def _open_deed(page: Page, deed_uid: str) -> None:
     row = page.locator(f'tr.plot-row[data-deed-uid="{deed_uid}"]')
     assert row.count() == 1, deed_uid
     row.click()
-    page.wait_for_selector(".editor-facts", timeout=15_000)
+    page.wait_for_selector(
+        f'tr.expand-row[data-deed-uid="{deed_uid}"] .editor-band:is([data-plot-state="ready"],[data-plot-state="degraded"]) .slot-group-controls',
+        timeout=15_000,
+    )
 
 
 def _served_plaque_fixture(page: Page) -> tuple[str, int]:
@@ -89,10 +96,13 @@ def _stage_slot_removal(page: Page, slot: int) -> None:
 def _assert_three_badges(page: Page) -> None:
     badges = page.locator(CHANGE_BADGES)
     texts = badges.all_inner_texts()
+    # editor.js renderChangeBadges: the separate "Base" badge was folded into "Total Base"
+    # (a plot has one Base PP); the third badge is the staged production rate.
     assert len(texts) == 3
-    assert texts[0].startswith("Base ")
-    assert texts[1].startswith("Total Base ")
-    assert texts[2].startswith("Total ") and not texts[2].startswith("Total Base ")
+    assert texts[0].startswith("Total Base ")
+    assert texts[1].startswith("Total ") and not texts[1].startswith("Total Base ")
+    assert "editor-change-production" in (badges.nth(2).get_attribute("class") or "")
+    assert texts[2].endswith("/h")
 
 
 def _stage_slot_5_removal(page: Page) -> None:
@@ -101,6 +111,18 @@ def _stage_slot_5_removal(page: Page) -> None:
 
 def _number(text: str) -> float:
     return float(text.replace(",", ""))
+
+
+def _pending_chips(page: Page):
+    """Badge chips render in each row's badge slide-out, built only when the row's
+    rail handle is opened; open the pending plot's row and return its chips."""
+    handle = page.locator(f'#badge-bar .badge-bar-row[data-deed-uid="{PENDING}"]')
+    handle.wait_for(timeout=15_000)
+    assert handle.get_attribute("data-pending") == "true"
+    handle.click()
+    chips = page.locator(f'.badge-overlay-row[data-deed-uid="{PENDING}"] .badge-pending_change')
+    chips.first.wait_for(timeout=15_000)
+    return chips
 
 
 def _total_base_badge(page: Page):
@@ -113,15 +135,16 @@ def test_t8_plaque_is_staged_only_and_bounded(live_browser: tuple[Browser, str])
     deed_uid, slot = _served_plaque_fixture(page)
     _open_deed(page, deed_uid)
     assert page.locator(CHANGE_BADGES).count() == 0
-    before_facts_height = page.evaluate("Math.round(document.querySelector('.editor-facts').getBoundingClientRect().height)")
+    before_facts_height = page.evaluate("s => Math.round(document.querySelector(s).getBoundingClientRect().height)", BADGE_ROW)
     _stage_slot_removal(page, slot)
     _assert_three_badges(page)
     after = page.evaluate(
-        """() => ({
-            factsHeight: document.querySelector('.editor-facts').getBoundingClientRect().height,
+        """row => ({
+            factsHeight: document.querySelector(row).getBoundingClientRect().height,
             documentScroll: document.documentElement.scrollWidth,
             viewport: document.documentElement.clientWidth,
-        })"""
+        })""",
+        BADGE_ROW,
     )
     assert abs(after["factsHeight"] - before_facts_height) <= 1
     assert after["documentScroll"] <= after["viewport"]
@@ -134,10 +157,14 @@ def test_t8d_cap_loss_and_effective_frame(live_browser: tuple[Browser, str]) -> 
     _open_deed(page, CASCADE)
     _stage_slot_5_removal(page)
     badge = _total_base_badge(page)
-    assert badge.locator("strong").inner_text() == "100,000"
-    assert badge.locator(".change-badge-cap strong").inner_text() == "5,441"
-    assert badge.get_attribute("class") and "is-gain" not in badge.get_attribute("class")
-    assert badge.get_attribute("class") and "is-loss" not in badge.get_attribute("class")
+    assert badge.locator(":scope > strong").inner_text() == "100,000"
+    assert badge.locator(".change-badge-cap strong").inner_text() == "−5,441"  # the sign sits inside the figure
+    # editor.js renderChangeBadges frames a gain is-positive and a loss is-negative; a move the
+    # cap fully absorbs changes nothing and is is-neutral, neither frame.
+    classes = (badge.get_attribute("class") or "").split()
+    assert "is-neutral" in classes
+    assert "is-positive" not in classes
+    assert "is-negative" not in classes
     assert "cap −5,441" in badge.inner_text()  # one inline suffix, never a second line
     page.close()
 
@@ -147,7 +174,7 @@ def test_t8b_runi_and_terrain_use_served_base_delta(live_browser: tuple[Browser,
     page = _page(live_browser)
     _open_deed(page, RUNI)
     _stage_slot_5_removal(page)
-    assert _total_base_badge(page).locator("strong").inner_text() == "94,000"
+    assert _total_base_badge(page).locator(":scope > strong").inner_text() == "94,000"
     page.close()
 
 
@@ -189,19 +216,20 @@ def test_t8c_formula_and_synthetic_runi_branch(live_browser: tuple[Browser, str]
 def test_t8_geometry_all_themes_and_viewports(
     live_browser: tuple[Browser, str], width: int, theme: str,
 ) -> None:
-    """The staged Total Base badge remains inside the facts row and document viewport."""
+    """The staged Total Base badge remains inside its controls row and document viewport."""
     page = _page(live_browser, width)
     page.evaluate("theme => document.documentElement.setAttribute('data-theme', theme)", theme)
     deed_uid, slot = _served_plaque_fixture(page)
     _open_deed(page, deed_uid)
     _stage_slot_removal(page, slot)
     rects = page.evaluate(
-        """() => {
+        """row => {
             const q = s => document.querySelector(s).getBoundingClientRect();
             const badge = document.querySelector('.editor-change-badges .editor-change-badge:nth-child(2)');
-            const facts = document.querySelector('.editor-facts');
+            const facts = document.querySelector(row);
             return {badge: badge.getBoundingClientRect(), facts: facts.getBoundingClientRect(), band: q('.editor-band'), client: document.documentElement.clientWidth, documentScroll: document.documentElement.scrollWidth};
-        }"""
+        }""",
+        BADGE_ROW,
     )
     assert rects["badge"]["left"] >= rects["facts"]["left"]
     assert rects["badge"]["right"] <= rects["facts"]["right"] + 1
@@ -252,24 +280,30 @@ def test_t8g_badge_tooltip_matches_plaque(live_browser: tuple[Browser, str]) -> 
     page = _page(live_browser)
     _open_deed(page, CASCADE)
     _stage_slot_5_removal(page)
-    badge = page.locator(".editor-change-badge").filter(has_text="Base").first
+    badge = _total_base_badge(page)
     tip = badge.get_attribute("data-tip") or ""
     body = badge.get_attribute("data-tip-body") or ""
-    assert tip == "Base PP after the change"
+    assert tip == "Total Base PP after the change"
+    # The tooltip key is the plaque's own effective figure, never the raw estimate.
     assert badge.get_attribute("data-tip-key") == "100,000"
-    assert "−2,200" in body
+    assert badge.locator(":scope > strong").inner_text() == badge.get_attribute("data-tip-key")
+    # The body states the same effective change the face shows in brackets, and the cap.
+    face_change = badge.inner_text().split("(", 1)[1].split(")", 1)[0]
+    assert body.startswith(f"Projected · {face_change} from ")
     assert "5,441" in body
-    assert _total_base_badge(page).locator("strong").inner_text() in body
+    assert _total_base_badge(page).locator(":scope > strong").inner_text() in body
     page.close()
 
 
 def test_h1_pending_chip_face_and_tooltip(live_browser: tuple[Browser, str]) -> None:
     """Injection: restoring the Changing prefix and ready suffix must fail the measured face guard."""
     page = _page(live_browser, 1745)
-    chip = page.locator(".badge-pending_change").first
+    chip = _pending_chips(page).first
     assert chip.count() == 1
     face = chip.inner_text().strip()
-    assert face.startswith("⛏ ")
+    # The chip face is the plain "Building" label (badges.js pendingChangeChip); the
+    # target and ready time live in the tooltip only.
+    assert face == "Building"
     assert "Changing →" not in face
     assert "· ready" in face or "· in " in face or "stalled" in face or "·" not in face
     assert chip.get_attribute("data-tip") == "Worksite change under way"
@@ -282,7 +316,7 @@ def test_h1_pending_chip_face_and_tooltip(live_browser: tuple[Browser, str]) -> 
 def test_h3_pending_chip_preserves_absolute_and_relative_time(live_browser: tuple[Browser, str]) -> None:
     """Injection: dropping when.absolute from the tooltip must fail this ready-state guard."""
     page = _page(live_browser)
-    chips = page.locator(".badge-pending_change")
+    chips = _pending_chips(page)
     assert chips.count() >= 1
     tip = chips.first.get_attribute("data-tip-body") or ""
     assert "ready" in tip.lower()
