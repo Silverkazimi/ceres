@@ -54,15 +54,16 @@ def _paint_fixture(page):
  const {terrainAffinityHtml} = await import('/static/terrainAffinity.js');
  const row = {plot:1, terrain:'Mountain', biome:{red:.1, blue:-.5, green:0, white:null, black:0, gold:.1}};
  document.body.style.cssText = 'margin:0;padding:0;background:#101010';
- for (const [i, surface] of ['editor','picker'].entries()) {
+ for (const [i, surface] of ['editor-row','picker'].entries()) {
  const host = document.createElement('div');
  host.style.cssText = `position:absolute;left:24px;top:${100 + i * 60}px;width:400px`;
+ if (surface === 'editor-row') host.className = 'editor-band';
  // the picker run is the worker picker's Splinter filter and lives in its bar
  // (candidates.js: header.picker-bar > .candidate-worker-affinity); only that scope resets
  // the <button> chips' UA chrome, so the fixture mounts it in the same scope.
  host.innerHTML = surface === 'picker'
    ? `<div class="picker-bar"><span class="candidate-worker-affinity">${terrainAffinityHtml(row, surface)}</span></div>`
-   : terrainAffinityHtml(row, surface);
+   : `<span class="editor-splinter-affinity">${terrainAffinityHtml(row, surface)}</span>`;
  document.body.append(host);
  }
  await Promise.all([...document.querySelectorAll('.splinter-icon')].map(img => img.decode()));
@@ -79,13 +80,16 @@ def _fire_states(page):
  await import('/static/wallet.js'); // the app's module entry order: board.js must finish before wallet.js reads it
  const {terrainAffinityHtml} = await import('/static/terrainAffinity.js');
  const host = document.createElement('div');
- host.id = 'r117-paint-probe'; host.className = 'terrain-affinity';
+ host.id = 'r117-paint-probe'; host.className = 'editor-band';
  host.style.cssText = 'position:fixed;left:24px;top:24px;display:flex;gap:4px;z-index:9999;inline-size:auto;min-inline-size:0';
+ const rowHost = document.createElement('span'); rowHost.className='editor-splinter-affinity';
+ const run = document.createElement('span'); run.className='terrain-affinity'; run.dataset.terrainAffinity='editor-row';
  for (const value of [.1, -.5, 0, null]) {
  const wrapper = document.createElement('div');
- wrapper.innerHTML = terrainAffinityHtml({terrain:'Mountain', biome:{red:value}}, 'editor');
- host.append(wrapper.querySelector('[data-splinter="Fire"]'));
+ wrapper.innerHTML = terrainAffinityHtml({terrain:'Mountain', biome:{red:value}}, 'editor-row');
+ run.append(wrapper.querySelector('[data-splinter="Fire"]'));
  }
+ rowHost.append(run); host.append(rowHost);
  document.body.append(host);
  await Promise.all([...host.querySelectorAll('img')].map(img => img.decode()));
  }""")
@@ -103,21 +107,35 @@ def _sample_bubbles(page):
         assert 0 <= x < viewport[0] and 0 <= y < viewport[1], "G11 sample within viewport"
         return screenshot.getpixel((math.floor(x * scale_x), math.floor(y * scale_y)))
 
+    def pixel_neighbourhood(x, y):
+        assert 0 <= x < viewport[0] and 0 <= y < viewport[1], "G11 sample within viewport"
+        ix, iy = math.floor(x * scale_x), math.floor(y * scale_y)
+        return max((screenshot.getpixel((px, py))
+                    for px in (ix, min(ix + 1, screenshot.width - 1))
+                    for py in (iy, min(iy + 1, screenshot.height - 1))), key=_luma)
+
     samples = []
     for box in boxes:
         cx, cy = box['x'] + box['width'] / 2, box['y'] + box['height'] / 2
-        root = float(page.evaluate("() => parseFloat(getComputedStyle(document.documentElement).fontSize)"))
-        radial = [pixel(cx + root * distance, cy) for distance in (0.59375, 0.65625, 0.71875)]
+        # The shipped editor row scales its disc from 1.5rem to the 1.875rem
+        # controls height. Keep the same fractions of each rendered disc.
+        unit = box['width'] / 1.5
+        radial = [pixel(cx + unit * distance, cy) for distance in (0.59375, 0.65625, 0.71875)]
         arc_angles = [20 + 60 * i for i in range(6)]
         gap_angles = [50 + 60 * i for i in range(6)]
-        def sample_angle(degrees, radii=(.69, .71875, .74)):
+        def sample_angle(degrees, radii=(.69, .71875, .74), *, neighbourhood=False):
             radians = math.radians(degrees)
+            sample = pixel_neighbourhood if neighbourhood else pixel
             return max(
-                (pixel(cx + root * radius * math.sin(radians), cy - root * radius * math.cos(radians))
+                (sample(cx + unit * radius * math.sin(radians), cy - unit * radius * math.cos(radians))
                  for radius in radii),
                 key=_luma,
             )
-        angles = [sample_angle(i) for i in range(360)]
+        # The 30px editor ring rasterises across adjacent pixels. Sample that
+        # two-pixel edge for solid rings; use one radial line for dots so the
+        # footprint of adjacent dots cannot merge in the coverage measure.
+        angles = [sample_angle(i, (.71875,) if box['state'] == 'unknown' else (.69, .71875, .74),
+                               neighbourhood=box['state'] != 'unknown') for i in range(360)]
         samples.append({'state': box['state'], 'splinter': box['splinter'],
                         'rect': [box['width'], box['height']], 'radial': radial, 'angles': angles,
                         'arcSamples': [sample_angle(angle) for angle in arc_angles],
@@ -128,7 +146,7 @@ def _sample_bubbles(page):
 
 
 def _assert_nonempty(samples, label, root=16):
-    assert samples and all(s["rect"] == pytest.approx([1.5 * root, 1.5 * root], abs=.5) for s in samples), label
+    assert samples and all(s["rect"] == pytest.approx([1.875 * root, 1.875 * root], abs=.5) for s in samples), label
     assert all(any(_luma(px) > .10 for px in s["radial"] + s["angles"]) for s in samples), f"{label}: empty ring paint sample"
 
 
@@ -218,10 +236,15 @@ def _assert_original_assets(page):
       const s = getComputedStyle(img), box = img.getBoundingClientRect(), badge = el.getBoundingClientRect();
       const reference = new Image(); reference.src = `/static/assets/splinter/${el.dataset.splinter.toLowerCase()}.svg`;
       await reference.decode();
-      const refCanvas = document.createElement('canvas'); refCanvas.width = refCanvas.height = 16;
-      const refCtx = refCanvas.getContext('2d', {willReadFrequently:true}); refCtx.drawImage(reference, 0, 0, 16, 16);
-      const expected = [...refCtx.getImageData(0, 0, 16, 16).data];
-      return {name: el.dataset.splinter, src: img.currentSrc, width: img.naturalWidth,
+      const canvasSize = Math.round(box.width);
+      const refCanvas = document.createElement('canvas'); refCanvas.width = refCanvas.height = canvasSize;
+      const refCtx = refCanvas.getContext('2d', {willReadFrequently:true});
+      const scale = Math.min(canvasSize / reference.naturalWidth, canvasSize / reference.naturalHeight);
+      const drawnWidth = reference.naturalWidth * scale, drawnHeight = reference.naturalHeight * scale;
+      refCtx.drawImage(reference, (canvasSize - drawnWidth) / 2, (canvasSize - drawnHeight) / 2, drawnWidth, drawnHeight);
+      const expected = [...refCtx.getImageData(0, 0, canvasSize, canvasSize).data];
+      return {name: el.dataset.splinter, surface:el.closest('[data-terrain-affinity]').dataset.terrainAffinity,
+        src: img.currentSrc, width: img.naturalWidth, canvasSize,
         box: [box.width, box.height], x:box.x, y:box.y,
         badge: {x:badge.x, y:badge.y, width:badge.width, height:badge.height},
         complete: img.complete, filter: s.filter, mask: s.maskImage,
@@ -232,43 +255,55 @@ def _assert_original_assets(page):
     assert len(records) == 13 and all(record["complete"] and record["width"] > 0 for record in records), "G12 loaded original rasters"
     assert {record["name"] for record in records} == {*NAMES, "Neutral"}, "G12 all six identities present"
     assert all(record["src"].endswith(ASSET_SUFFIX.get(record["name"], NEUTRAL_ASSET)) for record in records), "G12 exact original asset URLs"
-    assert all(record["box"] == pytest.approx([16, 16], abs=.5) for record in records), "G12 16px original canvas"
+    assert all(record["box"] == pytest.approx([20, 20] if record["surface"] == "editor-row" else [16, 16], abs=.5) for record in records), "G12 original canvas at current row size"
     assert all(record["filter"] == "none" for record in records), "G12 no icon filter"
     assert all(record["mask"] in ("none", "") and record["blend"] == "normal" and record["opacity"] == "1" for record in records), "G12 no raster effects"
     assert all(record["objectFit"] == "contain" for record in records), "G12 complete contained artwork"
     screenshot = Image.open(BytesIO(page.screenshot())).convert("RGB")
     assert screenshot.size == (1920, 1080), "G12 reference comparison uses DPR1"
     for record in records:
-        assert 0 <= record['x'] <= 1904 and 0 <= record['y'] <= 1064, "G12 original canvas within screenshot"
+        size = record['canvasSize']
+        assert 0 <= record['x'] <= 1920 - size and 0 <= record['y'] <= 1080 - size, "G12 original canvas within screenshot"
         badge = record['badge']
-        assert [badge['width'], badge['height']] == pytest.approx([24, 24], abs=.1), "G12 24px bubble"
-        assert [record['x'] + 8, record['y'] + 8] == pytest.approx(
-            [badge['x'] + 12, badge['y'] + 12], abs=.1
+        badge_size = 30 if record['surface'] == 'editor-row' else 24
+        assert [badge['width'], badge['height']] == pytest.approx([badge_size, badge_size], abs=.1), "G12 current surface bubble size"
+        assert [record['x'] + size / 2, record['y'] + size / 2] == pytest.approx(
+            [badge['x'] + badge_size / 2, badge['y'] + badge_size / 2], abs=.1
         ), "G12 original canvas centred"
         if record['name'] not in COLOURS:
             continue  # the Neutral chip's artwork colour is not part of the R-117 identity reference
-        original =tuple(int(COLOURS[record['name']][offset:offset + 2], 16) for offset in (0, 2, 4))
+        original = tuple(int(COLOURS[record['name']][offset:offset + 2], 16) for offset in (0, 2, 4))
         reference = record['expected']
         main_pixels = [
-            (index // 4 % 16, index // 64, tuple(reference[index:index + 3]))
+            (index // 4 % size, index // (4 * size), tuple(reference[index:index + 3]))
             for index in range(0, len(reference), 4)
             if reference[index + 3] >= 250
             and max(abs(reference[index + channel] - original[channel]) for channel in range(3)) <= 4
         ]
         assert len(main_pixels) >= 3, "G12 nonempty original-colour main-path reference"
         transparent = [
-            (index // 4 % 16, index // 64)
+            (index // 4 % size, index // (4 * size))
             for index in range(0, len(reference), 4)
             if reference[index + 3] == 0
-            and (index // 4 % 16 + .5 - 8) ** 2 + (index // 64 + .5 - 8) ** 2 < 7 ** 2
+            and (index // 4 % size + .5 - size / 2) ** 2 + (index // (4 * size) + .5 - size / 2) ** 2 < (size * 7 / 16) ** 2
         ]
         assert transparent, "G12 original canvas exposes the inner backing disc"
         fill = screenshot.getpixel((math.floor(record['x'] + transparent[0][0] + .5),
                                     math.floor(record['y'] + transparent[0][1] + .5)))
         for x, y, expected in main_pixels:
-            painted = screenshot.getpixel((math.floor(record['x'] + x + .5), math.floor(record['y'] + y + .5)))
-            assert max(abs(painted[channel] - expected[channel]) for channel in range(3)) <= 10, "G12 composed main-path pixels match original reference"
-            assert (_luma(painted) + .05) / (_luma(fill) + .05) >= 4.5, "G12 painted original main-path contrast at least 4.5"
+            px, py = math.floor(record['x'] + x + .5), math.floor(record['y'] + y + .5)
+            # SVG filters and aspect-preserving object-fit can rasterise a path
+            # across either adjacent screen pixel. Keep the 10-channel bound
+            # for every main-path reference pixel, matching its nearest pixel.
+            nearby = [screenshot.getpixel((nx, ny)) for nx in range(max(0, px - 1), min(1920, px + 2))
+                      for ny in range(max(0, py - 1), min(1080, py + 2))]
+            painted = min(nearby, key=lambda sample: max(abs(sample[channel] - expected[channel]) for channel in range(3)))
+            assert max(abs(painted[channel] - expected[channel]) for channel in range(3)) <= 10, (
+                f"G12 composed main-path pixels match original reference: {record['surface']} "
+                f"{record['name']} ({x}, {y}) painted={painted} expected={expected}"
+            )
+            darker, lighter = sorted((_luma(painted), _luma(fill)))
+            assert (lighter + .05) / (darker + .05) >= 4.5, "G12 painted original main-path contrast at least 4.5"
 
 
 @pytest.mark.parametrize("theme", ["alchemical", "dark", "light", "wood"])
@@ -287,7 +322,7 @@ ASSET_MUTATIONS = [
     ("ancestor_recolour", "el.parentElement.parentElement.style.filter='grayscale(1)';return getComputedStyle(el.parentElement.parentElement).filter==='grayscale(1)';", "G12 composed main-path pixels match original reference"),
     ("wrong_url", "el.src='/static/assets/splinter/water.svg';await el.decode();return el.currentSrc.includes('/water.svg');", "G12 exact original asset URLs"),
     ("broken_image", "el.src='/static/assets/splinter/r117-missing.svg';await el.decode().catch(()=>{});return el.complete && el.naturalWidth===0;", "G12 loaded original rasters"),
-    ("undersize", "el.style.width='8px';el.style.height='8px';return el.getBoundingClientRect().width===8;", "G12 16px original canvas"),
+    ("undersize", "el.style.width='8px';el.style.height='8px';return el.getBoundingClientRect().width===8;", "G12 original canvas at current row size"),
     ("crop", "el.style.clipPath='inset(0 50% 0 0)';return getComputedStyle(el).clipPath!=='none';", "G12 composed main-path pixels match original reference"),
     ("lightened_backing", "const sheet=document.createElement('style');sheet.textContent='[data-terrain-affinity=picker] [data-splinter=Fire][data-affinity-state=favoured]::after {background:#444!important}';document.head.append(sheet);return getComputedStyle(el.parentElement,'::after').backgroundColor==='rgb(68, 68, 68)';", "G12 painted original main-path contrast at least 4.5"),
 ]
@@ -298,11 +333,8 @@ def test_original_asset_guard_rejects_red_mutations(paint_browser, tmp_path, mut
     with closing(paint_browser.new_page(viewport={"width": 1920, "height": 1080}, device_scale_factor=1)) as page:
         _paint_fixture(page)
         _assert_original_assets(page)
-        # the desktop plot editor no longer renders the vertical
-        # `[data-terrain-affinity="editor"]` column (retired by ) -- the live desktop
-        # affinity surface is `terrainAffinityHtml(row, 'picker')`'s horizontal row, which
-        # this fixture's second host already renders as `[data-terrain-affinity="picker"]`.
-        # Same identity/state under mutation, just the surface the real page now uses.
+        # The picker remains a separate seven-chip surface alongside the desktop
+        # editor's six static icons; mutate the picker's Fire icon specifically.
         assert page.locator('[data-terrain-affinity="picker"] [data-splinter="Fire"][data-affinity-state="favoured"] .splinter-icon').evaluate(f"async el => {{{script}}}") is True, f"{mutation}: mutation landed"
         page.screenshot(path=str(tmp_path / f"asset-red-{mutation}.png"))
         with pytest.raises(AssertionError, match=message):

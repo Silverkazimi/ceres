@@ -373,7 +373,10 @@ export function stakedCardSlots(row) {
   const runiOriginally = !!row?.bonus?.runi || row?.staking_facts?.is_runi_staked === true || capacity.runi_staked === true;
   const staked = Math.max(0, (Number(capacity.worker_count) || 0) - (runiOriginally ? 1 : 0));
   const slots = Math.max(potential, staked);
-  return Number.isInteger(slots) && slots <= 50 ? slots : potential;
+  if (Number.isInteger(slots) && slots <= 50) return slots;
+  // an absurd capacity is no capacity (editorGroups' own guard): fall back to the staked cards
+  // alone, never to the absurd figure, or the editor tried to draw millions of slots.
+  return Number.isInteger(staked) && staked <= 50 ? staked : 0;
 }
 
 export function editorGroups(row) {
@@ -1616,7 +1619,8 @@ function renderChangeBadges(basePpEstimate, harvestDelta, stagedCount, stageTota
   // change in brackets -- a plot has one Base PP; the old separate "Base +X" badge said the same change twice.
   if (stageTotal?.estimate?.status === 'point') {
     const change = stageTotal.effectiveAfter - stageTotal.effectiveNow;
-    const cls = change < 0 ? 'is-negative' : 'is-positive';
+    // A move the cap fully absorbs changes nothing: no gain or loss frame.
+    const cls = change < 0 ? 'is-negative' : change > 0 ? 'is-positive' : 'is-neutral';
     const cap = stageTotal.loss > 0
       ? ` <span class="change-badge-cap">· cap <strong>−${num(stageTotal.loss)}</strong></span>`
       : '';

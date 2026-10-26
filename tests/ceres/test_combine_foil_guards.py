@@ -35,6 +35,7 @@ import urllib.request
 import pytest
 from playwright.sync_api import Browser, Page
 
+from .combine_door import open_worker_picker, serve_idle_cards
 from .conftest import LIVE_PLAYER, spawn_live_ceres
 from .vm_context import ENTRY, read_entry_source, run_in_module_context
 
@@ -84,9 +85,11 @@ if (groups.size !== 2 || groups.get('7|14|1')?.length !== 1 || groups.get('7|14|
         run_in_module_context(check_js, entry=ENTRY, source=mutated)
 
 
+# Edition 13 (Rebellion soulbound) art lives in `cards_soulboundrb`, as in the official app bundle
+# `cards_soulbound` answers 403 for those cards (static/icons.js, CARD_CDN_SET).
 _CDN_MAPPING_JS = r"""
 const expected = {
-  12: 'cards_rebellion', 13: 'cards_soulbound', 15: 'cards_v2.2', 18: 'cards_v2.2',
+  12: 'cards_rebellion', 13: 'cards_soulboundrb', 15: 'cards_v2.2', 18: 'cards_v2.2',
 };
 for (const [edition, folder] of Object.entries(expected)) {
   const url = editorCardImage({card_name: 'Synthetic Card', edition: Number(edition), foil: 0});
@@ -104,11 +107,11 @@ def test_known_modern_editions_resolve_card_art_urls() -> None:
 def test_known_cdn_mapping_mutation_is_red() -> None:
     """Injected defect: remove the edition-13 CDN mapping; the rendered resolver must stop returning its card-art URL."""
     source = read_entry_source(ENTRY)
-    mutated = source.replace("CARD_CDN_SET[13] = 'cards_soulbound';\n", "", 1)
+    mutated = source.replace("CARD_CDN_SET[13] = 'cards_soulboundrb';\n", "", 1)
     assert mutated != source, "CARD_CDN_SET[13] mutation target is missing"
     check_js = r"""
 const url = editorCardImage({card_name: 'Synthetic Card', edition: 13, foil: 0});
-if (url !== 'https://d36mxiodymuqjm.cloudfront.net/cards_soulbound/Synthetic%20Card.jpg') {
+if (url !== 'https://d36mxiodymuqjm.cloudfront.net/cards_soulboundrb/Synthetic%20Card.jpg') {
   throw new Error(`known edition mapping returned no card-art URL: ${url} (exit 1)`);
 }
 """
@@ -174,10 +177,9 @@ def _mock_plot_detail(page: Page, deed_uid: str, detail: dict) -> None:
 
 
 def _mock_idle_cards(page: Page, copies: list[dict]) -> None:
-    page.route(
-        "**/api/idle-cards*",
-        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"cards": copies})),
-    )
+    # also reports the pool loaded on the board, without which the page never reads it
+    # and every combine affordance stays absent for a reason unrelated to these guards
+    serve_idle_cards(page, copies)
 
 
 def _mock_candidates(page: Page, deed_uid: str, candidate: dict) -> None:
@@ -210,15 +212,7 @@ def _assert_no_candidate_combine_affordance(page: Page, base_url: str, deed_uid:
     # renderCandidateRow carries no `data-candidate-uid` attribute (only
     # `data-candidate-index`); the mocked candidates response above supplies
     # exactly one candidate (this one), so its row is unambiguous by index 0.
-    page.goto(f"{base_url}/?player={LIVE_PLAYER}")
-    page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
-    page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
-    empty = page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}'] + tr.expand-row .slot-tile.is-empty").first
-    empty.wait_for(timeout=30_000)
-    with page.expect_response(f"**/api/plots/{urllib.parse.quote(deed_uid, safe='')}/candidates*", timeout=30_000):
-        empty.click()
-    row = page.locator(".candidate-row[data-candidate-index='0']")
-    row.wait_for(timeout=30_000)
+    row = open_worker_picker(page, base_url, deed_uid)
     assert row.locator(".picker-combine").count() == 0, "a forbidden Combine button rendered in the candidate list"
     assert row.locator(".candidate-upgrade").count() == 0, "a forbidden combinable-copies chip rendered in the candidate list"
 
@@ -265,10 +259,11 @@ def test_black_and_arcane_are_absent_from_all_combine_surfaces() -> None:
 
 def test_black_and_arcane_exclusion_mutation_is_red() -> None:
     """Injected defect: drop the shared Black/Arcane exclusion (`isNonCombinableFoil`
-    always returns false); the rendered worker-table chip must then appear where
-    the guard above requires it absent."""
+    always returns false); the candidate list's Combine must then appear where
+    the guard above requires it absent. (The worker tiles carry no Combine chip
+    on the board, so the candidate list is the surface that can turn red.)"""
     with spawn_live_ceres() as (browser, base_url):
-        detail, duplicates, _candidate_deed, _candidate = _black_arcane_fixture(base_url, 3)
+        _detail, duplicates, candidate_deed, candidate = _black_arcane_fixture(base_url, 3)
         real_source = read_entry_source()
         mutated_source = real_source.replace("return ['3', '4'].includes(cardFoilValue(card));", "return false;", 1)
         assert mutated_source != real_source, "isNonCombinableFoil mutation target is missing"
@@ -278,10 +273,10 @@ def test_black_and_arcane_exclusion_mutation_is_red() -> None:
             "**/static/app.js*",
             lambda route: route.fulfill(status=200, content_type="application/javascript", body=mutated_source),
         )
-        _mock_plot_detail(page, detail["deed_uid"], detail)
         _mock_idle_cards(page, duplicates)
+        _mock_candidates(page, candidate_deed, candidate)
         with pytest.raises(AssertionError):
-            _assert_no_worker_table_chip(page, base_url, detail["deed_uid"])
+            _assert_no_candidate_combine_affordance(page, base_url, candidate_deed, candidate["uid"])
         page.close()
 
 
@@ -322,9 +317,10 @@ def test_maxed_cards_are_absent_from_all_combine_surfaces() -> None:
 
 
 def test_maxed_exclusion_mutation_is_red() -> None:
-    """Injected defect: remove the maxed-card result from `isCardMaxed`; rendered combine affordances must fail."""
+    """Injected defect: remove the maxed-card result from `isCardMaxed`; the candidate list's rendered
+    Combine must then appear (the surface that can turn red; worker tiles carry no Combine chip)."""
     with spawn_live_ceres() as (browser, base_url):
-        detail, duplicates, _candidate_deed, _candidate = _maxed_fixture(base_url)
+        _detail, duplicates, candidate_deed, candidate = _maxed_fixture(base_url)
         real_source = read_entry_source()
         mutated_source = real_source.replace("return c.bcx_max != null && c.bcx != null && c.bcx >= c.bcx_max;", "return false;", 1)
         assert mutated_source != real_source, "isCardMaxed mutation target is missing"
@@ -334,8 +330,8 @@ def test_maxed_exclusion_mutation_is_red() -> None:
             "**/static/app.js*",
             lambda route: route.fulfill(status=200, content_type="application/javascript", body=mutated_source),
         )
-        _mock_plot_detail(page, detail["deed_uid"], detail)
         _mock_idle_cards(page, duplicates)
+        _mock_candidates(page, candidate_deed, candidate)
         with pytest.raises(AssertionError):
-            _assert_no_worker_table_chip(page, base_url, detail["deed_uid"])
+            _assert_no_candidate_combine_affordance(page, base_url, candidate_deed, candidate["uid"])
         page.close()

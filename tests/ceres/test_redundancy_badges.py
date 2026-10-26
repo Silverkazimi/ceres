@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+
 from ceres.board import BADGE_META, project_board
 from ceres.notices import BADGE_ORDER, badge_rank
 from tests.ceres.conftest import build_details_by_id, build_report
@@ -9,8 +11,31 @@ def _row(report: dict, deed_uid: str):
     return next(row for row in project_board(report, build_details_by_id())["plots"] if row["deed_uid"] == deed_uid)
 
 
+def _with_five_workers(report: dict, deed_uid: str) -> dict:
+    """Build the full-slot case explicitly; the shared capture has only slots 1 and 3."""
+    template = next(w for w in report["workers"] if w.get("stake_ref_uid") == deed_uid and w.get("slot") == 1)
+    for slot in (2, 4, 5):
+        worker = copy.deepcopy(template)
+        worker["asset_ref"] = f"badge-test-worker-{slot}"
+        worker["slot"] = slot
+        report["workers"].append(worker)
+    return report
+
+
+def _with_kinbound(report: dict, deed_uid: str) -> dict:
+    plot = next(p for p in report["plots"] if p["deed_uid"] == deed_uid)
+    report["workers"].append({
+        "asset_ref": "badge-test-kinbound", "stake_ref_uid": deed_uid,
+        "card_detail_id": 867, "name": "Kinbound Druid", "level": 8,
+        "slot": 1, "observed_at": plot["observed_at"],
+    })
+    report["card_index"] = [*(report.get("card_index") or []),
+                            {"asset_ref": "badge-test-kinbound", "facts": {"level": 8}}]
+    return report
+
+
 def test_filled_unpowered_worker_emits_explicit_slot_warning_and_live_pp():
-    report = build_report()
+    report = _with_five_workers(build_report(), "I-295-eb4b408d045087")
     deed_uid = "I-295-eb4b408d045087"
     target_workers = [worker for worker in report["workers"] if worker.get("stake_ref_uid") == deed_uid]
     removed = next(worker for worker in target_workers if worker.get("slot") == 4)
@@ -32,8 +57,9 @@ def test_filled_unpowered_worker_emits_explicit_slot_warning_and_live_pp():
     assert "unpowered_worker" in row["badges"]
     assert "unpowered" not in row["badges"]
     warning = next(notice for notice in row["notices"] if notice["code"] == "unpowered_worker")
-    assert "Worker 5" in warning["message"]
-    assert "11,880 PP" in warning["message"]
+    assert "Worker slot 5" in warning["message"]
+    assert worker["total_harvest_pp"] == "11880"
+    assert "0 PP" in warning["message"]
     assert "Power Core" in warning["message"]
     assert "Energized" in warning["message"]
     assert warning["blocking"] == "none"
@@ -46,7 +72,7 @@ def test_unpowered_worker_badge_is_union_of_worker_fact_and_bulk_deficit():
     the second injects a bulk deficit while no per-worker rows are available.
     Both independent facts must emit the same badge.
     """
-    worker_fact_report = build_report()
+    worker_fact_report = _with_five_workers(build_report(), "I-295-eb4b408d045087")
     deed_uid = "I-295-eb4b408d045087"
     worker_fact_plot = next(plot for plot in worker_fact_report["plots"] if plot["deed_uid"] == deed_uid)
     worker_fact = next(worker for worker in worker_fact_report["workers"] if worker.get("stake_ref_uid") == deed_uid and worker.get("slot") == 5)
@@ -59,7 +85,10 @@ def test_unpowered_worker_badge_is_union_of_worker_fact_and_bulk_deficit():
     bulk_report = build_report()
     bulk_plot = next(plot for plot in bulk_report["plots"] if plot["deed_uid"] == deed_uid)
     bulk_report["workers"] = [worker for worker in bulk_report["workers"] if worker.get("stake_ref_uid") != deed_uid]
-    bulk_plot["staking_facts"].update({"worker_count": 5, "powered_worker_count": 4})
+    # The bulk counts include the Runi, so six means five regular workers in
+    # four powered slots even when all per-worker rows are unavailable.
+    bulk_plot["staking_facts"].update({"worker_count": 6, "powered_worker_count": 5,
+                                        "is_power_core_staked": False, "is_energized": False})
     bulk_row = _row(bulk_report, deed_uid)
     assert bulk_row["workers"] == []
     assert "unpowered_worker" in bulk_row["badges"]
@@ -86,10 +115,7 @@ def test_redundant_core_requires_energized_and_excludes_runi():
 
 
 def test_dark_discount_warning_requires_runi_and_loaded_worker_ability():
-    report = build_report()
-    kinbound = next(worker for worker in report["workers"] if worker.get("name") == "Kinbound Druid")
-    kinbound["level"] = 8
-    kinbound["observed_at"] = next(plot for plot in report["plots"] if plot["deed_uid"] == "I-294-62529e285ddcf0")["observed_at"]
+    report = _with_kinbound(build_report(), "I-294-62529e285ddcf0")
     runi_plot = _row(report, "I-294-62529e285ddcf0")
     assert "dark_discount_wasted" in runi_plot["badges"]
     warning = next(notice for notice in runi_plot["notices"] if notice["code"] == "dark_discount_wasted")
@@ -101,22 +127,22 @@ def test_dark_discount_warning_requires_runi_and_loaded_worker_ability():
 
 
 def test_worker_badges_fail_closed_for_retrieved_rows_from_an_older_capture():
-    report = build_report()
+    report = _with_five_workers(build_report(), "I-295-eb4b408d045087")
     deed_uid = "I-295-eb4b408d045087"
     plot = next(plot for plot in report["plots"] if plot["deed_uid"] == deed_uid)
     worker = next(worker for worker in report["workers"] if worker.get("stake_ref_uid") == deed_uid and worker.get("slot") == 5)
     worker["is_powered"] = False
     worker["observed_at"] = "2026-08-26T20:00:16Z"
     plot["staking_facts"].update({"is_powered": True, "is_power_core_staked": False, "is_energized": False})
+    plot["staking_facts"].update({"worker_count": 5, "powered_worker_count": 5})
     assert "unpowered_worker" not in _row(report, deed_uid)["badges"]
 
 
 def test_new_warning_codes_use_the_grouped_order_and_are_board_emitted():
-    report = build_report()
+    report = _with_five_workers(build_report(), "I-295-eb4b408d045087")
     energized = next(plot for plot in report["plots"] if plot["deed_uid"] == "I-294-8bb3ce6436e586")
     energized["staking_facts"]["is_energized"] = True
-    kinbound = next(worker for worker in report["workers"] if worker.get("name") == "Kinbound Druid")
-    kinbound["level"] = 8
+    _with_kinbound(report, "I-294-62529e285ddcf0")
     unpowered = next(worker for worker in report["workers"] if worker.get("stake_ref_uid") == "I-295-eb4b408d045087" and worker.get("slot") == 5)
     unpowered["is_powered"] = False
     board = project_board(report, build_details_by_id())

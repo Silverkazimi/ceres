@@ -131,6 +131,29 @@ def test_picker_dropdown_open_select_close_and_click_outside(live_browser: tuple
     page.close()
 
 
+def test_search_field_scroll_does_not_close_an_open_dropdown(live_browser: tuple[Browser, str]) -> None:
+    page = _page(live_browser)
+    rarity_select = page.locator("#rarity-filter")
+    trigger = rarity_select.locator("xpath=..").locator(".csel-trigger")
+    list_el = rarity_select.locator("xpath=..").locator(".csel-list")
+    trigger.click()
+    assert list_el.is_visible()
+
+    # A long search field scrolls its text back to the start when it blurs.
+    # That input scroll reaches the document's capture listener but moves no page anchor.
+    page.evaluate("""() => {
+      const input = document.createElement('input');
+      document.body.append(input);
+      input.dispatchEvent(new Event('scroll'));
+      input.remove();
+    }""")
+    assert list_el.is_visible()
+
+    page.evaluate("document.body.dispatchEvent(new Event('scroll'))")
+    assert not list_el.is_visible()
+    page.close()
+
+
 def test_dynamic_edition_list_trigger_is_never_blank(live_browser: tuple[Browser, str]) -> None:
     page = _page(live_browser)
     _open_worker_picker(page)

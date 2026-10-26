@@ -359,8 +359,9 @@ async function acceptProposal() {
     if (['totem', 'title', 'power_core'].includes(move.group_id)
       && (CERES_STAGE.some((entry) => entry.deed_uid !== row.deed_uid && entry.action !== 'unstake' && String(entry.asset_ref) === String(move.asset_ref))
         || pendingIncomingRefElsewhere(move.asset_ref, row.deed_uid, move.group_id, move.slot_index))) {
-      M.error = 'An item in this proposal is already staged elsewhere. Refresh the proposal to choose a free copy.';
-      render(); return;
+      // no manual step -- a new proposal picks a free copy of that tier
+      M.error = 'An item in this proposal is already staged on another plot. A new proposal with a free copy is on its way.';
+      requestProposal(); return;
     }
     const elsewhere = CERES_STAGE.find((entry) => entry.deed_uid !== row.deed_uid && !entry._synthetic && !entry.txId
       && entry.action !== 'unstake' && String(entry.asset_ref) === String(move.asset_ref));

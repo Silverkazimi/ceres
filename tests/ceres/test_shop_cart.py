@@ -683,7 +683,9 @@ eq(cmFiltersChanged({ set: ['a', 'b'] }, { set: ['b', 'a'] }), false, 'order doe
     assert card_market.print_matches({**ITEM, "splinters": ["Fire"]}, {"set": "alpha,chaos", "foil": "0,1", "splinter": "water,fire"})
     assert not card_market.print_matches({**ITEM, "splinters": ["Fire"]}, {"set": "alpha,rebellion"})
     js = (STATIC / "card-browser.js").read_text(encoding="utf-8")
-    assert "multiple: el.dataset.cbFilter !== 'sort'" in js and "setSelectValues(el, cbList(f[key]))" in js
+    # Status is a single choice like the sort; every other filter list stays a multi-select
+    assert "const CB_SINGLE_FILTERS = new Set(['sort', 'status']);" in js
+    assert "multiple: !CB_SINGLE_FILTERS.has(el.dataset.cbFilter)" in js and "setSelectValues(el, cbList(f[key]))" in js
 
 
 def test_hover_dimming_has_grace_and_pauses_while_scrolling():

@@ -3,7 +3,7 @@
   "rule": "",
   "recorded_on": "2026-09-28",
   "recorded_at_version": "1.0.0",
-  "note": "Deviations from library/ceres-ui-standards.md present on master  when the guard was recorded. Shrinking ratchet: remove an entry when its deviation is fixed; add one only with an maintainer-approved exception that is also written into the standard. 2026-10-18 : ratchet shrunk to observed counts; added calc(8*/8.6*var(--ability-unit)) font sizes and calc(4*var(--ability-unit)) radius from the maintainer-approved B-5 layout A (, ).",
+  "note": "Deviations from library/ceres-ui-standards.md present on master  when the guard was recorded. Shrinking ratchet: remove an entry when its deviation is fixed; add one only with an maintainer-approved exception that is also written into the standard. 2026-10-26 (maintainer ruling , v1 incident ): the deviations live on  were recorded as the baseline (T-3 sizes .6/.65/.85/1.05/1.5rem and 10px, E-1 radii 2px and calc(var(--radius) - 2px), K-1/K-7 classes of the wallet secondary button and the Cards avatar); aligning them is a post-v1 ticket.",
   "baseline": {
     "raw_colour_beyond_s9310_allowlist": [],
     "m4_fixed_chrome_shadow_filter_motion": [
@@ -71,22 +71,22 @@
         ".62rem": 5,
         ".64rem": 5,
         ".65em": 1,
-        ".65rem": 4,
+        ".65rem": 5,
         ".66rem": 8,
         ".67rem": 1,
         ".68rem": 11,
         ".69rem": 4,
-        ".6rem": 5,
+        ".6rem": 6,
         ".72em": 1,
         ".72rem": 19,
         ".74rem": 3,
         ".76rem": 7,
-        ".78rem": 14,
+        ".78rem": 13,
         ".82em": 1,
         ".82rem": 5,
         ".83rem": 2,
         ".84rem": 2,
-        ".85rem": 28,
+        ".85rem": 29,
         ".86rem": 3,
         ".92rem": 4,
         ".93rem": 1,
@@ -102,12 +102,12 @@
         "1.35rem": 3,
         "1.3rem": 4,
         "1.4rem": 3,
-        "1.5rem": 3,
+        "1.5rem": 4,
         "1.6rem": 2,
         "1.7rem": 1,
         "1.8rem": 1,
         "10.5px": 1,
-        "10px": 1,
+        "10px": 2,
         "11.5px": 1,
         "11px": 2,
         "12.8px": 1,
@@ -125,11 +125,14 @@
         "calc(100cqi*11.5/107.2)": 1,
         "calc(100cqi*12.8/107.2)": 1,
         "calc(7.68*var(--ability-unit))": 1,
+        "calc(8*var(--ability-unit))": 1,
+        "calc(8.6*var(--ability-unit))": 1,
         "clamp(.45rem,13cqi,.7rem)": 1,
         "var(--ceres-control-font-size,1rem)": 3,
-        "var(--edge-chip-font,1.25rem)": 1,
-        "calc(8*var(--ability-unit))": 1,
-        "calc(8.6*var(--ability-unit))": 1
+        "var(--edge-chip-font,1.25rem)": 1
+      },
+      "wallet.css": {
+        "1.05rem": 1
       }
     },
     "radii_off_scale": {
@@ -146,7 +149,7 @@
         "0 8px 8px 0": 1,
         "10px": 2,
         "1rem": 2,
-        "2px": 1,
+        "2px": 2,
         "3px": 1,
         "4px": 5,
         "5px": 4,
@@ -154,12 +157,13 @@
         "6px": 4,
         "7px": 5,
         "9px": 1,
+        "calc(4*var(--ability-unit))": 1,
+        "calc(var(--radius)-2px)": 2,
         "max(0px,calc(var(--radius)-2px))": 1,
         "var(--ceres-pp-radius)": 3,
         "var(--edge-radius-inner,5px 0 0 5px)": 3,
         "var(--edge-radius-outer,5px 0 0 5px)": 2,
-        "var(--radius) var(--radius) 0 0": 1,
-        "calc(4*var(--ability-unit))": 1
+        "var(--radius) var(--radius) 0 0": 1
       },
       "wallet.css": {
         "2px": 1,
@@ -231,6 +235,11 @@
       {
         "file": "cards.html",
         "class": "edge-toggle",
+        "count": 1
+      },
+      {
+        "file": "cards.html",
+        "class": "player-avatar",
         "count": 1
       },
       {
@@ -381,7 +390,7 @@
       {
         "file": "wallet.js",
         "class": "${secondary}",
-        "count": 2
+        "count": 3
       },
       {
         "file": "wallet.js",

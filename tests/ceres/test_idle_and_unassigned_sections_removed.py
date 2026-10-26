@@ -20,9 +20,9 @@ Two guards, matching the internal rules's mutation standard:
 
 2. `test_combine_door_depends_on_the_cache_not_the_deleted_section` -- live
    Chromium: with idle-cards mocked to guarantee a combinable duplicate, the
-   tile-chip door renders while both deleted sections are confirmed absent
-   from the live DOM. Injection: forced `IDLE_CARDS_CACHE = null` in the live
-   page and re-rendered the same row -- the chip disappeared, proving the
+   worker picker's Combine door renders while both deleted sections are confirmed
+   absent from the live DOM. Injection: a failed idle-cards read leaves
+   `IDLE_CARDS_CACHE` null and the same candidate row shows no Combine, proving the
    door's markup genuinely depends on the cache (not some now-dead reference
    to the removed section) and that a gutted cache is exactly the failure
    mode this pairing of tests would catch.
@@ -30,12 +30,10 @@ Two guards, matching the internal rules's mutation standard:
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-from playwright.sync_api import Page
-
-from .conftest import settle, spawn_live_ceres
+from .combine_door import open_slot_candidate_template, open_worker_picker, report_idle_pool_loaded, serve_candidates, serve_idle_cards
+from .conftest import spawn_live_ceres
 from .vm_context import read_entry_source
 
 ROOT = Path(__file__).parents[2]
@@ -76,50 +74,26 @@ def test_neither_section_exists_anywhere() -> None:
     assert not _no_deleted_ids(mutated), "guard is void -- it passed with the deleted section reinserted"
 
 
-def _install_idle_cards_mock(page: Page, worker: dict) -> None:
-    copies = [
-        {
-            "uid": f"MOCK-IDLE-{i}", "card_detail_id": worker["card_detail_id"], "edition": worker["edition"],
-            "foil": worker.get("foil", False), "bcx": 1, "bcx_max": 10, "available": True, "name": worker.get("name", "Mock Card"),
-        }
-        for i in range(2)
-    ]
-    page.route(
-        "**/api/idle-cards*",
-        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"cards": copies})),
-    )
-
-
 def test_combine_door_depends_on_the_cache_not_the_deleted_section() -> None:
-    import urllib.parse
-    import urllib.request
-
+    # The board's in-page Combine door is the worker picker's Combine on a candidate row
+    # (worker tiles carry none): served one candidate, it renders exactly when the idle-card
+    # cache holds a combinable copy of that candidate.
     with spawn_live_ceres() as (browser, base_url):
-        with urllib.request.urlopen(f"{base_url}/api/board", timeout=30) as response:
-            board = json.loads(response.read().decode())
+        deed_uid, template = open_slot_candidate_template(base_url)
+        copies = [
+            {
+                "uid": f"MOCK-IDLE-{i}", "card_detail_id": template["card_detail_id"], "edition": template["edition"],
+                "foil": template.get("foil", 0), "bcx": 1, "bcx_max": 10, "available": True, "name": template.get("name", "Mock Card"),
+            }
+            for i in range(2)
+        ]
+        candidate = dict(template, uid=copies[0]["uid"], bcx=1, bcx_max=10)
 
-        # Same fixture shape as test_tile_combine_chip.py's _two_distinct_workers
-        # slot >= 1 (never the Runi/reserved slot 0) and card_detail_id/edition
-        # both present -- combineTileActionHtml's own precondition.
-        row = worker = None
-        for candidate_row in board["plots"]:
-            if not candidate_row.get("assets_loaded"):
-                continue
-            with urllib.request.urlopen(f"{base_url}/api/plots/{urllib.parse.quote(candidate_row['deed_uid'], safe='')}", timeout=30) as response:
-                detail = json.loads(response.read().decode())
-            for candidate_worker in detail.get("workers") or []:
-                if candidate_worker.get("asset_ref") and isinstance(candidate_worker.get("slot"), int) and candidate_worker["slot"] >= 1 \
-                        and candidate_worker.get("card_detail_id") is not None and candidate_worker.get("edition") is not None:
-                    row, worker = candidate_row, candidate_worker
-                    break
-            if worker:
-                break
-        assert row and worker, "no staked worker with card_detail_id/edition found -- cannot build the fixture"
-
-        def _open_and_get_chip_count(mock_idle_cards: bool):
+        def _open_and_get_door_count(mock_idle_cards: bool):
             page = browser.new_page(viewport={"width": 1400, "height": 900})
+            serve_candidates(page, deed_uid, [candidate])
             if mock_idle_cards:
-                _install_idle_cards_mock(page, worker)
+                serve_idle_cards(page, copies)
             else:
                 # Injection: gut the cache exactly as the maintainer warned against
                 # by forcing GET /api/idle-cards to fail before it ever
@@ -127,27 +101,19 @@ def test_combine_door_depends_on_the_cache_not_the_deleted_section() -> None:
                 # request as "stay null" (see prefetchIdleCardsCache's catch)
                 # which is the same end state a botched removal of the
                 # rendering surface could leave the cache in.
+                report_idle_pool_loaded(page)
                 page.route("**/api/idle-cards*", lambda route: route.abort())
-            page.goto(base_url)
-            page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
-            settle(page)  # prefetchIdleCardsCache() has answered either way
+            row = open_worker_picker(page, base_url, deed_uid)
 
             sections = page.evaluate(
                 "() => ({idle: !!document.getElementById('idle-cards-section'), unassigned: !!document.getElementById('unassigned-bonus-section')})"
             )
             assert sections == {"idle": False, "unassigned": False}
-
-            page_row = page.locator(f"tr.plot-row[data-deed-uid='{row['deed_uid']}']")
-            page_row.wait_for(timeout=15_000)
-            page_row.click()
-            expanded = page.locator(f"tr.expand-row[data-deed-uid='{row['deed_uid']}']")
-            expanded.locator(".slot-editor").wait_for(timeout=15_000)
-            settle(page)
-            count = expanded.locator(".tile-combine-chip").count()
+            count = row.locator(".picker-combine[data-picker-action='combine']").count()
             page.close()
             return count
 
-        assert _open_and_get_chip_count(mock_idle_cards=True) > 0, \
+        assert _open_and_get_door_count(mock_idle_cards=True) > 0, \
             "combine door did not render even though the cache holds a combinable duplicate"
-        assert _open_and_get_chip_count(mock_idle_cards=False) == 0, \
+        assert _open_and_get_door_count(mock_idle_cards=False) == 0, \
             "guard is void -- the door still rendered with a failed/empty cache"

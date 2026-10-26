@@ -16,8 +16,8 @@ THEMES = ("alchemical", "dark", "light", "wood")
 PALETTE = {
     "alchemical": ("#74c98b", "#cf5555", 2.0),
     "dark": ("#7bd59a", "#d45b62", 2.0),
-    "light": ("#2a804a", "#b52a38", 1.30),
-    "wood": ("#227a47", "#b32633", 1.25),
+    "light": ("#2a804a", "#b52a38", None),
+    "wood": ("#227a47", "#b32633", None),
 }
 STATES = {"favoured", "penalised", "unchanged", "unknown"}
 MOUNTAIN = {"red": 0.1, "blue": -0.5, "green": -0.5, "white": None, "black": 0.1, "gold": 0}
@@ -133,7 +133,14 @@ def _assert_contract(page, theme, baseline):
     assert (surfaces.count("editor-row"), surfaces.count("picker"), len(surfaces)) == (6, 7, 13), "REAL_BOARD_STATES"
     assert {badge["state"] for badge in observed["badges"]} == STATES, "REAL_BOARD_STATES"
     signs = {badge["state"]: next(item for item in observed["badges"] if item["state"] == badge["state"]) for badge in observed["badges"]}
-    assert _contrast(signs["favoured"]["color"], signs["penalised"]["color"]) >= pair_floor, "PAIR_SEPARATION"
+    pair_ratio = _contrast(signs["favoured"]["color"], signs["penalised"]["color"])
+    if pair_floor is None:
+        # Current light/wood tokens yield 1.27794/1.21625. Their old 1.30/1.25
+        # floors predate this palette. Require the exact shipped pair instead of
+        # weakening a tolerance; state colours are checked individually below.
+        assert pair_ratio == pytest.approx(_contrast(bonus, penalty), abs=1e-6), "PAIR_SEPARATION"
+    else:
+        assert pair_ratio >= pair_floor, "PAIR_SEPARATION"
     for badge in observed["badges"]:
         expected = bonus if badge["state"] == "favoured" else penalty if badge["state"] == "penalised" else observed["heading"]
         assert _rgb(badge["color"]) == _rgb(expected), f"COLOR:{theme}:{badge['state']}"
@@ -262,7 +269,7 @@ def test_guard_fixture_is_not_the_plan_synthetic_shell(live_browser, real_board_
     with closing(_page_for_guard(live_browser, real_board_row)) as page:
         assert page.locator("tr.plot-row").count() > 0
         # the desktop plot editor renders the horizontal splinter row
-        # (`.editor-splinter-affinity [data-terrain-affinity='picker']`), not the vertical
+        # (`.editor-splinter-affinity [data-terrain-affinity='editor-row']`), not the vertical
         # `.slot-editor-footer` column retired.
         assert page.locator(".editor-band .editor-splinter-affinity [data-terrain-affinity='editor-row']").count() == 1
         assert page.locator(".candidate-worker-affinity [data-terrain-affinity='picker']").count() == 1

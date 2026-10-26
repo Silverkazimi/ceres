@@ -5,9 +5,11 @@ from __future__ import annotations
 import re
 from contextlib import contextmanager
 from typing import Iterator
+from urllib.parse import urlsplit
 
 from playwright.sync_api import Page
 
+from .combine_door import open_combine_by_print, recorded_combine_print, serve_recorded_idle_pool
 from .conftest import LIVE_PLAYER, spawn_live_ceres
 from . import board_basic_recording as recording
 
@@ -33,15 +35,12 @@ def _expand_until_ability_tooltip(page: Page) -> int:
 
 
 def _open_combine_dialog(page: Page) -> None:
-    # The recorded Daria worker has three synthetic idle partners in the
-    # browser-combine overlay. Use the current per-tile entry point.
-    deed_uid = recording.COMBINE.uid
-    page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
-    page.locator(f".tile-combine-chip[data-deed-uid='{deed_uid}']").first.click()
-    page.wait_for_function(
-        "document.querySelector('#combine-dialog-overlay')?.hidden === false",
-        timeout=10_000,
-    )
+    # The recorded COMBINE plot's gold worker has three synthetic idle partners in
+    # the browser-combine overlay. Worker tiles carry no Combine control; the board
+    # opens the dialog for that printing from its `?combine=` address.
+    base_url = "{0.scheme}://{0.netloc}".format(urlsplit(page.url))
+    serve_recorded_idle_pool(page, base_url)
+    open_combine_by_print(page, base_url, recorded_combine_print())
 
 
 # INJECTION: joining the ability name and effect into one tooltip string.

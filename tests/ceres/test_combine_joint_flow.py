@@ -28,6 +28,7 @@ import json
 import pytest
 from playwright.sync_api import Browser, Page
 
+from .combine_door import open_combine_by_print, open_slot_candidate_template, serve_candidates, serve_recorded_idle_pool
 from .conftest import LIVE_PLAYER, spawn_live_ceres
 
 
@@ -40,6 +41,9 @@ def live_browser() -> tuple[Browser, str]:
 def _page(live_browser: tuple[Browser, str]) -> Page:
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    # The recorded account's real idle-card pool, with the board reporting it loaded (see
+    # tests/ceres/combine_door.py: a page load alone never reaches that state on the recording).
+    serve_recorded_idle_pool(page, base_url)
     page.goto(f"{base_url}/?player={LIVE_PLAYER}")
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     return page
@@ -99,14 +103,6 @@ def _find_real_combine_candidate(page: Page) -> dict:
             if copies and len(copies) >= 3 and has_combinable_row(copies):
                 return {"index": index, "deedUid": deed_uid, "worker": worker, "copies": copies}
     raise AssertionError("fixture snapshot must expose at least one plot with a combinable staked worker")
-
-
-def _expand_plot(page: Page, index: int) -> None:
-    row = page.locator("#plot-tbody > tr.plot-row").nth(index)
-    if row.locator("xpath=following-sibling::tr[1]").evaluate("node => node.style.display") == "none":
-        row.click()
-    expanded = page.locator("tr.expand-row").nth(index)
-    expanded.locator(".slot-editor").wait_for(timeout=30_000)
 
 
 def _install_settle_mocks(page: Page, survivor_uid: str, destroyed_uids: list[str]) -> dict:
@@ -179,24 +175,29 @@ def _install_settle_mocks(page: Page, survivor_uid: str, destroyed_uids: list[st
     return bumped
 
 
+def _open_picker_combine(page: Page, deed_uid: str) -> None:
+    """Re-open the dialog in the same page, through the worker picker's Combine on the plot's first
+    candidate row (the board's in-page Combine door; worker tiles carry none)."""
+    page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
+    empty = page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}'] + tr.expand-row .slot-tile.is-empty:not([aria-hidden='true'])").first
+    empty.wait_for(timeout=30_000)
+    empty.click()
+    row = page.locator(".candidate-row[data-candidate-index='0']")
+    row.wait_for(timeout=30_000)
+    combine = row.locator(".picker-combine[data-picker-action='combine']")
+    combine.wait_for(timeout=30_000)
+    combine.click()
+
+
 def test_settle_and_arrive_run_together_end_to_end(live_browser: tuple[Browser, str], tmp_path) -> None:
+    _browser, base_url = live_browser
     page = _page(live_browser)
     candidate = _find_real_combine_candidate(page)
-    _expand_plot(page, candidate["index"])
-
-    combine_btn = page.locator("tr.expand-row").nth(candidate["index"]).locator(
-        "button[data-slot-action='combine-plot']"
-    )
-    combine_btn.wait_for(timeout=30_000)
-    combine_btn.click()
+    # The board opens the dialog for the candidate worker's printing from its `?combine=` address.
+    open_combine_by_print(page, base_url, candidate["worker"])
 
     overlay = page.locator("#combine-dialog-overlay")
     overlay.wait_for(timeout=30_000)
-    # A plot with more than one combinable worker shows a chooser first (door 3
-    # sub-step) -- pick the first group either way.
-    chooser = page.locator(".combine-plot-chooser .picker-chip")
-    if chooser.count():
-        chooser.first.click()
 
     # Force the amount stepper down to its minimum (2 copies) -- the dialog's own
     # default is "to max level" (often the WHOLE group), which would leave nothing
@@ -258,7 +259,7 @@ def test_settle_and_arrive_run_together_end_to_end(live_browser: tuple[Browser, 
     )
     page.screenshot(path=str(tmp_path / "04-settle-done-toast.png"))
 
-    # The combined card's new value is visible on re-opening the SAME combine
+    # The combined card's new value is visible on re-opening a combine
     # door, with no manual refresh anywhere: loadBoard() (triggered by settle
     # not by the player) nulled IDLE_CARDS_CACHE and re-fetched it, so the
     # dialog's own "you own N" count reflects the destroyed copy being gone and
@@ -267,10 +268,16 @@ def test_settle_and_arrive_run_together_end_to_end(live_browser: tuple[Browser, 
     # through the real render path, not a raw JSON diff.
     page.locator("#combine-dialog-body button[data-combine-action='close-dialog']").click()
     overlay.wait_for(state="hidden", timeout=30_000)
-    combine_btn.click()
-    chooser = page.locator(".combine-plot-chooser .picker-chip")
-    if chooser.count():
-        chooser.first.click()
+    # The picker lists the survivor (served as the open slot's one candidate, a real candidate
+    # payload carrying the survivor's identity); its Combine reads the re-fetched idle cards.
+    picker_deed, template = open_slot_candidate_template(base_url)
+    survivor_card = next(c for c in candidate["copies"] if c.get("uid") == survivor_uid)
+    serve_candidates(page, picker_deed, [dict(
+        template, uid=survivor_uid, card_detail_id=survivor_card["card_detail_id"], edition=survivor_card["edition"],
+        foil=survivor_card.get("foil", 0), gold=survivor_card.get("gold", False), name=survivor_card.get("name"),
+        bcx=bumped["bcx"], bcx_max=survivor_card.get("bcx_max"),
+    )])
+    _open_picker_combine(page, picker_deed)
     ledger_now = page.locator("#combine-dialog-body .combine-ledger-sm").first
     ledger_now.wait_for(timeout=30_000)
     page.wait_for_function(

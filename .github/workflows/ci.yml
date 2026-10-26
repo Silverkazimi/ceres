@@ -1,7 +1,8 @@
 name: CI
 on:
-  push: { branches: [main] }
+  push: { branches: [main, "check/**"] }
   pull_request: { branches: [main] }
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:

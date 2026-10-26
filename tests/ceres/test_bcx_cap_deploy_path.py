@@ -15,6 +15,7 @@ from __future__ import annotations
 import importlib
 import os
 import sys
+from pathlib import Path
 
 import ceres.bcx_cap as bcx_cap
 
@@ -47,7 +48,10 @@ def test_data_path_resolves_under_ceres_data_not_work():
     # excluded from deployment.
     path_str = str(bcx_cap._TABLE_PATH)
     assert path_str.endswith(os.path.join("ceres", "data", "max_bcx.json")), path_str
-    assert "work" not in bcx_cap._TABLE_PATH.parts
+    # CI may check out the repository under a parent named "work"; only the
+    # module-relative path determines whether the data came from scratch space.
+    package_relative = bcx_cap._TABLE_PATH.relative_to(Path(bcx_cap.__file__).resolve().parent)
+    assert package_relative == Path("data") / "max_bcx.json"
     assert bcx_cap._TABLE_PATH.is_file(), (
         f"{bcx_cap._TABLE_PATH} must exist -- it is the module's declared source of truth"
     )

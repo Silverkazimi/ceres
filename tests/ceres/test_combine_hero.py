@@ -4,9 +4,9 @@
 `renderCombineDialogEditor()` source for literal markup fragments (a copy of
 the dialog's HTML template, effectively re-typed inside this test file). That
 breaks on any cosmetic edit, not just a real regression -- replaced with one
-rendered read of the real combine dialog, opened through the real per-tile
-Combine chip against route-mocked idle-duplicate/preview data (no server-side
-combine state needed -- this is a pure frontend-render contract)."""
+rendered read of the real combine dialog, opened through the board's `?combine=`
+door (tests/ceres/combine_door.py) against route-mocked idle-duplicate/preview data
+(no server-side combine state needed -- this is a pure frontend-render contract)."""
 
 from __future__ import annotations
 
@@ -18,7 +18,8 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Browser
 
-from tests.ceres.conftest import LIVE_PLAYER, spawn_live_ceres, wait_for_board
+from tests.ceres.combine_door import open_combine_by_print, serve_idle_cards
+from tests.ceres.conftest import spawn_live_ceres
 
 ROOT = Path(__file__).parents[2]
 NOTICES = ROOT / "ceres/notices.py"
@@ -54,14 +55,13 @@ def _real_occupied_worker(base_url: str) -> tuple[str, dict, int]:
 
 
 def _open_combine_dialog(page, base_url: str) -> tuple[str, dict]:
-    """Route-mocks a combinable idle duplicate for a real staked worker, clicks
-    the real per-tile Combine chip, and returns (deed_uid, occupant) once the
-    real `#combine-dialog-overlay` (`renderCombineDialogEditor`) is visible."""
+    """Route-mocks combinable idle duplicates of a real staked worker, opens the
+    dialog for that printing through the board's `?combine=` door, and returns
+    (deed_uid, occupant) once the real `#combine-dialog-overlay`
+    (`renderCombineDialogEditor`) is visible."""
     deed_uid, occupant, slot_index = _real_occupied_worker(base_url)
-    # combinePartners()/rowCanCombine() only offer the chip when a copy has an
-    # ELIGIBLE PARTNER *within the idle group itself* -- the staged occupant is
-    # never part of IDLE_CARDS_CACHE, so one idle duplicate alone always has
-    # zero partners. Two idle duplicates are the minimum that lights the chip.
+    # The staged occupant is never part of IDLE_CARDS_CACHE, so the dialog's
+    # copies are the idle duplicates alone: two are the minimum it opens on.
     duplicate_one = dict(occupant)
     duplicate_one["uid"] = "C-TEST-COMBINE-HERO-DUP1"
     duplicate_one["asset_ref"] = "combine-hero-dup1"
@@ -74,9 +74,6 @@ def _open_combine_dialog(page, base_url: str) -> tuple[str, dict]:
     duplicate_two["asset_ref"] = "combine-hero-dup2"
     duplicate_two["bcx"] = 1
 
-    def fulfill_idle_cards(route) -> None:
-        route.fulfill(status=200, content_type="application/json", body=json.dumps({"cards": [duplicate_one, duplicate_two]}))
-
     def fulfill_preview(route) -> None:
         route.fulfill(status=200, content_type="application/json", body=json.dumps({
             "account": "player0005",
@@ -88,25 +85,14 @@ def _open_combine_dialog(page, base_url: str) -> tuple[str, dict]:
             "observed_at": "2026-09-02T00:00:00Z",
         }))
 
-    page.route("**/api/idle-cards*", fulfill_idle_cards)
+    serve_idle_cards(page, [duplicate_one, duplicate_two])
     page.route("**/api/combine/preview*", fulfill_preview)
-    with page.expect_response("**/api/idle-cards*", timeout=30_000):
-        page.goto(f"{base_url}/?player={LIVE_PLAYER}")
-        wait_for_board(page)
-    # IDLE_CARDS_CACHE (module-scoped, no export -- forbids adding one)
-    # is now populated; the per-tile chip is computed at editor-render time, so
-    # only click-to-expand AFTER the cache response above is guaranteed to see it.
-    page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
-    # NOTE: the JSON `workers` array mixes worker/power/totem/title occupants
-    # so its index does not line up with the rendered worker-group's own
-    # `data-slot-index` -- the chip is looked up by deed only (this fixture
-    # only makes ONE occupant on this plot combinable, so it is unambiguous).
-    chip = page.locator(f".tile-combine-chip[data-deed-uid='{deed_uid}']").first
-    chip.wait_for(timeout=30_000)
-    chip.click()
+    open_combine_by_print(page, base_url, occupant)
     overlay = page.locator("#combine-dialog-overlay")
     overlay.wait_for(state="visible", timeout=30_000)
-    page.locator("#combine-dialog-overlay .combine-freshness").wait_for(timeout=30_000)
+    # The preview has loaded once the consequence line states the mocked hazard (the dialog no
+    # longer carries a separate `.combine-freshness` note; its observed-at time is in the refusal text).
+    page.locator("#combine-dialog-overlay .combine-consequence", has_text="One copy survives").wait_for(timeout=30_000)
     return deed_uid, occupant
 
 
@@ -115,9 +101,9 @@ def test_rendered_combine_hero_editor_keeps_hero_art_ledger_and_freshness_drops_
 ) -> None:
     """Census row 12: replaces `_modal_contract()`'s source-string scan of
     `renderCombineDialogEditor()` (hero art once, no arrow/level/hazard-line/
-    subtitle/survivor-line copy, copy rows present, freshness note present,
+    subtitle/survivor-line copy, copy rows present, loaded-preview state present,
     destroyed count on the sign button) with a single rendered read of the real
-    dialog opened via the real per-tile Combine chip against a route-mocked
+    dialog opened via the board's `?combine=` door against a route-mocked
     idle duplicate + `/api/combine/preview` response.
 
     Named injection (not applied here; independently watched red/green per
@@ -133,7 +119,10 @@ def test_rendered_combine_hero_editor_keeps_hero_art_ledger_and_freshness_drops_
 
     assert overlay.locator(".combine-hero-art").count() == 1, "hero art must render exactly once"
     assert overlay.locator(".combine-copy-row").count() >= 1, "copy list must render at least one real row"
-    assert overlay.locator(".combine-freshness").count() == 1, "freshness note must be present once a preview has loaded"
+    consequence = overlay.locator(".combine-consequence")
+    assert consequence.count() == 1 and consequence.inner_text() == "One copy survives · 1 copy destroyed", (
+        "the loaded preview's consequence line must state the mocked hazard"
+    )
 
     # Retired copy/markup from the old subtitle/hazard-line/survivor-line design
     # must never reappear.
