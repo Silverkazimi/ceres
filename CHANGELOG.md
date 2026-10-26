@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.0
+
+First stable release of Ceres.
+
+- Cards opens on the Market when no player is loaded, shows the player's avatar, and the Status filter takes one choice.
+- Choosing a totem, title or power core always takes a free copy; Fill plot never reuses an item staged on another plot.
+- HiveAuth sign-in always offers a way to a fresh QR code.
+- Editor fixes: cap-absorbed moves no longer look like gains, an implausible plot capacity no longer freezes the board, dropdowns no longer close right after opening.
+- CI runs the full non-browser suite and a required core browser suite; older review guards that do not match the current screens yet run in a separate, visible `browser-extended` job.
+
 ## 1.0.0-rc1
 
 First public release candidate for Ceres.

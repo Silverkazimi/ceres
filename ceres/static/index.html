@@ -26,6 +26,11 @@
   root.classList.toggle('start-page',!String(player||'').trim());
   function apply(){
     root.style.scrollbarGutter='stable';
+    // The same thin page scrollbar ceres.css gives html, set here because this block
+    // runs before that stylesheet loads: measured without it, the gutter is the classic
+    // one (15px instead of 10px in Chromium), so the first tier -- and the first render
+    // table or cards -- was decided for a board 5px narrower than the one shown.
+    root.style.scrollbarWidth='thin';
     var probe=document.createElement('div');
     probe.style.cssText='display:block;height:0;margin:0;padding:0;border:0;visibility:hidden';
     root.appendChild(probe);

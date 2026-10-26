@@ -878,8 +878,18 @@ function prepareWorkers(session) {
         record.failureRevision = revision;
         rememberArtFailure(session, key, outcome, record);
       }
-      image.dataset.eosOutcome = 'deferred';
-      image.removeAttribute('src');
+      // the LAST attempt timing out freezes the art (rememberArtFailure): that is a final
+      // outcome like any other failure -- the named fallback, and the aperture is no longer
+      // pending. Left deferred, nothing would ever run again for it and the plot would stay
+      // "Preparing worker art…" for good.
+      if (record.frozen || session.failedArt.has(key)) {
+        fallback(image);
+        session.pendingArt.delete(aperture);
+        setStatus(session);
+      } else {
+        image.dataset.eosOutcome = 'deferred';
+        image.removeAttribute('src');
+      }
     } else if (outcome.kind !== 'deferred') {
       if (record.failureRevision !== revision) {
         record.failureRevision = revision;
