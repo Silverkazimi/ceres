@@ -19,13 +19,32 @@ def live_browser() -> tuple[Browser, str]:
         yield value
 
 
+# Changes also signs the recording's ready worksite feed (an sm_land_operation) in the same
+# run; only the staged card change (sm_stake_change) is counted and numbered here.
 STUB = """
+let otherBroadcastCount = 0;
 window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
+  if (!operations.some((operation) => operation[1]?.id === 'sm_stake_change')) {
+    callback({success: true, result: {id: 'FAKE-IR1882-OTHER-' + (++otherBroadcastCount)}});
+    return;
+  }
   const count = Number(sessionStorage.getItem('__ir1882BroadcastCount') || '0') + 1;
   sessionStorage.setItem('__ir1882BroadcastCount', String(count));
   callback({success: true, result: {id: 'FAKE-IR1882-TX-' + count}});
 }};
 """
+
+
+SEEN = """
+window.__noticeSeen = [];
+new MutationObserver(() => {
+  for (const selector of ['#ceres-stage-toast', '#ceres-confirmation-banner']) {
+    const text = document.querySelector(selector)?.textContent || '';
+    if (text && window.__noticeSeen[window.__noticeSeen.length - 1] !== text) window.__noticeSeen.push(text);
+  }
+}).observe(document, {subtree: true, childList: true, characterData: true});
+"""
+
 
 
 def _pending(route) -> None:
@@ -38,6 +57,7 @@ def _open(live_browser: tuple[Browser, str], *, schedule: bool = False) -> Page:
     if schedule:
         page.add_init_script("if (sessionStorage.getItem('__ir1882ShrinkPoll') === '1') window.__ceresOperationPollSchedule = [100, 200, 300];")
     page.add_init_script(STUB)
+    page.add_init_script(SEEN)
     page.route("**/api/op-verify*", _pending)
     page.goto(f"{base_url}?player=sample01&ir1882-guard=1")
     wait_for_board(page)
@@ -61,7 +81,7 @@ def _stage_two_slot_plot(page: Page) -> tuple[int, str, str]:
         try:
             _expand(page, index)
             worker = page.locator("tr.expand-row").nth(index).locator(".slot-group[data-group-id='worker']")
-            if worker.locator(".slot-grid .slot-tile.is-empty").count() < 2:
+            if worker.locator(".slot-grid > .slot-tile-cell > .slot-tile.is-empty:not(.is-view-only)").count() < 2:
                 continue
             deed_uid, name, delta = _stage_worker(page, index)
             print("STAGED DEED:", deed_uid)
@@ -75,10 +95,22 @@ def _stage_two_slot_plot(page: Page) -> tuple[int, str, str]:
 def _sign(page: Page) -> None:
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
-    panel.locator(".checkout-move-status").wait_for(timeout=30_000)
+    # Signing the last transaction closes Changes; the signed card entry carries its tx id.
+    page.wait_for_function("CERES_STAGE.some((entry) => entry.txId)", timeout=30_000)
+
+
+def _moves(page: Page):
+    """The staged card moves listed in Changes (one strip tile each)."""
+    return page.locator("#checkout-panel .ch-slot[data-group-id][data-slot-index]")
+
+
+def _in_flight_moves(page: Page):
+    return page.locator("#checkout-panel .ch-slot.is-in-flight[data-group-id][data-slot-index]")
+
+
+IN_FLIGHT_COPY = "Signed — waiting for the game to confirm."
 
 
 def _count(page: Page) -> int:
@@ -115,7 +147,8 @@ def test_g1_reload_does_not_allow_second_signature(live_browser: tuple[Browser, 
     page.reload()
     wait_for_board(page)
     page.locator("#checkout-btn").dispatch_event("click")
-    assert page.locator(".checkout-prepare").is_disabled()
+    _in_flight_moves(page).first.wait_for(timeout=30_000)
+    assert page.locator("#checkout-panel .hm-foot .hm-btn.is-primary").is_disabled()
     page.evaluate("async () => { await requestOperationPreview({scope: 'portfolio'}); await confirmOperationBroadcast({scope: 'portfolio'}); }")
     wait_ready(page)
     settle(page)
@@ -130,10 +163,14 @@ def test_g2_marker_is_written_before_verification_io(live_browser: tuple[Browser
     page.add_init_script("""
 window.__ir1882G2 = {seen: false};
 window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
+  if (!operations.some((operation) => operation[1]?.id === 'sm_stake_change')) {
+    callback({success: true, result: {id: 'FAKE-IR1882-OTHER-G2'}});
+    return;
+  }
   const count = Number(sessionStorage.getItem('__ir1882BroadcastCount') || '0') + 1;
   sessionStorage.setItem('__ir1882BroadcastCount', String(count));
   callback({success: true, result: {id: 'FAKE-IR1882-TX-G2'}});
-  const data = JSON.parse(localStorage.getItem('ceres:in-flight:v1:player0005') || '{}');
+  const data = JSON.parse(localStorage.getItem(inFlightStoreKey()) || '{}');
   window.__ir1882G2.seen = !!data.records?.['FAKE-IR1882-TX-G2'];
 }};
 """)
@@ -165,10 +202,10 @@ def test_g3_marker_uses_operation_identity(live_browser: tuple[Browser, str]) ->
     wait_for_board(page)
     _stage_worker(page, first_index, first_name)
     page.locator("#checkout-btn").dispatch_event("click")
-    page.locator(".checkout-move").first.wait_for()
-    assert page.locator(".checkout-move").count() == 2
-    assert page.locator(".checkout-move-status").count() == 1
-    assert page.evaluate("Object.keys(JSON.parse(localStorage.getItem('ceres:in-flight:v1:player0005')).records).length") == 1
+    _moves(page).first.wait_for()
+    assert _moves(page).count() == 2
+    assert _in_flight_moves(page).count() == 1
+    assert page.evaluate("Object.keys(JSON.parse(localStorage.getItem(inFlightStoreKey())).records).length") == 1
     page.close()
 
 
@@ -178,18 +215,20 @@ def test_g4_expired_marker_is_swept_and_announced(live_browser: tuple[Browser, s
     _stage_first_available(page)
     _sign(page)
     page.evaluate("""() => {
-      const key = 'ceres:in-flight:v1:player0005';
+      const key = inFlightStoreKey();
       const data = JSON.parse(localStorage.getItem(key));
       Object.values(data.records).forEach(record => { record.broadcast_at = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(); });
       localStorage.setItem(key, JSON.stringify(data));
     }""")
     page.reload()
     wait_for_board(page)
-    assert not page.locator("#checkout-btn").is_visible()
+    # The Changes button stays for the recording's running worksite constructions; the
+    # expired card entry itself is not restored to the stage.
+    assert page.evaluate("CERES_STAGE.length") == 0
     banner = page.locator("#ceres-confirmation-banner")
     banner.wait_for()
     assert "A signed change waited a full day" in banner.inner_text()
-    assert page.evaluate("Object.keys(JSON.parse(localStorage.getItem('ceres:in-flight:v1:player0005')).records).length") == 0
+    assert page.evaluate("Object.keys(JSON.parse(localStorage.getItem(inFlightStoreKey())).records).length") == 0
     page.close()
 
 
@@ -198,12 +237,15 @@ def test_g5_restored_marker_is_visible_on_checkout_and_tile(live_browser: tuple[
     page = _open(live_browser)
     first_index, _, _ = _stage_first_available(page)
     _sign(page)
-    slot = page.locator(".checkout-move").get_attribute("data-slot-index")
+    slot = page.evaluate("String(CERES_STAGE.find((entry) => entry.txId).slot_index)")
     page.reload()
     wait_for_board(page)
     assert page.locator("#checkout-btn").is_visible()
     page.locator("#checkout-btn").dispatch_event("click")
-    assert page.locator(".checkout-move-status").text_content() == "Signed — waiting for the game to confirm."
+    restored = _in_flight_moves(page)
+    restored.wait_for(timeout=30_000)
+    assert restored.get_attribute("data-slot-index") == slot
+    assert restored.get_attribute("data-tip-body") == IN_FLIGHT_COPY
     assert "signed before this page was reloaded" in page.locator("#ceres-confirmation-banner").inner_text()
     _dismiss_banner(page)
     _expand(page, first_index)
@@ -255,7 +297,12 @@ def test_g6b_restored_poll_is_bounded(live_browser: tuple[Browser, str]) -> None
     _sign(page)
     page.evaluate("sessionStorage.setItem('__ir1882ShrinkPoll', '1')")
     requests = []
-    page.on("request", lambda request: requests.append(request) if "/api/op-verify" in request.url else None)
+    page.on(
+        "request",
+        lambda request: requests.append(request)
+        if "/api/op-verify" in request.url and "FAKE-IR1882-TX-" in (request.post_data or "")
+        else None,
+    )
     page.reload()
     wait_for_board(page)
     # the restored poller runs its (shrunk) schedule to the end and stops
@@ -340,13 +387,14 @@ Storage.prototype.setItem = function(key, value) {
 };
 """)
     page.add_init_script(STUB)
+    page.add_init_script(SEEN)
     page.route("**/api/op-verify*", _pending)
     page.goto(_test_url(base_url))
     wait_for_board(page)
     _stage_first_available(page)
     _sign(page)
-    page.locator("#ceres-stage-toast").wait_for()
-    assert "could not save the signed-change marker" in page.locator("#ceres-stage-toast").inner_text()
+    # The feed signed in the same run may replace the toast; the recorder keeps what was shown.
+    page.wait_for_function("window.__noticeSeen.some((seen) => seen.includes('could not save the signed-change marker'))", timeout=10_000)
     page.evaluate("async () => { await requestOperationPreview({scope: 'portfolio'}); await confirmOperationBroadcast({scope: 'portfolio'}); }")
     wait_ready(page)
     settle(page)
