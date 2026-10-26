@@ -35,7 +35,8 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Browser
 
-from tests.ceres.conftest import spawn_live_ceres, wait_for_board
+from tests.ceres.combine_door import open_combine_by_print, serve_idle_cards
+from tests.ceres.conftest import spawn_live_ceres
 
 ROOT = Path(__file__).parents[2]
 
@@ -98,9 +99,6 @@ def test_rendered_combine_dialog_has_no_checkbox_control_only_the_quantity_contr
     duplicate_two["uid"] = "C-TEST-CHECKBOX-DUP2"
     duplicate_two["asset_ref"] = "checkbox-dup2"
 
-    def fulfill_idle_cards(route) -> None:
-        route.fulfill(status=200, content_type="application/json", body=json.dumps({"cards": [duplicate_one, duplicate_two]}))
-
     def fulfill_preview(route) -> None:
         route.fulfill(status=200, content_type="application/json", body=json.dumps({
             "account": "player0005", "uids": [duplicate_one["uid"], duplicate_two["uid"]],
@@ -109,15 +107,9 @@ def test_rendered_combine_dialog_has_no_checkbox_control_only_the_quantity_contr
             "observed_at": "2026-09-02T00:00:00Z",
         }))
 
-    page.route("**/api/idle-cards*", fulfill_idle_cards)
+    serve_idle_cards(page, [duplicate_one, duplicate_two])
     page.route("**/api/combine/preview*", fulfill_preview)
-    with page.expect_response("**/api/idle-cards*", timeout=30_000):
-        page.goto(base_url)
-        wait_for_board(page)
-    page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
-    chip = page.locator(f".tile-combine-chip[data-deed-uid='{deed_uid}']").first
-    chip.wait_for(timeout=30_000)
-    chip.click()
+    open_combine_by_print(page, base_url, occupant)
     overlay = page.locator("#combine-dialog-overlay")
     overlay.wait_for(state="visible", timeout=30_000)
 
