@@ -31,6 +31,22 @@ CSS = ROOT / "ceres" / "static" / "ceres.css"
 VIEWPORT = {"width": 1920, "height": 1080}
 
 
+def _pointer_onto(page, target) -> None:
+    """Bring a real pointer to rest on `target`, the way a user's pointer arrives.
+
+    After any scroll, tooltip.js opens nothing until the pointer has really moved more
+    than SCROLL_QUIET_PX (maintainer, 2026-09-29: "tooltips create hurdles when
+    scrolling"), and the board's own load-time scrolls (its filter selects) count as one.
+    Playwright's `hover()` is a single synthetic move, which only arms that check; a short
+    stepped approach is a real pointer move."""
+    target.scroll_into_view_if_needed()
+    box = target.bounding_box()
+    assert box, "hover target has no layout box"
+    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    page.mouse.move(max(0, x - 30), max(0, y - 30))
+    page.mouse.move(x, y, steps=6)
+
+
 @pytest.fixture(scope="module")
 def live_browser() -> tuple[Browser, str]:
     with spawn_live_ceres() as (browser, base_url):
@@ -60,7 +76,7 @@ def test_rendered_tooltip_builds_structured_head_body_foot_children_on_hover(
     target.wait_for(timeout=30_000)
     target.scroll_into_view_if_needed()
     page.mouse.wheel(0, -120)
-    target.hover()
+    _pointer_onto(page, target)
     tooltip = page.locator("#ceres-tooltip.is-visible")
     tooltip.wait_for(timeout=5_000)
     assert tooltip.locator(".tip-inner").count() == 1
@@ -105,9 +121,11 @@ def test_rendered_tooltip_clamps_on_screen_and_uses_peer_depth(
         """
     )
     for peer, depth in (("icons_identity", "brief"), ("plot_metrics", "extended")):
-        target = page.locator(f'[data-tip][data-tip-peer="{peer}"]').first
+        # the synthetic trigger itself (the board also renders real triggers of these
+        # peers, some under the sticky header or off-screen)
+        target = page.locator(f'[data-tip="{peer} tooltip"][data-tip-peer="{peer}"]')
         target.wait_for(timeout=5_000)
-        target.hover()
+        _pointer_onto(page, target)
         tooltip = page.locator("#ceres-tooltip.is-visible")
         tooltip.wait_for(timeout=5_000)
         assert tooltip.get_attribute("data-peer") == peer
