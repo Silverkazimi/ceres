@@ -59,16 +59,16 @@ def _runi_plot(page: Page) -> tuple[int, str, dict]:
 def _stage_runi_unstake(page: Page, index: int) -> None:
     expanded = page.locator("tr.expand-row").nth(index)
     runi_tile = expanded.locator(".slot-power .slot-power-large .slot-tile[data-group-id='runi'][data-occupied='1']")
+    # Removing Runi leaves the Power Core alone when one is staked ("both"), else nothing.
+    expected_state = {"both": "core-only", "runi-only": "neither"}[expanded.locator(".slot-power").get_attribute("data-power-state")]
     runi_tile.hover()
     runi_tile.locator(".slot-remove").click()
     hazard = page.locator("#slot-hazard-overlay")
     if not hazard.is_hidden():
         hazard.locator(".hazard-confirm").click()
-    # The Runi stays in the power tile as a staged removal ("Unstaking"); the power
-    # state then reads core-only (a Power Core is still staked) or neither (the
-    # recording's Runi plot has no Power Core).
+    # The Runi stays in the power tile as a staged removal ("Unstaking").
     expanded.locator(".slot-power .slot-tile[data-group-id='runi'].is-pending-removal").wait_for(timeout=30_000)
-    assert expanded.locator(".slot-power").get_attribute("data-power-state") in {"core-only", "neither"}
+    assert expanded.locator(".slot-power").get_attribute("data-power-state") == expected_state
 
 
 def test_checkout_verification_escalates_after_repeated_check_again_clicks(

@@ -457,11 +457,7 @@ def test_pending_verification_rechecks_without_human_action(live_browser: tuple[
     panel = page.locator("#checkout-panel")
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
-    # The first verdict is pending. Changes swaps to its signing view while the run lasts,
-    # so its per-chunk `.op-state` rows are not on the page to carry the notice; wait on
-    # the verify request itself.
-    while len(verify_requests) < 1:
-        page.wait_for_event("request", lambda request: "/api/op-verify" in request.url and "FAKE-M8-CARD" in (request.post_data or ""), timeout=30_000)
+    panel.locator(".op-state .ceres-notice[data-notice-code='verification_pending']").wait_for(timeout=30_000)
     while len(verify_requests) < 2:  # the pending verdict schedules a second check
         page.wait_for_event("request", lambda request: "/api/op-verify" in request.url and "FAKE-M8-CARD" in (request.post_data or ""), timeout=30_000)
     settle(page)
@@ -596,7 +592,10 @@ def test_refresh_errors_render_a_confirmed_terminal_state(live_browser: tuple[Br
     page.wait_for_function("document.querySelector('#ceres-confirmation-banner')?.classList.contains('is-confirmed-stale')", timeout=30_000)
     # One row: the catalogue message (verification_refresh_failed) already says it is confirmed;
     # the pill's title is the message, shortened to fit, and its action re-reads the plot.
+    # One row: the catalogue message (verification_refresh_failed) already says it is confirmed,
+    # and the player must be able to read all of it on the pill.
     assert banner.locator(".worksite-banner-title").inner_text().strip().startswith("The change is confirmed.")
+    assert "The change is confirmed. This plot's figures could not be re-read." in banner.inner_text()
     assert banner.locator("button[data-confirmation-action='refresh']").inner_text().strip() == "Re-read"
     page.wait_for_function(
         f"document.querySelectorAll('tr.expand-row')[{index}]?.querySelector('.slot-stage-summary b')?.textContent === '0'",
@@ -639,9 +638,8 @@ def test_failed_broadcast_leaves_the_stage_intact(live_browser: tuple[Browser, s
     panel.wait_for(timeout=15_000)
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
-    # A stated cancellation is reported as "not sent" in the confirmation pill.
     page.wait_for_function(
-        "document.querySelector('#ceres-confirmation-banner')?.textContent.includes('The wallet request was cancelled. This transaction was not sent.')",
+        "document.querySelector('.op-state')?.textContent.includes('The wallet request was cancelled. This transaction was not sent.')",
         timeout=30_000,
     )
 
