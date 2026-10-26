@@ -44,6 +44,9 @@ def test_slot_labels_use_real_group_and_slot_names(live_browser: tuple[Browser, 
         rows.nth(i).click()
         editor = page.locator(".slot-editor:visible").last
         editor.wait_for(timeout=30_000)
+        # the editor first draws a loading skeleton (view-only tiles with a spinner) until the
+        # plot's details arrive; its slots are only real once the spinner is gone
+        editor.locator(".slot-loading-spinner").first.wait_for(state="detached", timeout=30_000)
         candidate = editor.locator(".asset-slot .slot-tile.is-empty[data-group-id='totem'] .empty-label")
         if candidate.count() == 1:
             empty_totem = candidate.first
