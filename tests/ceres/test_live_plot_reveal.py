@@ -1109,8 +1109,8 @@ async def _g19(f, expect_cover_mutation=False, after_scene_mutation=None):
     assert await f.band().locator(WORKSITE_CONTROL).evaluate("n=>!!n.closest('[inert]')"), "G19 worker controls remain gated after scenic release"
     assert await f.band().locator(".slot-group-controls .slot-bulk").evaluate_all("nodes=>nodes.length>0&&nodes.every(n=>!!n.closest('[inert]'))"), "G19 worker controls remain gated after scenic release"
     labels = await run.locator('[aria-label]').evaluate_all("nodes=>nodes.map(n=>n.getAttribute('aria-label'))")
-    # every one of the six splinter badges carries its own accessible label (the retired
-    # column also labelled itself, hence the old seven).
+    # the editor's row shows the plot's six splinter facts, each with its own accessible label;
+    # only the interactive picker surface adds a seventh, Neutral (terrainAffinity.js, since 1.0.0).
     assert len(labels) >= 6 and all(labels), labels
     await f.screenshot("building-and-badges-before-workers")
     f.release("portrait", "upgrade")
