@@ -104,7 +104,9 @@ def test_confirmed_dec_receipt_never_keeps_pending_signature_in_its_caption():
     """: the desktop caption's terminal predicate must match the receipt body."""
     body_js = """
 document.documentElement.classList = { contains() { return false; } };
-const panel = { innerHTML: '' };
+// render() now also measures the drawn content (receipt scroll anchoring) and wires the panel's
+// dividers, so the panel stub answers DOM queries with nothing found.
+const panel = { innerHTML: '', querySelector() { return null; }, querySelectorAll() { return []; } };
 drawer = { open: true, querySelector(selector) { return selector === '.dec-drawer-panel' ? panel : null; } };
 Object.assign(D, {
   tab: 'DEC', player: 'player0005', data: { regions: [] }, wallet: null, rewards: null,
@@ -331,14 +333,18 @@ def _install_wallet_test_controls(page, *, clipped: bool = False):
     page.evaluate(
         """(clipped) => {
           document.querySelectorAll('.wallet-controls, [data-wallet-test-panel]').forEach((el) => el.remove());
-          const control = id => `<span class="wallet-sign-pair" data-wallet-test="${id}"><section class="wallet-controls" data-wallet-account="player0005" data-wallet-controls-id="fixture-${id}">
+          // Same markup as walletControlsHtml() (wallet.js): the module finds the drawer and its
+          // content by their data-wallet-drawer* attributes.
+          const control = id => `<span class="wallet-sign-pair" data-wallet-test="${id}"><section class="wallet-controls" data-wallet-account="sample01" data-wallet-controls-id="fixture-${id}">
             <button type="button" class="hm-btn ceres-btn ceres-btn--secondary wallet-toggle" data-wallet-toggle aria-expanded="false" aria-controls="fixture-panel-${id}">Wallet</button>
-            <div class="wallet-drawer" id="fixture-panel-${id}" inert><div class="wallet-drawer-body"><div class="wallet-providers">
+            <div class="wallet-drawer" data-wallet-drawer data-wallet-drawer-anchor data-wallet-drawer-arrow id="fixture-panel-${id}" inert><div class="wallet-drawer-body" data-wallet-drawer-content><div class="wallet-providers">
               <button type="button" class="hm-btn ceres-btn ceres-btn--choice" data-wallet-select="keychain" aria-pressed="false">Hive Keychain</button>
               <button type="button" class="hm-btn ceres-btn ceres-btn--choice" data-wallet-select="hiveauth" aria-pressed="false">Connect HiveAuth</button>
             </div></div></div></section></span>`;
+          // at this 1200px viewport the board's fixed bottom action bar (<=1279px) covers the
+          // lowest ~4rem, so the clipping panel sits above it
           if (clipped) {
-            document.body.insertAdjacentHTML('beforeend', `<div data-wallet-test-panel class="harvest-panel" style="position:fixed;left:40px;bottom:20px;width:420px;height:220px;min-width:0;max-width:none;max-height:none;overflow:hidden;"><div style="position:absolute;left:150px;bottom:8px;">${control('clip')}</div></div>`);
+            document.body.insertAdjacentHTML('beforeend', `<div data-wallet-test-panel class="harvest-panel" style="position:fixed;left:40px;bottom:96px;width:420px;height:220px;min-width:0;max-width:none;max-height:none;overflow:hidden;"><div style="position:absolute;left:150px;bottom:8px;">${control('clip')}</div></div>`);
           } else {
             document.body.insertAdjacentHTML('beforeend', `<div data-wallet-test-panel style="position:fixed;left:40px;top:calc(var(--ceres-header-height, 80px) + 20px);display:flex;align-items:flex-start;gap:24rem;">${control('a')}${control('b')}</div>`);
           }
@@ -351,7 +357,7 @@ def test_wallet_switcher_live_surfaces_and_hiveauth_escape():
     with spawn_live_ceres() as (browser, base_url):
         page = browser.new_page(viewport={"width": 1200, "height": 730})
         page.add_init_script(
-            """() => {
+            """(() => {
               window.hive_keychain = { requestBroadcast() {} };
               window.Worker = class {
                 postMessage(message) {
@@ -362,7 +368,7 @@ def test_wallet_switcher_live_surfaces_and_hiveauth_escape():
                 }
                 terminate() {}
               };
-            }"""
+            })()"""
         )
         page.goto(f"{base_url}/?player=sample01", wait_until="domcontentloaded")
         _install_wallet_test_controls(page)
@@ -389,18 +395,23 @@ def test_wallet_switcher_live_surfaces_and_hiveauth_escape():
         )
         page.locator('[data-wallet-test="a"] [data-wallet-select="hiveauth"]').click()
         page.locator('[data-wallet-test="a"] .wallet-qr').wait_for(timeout=5000)
+        # While the connect request is shown the drawer is about that request only: no Keychain
+        # choice, and the request's close button is the escape (it cancels the request).
         pending = page.evaluate(
             """() => ({
-              keychainDisabled: document.querySelector('[data-wallet-test="a"] [data-wallet-select="keychain"]')?.disabled,
+              keychainOffered: Boolean(document.querySelector('[data-wallet-test="a"] [data-wallet-select="keychain"]')),
+              escapeEnabled: document.querySelector('[data-wallet-test="a"] [data-wallet-close]')?.disabled === false,
               requestVisible: Boolean(document.querySelector('[data-wallet-test="a"] .wallet-request')),
             })"""
         )
         assert before == [{"id": "a", "expanded": "true"}, {"id": "b", "expanded": "false"}], before
-        assert pending == {"keychainDisabled": False, "requestVisible": True}, pending
+        assert pending == {"keychainOffered": False, "escapeEnabled": True, "requestVisible": True}, pending
+        page.locator('[data-wallet-test="a"] [data-wallet-close]').click()
+        page.locator('[data-wallet-test="a"] .wallet-request').wait_for(state="detached", timeout=5000)
         page.locator('[data-wallet-test="a"] [data-wallet-select="keychain"]').click()
         after = page.evaluate(
             """() => ({
-              provider: localStorage.getItem('ceres.wallet-provider:player0005'),
+              provider: localStorage.getItem('ceres.wallet-provider:sample01'),
               requestVisible: Boolean(document.querySelector('[data-wallet-test="a"] .wallet-request')),
               expanded: [...document.querySelectorAll('[data-wallet-test]')].map((el) =>
                 el.querySelector('[data-wallet-toggle]')?.getAttribute('aria-expanded')),
@@ -425,7 +436,7 @@ def test_wallet_hiveauth_drawer_stays_inside_clipping_surface_live():
     with spawn_live_ceres() as (browser, base_url):
         page = browser.new_page(viewport={"width": 1200, "height": 730})
         page.add_init_script(
-            """() => {
+            """(() => {
               window.hive_keychain = { requestBroadcast() {} };
               window.Worker = class {
                 postMessage(message) {
@@ -436,7 +447,7 @@ def test_wallet_hiveauth_drawer_stays_inside_clipping_surface_live():
                 }
                 terminate() {}
               };
-            }"""
+            })()"""
         )
         page.goto(f"{base_url}/?player=sample01", wait_until="domcontentloaded")
         _install_wallet_test_controls(page, clipped=True)
@@ -470,7 +481,7 @@ def test_real_harvest_wallet_drawer_survives_hiveauth_rerender_live():
     with spawn_live_ceres() as (browser, base_url):
         page = browser.new_page(viewport={"width": 1536, "height": 900})
         page.add_init_script(
-            """() => {
+            """(() => {
               window.hive_keychain = { requestBroadcast() {} };
               window.Worker = class {
                 postMessage(message) {
@@ -481,7 +492,7 @@ def test_real_harvest_wallet_drawer_survives_hiveauth_rerender_live():
                 }
                 terminate() {}
               };
-            }"""
+            })()"""
         )
         page.goto(f"{base_url}/?player=sample01", wait_until="domcontentloaded")
         page.wait_for_function("document.querySelectorAll('[data-deed-uid]').length > 0", timeout=30000)
@@ -506,14 +517,17 @@ def test_real_harvest_wallet_drawer_survives_hiveauth_rerender_live():
         panel.locator('[data-wallet-select="hiveauth"]').click()
         panel.locator('.wallet-qr').wait_for(state="attached", timeout=5000)
         settle(page)
+        # While the HiveAuth connect request is shown the drawer is about that request only
+        # (no Keychain choice, wallet.js walletControlsHtml); its escape is the request's own
+        # close (cancel) button, which must still be the hit target at its centre.
         after = page.evaluate(
             """() => {
-              const button = document.querySelector('#harvest-modal-overlay [data-wallet-select="keychain"]');
+              const button = document.querySelector('#harvest-modal-overlay [data-wallet-close]');
               const r = button.getBoundingClientRect();
               const x = (r.left + r.right) / 2;
               const y = (r.top + r.bottom) / 2;
               const raw = document.elementFromPoint(x, y);
-              return {x, y, raw: raw?.tagName || null, closest: raw?.closest('[data-wallet-select="keychain"]') === button, drawerOpen: document.querySelector('#harvest-modal-overlay .wallet-drawer')?.classList.contains('is-open')};
+              return {x, y, raw: raw?.tagName || null, closest: raw?.closest('[data-wallet-close]') === button, drawerOpen: document.querySelector('#harvest-modal-overlay .wallet-drawer')?.classList.contains('is-open')};
             }"""
         )
         assert after["drawerOpen"] is True and after["closest"] is True, after
@@ -523,7 +537,7 @@ def test_real_harvest_wallet_drawer_survives_hiveauth_rerender_live():
 def test_desktop_wallet_drawer_stays_open_after_stake_click():
     """: a button inside the desktop drawer must not trigger picker close."""
     dec_payload = {
-        "player": "player0005",
+        "player": "sample01",
         "regions": [{
             "region_uid": "PR-PNW-1",
             "staked": 100,
@@ -536,7 +550,7 @@ def test_desktop_wallet_drawer_stays_open_after_stake_click():
         "signing_enabled": False,
     }
     wallet_payload = {
-        "player": "player0005",
+        "player": "sample01",
         "account": None,
         "positions": [],
         "regions": [],
@@ -554,7 +568,7 @@ def test_desktop_wallet_drawer_stays_open_after_stake_click():
             status=200, content_type="application/json", body=json.dumps(wallet_payload)
         ))
         page.route("**/api/wallet/rewards?*", lambda route: route.fulfill(
-            status=200, content_type="application/json", body=json.dumps({"player": "player0005"})
+            status=200, content_type="application/json", body=json.dumps({"player": "sample01"})
         ))
         page.goto(f"{base_url}/?player=sample01", wait_until="domcontentloaded")
         page.locator("#wallet-edge-tab").click()
