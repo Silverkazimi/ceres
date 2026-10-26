@@ -36,7 +36,7 @@ export function cbDefaultFilters() {
 
 // a filter is a list of chosen values ([] = any). An old stored
 // single value (a string) or a stray number is read as a one-element list, so a remembered filter never throws.
-export const CB_MULTI_FILTERS = ['set', 'rarity', 'foil', 'splinter', 'status', 'level'];
+export const CB_MULTI_FILTERS = ['set', 'rarity', 'foil', 'splinter', 'level'];  // Status is a single choice
 export function cbList(value) {
   if (Array.isArray(value)) return value.map(String).filter((v) => v !== '');
   return value === '' || value === null || value === undefined ? [] : [String(value)];

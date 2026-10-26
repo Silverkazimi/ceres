@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 from pathlib import Path
 
@@ -80,12 +81,23 @@ def test_documented_abilities_have_tiers_slugs_and_existing_assets() -> None:
     assets = ROOT / "ceres" / "static" / "assets"
     source_manifest = assets / "sources.json"
     downloadable = {row["path"] for row in (json.loads(source_manifest.read_text(encoding="utf-8")) if source_manifest.is_file() else [])}
+    asset_index = {
+        row["path"]: row for row in json.loads(
+            (ROOT / "tests/ceres/fixtures/export_boundary/asset-index.json").read_text(encoding="utf-8")
+        )
+    }
     unavailable = sorted(
         code for code in documented
         if not (assets / "abilities" / f"ability_{slug_values[code]}.png").is_file()
         and f"abilities/ability_{slug_values[code]}.png" not in downloadable
+        and f"abilities/ability_{slug_values[code]}.png" not in asset_index
     )
-    assert not unavailable, f"ability icons neither shipped nor downloadable: {unavailable}"
+    assert not unavailable, f"ability icons have no vetted asset record: {unavailable}"
+    for code in documented:
+        relative = f"abilities/ability_{slug_values[code]}.png"
+        file = assets / relative
+        if file.is_file() and relative in asset_index:
+            assert hashlib.sha256(file.read_bytes()).hexdigest() == asset_index[relative]["sha256"]
 
     # (790c4e52, 2026-09-18 docs reconciliation) rewrote
     # library/land-worker-abilities.md's ElectroFox example prose that used to give

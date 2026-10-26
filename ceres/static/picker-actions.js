@@ -1,6 +1,6 @@
 import { plannedPlacementReason } from './candidates.js';
 import { chainReturn } from './combine-chain.js';
-import { chainPlans } from './stage-plans.js';
+import { chainPlans, pendingIncomingRefElsewhere } from './stage-plans.js';
 import { handleUpgradeAction, loadOccupantUpgrade } from './combine-chain-ui.js';
 import { revealStagedChange } from './stage-navigation.js';
 import { openFillPlotModal } from './fill-plot.js';
@@ -736,7 +736,9 @@ async function stagePowerCoreOneClick(row, group, index) {
     const rawCandidate = payload.candidates.find((item) => {
       if (!item || typeof item !== 'object' || Array.isArray(item) || typeof item.asset_ref !== 'string') return false;
       const assetRef = item.asset_ref.trim();
-      return assetRef.length > 0 && !reserved.has(assetRef);
+      return assetRef.length > 0 && !reserved.has(assetRef)
+        && !stagedIncomingAssetRefs().has(assetRef)
+        && !pendingIncomingRefElsewhere(assetRef, row.deed_uid, 'power_core', index);
     }) || null;
     const candidate = rawCandidate ? { ...rawCandidate, asset_ref: rawCandidate.asset_ref.trim() } : null;
     if (!candidate) {
@@ -751,7 +753,7 @@ async function stagePowerCoreOneClick(row, group, index) {
     }
     const delta = candidateDelta(candidate, { currentOccupant: null });
     const incoming = editorOccupant(candidate, 'power_core');
-    stageForSlot(row.deed_uid, currentGroup.id, index, 'stake', incoming.asset_ref, delta, null, incoming.name, candidate.source_deed_uid, candidate.base_pp_delta, candidate.cooldown, { ...incoming, plot_impact: candidate.plot_impact });
+    if (stageForSlot(row.deed_uid, currentGroup.id, index, 'stake', incoming.asset_ref, delta, null, incoming.name, candidate.source_deed_uid, candidate.base_pp_delta, candidate.cooldown, { ...incoming, plot_impact: candidate.plot_impact }) === false) return;
     mutateEditorSlot(row, currentGroup, index, incoming);
     // no success pill -- the Power Core tile and the plot's change badges already show it.
     updateMountedRow(row.deed_uid);
@@ -1173,18 +1175,40 @@ export async function handleSlotEditorClick(event) {
     }
     if (pickerAction.dataset.pickerAction === 'choose') {
       const rarity = pickerAction.dataset.pickerRarity;
-      const candidate = rarity
-        ? picker.rarityGroups?.[rarity]?.candidate
+      const groupCandidate = rarity ? picker.rarityGroups?.[rarity]?.candidate : null;
+      const sameTier = (item) => String(item?.rarity || item?.name?.split(' ')[0] || '').toLowerCase() === rarity;
+      const available = (item) => item?.asset_ref && !CERES_STAGE.some((entry) => entry.action !== 'unstake'
+        && String(entry.asset_ref) === String(item.asset_ref))
+        && (typeof pendingIncomingRefElsewhere !== 'function' || !pendingIncomingRefElsewhere(item.asset_ref, picker.deedUid, picker.groupId, picker.slotIndex));
+      let candidate = rarity
+        ? [groupCandidate, ...(picker.candidates || [])].find((item) => sameTier(item) && available(item))
         : picker.candidates[Number(pickerAction.dataset.candidateIndex)];
+      if (rarity && !candidate && Number(picker.rarityGroups?.[rarity]?.count || 0)
+        > new Set([groupCandidate, ...(picker.candidates || []).filter(sameTier)].filter((item) => item?.asset_ref).map((item) => String(item.asset_ref))).size) {
+        const url = new URL(candidateQuery(picker, 0), window.location.href);
+        url.searchParams.set('rarity', rarity);
+        url.searchParams.set('limit', '100');
+        try {
+          const response = await fetch(playerQueryAppend(url.pathname + url.search));
+          if (response.ok) {
+            const payload = await response.json();
+            if (S.CERES_PICKER !== picker) return;
+            candidate = [payload.rarity_groups?.[rarity]?.candidate, ...(payload.candidates || [])]
+              .find((item) => sameTier(item) && available(item));
+          }
+        } catch (_) { /* A refreshed picker remains the recovery path. */ }
+      }
+      if (rarity && !candidate) { updateMountedRow(picker.deedUid); return; }
       if (!candidate || plannedPlacementReason(candidate, picker)) return;
       const group = editorGroups(row).find((item) => item.id === picker.groupId);
       const outgoing = picker.currentOccupant;
       const delta = candidateDelta(candidate, picker);
       const incoming = editorOccupant(candidate, group?.id || picker.groupId);
       if (group) {
+        if (['totem', 'title'].includes(group.id) && !available(candidate)) { updateMountedRow(picker.deedUid); return; }
         const elsewhere = CERES_STAGE.find((entry) => entry.action !== 'unstake' && String(entry.asset_ref) === String(incoming.asset_ref)
           && (entry.deed_uid !== row.deed_uid || entry.group_id !== group.id || String(entry.slot_index) !== String(picker.slotIndex)));
-        if (elsewhere) {
+        if (elsewhere && !['totem', 'title'].includes(group.id)) {
           if (elsewhere.txId) { stageToast('This card or item has already been signed. Wait for its result.', true); return; }
           await removeCheckoutStage(elsewhere);
           if (CERES_STAGE.includes(elsewhere)) return;

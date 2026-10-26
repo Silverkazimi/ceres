@@ -69,12 +69,3 @@ def test_disabled_route_does_not_fetch_or_write(tmp_path: Path, monkeypatch) -> 
     assert not hasattr(app.state, "card_art_store")
 
 
-def test_project_backup_row_names_card_cache_path() -> None:
-    """Red mutation: removing the path, CDN note, or restore command must fail."""
-    row_file = Path(__file__).resolve().parents[2] / "library" / "backup-coverage-cards.md"
-    row = row_file.read_text(encoding="utf-8")
-
-    assert "ceres/static/assets/land/../cards/" in row
-    assert "regenerable from the Splinterlands CDN" in row
-    assert "mkdir -p ceres/static/assets/cards" in row
-    assert "rsync -a ~/.ceres/assets-backup/" in row

@@ -1,7 +1,7 @@
 // one small account panel for optional saved-space sign-in. Transaction signing keeps its own wallet drawer.
 import { esc } from './format.js';
 import { tipAttrs } from './tooltip.js';
-import { accountWalletChoices, accountWalletRequest, cancelAccountWalletRequest, selectAccountWallet, walletAccount, walletKind, walletLogoHtml } from './wallet.js';
+import { accountWalletChoices, accountWalletRequest, cancelAccountWalletRequest, pairAccountWalletAgain, selectAccountWallet, walletAccount, walletKind, walletLogoHtml } from './wallet.js';
 import { connect, deleteSaved, disconnect, hasSession, sessionWallet, spaceAvailable } from './account-space.js';
 
 const state = { open: false, busy: false, note: '', confirm: null, done: '', manage: false, attempt: 0, loginKind: '' };
@@ -33,7 +33,7 @@ export function accountMenuHtml(account = walletAccount()) {
   const walletChoice = !signedIn && (choices.keychain || choices.hiveauth)
     ? `<div class="acct-wallet-choice" role="group" aria-label="Wallet for sign in">${choiceBtn('keychain', 'Keychain', choices.keychain ? '' : 'The Hive Keychain browser extension was not found in this browser. Use HiveAuth with the Keychain app on your phone.')}${choiceBtn('hiveauth', 'HiveAuth', choices.hiveauth ? '' : 'HiveAuth needs a secure (https) page.')}</div>` : '';
   const waiting = !signedIn && state.busy
-    ? `<div class="acct-wait" role="status"><span class="spinner" aria-hidden="true"></span><span>${state.loginKind === 'keychain' ? 'Confirm in the Keychain extension' : request?.link ? 'Scan with the Hive Keychain app and confirm' : request?.action === 'challenge' ? 'Confirm in the Hive Keychain app' : 'Preparing HiveAuth sign-in…'}</span></div>${request?.link ? `<div class="acct-pairing"><div class="wallet-qr" role="img" aria-label="HiveAuth connection QR code">${request.svg}</div><a class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" href="${esc(request.link)}" rel="noreferrer">Open Keychain app</a></div>` : ''}${state.loginKind === 'hiveauth' ? '<button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-account="cancel">Stop waiting</button><p class="acct-note">If the Keychain app stays open, close its request there too.</p>' : ''}` : '';   // the Keychain extension popup cannot be withdrawn from the page, so only a HiveAuth wait offers this
+    ? `<div class="acct-wait" role="status"><span class="spinner" aria-hidden="true"></span><span>${state.loginKind === 'keychain' ? 'Confirm in the Keychain extension' : request?.link ? 'Scan with the Hive Keychain app and confirm' : request?.action === 'challenge' ? 'Confirm in the Hive Keychain app' : 'Preparing HiveAuth sign-in…'}</span></div>${request?.link ? `<div class="acct-pairing"><div class="wallet-qr" role="img" aria-label="HiveAuth connection QR code">${request.svg}</div><a class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" href="${esc(request.link)}" rel="noreferrer">Open Keychain app</a></div>` : ''}${request?.action === 'challenge' ? '<button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-account="pair-again">Pair again with a QR code</button>' : ''}${state.loginKind === 'hiveauth' ? '<button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-account="cancel">Stop waiting</button><p class="acct-note">If the Keychain app stays open, close its request there too.</p>' : ''}` : '';   // the Keychain extension popup cannot be withdrawn from the page, so only a HiveAuth wait offers this
   const manageBtn = spaceAvailable(account) ? `<button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-account="manage" aria-expanded="${state.manage || Boolean(state.confirm)}">Saved data options</button>` : '';   // next to Sign in / Sign out, not under it
   const main = signedIn
     ? `<p class="acct-note acct-state" role="status">Signed in as ${esc(account)}. Your routing setup and staged changes are saved across devices.</p><div class="acct-actions"><button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-account="signout"${state.busy ? ' disabled' : ''}>${walletLogoHtml(sessionWallet(account) || kind)}Sign out</button>${manageBtn}</div>`
@@ -136,6 +136,7 @@ export function mountAccountMenu() {
     const action = event.target.closest('[data-account]');
     if (!action || action.disabled) return;
     if (action.dataset.account === 'player0014') player0014();
+    else if (action.dataset.account === 'pair-again') pairAccountWalletAgain(walletAccount());
     else if (action.dataset.account === 'cancel') cancelSignIn();
     else if (action.dataset.account === 'signout') signOutNow();
     else if (action.dataset.account === 'manage') { state.manage = !state.manage; state.confirm = null; render(); }

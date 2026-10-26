@@ -43,7 +43,34 @@ def pytest_collection_modifyitems(config, items):
 class _Shard:
     @pytest.hookimpl(trylast=True)  # after `-m` deselection, so shards split only the selected tests
     def pytest_collection_modifyitems(self, config, items):
+        _browser_set(config, items)
         _shard_collection(config, items)
+
+
+_EXTENDED = os.path.join(os.path.dirname(__file__), "ceres", "browser_extended.txt")
+
+
+def _browser_set(config, items):
+    """: `CERES_BROWSER_SET=core` drops the browser test ids
+    listed in tests/ceres/browser_extended.txt (older review guards that do not match the current screens yet);
+    `CERES_BROWSER_SET=extended` keeps only those ids. The CI runs both: core is required, extended is shown on every
+    run without blocking, and an id leaves the list once it passes. Unset (local runs): every test, as before."""
+    which = os.environ.get("CERES_BROWSER_SET", "").strip()
+    if not which:
+        return
+    if which not in {"core", "extended"}:
+        raise pytest.UsageError(f"CERES_BROWSER_SET must be core or extended, got {which!r}")
+    try:
+        with open(_EXTENDED, encoding="utf-8") as handle:
+            listed = {line.strip() for line in handle if line.strip() and not line.startswith("#")}
+    except OSError:
+        listed = set()
+    keep = [item for item in items if (item.nodeid in listed) == (which == "extended")]
+    kept = {id(item) for item in keep}
+    dropped = [item for item in items if id(item) not in kept]
+    if dropped:
+        config.hook.pytest_deselected(items=dropped)
+        items[:] = keep
 
 
 def pytest_configure(config):

@@ -6,11 +6,12 @@ from .vm_context import STATIC, read_entry_source, run_in_module_context
 
 
 ROWS_SOURCE = (STATIC / "rows.js").read_text(encoding="utf-8")
+# The slice ends at the function's own closing brace (the first one in column 0), not at the
+# comment that follows it: exported comments lose their reference prefix, test strings may not.
 ALIGN_SOURCE = (
     "function alignCloseAll()"
-    + ROWS_SOURCE.split("export function alignCloseAll()", 1)[1].split(
-        "\n// : the plots the board shows right now", 1
-    )[0]
+    + ROWS_SOURCE.split("export function alignCloseAll()", 1)[1].split("\n}\n", 1)[0]
+    + "\n}\n"
 )
 ALIGN_MODULE_SOURCE = read_entry_source(STATIC / "scale.js") + "\n" + ALIGN_SOURCE
 

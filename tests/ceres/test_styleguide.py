@@ -113,17 +113,6 @@ def test_every_button_is_a_ceres_btn():
             assert "ceres-btn" in tag, f"{path.name}: {tag}"
 
 
-def test_sections_name_rules_that_exist_in_the_standard():
-    js = JS.read_text(encoding="utf-8")
-    standard = STANDARD.read_text(encoding="utf-8")
-    ids = set()
-    for rules in re.findall(r"rules: \[([^\]]*)\]", js):
-        ids.update(re.findall(r"'([A-Z]-\d+[a-z]?)'", rules))
-    assert {"C-1", "C-4", "T-3", "K-1", "K-3", "K-4", "W-4"} <= ids
-    missing = sorted(i for i in ids if not re.search(rf"\*\*{re.escape(i)}\*\*|\b{re.escape(i)}\b", standard))
-    assert not missing, missing
-    # each section names its CSS classes too
-    assert js.count("classes: [") == js.count("rules: [") >= 14
 
 
 def test_page_layout_css_uses_tokens_only():

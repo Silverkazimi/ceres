@@ -8,9 +8,10 @@
 <!-- the read-only card browser. Same pre-paint blocks as the board page (index.html):
  the saved Iris theme, and the width classes. -->
 <!-- the mode (My cards / Market) is known before the first paint (html[data-cb-start], card-browser.css), so the
- filter row is drawn once with the fields of that mode; card-market.js initialMode() reads the same two sources. -->
+ filter row is drawn once with the fields of that mode; card-market.js initialMode() reads the same two sources.
+ : with no player (none in the address, none remembered) it starts on the Market, which needs no player. -->
 <script>(function(){try{var t=localStorage.getItem('ceres:theme');document.documentElement.setAttribute('data-theme',t||'dark');}catch(_){document.documentElement.setAttribute('data-theme','dark');}}());
-(function(){var m=null;try{m=new URLSearchParams(location.search).get('mode');if(m!=='market'&&m!=='cards'&&m!=='purchases')m=localStorage.getItem('ceres:cards:mode')==='market'?'market':'cards';}catch(_){m='cards';}document.documentElement.setAttribute('data-cb-start',m);}());</script>
+(function(){var m=null;try{m=new URLSearchParams(location.search).get('mode');if(m!=='market'&&m!=='cards'&&m!=='purchases'){var q=new URLSearchParams(location.search).get('player')||localStorage.getItem('ceres:lastPlayer');m=!q||localStorage.getItem('ceres:cards:mode')==='market'?'market':'cards';}}catch(_){m='cards';}document.documentElement.setAttribute('data-cb-start',m);}());</script>
 <script>(function(){
   var root=document.documentElement;
   function apply(){
@@ -64,6 +65,8 @@ html:not(.ceres-lw-le-1279) .card-browser .cb-controls #cb-clear[hidden] { displ
   <div class="board-header-rows">
   <div class="board-header-row">
   <span class="player-switch">
+    <!-- the board's avatar medallion, left of the field (card-browser.js syncCardsAvatar). -->
+    <button type="button" id="player-avatar" class="player-avatar" aria-label="Refresh cards" data-tip="Refresh cards" data-tip-body="Read this player's cards again while keeping your filters" hidden></button>
     <input type="text" id="player-input" class="player-input ceres-wide-input" placeholder="player…" autocomplete="off" spellcheck="false" aria-label="Player name">
     <button class="player-go-btn ceres-btn ceres-btn--primary" data-control-density="header" data-control-mode="icon" id="cb-player-go" type="button" aria-label="Show this player's cards"><svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><circle class="f" cx="8.6" cy="7.2" r="3.9"/><path class="f" d="M1.8 20.2c.5-4.3 3.3-7 6.8-7s6.3 2.7 6.8 7z"/><path class="d" d="M6.9 13.8 8.6 16l1.7-2.2"/><path class="a" d="M14.6 9.4h4.2V6.8l4.2 4.2-4.2 4.2v-2.6h-4.2z"/></svg></button>
   </span>

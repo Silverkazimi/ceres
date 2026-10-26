@@ -59,7 +59,7 @@ function walletSign(account, message) {   // the selected wallet signs the text;
         const signature = answer?.result;
         if (answer?.success && typeof signature === 'string' && /^[0-9a-f]{130}$/i.test(signature)) resolve(signature);
         else reject(new Error('declined'));
-      });
+      }, { retryWithQr: true });
     } catch (error) { reject(error); }
   });
 }

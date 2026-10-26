@@ -11,6 +11,7 @@ file already covers.
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 import subprocess
 from html.parser import HTMLParser
@@ -42,6 +43,11 @@ _SOURCES = STATIC / "assets" / "sources.json"
 _DOWNLOADABLE = frozenset(
     row["path"] for row in (json.loads(_SOURCES.read_text(encoding="utf-8")) if _SOURCES.is_file() else [])
 )
+_ASSET_INDEX = {
+    row["path"]: row for row in json.loads(
+        (STATIC.parents[1] / "tests/ceres/fixtures/export_boundary/asset-index.json").read_text(encoding="utf-8")
+    )
+}
 
 
 class _FragmentParser(HTMLParser):
@@ -111,8 +117,11 @@ def _assert_icon_contract(record: dict[str, str]) -> int:
         icon = str(attrs["data-tip-icon"] or "")
         assert icon, f"{record['kind']} emitted an empty data-tip-icon"
         assert _ICON_PATH.fullmatch(icon), f"{record['kind']} emitted unsafe icon path {icon!r}"
-        assert (STATIC / "assets" / icon).is_file() or icon in _DOWNLOADABLE, (
-            f"{record['kind']} icon asset is neither shipped nor downloadable: {icon}")
+        asset = STATIC / "assets" / icon
+        assert asset.is_file() or icon in _DOWNLOADABLE or icon in _ASSET_INDEX, (
+            f"{record['kind']} icon has no vetted asset record: {icon}")
+        if asset.is_file() and icon in _ASSET_INDEX:
+            assert hashlib.sha256(asset.read_bytes()).hexdigest() == _ASSET_INDEX[icon]["sha256"]
         src = attrs.get("src")
         if src:
             assert str(src).endswith(f"/assets/{icon}"), f"trigger src and tooltip icon differ: {src!r} != {icon!r}"

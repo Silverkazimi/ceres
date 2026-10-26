@@ -1,5 +1,5 @@
 import { activeChainInputs, chainPickerVisible, chainReturn, chainPlacementBlocked, deriveChain } from './combine-chain.js';
-import { chainPlans } from './stage-plans.js';
+import { chainPlans, pendingIncomingRefElsewhere } from './stage-plans.js';
 import { upgradeActionHtml } from './combine-chain-ui.js';
 import { abilityRowText, abilityTipModel, bloodlineOutranked, foilBadgeHtml, workerSubType } from './badges.js';
 import { CB_ABILITY_LABELS, CB_ANY_ABILITY, cbAbilityCodes, cbList } from './card-browser-model.js';
@@ -491,6 +491,14 @@ function itemMoveSourceHtml(candidate) {
   return `<span class="candidate-meta">Move from ${plotBadgeHtml(source, candidate.source_deed_uid, { static: true })} · staged removal</span>`;
 }
 
+function itemCopyAvailable(candidate, picker) {
+  if (!candidate?.asset_ref) return false;
+  const reserved = typeof stagedIncomingAssetRefs === 'function' ? stagedIncomingAssetRefs() : new Set();
+  return !reserved.has(String(candidate.asset_ref))
+    && (typeof pendingIncomingRefElsewhere !== 'function'
+      || !pendingIncomingRefElsewhere(candidate.asset_ref, picker.deedUid, picker.groupId, picker.slotIndex));
+}
+
 function renderCandidateRow(candidate, index, picker, replacing) {
   const itemClass = ['totem', 'title', 'power_core'].includes(picker.groupId);
   const totemRarity = candidate.rarity || String(candidate.name || '').split(' ')[0];
@@ -588,7 +596,7 @@ function renderCandidateGridCard(candidate, index, picker, replacing) {
   const key = candidateStableKey(candidate, index);
   const selected = picker.selectedKey === key;
   const itemClass = ['totem', 'title', 'power_core'].includes(picker.groupId);
-  const selectable = candidateStatusModel(candidate).selectable;
+  const selectable = candidateStatusModel(candidate).selectable && (!itemClass || itemCopyAvailable(candidate, picker));
   const detailsButton = `<button type="button" class="candidate-detail-toggle ceres-btn ceres-btn--secondary" data-control-density="compact" data-picker-action="details" data-candidate-index="${index}" aria-expanded="false" aria-controls="${candidateDomId(key)}">Details</button>`;
   if (itemClass) {
     const isTotem = picker.groupId === 'totem';
@@ -643,14 +651,23 @@ function renderItemRarityGridCards(picker, replacing) {
     return rarities.indexOf(right) - rarities.indexOf(left);
   });
   const assetLabel = isTitle ? 'Title' : 'Totem';
+  const reserved = typeof stagedIncomingAssetRefs === 'function' ? stagedIncomingAssetRefs() : new Set();
+  const tierOf = (item) => String(item?.rarity || item?.name?.split(' ')[0] || '').toLowerCase();
+  const isFree = (item) => item?.asset_ref && !reserved.has(String(item.asset_ref))
+    && (typeof pendingIncomingRefElsewhere !== 'function' || !pendingIncomingRefElsewhere(item.asset_ref, picker.deedUid, picker.groupId, picker.slotIndex));
   return orderedRarities.map((rarity) => {
     const group = picker.rarityGroups?.[rarity] || { count: 0, candidate: null };
-    const candidate = group.candidate;
+    const copies = [...new Map([group.candidate, ...(picker.candidates || []).filter((item) => tierOf(item) === rarity)]
+      .filter((item) => item?.asset_ref)
+      .map((item) => [String(item.asset_ref), item])).values()];
     const count = Number(group.count || 0);
-    const label = `${rarity.charAt(0).toUpperCase()}${rarity.slice(1)} ${assetLabel}`;
+    const candidate = copies.find(isFree) || (count > copies.length ? group.candidate : null);
+    const freeCount = Math.max(0, count - copies.filter((item) => !isFree(item)).length);
     const disabled = !candidate || count < 1;
+    const countLabel = freeCount === count ? `${count} available` : `${freeCount} available`;
+    const label = `${rarity.charAt(0).toUpperCase()}${rarity.slice(1)} ${assetLabel}`;
     const icon = isTitle ? rarityGemHtml(rarity) : totemIconHtml(rarity, null);
-    return `<button type="button" class="candidate-grid-card candidate-grid-rarity is-${picker.groupId}${disabled ? ' is-unavailable' : ''}" data-picker-action="choose" data-picker-rarity="${rarity}"${disabled ? ' disabled aria-disabled="true"' : ''} aria-label="${esc(`${label}, ${count} available, ${replacing ? 'replace' : 'stake'}`)}"><span class="candidate-grid-rarity-icon">${icon}</span><strong>${esc(label)}</strong><span class="candidate-grid-rarity-count">${count} available</span></button>`;
+    return `<button type="button" class="candidate-grid-card candidate-grid-rarity is-${picker.groupId}${disabled ? ' is-unavailable' : ''}" data-picker-action="choose" data-picker-rarity="${rarity}"${disabled ? ' disabled aria-disabled="true"' : ''} aria-label="${esc(`${label}, ${countLabel}, ${replacing ? 'replace' : 'stake'}`)}"><span class="candidate-grid-rarity-icon">${icon}</span><strong>${esc(label)}</strong><span class="candidate-grid-rarity-count">${countLabel}</span></button>`;
   }).join('');
 }
 

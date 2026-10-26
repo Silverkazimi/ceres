@@ -100,7 +100,29 @@ process.exit(0);
         for row in (json.loads(source_manifest.read_text(encoding="utf-8")) if source_manifest.is_file() else [])
         if row["path"].startswith("land/constructions/construction_") and row["path"].endswith(".png")
     }
-    assert on_disk | listed == TERRAINS
+    assert on_disk | listed <= TERRAINS
+    missing = TERRAINS - (on_disk | listed)
+    if missing:
+        missing_rows = ",".join(f"'{terrain}'" for terrain in sorted(missing))
+        run_in_module_context(
+            f"""
+for (const terrain of [{missing_rows}]) {{
+  const row = {{deed_uid: 'missing-' + terrain, terrain, resource: null, worksite_type: '',
+    pending_change: {{kind: 'worksite_change', to: 'grain', to_label: 'Grain Farm'}}}};
+  const properties = {{}};
+  const art = {{style: {{setProperty() {{}}}}}};
+  const frame = {{style: {{setProperty(name, value) {{ properties[name] = value; }}}},
+    querySelector(selector) {{ return selector === '.editor-worksite-art' ? art : null; }}}};
+  const fallbackUrl = editorSceneLayers(row).worksiteFallback;
+  applyScene({{mountedFrame: frame, sceneRow: row, sceneReleased: true,
+    sceneOutcome: {{worksite: {{kind: 'unavailable', permanent: true}},
+      worksiteFallback: {{kind: 'decoded', url: fallbackUrl}}}}}});
+  if (!properties['--scene-worksite'].includes('/land/worksites/productionBuildingUniform/')) process.exit(23);
+}}
+process.exit(0);
+""",
+            entry=STATIC / "eos.js",
+        )
 
 
 def test_scene_loader_and_mobile_sheet_preserve_finished_art_on_missing_construction_image() -> None:

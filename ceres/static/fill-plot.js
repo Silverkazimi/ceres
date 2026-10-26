@@ -11,6 +11,7 @@ import { territoryCellHtml } from './icons.js';
 import { EXPANDED_DATA_LOADED, loadPlotDetail, updateMountedRow } from './rows.js';
 import { CERES_STAGE, mutateEditorSlot, stageForSlot, stagedWorksiteBuild, stageMovePayload, stageToast } from './staging.js';
 import { removeCheckoutStage } from './checkout.js';
+import { pendingIncomingRefElsewhere } from './stage-plans.js';
 import { holdTooltipsUntilPointerMoves, tipAttrs } from './tooltip.js';
 
 const X_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
@@ -107,8 +108,9 @@ function stagedWorksiteTarget() {
 }
 // every asset staged as incoming anywhere else in the browser.
 function stagedElsewhereRefs() {
-  if (!M.settings?.skip_staged) return []; // otherwise the proposal may move an unsigned stage here on Accept
-  return [...new Set(CERES_STAGE.filter((entry) => entry.deed_uid !== M.deedUid && !entry._synthetic && entry.action !== 'unstake' && entry.asset_ref).map((entry) => String(entry.asset_ref)))];
+  return [...new Set(CERES_STAGE.filter((entry) => entry.deed_uid !== M.deedUid && !entry._synthetic && entry.action !== 'unstake' && entry.asset_ref
+    && (M.settings?.skip_staged || ['totem', 'title', 'power_core'].includes(entry.group_id)))
+    .map((entry) => String(entry.asset_ref)))];
 }
 
 async function requestProposal() {
@@ -354,6 +356,12 @@ async function acceptProposal() {
   // (plan phase 3): a card already staged for another plot is MOVED here -- its old staged entry is undone
   // first (that plot's tile comes back), so the card is never staged twice.
   for (const move of kept) {
+    if (['totem', 'title', 'power_core'].includes(move.group_id)
+      && (CERES_STAGE.some((entry) => entry.deed_uid !== row.deed_uid && entry.action !== 'unstake' && String(entry.asset_ref) === String(move.asset_ref))
+        || pendingIncomingRefElsewhere(move.asset_ref, row.deed_uid, move.group_id, move.slot_index))) {
+      M.error = 'An item in this proposal is already staged elsewhere. Refresh the proposal to choose a free copy.';
+      render(); return;
+    }
     const elsewhere = CERES_STAGE.find((entry) => entry.deed_uid !== row.deed_uid && !entry._synthetic && !entry.txId
       && entry.action !== 'unstake' && String(entry.asset_ref) === String(move.asset_ref));
     if (elsewhere) {

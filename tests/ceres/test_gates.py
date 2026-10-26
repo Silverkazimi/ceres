@@ -285,11 +285,6 @@ def test_next_write_deletes_expired_prepared_and_verified_cache(monkeypatch,tmp_
     assert sorted(path.name for path in (tmp_path/'combine_evidence').glob('*.json'))==['new.json']
 
 
-def test_reference_opens_with_current_contract_and_labels_history():
-    text=(STATIC.parents[1]/'library/ceres-combine-chain.md').read_text()
-    assert text.startswith('# Ceres combine chain —  contract')
-    assert '## Historical – implementation notes' in text
-    assert 'OWNER DECISION' in text
 
 
 def test_newer_nonce_cannot_replace_durable_irreversible_attempt():

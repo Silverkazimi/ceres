@@ -366,6 +366,10 @@ function redrawFreshCards(cards) {
 }
 
 // ── filters ──────────────────────────────────────────────────────────────────
+// Status picks one value
+// like the sort; the other filter lists stay multi-selects ().
+const CB_SINGLE_FILTERS = new Set(['sort', 'status']);
+
 function readFilters() {
   const f = state.filters;
   f.q = $('cb-q').value;
@@ -485,7 +489,7 @@ function prefillOptions() {
     (code) => code === CB_ANY_ABILITY ? 'Has an ability' : CB_ABILITY_LABELS[code] || code);
   fillSortOptions();
   // the six filter lists are multi-selects (initFilters makes them so); set it first, or a remembered list would keep one value
-  document.querySelectorAll('select[data-cb-filter]').forEach((el) => { if (el.dataset.cbFilter !== 'sort') el.multiple = true; });
+  document.querySelectorAll('select[data-cb-filter]').forEach((el) => { if (!CB_SINGLE_FILTERS.has(el.dataset.cbFilter)) el.multiple = true; });
   writeFilters();
 }
 
@@ -500,7 +504,7 @@ function initFilters() {
     const filterNoun = cap(el.dataset.cbFilter);
     const pluralNoun = { set: 'sets', rarity: 'rarities', foil: 'foils', splinter: 'splinters', status: 'statuses', level: 'levels', ability: 'abilities' }[el.dataset.cbFilter];
     const filterLabels = el.dataset.cbFilter === 'sort' ? {} : { emptyLabel: filterNoun, ...(pluralNoun ? { pluralNoun } : {}) };
-    initCustomSelect(el, { ariaLabel: `${filterNoun} filter`, ...filterLabels, multiple: el.dataset.cbFilter !== 'sort', ...(decorateOption ? { decorateOption } : {}) });
+    initCustomSelect(el, { ariaLabel: `${filterNoun} filter`, ...filterLabels, multiple: !CB_SINGLE_FILTERS.has(el.dataset.cbFilter), ...(decorateOption ? { decorateOption } : {}) });
     el.addEventListener('change', () => { readFilters(); syncPills(); render(); });
   });
   let timer = 0;
@@ -571,6 +575,41 @@ function initHeader() {
   // the switcher's Plots half (a link) goes to this player's plots.
   $('page-switch-plots')?.setAttribute('href', boardUrl(state.player));
   $('cb-logo-link').setAttribute('href', boardUrl(state.player));
+  syncCardsAvatar(state.player);
+}
+
+// the same avatar medallion as the board header (board.js syncPlayerAvatar): the avatar-builder layers, retried
+// twice, hidden without a player. A press reads the cards again; the filters stay.
+function syncCardsAvatar(account) {
+  const box = $('player-avatar');
+  if (!box) return;
+  if (!account) { box.hidden = true; box.replaceChildren(); return; }
+  const attempt = async (round) => {
+    try {
+      // a lazy import keeps card-browser.js loadable by the test VM, which reads its source without module imports
+      const { playerAvatarLayers } = await import('./avatar.js');
+      const urls = await playerAvatarLayers(account);
+      if (!urls?.length) throw new Error('No avatar layers');
+      const images = urls.map((url) => { const img = new Image(); img.alt = ''; img.decoding = 'async'; img.referrerPolicy = 'no-referrer'; img.src = url; return img; });
+      const decoded = await Promise.allSettled(images.map((img) => img.decode()));
+      const loaded = images.filter((_, index) => decoded[index].status === 'fulfilled');
+      if (!loaded.length) throw new Error('Avatar images unavailable');
+      box.replaceChildren(...loaded);
+      box.hidden = false;
+    } catch (_) {
+      if (round < 2) setTimeout(() => attempt(round + 1), [250, 750][round]);
+      else if (!box.querySelector('img')) box.hidden = true;
+    }
+  };
+  attempt(0);
+  box.addEventListener('click', async () => {
+    if (box.dataset.refreshState === 'loading') return;
+    box.dataset.refreshState = 'loading';
+    box.setAttribute('aria-busy', 'true');
+    try { await load(); box.dataset.refreshState = 'success'; } catch (_) { delete box.dataset.refreshState; }
+    box.removeAttribute('aria-busy');
+    setTimeout(() => { if (box.dataset.refreshState === 'success') delete box.dataset.refreshState; }, 900);
+  });
 }
 
 function showMessage(text) {

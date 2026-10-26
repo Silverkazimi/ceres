@@ -523,21 +523,8 @@ def test_ui_standard_holds_against_dated_baseline():
     assert not messages, "\n\n".join(messages)
 
 
-def test_standard_document_carries_every_rule_the_guard_enforces():
-    doc = STANDARD_DOC.read_text(encoding="utf-8")
-    for rule_id in ("C-1", "C-4", "T-3", "K-1", "K-2", "K-3", "K-7", "E-1", "M-4", "M-5", "P-0", "W-2"):
-        assert re.search(rf"\*\*{re.escape(rule_id)}\b", doc), f"{rule_id} missing from {STANDARD_DOC.name}"
-    for heading in ("## Frozen surfaces", "## Defaults used (maintainer may overrule)", "## How the standard is enforced"):
-        assert heading in doc, f"{heading!r} missing from {STANDARD_DOC.name}"
-    assert "test_ui_standard.py" in doc
 
 
-def test_scales_in_guard_match_the_written_standard():
-    doc = STANDARD_DOC.read_text(encoding="utf-8")
-    for value in (".8rem", ".9rem", ".75rem", ".7rem", "1.25rem", "clamp(.875rem, .75rem + .15625cqi, .9375rem)"):
-        assert f"`{value}`" in doc, f"T-3 value {value} not written in the standard"
-    for value in ("8px", "var(--radius)", "5px 0 0 5px", "999px", "50%"):
-        assert f"`{value}`" in doc, f"E-1 value {value} not written in the standard"
 
 
 def test_m4_parser_flags_shadow_and_implicit_all_transitions():

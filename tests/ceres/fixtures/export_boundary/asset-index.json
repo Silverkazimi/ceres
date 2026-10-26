@@ -1,0 +1,552 @@
+[
+  {
+    "path": "abilities/ability_alteration.png",
+    "sha256": "4a6b00ca25e96eebfaa662a7685fdd8f91aac7ee56c36a3b35e59164998faed4",
+    "byte_size": 7427
+  },
+  {
+    "path": "abilities/ability_bountiful-aura.png",
+    "sha256": "4f35b4975bc6e436d970532c706f6cc719a8c292e085a199a554570054fe15db",
+    "byte_size": 16425
+  },
+  {
+    "path": "abilities/ability_bountiful-grain.png",
+    "sha256": "716c967ac4e5d090876d6bcd7faa544c69ba8f79f33b42609cb5b616c73b89ac",
+    "byte_size": 14915
+  },
+  {
+    "path": "abilities/ability_bountiful-iron.png",
+    "sha256": "d53deaae75e5dd118e9d243aaa69efd2f375ce74022376370c7ae9ad63606587",
+    "byte_size": 20112
+  },
+  {
+    "path": "abilities/ability_bountiful-stone.png",
+    "sha256": "c4605d798f22f9beb44b132d41649a47bd26ed71dded6982fe4759454d1e1fc2",
+    "byte_size": 14771
+  },
+  {
+    "path": "abilities/ability_bountiful-wood.png",
+    "sha256": "5cb0dab717eaf83d48dd93097dcc94e6cff59b6640dc9c941d2e22044898cefb",
+    "byte_size": 12518
+  },
+  {
+    "path": "abilities/ability_dark-discount.png",
+    "sha256": "eb2c9d970690616382f72f1d3613c3bd0691a5acf7b3901ec9bf63df56d20ee1",
+    "byte_size": 18763
+  },
+  {
+    "path": "abilities/ability_energized.png",
+    "sha256": "080d61f94f27bd1264a08410cf73afc8246a0c48fd37068a04df39c187d405b4",
+    "byte_size": 20718
+  },
+  {
+    "path": "abilities/ability_fortune-seeker.png",
+    "sha256": "fa60dc64e610dd4ec0687ae2c56ca8cc2d3788d6c899ed63fa42b5190bda7774",
+    "byte_size": 7572
+  },
+  {
+    "path": "abilities/ability_glint-recovery.png",
+    "sha256": "82d442152b874e05eb30deefb3ff1a69fa22fb56d6abaaec58f962656f22efe4",
+    "byte_size": 6928
+  },
+  {
+    "path": "abilities/ability_labors-luck.png",
+    "sha256": "59766376f4fea42666fca9c2017bf47f8931ef9b9308279ae37ab9cb8ca2afb5",
+    "byte_size": 14786
+  },
+  {
+    "path": "abilities/ability_light-rationing.png",
+    "sha256": "eacb159e4313240a53ca6ebab9102530f7844d30f1521b10cff127f2db28fa0a",
+    "byte_size": 5064
+  },
+  {
+    "path": "abilities/ability_rationing.png",
+    "sha256": "941bd5e392cf80276acedff51ba9ed947a25ae8e5a2f9c86cfb46736a00a00ce",
+    "byte_size": 13563
+  },
+  {
+    "path": "abilities/ability_toil-and-kin.png",
+    "sha256": "01f71685593bed1e148f253b6915de5fed2513ac62fa5b7296ab4f9c32db6e23",
+    "byte_size": 18249
+  },
+  {
+    "path": "land/dark-energy.png",
+    "sha256": "d20de877104470cbf6d1c22c180ce56096465e4326192ede871a17b4299f47be",
+    "byte_size": 33205
+  },
+  {
+    "path": "land/hammer.svg",
+    "sha256": "1f7fb7806dc4ea7638520601f1c31372fa9481bd0bb3045d07938a899e45a903",
+    "byte_size": 1802
+  },
+  {
+    "path": "land/no-power-source.svg",
+    "sha256": "534535155e939524d6b2a93723c0b1c7d2f61313a170a436d4e345449eaff36a",
+    "byte_size": 976
+  },
+  {
+    "path": "land/status-castle-off.svg",
+    "sha256": "4c561b4cdcaf0699a83e07b3e73f0d97a3eeb8211d04acfc4c8cf72d30dd505b",
+    "byte_size": 1397
+  },
+  {
+    "path": "land/status-castle-on.svg",
+    "sha256": "bad0b3db667a32220ab00cbbb98bfba32b3af5ea9dc9fe333ddb8521f16ec119",
+    "byte_size": 1397
+  },
+  {
+    "path": "land/status-hourglass.svg",
+    "sha256": "3b1f9af25e16981de4d0d229a9adc3539037af81b78870c039eb81eea1170198",
+    "byte_size": 1255
+  },
+  {
+    "path": "land/status-keeps-off.svg",
+    "sha256": "55249e294bdba2b0c4df900cbae20abe02b3fcb27132754d6c8e5a8a066d3292",
+    "byte_size": 883
+  },
+  {
+    "path": "land/status-keeps-on.svg",
+    "sha256": "5fe4ede62c6973e15ab941ab7022b0474b2fbe3724822c0b237e224165288e3c",
+    "byte_size": 883
+  },
+  {
+    "path": "land/status-kingdom-off.svg",
+    "sha256": "0ea95d1642e4a1e9e1bc6c2de4ec356594051181cd98d6a1ae427f9a20ed237f",
+    "byte_size": 597
+  },
+  {
+    "path": "land/status-kingdom-on.svg",
+    "sha256": "552f84d0721fbdddb0e1e29e4d54e04fb03fa2972666947121b4a520bdbada5c",
+    "byte_size": 242
+  },
+  {
+    "path": "land/status-magical-off.svg",
+    "sha256": "9bad00e1d58cd46d81a2902bcb140139c9ddfdd6189f5dba768bd25aa7cb54e1",
+    "byte_size": 876
+  },
+  {
+    "path": "land/status-magical-on.svg",
+    "sha256": "a7ff82a9d14b33c1c5eeb1a32f9846adc88b9bdaf3aaf0d804740ebae6290049",
+    "byte_size": 521
+  },
+  {
+    "path": "land/status-natural-off.svg",
+    "sha256": "2f02016fd1bd13c16d052dfab24be72df6548347e2302a58c1e02baecd0ef031",
+    "byte_size": 1081
+  },
+  {
+    "path": "land/status-occupied-off.svg",
+    "sha256": "67a1014c3e5bec00f9a587af27420e3358d6389175a4d0f60f38bd713861c12b",
+    "byte_size": 971
+  },
+  {
+    "path": "land/status-occupied-on.svg",
+    "sha256": "09eeec1ddc6383d47177275d172ec71660536bf662f3daf0dc8132e0a79e613b",
+    "byte_size": 616
+  },
+  {
+    "path": "land/terrain-emblem-badlands.svg",
+    "sha256": "885908cf8f1d497e21b0c8901aeb99a1b107fae78f4e0e387238b3eb35616e3d",
+    "byte_size": 4310
+  },
+  {
+    "path": "land/terrain-emblem-bog.svg",
+    "sha256": "c12095ee57332440c29fff1dd611e3d25c2646996d3b2ade71db98b212ae5508",
+    "byte_size": 2947
+  },
+  {
+    "path": "land/terrain-emblem-caldera.svg",
+    "sha256": "828eeea795bf0fa3d649621148b28da58d51086a1a0c2ad37ed80001f37e05b4",
+    "byte_size": 2627
+  },
+  {
+    "path": "land/terrain-emblem-canyon.svg",
+    "sha256": "261e53dc5bae7d1472527fa598d747f74c56e7ea6ccc3cd2997eaf6cc5b0c594",
+    "byte_size": 2200
+  },
+  {
+    "path": "land/terrain-emblem-desert.svg",
+    "sha256": "70e031b1f541c8dac459a802fcfe7dd51392966692af5157fce79995e58d8597",
+    "byte_size": 2862
+  },
+  {
+    "path": "land/terrain-emblem-forest.svg",
+    "sha256": "454b3828b4d3b57a5273463de6fc4d15699551b24c83a13ffcfa8aebdee67d1f",
+    "byte_size": 2342
+  },
+  {
+    "path": "land/terrain-emblem-hills.svg",
+    "sha256": "3c93c971f0c91e0a836349201fd7d9f3c93ddee6b34a6daf4a4c7ba14cf3a92c",
+    "byte_size": 2623
+  },
+  {
+    "path": "land/terrain-emblem-jungle.svg",
+    "sha256": "10f9b51b0610009495eaf37d35e6d5de1ba6eca2b0fb8902aaebafecefe2fe94",
+    "byte_size": 4022
+  },
+  {
+    "path": "land/terrain-emblem-lake.svg",
+    "sha256": "fda032228122ad0065c174e7b8fa8ae33e381963f9eb3999a6e6408c6aa63f13",
+    "byte_size": 2286
+  },
+  {
+    "path": "land/terrain-emblem-mountain.svg",
+    "sha256": "9ffc1c2bc24b855a61de49ecd8d098c58767e5837c2ad0ab42a4e6efd8ee355f",
+    "byte_size": 2474
+  },
+  {
+    "path": "land/terrain-emblem-plains.svg",
+    "sha256": "a14a0c6d515e5968733e0e1e37a8a42822d397618adf59a651107c1a31d70a1c",
+    "byte_size": 2703
+  },
+  {
+    "path": "land/terrain-emblem-river.svg",
+    "sha256": "65ad720f06b461882210c999aa86278313d4c014c77a72b02c8e300eeffa6226",
+    "byte_size": 4572
+  },
+  {
+    "path": "land/terrain-emblem-swamp.svg",
+    "sha256": "9f48e5ab5d91eb5bb26a57bc3129dc36ad5400dddb0c73f8ead4f259267b7c07",
+    "byte_size": 2409
+  },
+  {
+    "path": "land/terrain-emblem-tundra.svg",
+    "sha256": "d8e92cd915842c04a856f62d880c9c32962d5b48e6e59d692002d3bab4c24165",
+    "byte_size": 2286
+  },
+  {
+    "path": "land/token-credits.png",
+    "sha256": "39ef4a37537ef4c82d239504eff4f9667a21bc83b6eadfad64054d192e19dd5b",
+    "byte_size": 5065
+  },
+  {
+    "path": "land/token-dec.png",
+    "sha256": "50ee9dece01775db8cabf1f3787743dd862bf4931044210db480fd7caa7a7501",
+    "byte_size": 25315
+  },
+  {
+    "path": "rarity/gem-common.svg",
+    "sha256": "69f14790facebe6e9a91468eb9060ee35ba55ab72336d56619a675eb77322484",
+    "byte_size": 2503
+  },
+  {
+    "path": "rarity/gem-epic.svg",
+    "sha256": "42b06891409d39a79bf579941b5ca7735ba0fd222eed7c59e70603d7caeed007",
+    "byte_size": 1418
+  },
+  {
+    "path": "rarity/gem-legendary.svg",
+    "sha256": "c9c35a235d29de088cc517c81a005ec5b3a7d8d0c944bf2e293718f8c8575473",
+    "byte_size": 1613
+  },
+  {
+    "path": "rarity/gem-rare.svg",
+    "sha256": "13aeb18fe5d08d7776b11bceac92fb4bc42cfe96ff0f9e5a172eec049d07b001",
+    "byte_size": 1163
+  },
+  {
+    "path": "resources/aura_200.webp",
+    "sha256": "9eacaf6542ceb1b4a3477445d3bbf496951575d4622f32154630b1583cbedc82",
+    "byte_size": 9168
+  },
+  {
+    "path": "resources/aura_500.webp",
+    "sha256": "af4ee6ac613002f900b808893fbbc0ecf29b839e05795db069bd280441ff3465",
+    "byte_size": 29712
+  },
+  {
+    "path": "resources/grain-cdn-original.png",
+    "sha256": "56c5b3c7fb71b0ab147b5df0ad457a06ab066294d9cc0c9494e04c30892ac896",
+    "byte_size": 186048
+  },
+  {
+    "path": "resources/grain.png",
+    "sha256": "c2170356f9ed0f72ddc9d5b7594df31aae8f4ec6479d80d44d9873ee12fdfd0b",
+    "byte_size": 143240
+  },
+  {
+    "path": "resources/iron_200.webp",
+    "sha256": "26c229b96c5d536e858839c7d7f1cef270d31a78e8d6fa433c90a01c16d0af85",
+    "byte_size": 7272
+  },
+  {
+    "path": "resources/iron_500.webp",
+    "sha256": "8b91693b09cc06f05f6ed7d9076d9b65576970b0755f56cc3feb1a4a43a11e50",
+    "byte_size": 11126
+  },
+  {
+    "path": "resources/research.png",
+    "sha256": "0cd703908d286f2f0a23123e496a51a79925bc4c69facc166a595cfd4f16aa9c",
+    "byte_size": 43600
+  },
+  {
+    "path": "resources/sps.png",
+    "sha256": "c42a7e465cbdbc6318011706fab4bfe31571d71497ee0c97d70d5346c7befe78",
+    "byte_size": 47658
+  },
+  {
+    "path": "resources/stone_200.webp",
+    "sha256": "1ca1f1d6a67cd579b32102f19a4287b471e8ec37a655c86f149dfac451936f7f",
+    "byte_size": 6338
+  },
+  {
+    "path": "resources/stone_500.webp",
+    "sha256": "f647c6b5e642bccaf3bb3c2a8d9f9921f53207eb1211873dd63e9445d92bad26",
+    "byte_size": 7504
+  },
+  {
+    "path": "resources/voucher.svg",
+    "sha256": "bc1df78fc0a26243008dbea77eb2bcac95f3f5549dff5ce1f4cdf0b27cdcf1ce",
+    "byte_size": 43784
+  },
+  {
+    "path": "resources/wood_200.webp",
+    "sha256": "5370f3c4591be6dd4d4952370a70137b261c8b94c745a99c0753b6af200f6cab",
+    "byte_size": 8912
+  },
+  {
+    "path": "resources/wood_500.webp",
+    "sha256": "bec7e4b8ecea3642ec31f324f76a99133111b788d3826ffd7905e3b82f2b584b",
+    "byte_size": 19888
+  },
+  {
+    "path": "sets/alpha.svg",
+    "sha256": "7b9ff8f91f0f4766f677d9fae6e232075c205055aef9b97b2e79339a670ae9df",
+    "byte_size": 591
+  },
+  {
+    "path": "sets/beta.svg",
+    "sha256": "2f357db046e2e4301eb07ebd6caf6d4aa0075bae504868ee55dbbc44bd588fc0",
+    "byte_size": 625
+  },
+  {
+    "path": "sets/chaos-legion.svg",
+    "sha256": "c922a6d7ab7f4dc77a6246dccc74f95f76497ec09174de4c573f156f5bbd94af",
+    "byte_size": 978
+  },
+  {
+    "path": "sets/conclave-arcana.svg",
+    "sha256": "d8b51f785525aecf477e112437cec66bada63f813d58c2362342d222e7a3cc20",
+    "byte_size": 712
+  },
+  {
+    "path": "sets/edition-generic.svg",
+    "sha256": "d50443f7c664e21ea8014ecc6f8d98ee570b8b80a870dafe49b391373095b8c6",
+    "byte_size": 283
+  },
+  {
+    "path": "sets/eternal-land.svg",
+    "sha256": "004a63b1d5153e9383683f13d4333393282ad77cbada49768311d3df44a618a6",
+    "byte_size": 1175
+  },
+  {
+    "path": "sets/foundations.svg",
+    "sha256": "f7e044de39b87dfef8e20fdae8514bb38c1fc084797c5d853241f8532c54e9a5",
+    "byte_size": 672
+  },
+  {
+    "path": "sets/rebellion.svg",
+    "sha256": "5ccbbf769cf0596e3ed877f4c350208a9991e87580b631f62e1724e2816801a5",
+    "byte_size": 1472
+  },
+  {
+    "path": "sets/untamed.svg",
+    "sha256": "90d14dad2e5c913ae530a194988d45953ce03d1f6fecbc161db1eca692dd3cb2",
+    "byte_size": 715
+  },
+  {
+    "path": "splinter/death.svg",
+    "sha256": "b561602b0cc2aa05f2fd98270e13bbc408d8c59b81c260a89150b1c31f36cd1f",
+    "byte_size": 1851
+  },
+  {
+    "path": "splinter/dragon.svg",
+    "sha256": "7ad7239493b03acf13be383d78f6a49a9224b695c05a18ff849818d089b503b1",
+    "byte_size": 919
+  },
+  {
+    "path": "splinter/earth.svg",
+    "sha256": "224988553864006baed36a218388f99d98b6d34b0e84d924223c77df0de536d1",
+    "byte_size": 1683
+  },
+  {
+    "path": "splinter/fire.svg",
+    "sha256": "bfd45095302cdb25a4f13df57f42d85029e966d1ee14292ac16a2b477ef2ad5f",
+    "byte_size": 2037
+  },
+  {
+    "path": "splinter/life.svg",
+    "sha256": "8a1d6b1c138069ed6f05fc69283f4b716722bbe654799ac53ba6f2f92d69002a",
+    "byte_size": 1698
+  },
+  {
+    "path": "splinter/neutral.svg",
+    "sha256": "d14f22a9f64934ba2a3542e87c8687f1c73c015707cb4f644131d80d70ea488c",
+    "byte_size": 2107
+  },
+  {
+    "path": "splinter/water.svg",
+    "sha256": "c7d76f05d6827034bb59829e4943172b5c9249b0e170cdc70587ec796bd8c4e5",
+    "byte_size": 1952
+  },
+  {
+    "path": "titles/title-arcane.svg",
+    "sha256": "9cb115cd0e3efa6ab266191fc16839784ffb9c1e28ae4719b49707cbfca6c2a4",
+    "byte_size": 4624
+  },
+  {
+    "path": "titles/title-ascendant.svg",
+    "sha256": "c268d62f4e76885b362fd5f67e700691cf14b0a24e3f4b2ac8aa6c3ca45c2461",
+    "byte_size": 4801
+  },
+  {
+    "path": "titles/title-burninator.svg",
+    "sha256": "e32a116016d3b86764d49f52377e72ab77b1a4b0d3425c89d60ec5e839ed9b28",
+    "byte_size": 5361
+  },
+  {
+    "path": "titles/title-dawnbringer.svg",
+    "sha256": "1e93dd55081e45e28a7ab93a9994269d8ca093b04d7a38e383387407aeebe0fe",
+    "byte_size": 13709
+  },
+  {
+    "path": "titles/title-defiant.svg",
+    "sha256": "f957246bc393d375e53e4d18788bf79e126ef794b52be004c8950b7fcec54703",
+    "byte_size": 10374
+  },
+  {
+    "path": "titles/title-emergent.svg",
+    "sha256": "72692b7bfca5f480ae31d3901ebb96b932152785137815fd32c2e24bd8eea77f",
+    "byte_size": 3509
+  },
+  {
+    "path": "titles/title-emissary.svg",
+    "sha256": "3348ebc2c4f542439a8d2916c4960f09755ca76c163d80664c5af6fc63522840",
+    "byte_size": 9157
+  },
+  {
+    "path": "titles/title-enigma.svg",
+    "sha256": "8a3790efe450680663baf82f3031548c53b4f0ee345799c446a81ee3ad3f8fac",
+    "byte_size": 3725
+  },
+  {
+    "path": "titles/title-explorer.svg",
+    "sha256": "61d06d0b363ed7c6b53654383ddbbe8b6fd75436176d2a7a16884eeb6a27e83b",
+    "byte_size": 4630
+  },
+  {
+    "path": "titles/title-fable-scout.svg",
+    "sha256": "2738db49e4b4628882fafff79850cacaf46a7bdf0a40a2ad60afe822cb77bfdc",
+    "byte_size": 11476
+  },
+  {
+    "path": "titles/title-gambler.svg",
+    "sha256": "2db7a22164829f18ec8c82611413da0a15da45aec0604ba0d8a5d36dcd4bb40f",
+    "byte_size": 3514
+  },
+  {
+    "path": "titles/title-grandmaster.svg",
+    "sha256": "22fb013b059daa3b0e863e5f96fd1501fe6962e9e6bda350364efff52f6a0116",
+    "byte_size": 5304
+  },
+  {
+    "path": "titles/title-highroller.svg",
+    "sha256": "cadf81207c468d6295807e6a59be567ffad8fb4048ee96e8bfb4e0aead0f2212",
+    "byte_size": 3422
+  },
+  {
+    "path": "titles/title-incinerator.svg",
+    "sha256": "3aca336360f3aebaaf34056bd46adb784d4bed8588b3732c67a989c9019f835e",
+    "byte_size": 7930
+  },
+  {
+    "path": "titles/title-legionnaire.svg",
+    "sha256": "f464f2d082ad27b2299584024f47bd328a078a673efd2d16f6362df155097179",
+    "byte_size": 4698
+  },
+  {
+    "path": "titles/title-mystic.svg",
+    "sha256": "f4be5b39dae5b2142d3e61267f664d36a25ca75a3a6d1c14a757332f8d4ccf09",
+    "byte_size": 2672
+  },
+  {
+    "path": "titles/title-myth-hunter.svg",
+    "sha256": "6437c90bc522ff3f9edd361ca2cc059b5adbd7580d70a2a534f93fba760e4582",
+    "byte_size": 22887
+  },
+  {
+    "path": "titles/title-praetorian.svg",
+    "sha256": "57bfcbe5b671c7d629f738c100698118350c4f5bbda6246f2928a5b049cb42e5",
+    "byte_size": 4774
+  },
+  {
+    "path": "titles/title-proven.svg",
+    "sha256": "c00198e4f32eef754d9723b5db25400ba4efb63e5b9efdb2b74dc47a43750429",
+    "byte_size": 17549
+  },
+  {
+    "path": "titles/title-rebel.svg",
+    "sha256": "681c52c0ae3fa747bcaeda2b042b2ab7c1ba30800ceb168bdaedc3c44f81817e",
+    "byte_size": 4181
+  },
+  {
+    "path": "titles/title-renown.svg",
+    "sha256": "db8647bee00aa96f8c82375a653100444f16a324010a453bb59cefe04d621b40",
+    "byte_size": 17549
+  },
+  {
+    "path": "titles/title-rising.svg",
+    "sha256": "f31e90e8aae0f0483f8bcf05ab70a626805c9fce0ce3025bbdefe4af3410f836",
+    "byte_size": 4687
+  },
+  {
+    "path": "titles/title-saga-seeker.svg",
+    "sha256": "dc2bf200fce69a6c32e1eac55a8b2cbce590fc000c1b202894fc79e28876dc1d",
+    "byte_size": 11926
+  },
+  {
+    "path": "titles/title-scorcher.svg",
+    "sha256": "172bf9ea345cca06ff9ec9e2cc568b466884f48f0c00666ceea9d93fbe8b46fd",
+    "byte_size": 3676
+  },
+  {
+    "path": "titles/title-tower-mage.svg",
+    "sha256": "a191c5b0a3b80231937dd84fe715b4f046b60192a355992d7841df0168df05ee",
+    "byte_size": 14186
+  },
+  {
+    "path": "titles/title-untamed.svg",
+    "sha256": "1f19014bc42ed7840c29fff89b0ac1dd81eac7b1c510e67c21ce3fa647421617",
+    "byte_size": 5046
+  },
+  {
+    "path": "titles/title-veteran.svg",
+    "sha256": "a3a379173cb11ea2d624a2e9b41ed761e6cdef862347cfee570a883c4b8ed402",
+    "byte_size": 19256
+  },
+  {
+    "path": "titles/title-watcher.svg",
+    "sha256": "b82fdd4e24a3716319e6bfaa5efc2a6ab8b47ab27403b94cdb5a37246a9f9978",
+    "byte_size": 4084
+  },
+  {
+    "path": "totems/totem-common.png",
+    "sha256": "e5d0304404a56439c70b6c7695d11c01c052cc958ff9ffcc4540158707c7229e",
+    "byte_size": 25523
+  },
+  {
+    "path": "totems/totem-epic.png",
+    "sha256": "7ae776bb242ac6c0ed077ce1f92b541153a62e6eebca227a15edb458310bfcd6",
+    "byte_size": 26762
+  },
+  {
+    "path": "totems/totem-legendary.png",
+    "sha256": "9415ca362a328fa7c5b78ec13f9331d5da9a617765ed059b30c1a56f82eddade",
+    "byte_size": 26895
+  },
+  {
+    "path": "totems/totem-rare.png",
+    "sha256": "b98b6e4c656b2b94bfaf783c88b0027fb4bcd36b4f6f3839edb60d3a274cdfa1",
+    "byte_size": 26984
+  }
+]

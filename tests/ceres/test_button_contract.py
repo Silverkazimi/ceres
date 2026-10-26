@@ -310,6 +310,10 @@ def _assert_palette(css: str) -> None:
         # just never registered here.
         "accent", "bg2", "bg3", "border-bright", "danger", "font-body", "gold", "gold-dim",
         "heading", "hi", "ok", "primary", "shadow",
+        # The Changes button's waiting state and its count pill (checkout.js toggles
+        # is-changes-waiting / is-changes-ready): the waiting tone is the canonical warn
+        # status colour, the pill text the canonical page background.
+        "bg", "warn",
         # Layout tokens local to buttons.css (declared and consumed only here, same
         # class as the existing ceres-control-* entries)
         "ceres-control-min-block", "ceres-control-inline-pad",
@@ -319,6 +323,8 @@ def _assert_palette(css: str) -> None:
         # (csel-leading-border: the leading-accent border width; ceres-chevron-art
         # the shared inline chevron mask image), never a global canonical.css token.
         "csel-leading-border", "ceres-chevron-art",
+        # changes-tone: the Changes button's ready/waiting tone, declared and consumed only here.
+        "changes-tone",
     }
     used = set(re.findall(r"var\(--([A-Za-z0-9_-]+)\)", css))
     assert used <= allowed, f"unregistered token aliases: {sorted(used - allowed)}"

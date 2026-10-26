@@ -573,9 +573,11 @@ export function setMode(mode) {
   }
 }
 
-function initialMode() {
+function initialMode(player) {
   const fromUrl = new URLSearchParams(location.search).get('mode');
   if (fromUrl === 'market' || fromUrl === 'cards' || fromUrl === 'purchases') return fromUrl;
+  // no player -> the Market.
+  if (!player) return 'market';
   try { return localStorage.getItem(MODE_KEY) === 'market' ? 'market' : 'cards'; } catch (_) { return 'cards'; }
 }
 
@@ -622,7 +624,7 @@ export function initMarket(deps) {
       if (entries.some((entry) => entry.isIntersecting)) { renderMore(); fillViewport(); }
     }, { rootMargin: '1200px 0px' }).observe(sentinel);
   }
-  const mode = initialMode();
+  const mode = initialMode(deps.player());
   document.body.dataset.cbMode = mode;
   if (mode === 'market') setMode('market');
   else if (mode === 'purchases') {
