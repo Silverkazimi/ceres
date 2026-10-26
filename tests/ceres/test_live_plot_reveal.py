@@ -25,6 +25,8 @@ from PIL import Image
 
 from ceres.board import project_board
 
+from .table_edge import OVERHANG_JS, overhang_problems
+
 ROOT = Path(__file__).resolve().parents[2]
 STATIC = ROOT / "ceres" / "static"
 ORIGIN = "http://ceres-eos.test"
@@ -289,7 +291,9 @@ class EosBrowser:
         if relative == "table.js":
             symbol = b"function renderVirtualWindow(force = false, anchor = null) {"
             assert source.count(symbol) == 1, "Resolve moved virtualiser symbol before running its guard"
-            source = source.replace(symbol, symbol + b"\nwindow.eosProbe.virtualRenders.push({force,epoch:anchor?.viewportEpoch,t:performance.now()});", 1)
+            # `depth` counts renderVirtualWindow frames on the stack: 2+ is a render nested
+            # inside another one (the height-correction re-render).
+            source = source.replace(symbol, symbol + b"\nwindow.eosProbe.virtualRenders.push({force,epoch:anchor?.viewportEpoch,t:performance.now(),depth:(new Error().stack.match(/renderVirtualWindow/g)||[]).length});", 1)
             source += b"\nexport { renderVirtualWindow as eosGuardRenderVirtualWindow };\n"
         return source
 
@@ -301,7 +305,8 @@ class EosBrowser:
         await self.page.route("**/*", self.route)
         # A bare address opens the start page; the board needs its account in the URL.
         await self.page.goto(f"{ORIGIN}/?player={self.board['player']}", wait_until="domcontentloaded")
-        await self.page.wait_for_selector("tr.plot-row", timeout=15000)
+        # The desktop table's rows, or the phone card view's plot cards (e <= 1279).
+        await self.page.wait_for_selector("tr.plot-row, article.plot-card", timeout=15000)
         assert await self.page.evaluate("getComputedStyle(document.documentElement).fontSize") == f"{font}px"
 
     async def module(self, name, expression, arg=None):
@@ -478,14 +483,18 @@ async def _fit(fixture, *, strict=True, baseline=None):
         if((s.overflowX==='auto'||s.overflowX==='scroll')&&node.scrollWidth>node.clientWidth+.5)
           overs.push({cls:node.className,scroll:node.scrollWidth});
       }
-      const scroller=document.querySelector('#plot-table-scroll');
-      // the table scroller clips on x; anything wider than it would be hidden.
-      return {width,scrollWidth:document.documentElement.scrollWidth,overs,
-        tableFits:!scroller||getComputedStyle(scroller).display==='none'||scroller.scrollWidth<=scroller.clientWidth+.5};
+      return {width,scrollWidth:document.documentElement.scrollWidth,overs};
     }""")
+    # The table scroller clips on x, so anything wider than it is hidden -- except the
+    # desktop table's deliberate 8px right-edge budget (ceres.css: the table is
+    # `calc(100% + 8.5px)` wide, and the overhang lies in the last column's end padding;
+    # tests/ceres/table_edge.py). Before any plot opens at 1920/16px that is the measured
+    # 1918.5px table in its 1910px scroller.
+    audit["table"] = await fixture.page.evaluate(OVERHANG_JS)
+    audit["tableProblems"] = overhang_problems(audit["table"])
     assert not audit["overs"], audit
     if strict:
-        assert audit["scrollWidth"] <= audit["width"] and audit["tableFits"], audit
+        assert audit["scrollWidth"] <= audit["width"] and not audit["tableProblems"], audit
     elif baseline:
         assert audit["scrollWidth"] <= baseline["scrollWidth"] + 0.5, (baseline, audit)
     return audit
@@ -661,13 +670,18 @@ async def _g6(f):
     assert await f.band().evaluate("b=>!getComputedStyle(b).getPropertyValue('--scene-terrain').includes('url(')")
     before = await f.band().inner_html()
     data_requests = len([r for r in f.requests if "/api/plots/" in r["path"]])
-    f.release("scene", "portrait")
-    await asyncio.sleep(0.4)
-    assert await f.band().inner_html() == before, "Late asset changed frozen fallback"
+    # The "Retry art" button is retired (eos.js: "gone at his instruction"; art recovery runs
+    # on its own bounded schedule and the status line says when art is unavailable), so the
+    # late-asset step is the one non-opening action left: the assets that finally answer
+    # must neither change the frozen fallback, replay the entrance, recentre, nor re-read
+    # the plot's data.
+    assert not await f.band().get_by_role("button", name="Retry art", exact=False).count()
+    async def late_assets():
+        f.release("scene", "portrait")
+        await asyncio.sleep(0.4)
+        assert await f.band().inner_html() == before, "Late asset changed frozen fallback"
+    await _no_new_gesture(f, late_assets)
     await f.screenshot("frozen-named-fallback")
-    async def retry():
-        await f.band().get_by_role("button", name="Retry art", exact=False).click()
-    await _no_new_gesture(f, retry)
     assert len([r for r in f.requests if "/api/plots/" in r["path"]]) == data_requests
     _stable(await f.trace())
 
@@ -699,10 +713,22 @@ async def _g8(f):
     await f.page.evaluate("eosProbe.oldNodes=[...document.querySelectorAll('img[data-eos-managed]')];eosProbe.oldResolves=eosProbe.pending.splice(0)")
     await f.module("rows", "(m,uid)=>m.updateMountedRow(uid)", "eos-0008")
     await f.page.wait_for_function("eosProbe.pending.length>0")
-    assert await f.page.evaluate("eosProbe.oldNodes.some(n=>!n.isConnected)"), "Fixture did not replace a managed node"
+    # A remount no longer replaces managed nodes: the patch keeps every in-flight portrait
+    # node (rows.js morph keeps a picture of the same card), so the old replace-node
+    # scenario cannot be built. The guard's property is that a decode started before the
+    # remount cannot settle what the remount shows: the kept nodes get a fresh decode (the
+    # wait above), and releasing the superseded decodes reveals nothing -- no portrait is
+    # settled or painted (the opaque worker cover that used to prove it is retired, see G4).
+    kept = await f.page.evaluate("""()=>{const now=[...document.querySelectorAll('img[data-eos-managed]')];
+      return {old:eosProbe.oldNodes.length,connected:eosProbe.oldNodes.filter(n=>n.isConnected).length,now:now.length,
+        same:now.filter(n=>eosProbe.oldNodes.includes(n)).length}}""")
+    assert kept["old"] and kept["connected"] == kept["old"] == kept["now"] == kept["same"], kept
     await f.page.evaluate("eosProbe.oldResolves.forEach(done=>done())")
     await asyncio.sleep(0.05)
-    assert await f.band().locator(".eos-worker-cover").evaluate("n=>getComputedStyle(n).opacity") == "1"
+    stale = await f.band().evaluate("""b=>{const images=[...b.querySelectorAll('img[data-eos-managed]')];
+      return {settled:images.filter(n=>n.dataset.eosOutcome==='decoded').length,
+        painted:images.filter(n=>n.matches('.eos-portrait-fill')).filter(n=>{const s=getComputedStyle(n);return s.visibility!=='hidden'&&Number(s.opacity)>0}).length}}""")
+    assert stale == {"settled": 0, "painted": 0}, "Superseded decode settled the remounted plot"
     await f.page.evaluate("eosProbe.releaseDecode()")
     await f.page.wait_for_function("eosProbe.animations.some(a=>a.animation.playState==='running')")
     f.release("upgrade")
@@ -857,18 +883,29 @@ def test_g14_narrow_facts_remain_accessible_without_disclosure(mutation, report,
     board, details = _payload(report, details_by_id, long=True)
     details['eos-0008'].update(multiplier_parts={'totem_boost': .1}, grain_cost_per_hour=42)
 
+    # The narrow band profile (width < 62em, eos.js plotGeometryProfile) and the desktop table
+    # (e > 1279px, i.e. > 80em) no longer overlap: a narrow plot is the phone card view's plot
+    # sheet, by design. The plot-facts line is gone there too (editor.js renders facts = ''); the
+    # sheet carries the same two facts itself -- the production modifiers in its Total PP stat
+    # (named by the stat's accessible text) and the food cost in its Resource flow block. They
+    # must stay visible and exposed to assistive technology without any disclosure.
+    multiplier, cost = ".mobile-plot-sheet .mobile-plot-total-pp", ".mobile-plot-sheet .mobile-plot-resource-flow"
+
     async def run():
-        async with _browser(board, details, tmp_path / f"G14-{mutation or 'narrow-facts'}") as f:
+        async with _browser(board, details, tmp_path / f"G14-{mutation or 'narrow-facts'}", width=850) as f:
             f.release("scene", "detail", "portrait", "upgrade")
-            await f.page.set_viewport_size({"width": 850, "height": 1080})
-            await f.open()
-            await f.terminal()
-            facts = f.page.locator('.eos-narrow .editor-band .editor-facts .multiplier-breakdown, .eos-narrow .editor-band .editor-facts .cost-line')
+            assert await f.page.evaluate("document.documentElement.classList.contains('ceres-lw-le-1279')"), "850px is the phone card view"
+            card = f.page.locator('article.plot-card[data-deed-uid="eos-0008"]')
+            await card.scroll_into_view_if_needed()
+            await card.click()
+            await f.page.wait_for_function("()=>/^(ready|degraded)$/.test(document.querySelector('.mobile-plot-sheet .editor-band')?.dataset.plotState)", timeout=8000)
+            facts = f.page.locator(f"{multiplier}, {cost}")
             assert await facts.count() == 2, "G14 narrow fixture carries multiplier and cost"
+            assert "Food/hr" in await f.page.locator(cost).inner_text() and "42" in await f.page.locator(cost).inner_text()
             if mutation:
-                selector = '.multiplier-breakdown' if mutation == 'hide_narrow_multiplier' else '.cost-line'
-                await f.band().locator(selector).evaluate("el=>el.style.display='none'")
-                assert await f.band().locator(selector).evaluate("el=>getComputedStyle(el).display==='none'"), f"{mutation} landed"
+                selector = multiplier if mutation == 'hide_narrow_multiplier' else cost
+                await f.page.locator(selector).evaluate("el=>el.style.display='none'")
+                assert await f.page.locator(selector).evaluate("el=>getComputedStyle(el).display==='none'"), f"{mutation} landed"
 
             async def check():
                 assert await facts.evaluate_all("els=>els.every(el=>{for(let n=el;n;n=n.parentElement){const s=getComputedStyle(n);if(s.display==='none'||s.visibility==='hidden'||n.inert||n.getAttribute('aria-hidden')==='true')return false;}return !!el.textContent.trim();})"), "G14 narrow facts stay in accessibility tree"
@@ -876,8 +913,8 @@ def test_g14_narrow_facts_remain_accessible_without_disclosure(mutation, report,
                 try:
                     tree = await client.send('Accessibility.getFullAXTree')
                     names = [node.get('name', {}).get('value', '') for node in tree['nodes'] if not node.get('ignored')]
-                    assert any('Totem +10%' in name for name in names), "G14 narrow multiplier text is exposed to assistive technology"
-                    assert any('42 grain/hr' in name for name in names), "G14 narrow cost value is exposed to assistive technology"
+                    assert any('Totem: +' in name and 'Production modifiers total' in name for name in names), "G14 narrow multiplier text is exposed to assistive technology"
+                    assert any(name.strip() in ('−42', '-42') for name in names), "G14 narrow cost value is exposed to assistive technology"
                 finally:
                     await client.detach()
 
@@ -988,7 +1025,13 @@ async def _g18(f):
     f.release("scene", "detail", "portrait", "upgrade")
     await f.filmstrip("virtual-window-during-centre", 0.45)
     trace = await f.trace()
-    assert len([r for r in trace["virtualRenders"] if r["force"] and r["t"] >= trace["opened"]]) >= 2, "Nested height-correction render did not run"
+    # The forced render above measures the reserved band against the stale cached height
+    # and re-renders from inside itself (table.js: `if (rowsChanged || expandedChanged)
+    # renderVirtualWindow(false, anchor)`). That nested correction is no longer forced --
+    # it re-windows only when the window moved -- so it is recognised by its nesting.
+    renders = [r for r in trace["virtualRenders"] if r["t"] >= trace["opened"]]
+    assert [r for r in renders if r["force"]], "Forced virtual render did not run"
+    assert [r for r in renders if r["depth"] >= 2], "Nested height-correction render did not run"
     assert any(frame["mounted"] != mounted for frame in trace["frames"]), "No actual virtual-window boundary crossed: guard is NOT exercised"
     assert abs(await f.page.evaluate("scrollY") - target["target"]) <= 0.5
     before = await f.page.evaluate("scrollY")
@@ -1009,6 +1052,9 @@ async def _g18(f):
     assert len([w for w in (await f.trace())["writes"] if "/eos.js" in w["stack"]]) == count
 
 
+WORKSITE_CONTROL = '.slot-editor-footer .harvest-bar-cog[data-slot-action="open-worksite-modal"]'
+
+
 async def _g19(f, expect_cover_mutation=False, after_scene_mutation=None):
     f.details['eos-0008']['swap_targets']=[{'target':'grain_farm'}]
     await f.open()
@@ -1017,12 +1063,17 @@ async def _g19(f, expect_cover_mutation=False, after_scene_mutation=None):
     # retired the vertical `data-terrain-affinity="editor"` column on
     # desktop (`presentation` is always truthy here, so `renderEditorBandContents` no
     # longer emits it) -- the desktop splinter run is now the horizontal
-    # `.editor-splinter-affinity [data-terrain-affinity="picker"]` row inside
+    # `.editor-splinter-affinity [data-terrain-affinity="editor-row"]` row inside
     # `.slot-group-controls`, before Fill plot. Same invariant (visibility/gating through
-    # every ancestor), new surface.
-    assert await f.band().locator('.editor-splinter-affinity [data-terrain-affinity="editor-row"] [data-affinity-state="unknown"]').count() == 6
+    # every ancestor), new surface. The row is drawn with the plot's detail: the scaffold
+    # shown while the detail is held keeps an empty, inert controls row (R-161 permanent
+    # geometry), so the run is checked once the detail is in, with the scene still held.
+    assert not await f.band().locator('.editor-splinter-affinity').count()
     f.release("detail")
-    await f.band().locator('.slot-editor-footer > .worksite-change-btn').wait_for(state="attached")
+    # The band's change-worksite control is the harvest bar's cog now (the footer's
+    # .worksite-change-btn is no longer drawn); it is one of the gated worker controls.
+    await f.band().locator(WORKSITE_CONTROL).wait_for(state="attached")
+    assert await f.band().locator('.editor-splinter-affinity [data-terrain-affinity="editor-row"] [data-affinity-state]').count() == 6
     early = await f.band().evaluate("""band=>{
       const run=band.querySelector('.editor-splinter-affinity [data-terrain-affinity="editor-row"]'),veil=band.querySelector('.eos-scenic-veil'),cover=band.querySelector('.eos-worker-cover');
       if(!run||!veil||!cover) throw new Error('Missing footer affinity run, scenic veil, or worker cover');
@@ -1030,9 +1081,9 @@ async def _g19(f, expect_cover_mutation=False, after_scene_mutation=None):
       const overlap=Math.min(cr.right,r.right)-Math.max(cr.left,r.left), vertical=Math.min(cr.bottom,r.bottom)-Math.max(cr.top,r.top);
       return {veilParent:veil.parentElement===band,veilZ:Number(getComputedStyle(veil).zIndex),
         mainZ:Number(getComputedStyle(main).zIndex),height:band.getBoundingClientRect().height,
-        hiddenByAria:!!run.parentElement.closest('[aria-hidden="true"]'),controlsGated:!!band.querySelector('.slot-editor-footer > .worksite-change-btn')?.closest('[inert]'),coverOverlap:overlap>0&&vertical>0,
+        hiddenByAria:!!run.closest('.editor-splinter-affinity').parentElement.closest('[aria-hidden="true"]'),controlsGated:!!band.querySelector('WORKSITE_CONTROL')?.closest('[inert]'),coverOverlap:overlap>0&&vertical>0,
         runTop:r.top,runBottom:r.bottom,coverTop:cr.top,coverBottom:cr.bottom};
-    }""")
+    }""".replace("WORKSITE_CONTROL", WORKSITE_CONTROL))
     assert early["veilParent"] and early["veilZ"] > early["mainZ"], "G19 scenic veil remains above the affinity stacking context"
     assert abs(early["height"] - f.reserved) <= 0.5 and not early["hiddenByAria"], (early, f.reserved)
     assert early["controlsGated"], "G19 worker controls remain gated during scenic release"
@@ -1041,7 +1092,10 @@ async def _g19(f, expect_cover_mutation=False, after_scene_mutation=None):
     f.release("scene")
     await f.page.wait_for_function("() => {const n=document.querySelector('.editor-band .eos-scenic-veil');return n&&(n.hidden||getComputedStyle(n).opacity==='0')}",timeout=1200)
     assert await f.band().locator(".eos-scenic-veil").evaluate("n=>n.hidden?'0':getComputedStyle(n).opacity") == "0"
-    assert await f.band().locator(".eos-worker-cover").evaluate("n=>getComputedStyle(n).opacity") == "1"
+    # The opaque worker cover is retired (see G4): the workers stay unrevealed because their
+    # held portraits are unpainted.
+    assert await f.band().locator(".slot-tile-cell img.eos-portrait-fill").evaluate_all(
+        "nodes=>nodes.filter(n=>{const s=getComputedStyle(n);return s.visibility!=='hidden'&&Number(s.opacity)>0}).length") == 0
     run = f.band().locator('.editor-splinter-affinity [data-terrain-affinity="editor-row"]')
     assert not f.gates['portrait'].is_set() and f.active>0, "G19 fixture holds actual portrait requests after scenic release"
     assert any('/cards/' in r['path'] or 'eos-skin' in r['path'] for r in f.requests), "G19 fixture requested worker portraits"
@@ -1052,16 +1106,19 @@ async def _g19(f, expect_cover_mutation=False, after_scene_mutation=None):
         if(node.inert||node.getAttribute('aria-hidden')==='true'||s.visibility!=='visible'||s.display==='none'||Number(s.opacity)<1)return false;
       }return true;
     }"""), "G19 scene-released badges are exposed before delayed portraits through every footer ancestor"
-    assert await f.band().locator(".slot-editor-footer > .worksite-change-btn").evaluate("n=>!!n.closest('[inert]')"), "G19 worker controls remain gated after scenic release"
+    assert await f.band().locator(WORKSITE_CONTROL).evaluate("n=>!!n.closest('[inert]')"), "G19 worker controls remain gated after scenic release"
+    assert await f.band().locator(".slot-group-controls .slot-bulk").evaluate_all("nodes=>nodes.length>0&&nodes.every(n=>!!n.closest('[inert]'))"), "G19 worker controls remain gated after scenic release"
     labels = await run.locator('[aria-label]').evaluate_all("nodes=>nodes.map(n=>n.getAttribute('aria-label'))")
-    assert len(labels) >= 7 and all(labels), labels
+    # every one of the six splinter badges carries its own accessible label (the retired
+    # column also labelled itself, hence the old seven).
+    assert len(labels) >= 6 and all(labels), labels
     await f.screenshot("building-and-badges-before-workers")
     f.release("portrait", "upgrade")
     await f.terminal()
     _stable(await f.trace())
 
 
-# Art that never arrives (or never decodes) is no longer frozen at the first 10 s budget
+# Art that never arrives (or never decodes) is no longer frozen at the first 10 s budget:
 # eos.js retries it on the art.js schedule (1, 2, 4, 8, 15 s, each with a 10 s budget)
 # and freezes it to the named fallback only after the last attempt, about a minute in.
 # The guards that need that frozen fallback run the same schedule and budgets scaled 1/50.
@@ -1095,13 +1152,35 @@ def test_plot_reveal_guards(guard, report, details_by_id, tmp_path):
     asyncio.run(run())
 
 
+# The board's layout tiers are in em of the root font (index.html: a larger browser text
+# size narrows the EFFECTIVE width, `e = (innerWidth - scrollbar) * 16 / rem`, the same way
+# browser zoom does), and at e <= 1279 the board is the phone card view by design -- no
+# table, no desktop band. So a text-zoom case runs at the viewport that keeps the width
+# under test in em at that root font (width * font / 16): the same em geometry the width x
+# zoom grid means, on the desktop table, and the 16px cases at their own widths. The 1280
+# column is the tier boundary itself: the board's 10px scrollbar puts a 1280 * font / 16
+# viewport at e = 1270, the card view, so it runs just inside the desktop tier (16px past
+# the boundary: measured, a viewport exactly one scrollbar past it can keep the card view
+# it was first drawn in).
+_SCROLLBAR_PX = 16
+
+
+def _zoomed_viewport(width, font):
+    if width > 1280:
+        return width * font // 16
+    return 1280 * font // 16 + _SCROLLBAR_PX
+
+
 @pytest.mark.parametrize("width", (1920, 1745, 1536, 1280))
 @pytest.mark.parametrize("font", (16, 20, 32))
 def test_g2_effective_width_and_text_zoom(width, font, report, details_by_id, tmp_path):
     board, details = _payload(report, details_by_id, capacity=20)
 
     async def run():
-        async with _browser(board, details, tmp_path / f"G2-{width}-{font}", width=width, font=font) as fixture:
+        async with _browser(board, details, tmp_path / f"G2-{width}-{font}", width=_zoomed_viewport(width, font), font=font) as fixture:
+            layout = await fixture.page.evaluate("""() => ({phone: document.documentElement.classList.contains('ceres-lw-le-1279'),
+              effective: window.ceresScale.design * 16 / parseFloat(getComputedStyle(document.documentElement).fontSize)})""")
+            assert not layout["phone"] and layout["effective"] >= min(width, 1280) - 16, (width, font, layout)
             await _g2(fixture)
 
     asyncio.run(run())
@@ -1215,10 +1294,15 @@ def test_g18_pending_write_cancellation_matrix(intent, count, report, details_by
             elif intent == "refresh":
                 await f.module("board", "m=>{m.loadBoard();return true}")
             elif intent == "unmount":
-                await f.page.evaluate("window.scrollTo({top:document.scrollingElement.scrollHeight,behavior:'instant'})")
                 if count > 400:
+                    # A script scroll cannot unmount the opening plot: the reveal's viewport
+                    # lease keeps writing the plot's own position until it lands (eos.js
+                    # centreReservedPlot), so the row stays in the window. The reader's way
+                    # out -- End -- ends the lease and the virtual window drops the row.
+                    await f.page.keyboard.press("End")
                     await f.page.wait_for_function("!document.querySelector('tr.plot-row[data-deed-uid=\"eos-0008\"]')")
                 else:
+                    await f.page.evaluate("window.scrollTo({top:document.scrollingElement.scrollHeight,behavior:'instant'})")
                     await f.module("table", "m=>m.render(true)")
             elif intent == "resize":
                 await f.page.set_viewport_size({"width":1745,"height":1080})
@@ -1269,7 +1353,8 @@ def test_g18_stale_anchor_guard_rejects_its_red_mutation(mutated, report, detail
     # the worker cover is retired (see _g4); the red mutation paints the held portraits.
     ("G4", ".slot-tile-cell img.eos-portrait-fill {opacity:1!important;visibility:visible!important}"),
     ("G19", ".editor-main {z-index:5!important}"),
-    ("G19-cover", ".eos-worker-cover {top:0!important;bottom:0!important;left:0!important;right:0!important}"),
+    # the cover is retired (mounted `hidden`); the red mutation also shows it again.
+    ("G19-cover", ".eos-worker-cover {display:block!important;top:0!important;bottom:0!important;left:0!important;right:0!important}"),
 ))
 def test_visual_guards_reject_their_red_mutations(guard, css, report, details_by_id, tmp_path):
     board, details = _payload(report, details_by_id)
@@ -1299,7 +1384,9 @@ def test_g19_inherited_footer_gate_rejected_after_scene_before_portraits(gate, r
 
     async def run():
         async with _browser(board,details,tmp_path/f"G19-footer-{gate}") as fixture:
-            mutation="band=>{const footer=band.querySelector('.slot-editor-footer');"+mutations[gate]+";}"
+            # The badges' inherited gate is their own row now: the worker controls row they
+            # lead (the footer that held the retired column no longer contains them).
+            mutation="band=>{const footer=band.querySelector('.slot-group-controls');"+mutations[gate]+";}"
             with pytest.raises(AssertionError,match="G19 scene-released badges are exposed before delayed portraits through every footer ancestor"):
                 await _g19(fixture,after_scene_mutation=mutation)
 
@@ -1333,18 +1420,31 @@ def test_g19_scene_timeout_releases_unknown_badges_with_frozen_field(reduced, re
         async with _browser(board, details, tmp_path / f"G19-timeout-{reduced}", reduced=reduced) as f:
             await f.open()
             await asyncio.sleep(1.65)
-            # desktop splinter run is the horizontal row, not the retired column.
-            badges = f.band().locator('.editor-splinter-affinity [data-terrain-affinity="editor-row"]')
-            assert await badges.is_visible()
-            assert await badges.get_attribute("aria-hidden") != "true"
-            assert await badges.locator('[data-affinity-state="unknown"]').count() == 6
             assert await f.band().evaluate("b=>!getComputedStyle(b).getPropertyValue('--scene-terrain').includes('url(')")
-            before = await f.band().get_attribute("style")
-            await f.screenshot("badges-over-final-unavailable-scene")
+            # The field around the timed-out scene stays frozen; only the scene's own layers may
+            # still change: a scene that decodes after its soft release is applied on purpose
+            # (test_live_art_continuity: the soft release preserves a late decode).
+            field = """b=>Object.fromEntries([...b.style].filter(name=>!/^--scene-(terrain|worksite)$/.test(name))
+              .map(name=>[name,b.style.getPropertyValue(name).trim()]))"""
+            before = await f.band().evaluate(field)
+            geometry = await f.band().evaluate("b=>b.getBoundingClientRect().height")
             f.release("scene")
             await asyncio.sleep(0.25)
-            assert await f.band().get_attribute("style") == before
-            f.release("detail", "portrait", "upgrade")
+            assert await f.band().evaluate(field) == before
+            assert await f.band().evaluate("b=>b.getBoundingClientRect().height") == geometry
+            # The splinter run is drawn with the plot's detail: the held-detail scaffold keeps an
+            # empty, inert controls row (R-161 permanent geometry). When the detail lands after
+            # the scene's timed-out release, the badges show at once, before the portraits.
+            assert not await f.band().locator('.editor-splinter-affinity').count()
+            f.release("detail")
+            # desktop splinter run is the horizontal row, not the retired column.
+            badges = f.band().locator('.editor-splinter-affinity [data-terrain-affinity="editor-row"]')
+            await badges.wait_for(state="attached")
+            assert await badges.is_visible()
+            assert await badges.get_attribute("aria-hidden") != "true"
+            assert await badges.locator('[data-affinity-state]').count() == 6
+            await f.screenshot("badges-over-final-unavailable-scene")
+            f.release("portrait", "upgrade")
             await f.terminal()
             assert not [a for a in (await f.trace())["animations"] if "terrain-affinity" in a["cls"]]
             _stable(await f.trace())
