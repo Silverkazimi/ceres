@@ -211,8 +211,8 @@ def test_extreme_projected_capacity_fails_safe_to_zero_slots(live_browser: tuple
     r"""Second half of census row 20's first node test: `editorGroups()`'s own
     integer/range guard on `capacity.potential_card_capacity` (independent of, and
     a second layer behind, the Python-side `potential_worker_capacity()` safety
-    covered above) -- an absurd value must render ZERO worker tiles, not attempt
-    to build an enormous grid.
+    covered above) -- an absurd value counts as zero capacity (the five default empty
+    worker slots), never an attempt to build an enormous grid.
 
     Named injection, run and watched red, then reverted and watched green: in
     `ceres/static/app.js`'s `editorGroups()`, the capacity guard
@@ -236,10 +236,16 @@ def test_extreme_projected_capacity_fails_safe_to_zero_slots(live_browser: tuple
     page.goto(base_url)
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
+    # the reveal draws placeholder frames first; count the tiles of the built editor
+    page.locator(".editor-band:is([data-plot-state='ready'],[data-plot-state='degraded'])").wait_for(timeout=30_000)
     worker_group = page.locator(".slot-group[data-group-id='worker']")
     worker_group.wait_for(timeout=30_000)
-    tiles = worker_group.locator(".slot-tile-cell .slot-tile")
-    assert tiles.count() == 0
+    tiles = worker_group.locator(".slot-tile-cell .slot-tile[data-group-id='worker']")
+    # The absurd capacity counts as zero, and a zero-capacity plot draws the game's five worker
+    # slots (editor.js DEFAULT_WORKER_SLOTS, "Unpowered plots must always show all five worker
+    # tiles"), all empty -- never the absurd figure.
+    assert tiles.count() == 5
+    assert tiles.evaluate_all("els => els.every((el) => el.classList.contains('is-empty'))")
     page.close()
 
 
