@@ -73,11 +73,11 @@ def live_browser() -> tuple[Browser, str]:
 
 STUB_SESSION = """
 (() => {
-  localStorage.setItem('ceres:hiveauth-session:v1:player0005', JSON.stringify({
-    account: 'player0005', username: 'player0005', token: 'stub-token-not-real',
+  localStorage.setItem('ceres:hiveauth-session:v1:sample01', JSON.stringify({
+    account: 'sample01', username: 'sample01', token: 'stub-token-not-real',
     key: 'stub-key-not-real', expire: Date.now() + 3600000
   }));
-  localStorage.setItem('ceres.wallet-provider:player0005', 'hiveauth');
+  localStorage.setItem('ceres.wallet-provider:sample01', 'hiveauth');
   const RealWorker = window.Worker;
   window.Worker = function(url, opts) {
     if (!String(url?.href || url).includes('hiveauth-worker')) return new RealWorker(url, opts);
