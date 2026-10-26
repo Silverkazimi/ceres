@@ -163,13 +163,7 @@ def test_runi_confirmation_controls_tile_notice_and_keychain_surface(
             "document.querySelector('#checkout-btn')?.hidden === false && document.querySelector('.slot-tile.is-pending-removal')",
             timeout=30_000,
         )
-        # The confirmation pill also carries the waiting states now (operations.js report():
-        # phase-pending, "Check again"); a pending verdict must never read as confirmed.
-        banner = page.locator("#ceres-confirmation-banner")
-        if banner.count():
-            classes = (banner.get_attribute("class") or "").split()
-            assert "phase-pending" in classes and "is-confirmed" not in classes, classes
-            assert "Runi removed from the Power slot" not in banner.inner_text()
+        assert page.locator("#ceres-confirmation-banner").count() == 0
     else:
         page.wait_for_function(
             "index => !document.querySelectorAll('tr.expand-row')[index]?.querySelector(\".slot-power .slot-power-large .slot-tile[data-group-id='runi'][data-occupied='1']\")",
