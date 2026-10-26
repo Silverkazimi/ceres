@@ -84,9 +84,11 @@ if (groups.size !== 2 || groups.get('7|14|1')?.length !== 1 || groups.get('7|14|
         run_in_module_context(check_js, entry=ENTRY, source=mutated)
 
 
+# Edition 13 (Rebellion soulbound) art lives in `cards_soulboundrb`, as in the official app bundle;
+# `cards_soulbound` answers 403 for those cards (static/icons.js, CARD_CDN_SET).
 _CDN_MAPPING_JS = r"""
 const expected = {
-  12: 'cards_rebellion', 13: 'cards_soulbound', 15: 'cards_v2.2', 18: 'cards_v2.2',
+  12: 'cards_rebellion', 13: 'cards_soulboundrb', 15: 'cards_v2.2', 18: 'cards_v2.2',
 };
 for (const [edition, folder] of Object.entries(expected)) {
   const url = editorCardImage({card_name: 'Synthetic Card', edition: Number(edition), foil: 0});
@@ -104,11 +106,11 @@ def test_known_modern_editions_resolve_card_art_urls() -> None:
 def test_known_cdn_mapping_mutation_is_red() -> None:
     """Injected defect: remove the edition-13 CDN mapping; the rendered resolver must stop returning its card-art URL."""
     source = read_entry_source(ENTRY)
-    mutated = source.replace("CARD_CDN_SET[13] = 'cards_soulbound';\n", "", 1)
+    mutated = source.replace("CARD_CDN_SET[13] = 'cards_soulboundrb';\n", "", 1)
     assert mutated != source, "CARD_CDN_SET[13] mutation target is missing"
     check_js = r"""
 const url = editorCardImage({card_name: 'Synthetic Card', edition: 13, foil: 0});
-if (url !== 'https://d36mxiodymuqjm.cloudfront.net/cards_soulbound/Synthetic%20Card.jpg') {
+if (url !== 'https://d36mxiodymuqjm.cloudfront.net/cards_soulboundrb/Synthetic%20Card.jpg') {
   throw new Error(`known edition mapping returned no card-art URL: ${url} (exit 1)`);
 }
 """

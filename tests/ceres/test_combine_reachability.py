@@ -196,6 +196,9 @@ def test_picker_route_accepts_fresh_capture_provenance(tmp_path, monkeypatch):
     monkeypatch.setattr(capture_mod, "latest_snapshot", lambda config, player: (report, object()))
     body = _stake_survivor_body()
     body.pop("combine_verified_at")
+    # The portfolio route has no deed in its path: each staged move names its own plot, as the
+    # page's staged moves do (CERES_STAGE entries carry deed_uid).
+    body["moves"][0]["deed_uid"] = "deed-1"
     assert op_preview(body, _request(config)).status_code == 200
 
 
@@ -324,6 +327,12 @@ def _mock_op_verify(page: Page, responses: list[dict]) -> None:
     page.route("**/api/op-verify*", _handle)
 
 
+# The worker group once the plot's own editor rendered: while the plot opens, the loading
+# frame (renderEmptyEditorFrame) already shows a `.slot-group[data-group-id='worker']` whose
+# controls row is empty and `inert`, so the bare group selector matches before any button exists.
+RENDERED_WORKER_GROUP = ".slot-group[data-group-id='worker']:has(> .slot-group-controls:not([inert]))"
+
+
 def _expand_row(page: Page, base_url: str, row: dict):
     page.goto(f"{base_url}/?player={LIVE_PLAYER}")
     wait_for_board(page)
@@ -373,7 +382,7 @@ def test_door1_worker_table_combine_button_stays_absent_via_real_browser() -> No
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
             expanded = _expand_row(page, base_url, row)
-            worker_group = expanded.locator(".slot-group[data-group-id='worker']")
+            worker_group = expanded.locator(RENDERED_WORKER_GROUP)
             worker_group.wait_for(timeout=15_000)
             assert worker_group.locator('[data-slot-action="combine-plot"]').count() == 0, \
                 "a plot-level Combine button rendered -- the product removed this control; the per-tile chip is the only combine affordance"
@@ -413,7 +422,7 @@ def test_door1_worker_table_combine_button_mutation_is_red() -> None:
             _install_idle_cards_mock(page, [survivor, consumed])
             page.route("**/static/app.js*", fulfill_injected_app)
             expanded = _expand_row(page, base_url, row)
-            worker_group = expanded.locator(".slot-group[data-group-id='worker']")
+            worker_group = expanded.locator(RENDERED_WORKER_GROUP)
             worker_group.wait_for(timeout=15_000)
             assert injection_seen, "injected app.js response was not intercepted"
             assert worker_group.locator('[data-slot-action="combine-plot"]').count() > 0, \
@@ -512,9 +521,8 @@ def test_door2_prompt_choice_is_exclusive_via_real_browser() -> None:
             page.close()
 
 
-# Door 3 (candidate picker column) and the tile chip's rendered text, plus the
-# global Combines filter -- real functions, whole module (vm_context), no
-# hand-stubbed foil helpers.
+# Door 3 (candidate picker column) and the tile chip's rendered text -- real
+# functions, whole module (vm_context), no hand-stubbed foil helpers.
 
 _DOOR3_BODY = r"""
 S.IDLE_CARDS_CACHE = [
@@ -529,24 +537,19 @@ const candB = {uid: 'B1', card_detail_id: 200, edition: 1, foil: false, name: 'C
 const candC = {uid: 'C1', card_detail_id: 300, edition: 1, foil: false, name: 'Card C'}; // both copies maxed
 
 const htmlA = candidateCombineActionHtml(candA, 0);
-if (!htmlA.includes('class="picker-combine"') || htmlA.includes('picker-combine-dash')) process.exit(10);
+// The class list also carries the shared button classes; match the class token, not the whole attribute.
+if (!/class="picker-combine[ "]/.test(htmlA) || !htmlA.includes('data-picker-action="combine"') || htmlA.includes('picker-combine-dash')) process.exit(10);
 const htmlB = candidateCombineActionHtml(candB, 1);
 if (!htmlB.includes('picker-combine-dash') || htmlB.includes('data-picker-action="combine"')) process.exit(11);
 const htmlC = candidateCombineActionHtml(candC, 2);
 if (!htmlC.includes('picker-combine-dash') || htmlC.includes('data-picker-action="combine"')) process.exit(12);
 
-// Filter OFF -- absent everywhere, not even the dash, on both the picker
-// column (door 3) and the tile chip (door 2), for a candidate/occupant that
-// WOULD otherwise show the real Combine control.
-S.COMBINES_FILTER_ENABLED = false;
-if (candidateCombineActionHtml(candA, 0) !== '') process.exit(13);
-const tileOff = combineTileActionHtml({deed_uid: 'p1'}, {id: 'worker'}, 0, {card_detail_id: 100, edition: 1, foil: false, name: 'Card A', bcx: 1, bcx_max: 10});
-if (tileOff !== '') process.exit(14);
-
-// Filter back ON -- the same occupant/candidate now shows the real control again.
-S.COMBINES_FILTER_ENABLED = true;
+// The global Combines filter is gone from the board (no COMBINES_FILTER_ENABLED flag
+// remains), so there is no filter-off state left to assert here.
 const tileOn = combineTileActionHtml({deed_uid: 'p1'}, {id: 'worker'}, 0, {card_detail_id: 100, edition: 1, foil: false, name: 'Card A', bcx: 1, bcx_max: 10});
-if (!tileOn.includes('class="tile-combine-chip"')) process.exit(15);
+if (!/class="tile-combine-chip[ "]/.test(tileOn)) process.exit(15);
+// A maxed occupant is never offered the chip, even though its printing has combinable idle copies.
+if (combineTileActionHtml({deed_uid: 'p1'}, {id: 'worker'}, 0, {card_detail_id: 100, edition: 1, foil: false, name: 'Card A', bcx: 10, bcx_max: 10}) !== '') process.exit(14);
 
 // Ruling (b), see module docstring: combineTileActionHtml's `label` is
 // literally 'Combine' (app.js :488), NOT 'Combine N' -- the count lives only
@@ -587,14 +590,14 @@ def test_door3_gate_mutation_is_red() -> None:
         run_in_module_context(_DOOR3_BODY, source=mutated)
 
 
-def test_combines_filter_mutation_is_red() -> None:
-    """Injected defect: candidateCombineActionHtml() ignores COMBINES_FILTER_ENABLED
-    entirely (as if one render path forgot the flag) -- the maintainer's ruling that OFF
-    means every combine affordance is absent, not merely disabled, must catch it."""
+def test_tile_chip_maxed_occupant_mutation_is_red() -> None:
+    """Injected defect: combineTileActionHtml() drops its maxed-occupant check, so a card
+    at its BCX ceiling would be offered a combine that burns idle copies for nothing.
+    (This replaces the Combines-filter mutation: the board no longer has that filter.)"""
     source = read_entry_source()
     mutated = source.replace(
-        "function candidateCombineActionHtml(candidate, index) {\n  if (!S.COMBINES_FILTER_ENABLED) return '';\n",
-        "function candidateCombineActionHtml(candidate, index) {\n",
+        "if (!hasResolvedCombineCeiling(occupant) || isCardMaxed(occupant)) return '';",
+        "if (!hasResolvedCombineCeiling(occupant)) return '';",
         1,
     )
     assert mutated != source
