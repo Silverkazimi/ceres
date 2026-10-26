@@ -123,5 +123,13 @@ def test_horizontal_scrim_removed_vertical_scrim_kept() -> None:
     assert matches, ".editor-scene::after rule not found"
     rule_body = next((body for body in matches if "background" in body), matches[-1])
     assert "linear-gradient(180deg" in rule_body, "the top-to-bottom readability scrim must stay"
-    assert "linear-gradient(90deg" not in rule_body, "the left-to-right scrim was supposed to be removed"
+    # The scene now carries one short fade on all four edges (`--edge-fade`, transparent by 2.22rem),
+    # the 90deg/270deg sides included. What must stay gone is a left-to-right scrim across the art:
+    # every gradient layer is that edge fade, and the fade ends within its short band.
+    gradients = re.findall(r"linear-gradient\(([^()]*(?:\([^()]*\)[^()]*)*)\)", rule_body)
+    assert gradients, rule_body
+    assert all(re.fullmatch(r"\s*\d+deg,\s*var\(--edge-fade\)\s*", gradient) for gradient in gradients), (
+        "the left-to-right scrim was supposed to be removed", gradients,
+    )
+    assert re.search(r"--edge-fade:[^;]*rgba\(0, 0, 0, 0\) 2\.22rem;", rule_body), "the edge fade must reach transparency within its short band"
     assert "--scene-scrim" not in source, "the horizontal scrim's own custom property should have no readers left"
