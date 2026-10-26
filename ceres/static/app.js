@@ -591,7 +591,7 @@ function initMobilePlotSheet() {
     if (closeTopMobileOverlay() !== 'none') { pushMobilePlotHistoryMarker(); return; }
     if (closeMobilePlotPicker()) { pushMobilePlotHistoryMarker(); return; }
     closeMobilePlotSheet();
-    const boardY = window.scrollY; // keep the restored board position over the browser's own restore
+    const boardY = window.scrollY; // V (no page zoom) -- keep the restored board position over the browser's own restore
     globalThis.requestAnimationFrame?.(() => window.scrollTo?.(0, boardY));
   });
   document.addEventListener('keydown', (event) => {
