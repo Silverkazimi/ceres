@@ -710,6 +710,9 @@ async function init() {
   if (CURRENT_PLAYER) await loadBoard(); else showStartPage(); // no player in the URL -> start page, no table
   syncCloseAll();
   window.ceresScale?.apply();
+  // A re-measured tier can move the board between the table and the card view;
+  // render the presentation the tier now selects (the resize handler does the same).
+  maybeRenderOnBoardPresentationChange();
   ensureHazardOverlay();
   // Item 23 -- the owner: "clicking outside the choutout modal must instantly
   // close it." CAPTURE-phase document listener (the `true` third arg)
