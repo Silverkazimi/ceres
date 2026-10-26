@@ -11,6 +11,7 @@ from playwright.sync_api import Browser, Page
 
 from .conftest import spawn_live_ceres
 from .vm_context import read_entry_source
+from . import board_basic_recording as recording
 
 ROOT = Path(__file__).parents[2]
 APP = ROOT / "ceres" / "static" / "app.js"
@@ -128,30 +129,53 @@ def _open_modal(live_browser: tuple[Browser, str], state: str) -> tuple[Page, di
     row.click()
     expanded = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] .slot-editor')
     expanded.wait_for(timeout=30_000)
-    button = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] button.worksite-change-btn')
+    # The worksite window opens from the harvest-bar cog (`data-slot-action=
+    # "open-worksite-modal"`, rendered once the band is ready); `.worksite-change-btn` is gone.
+    button = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] [data-slot-action="open-worksite-modal"]')
     button.wait_for(timeout=30_000)
     button.click()
     page.locator("#worksite-modal-overlay").wait_for(state="visible", timeout=10_000)
     return page, selected
 
 
+def _title_parts(page: Page) -> tuple[str, str]:
+    """The modal title is the state's name followed by the plot's own badge (`ch-plot-badge`),
+    where it used to read `<name> — Plot <label>`."""
+    title = page.locator("#worksite-modal-title")
+    name = title.evaluate("el => [...el.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE).map((node) => node.textContent).join('').trim()")
+    badge = title.locator(".ch-plot-badge")
+    assert badge.count() == 1
+    return name, badge.inner_text().strip()
+
+
+def _plot_label(uid: str) -> str:
+    return next(plot.label for plot in recording.PLOTS if plot.uid == uid)
+
+
 def test_completion_state_title_names_completion(live_browser) -> None:
     """Mutation: restore the unconditional `Change worksite` title; red result: the completion assertion rendered `Change worksite — Plot 065-09-083` instead of the required prefix."""
-    page, _ = _open_modal(live_browser, "completion")
+    page, selected = _open_modal(live_browser, "completion")
     panel = page.locator(".worksite-modal-panel")
     assert panel.get_attribute("data-worksite-state") == "completion"
-    assert page.locator("#worksite-modal-title").inner_text().startswith("Complete worksite — Plot ")
+    assert _title_parts(page) == ("Complete worksite", _plot_label(selected["uid"]))
     page.close()
 
 
 @pytest.mark.parametrize("state", ["choose", "refused"])
 def test_worksite_modal_state_title_and_panel_state(live_browser, state: str) -> None:
-    """Mutation: restore the unconditional `Change worksite` title; red result: the refused title rendered the generic prefix."""
-    page, _ = _open_modal(live_browser, state)
+    """Each state's own title and panel state.
+
+    A plot the server refuses (`swap_eligibility.eligible === false`) no longer gets the
+    `Cannot change worksite` refusal: per the maintainer's ruling ("we can stage ANYTHING",
+    worksite.js `worksiteStageOnly`) it opens the choose state with staging only, so the
+    refused case asserts that -- a Stage button and no live (broadcast) sign."""
+    page, selected = _open_modal(live_browser, state)
     panel = page.locator(".worksite-modal-panel")
-    assert panel.get_attribute("data-worksite-state") == state
-    prefix = {"choose": "Change worksite", "refused": "Cannot change worksite"}[state]
-    assert page.locator("#worksite-modal-title").inner_text().startswith(f"{prefix} — Plot ")
+    assert panel.get_attribute("data-worksite-state") == "choose"
+    assert _title_parts(page) == ("Change worksite", _plot_label(selected["uid"]))
+    if state == "refused":
+        assert page.locator(".worksite-modal-stage").count() == 1
+        assert page.locator("[data-worksite-action='broadcast']").count() == 0
     page.close()
 
 
@@ -210,22 +234,27 @@ def test_build_in_progress_offers_no_dialog(live_browser) -> None:
     row.click()
     expanded = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] .slot-editor')
     expanded.wait_for(timeout=30_000)
-    button = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] button.worksite-change-btn')
+    # the band's own harvest bar is drawn once the plot's details are in; only then can a cog be absent
+    page.locator(f'tr.expand-row[data-deed-uid="{uid}"] .slot-editor-footer .harvest-bar').wait_for(timeout=30_000)
+    button = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] [data-slot-action="open-worksite-modal"]')
     assert button.count() == 0
-    page.evaluate("() => document.querySelector('button.worksite-change-btn')?.click()")
+    page.evaluate("() => document.querySelector('[data-slot-action=\"open-worksite-modal\"]')?.click()")
     assert page.locator("#worksite-modal-overlay").count() == 0 or page.locator("#worksite-modal-overlay").is_hidden()
     page.close()
 
 
 def test_refused_state_is_narrow_and_has_no_confirm(live_browser) -> None:
     """Mutation: remove the refused/completion 34rem rule; red result: the refused panel measured 1090px wide and the <=700px assertion failed."""
+    # A refused plot is offered staging only now (see test_worksite_modal_state_title_and_panel_state):
+    # no live sign and no Time Crystal line; the Stage button takes the refusal's place.
     page, _ = _open_modal(live_browser, "refused")
     panel = page.locator(".worksite-modal-panel")
-    assert panel.bounding_box()["width"] <= 700
-    assert page.locator(".worksite-modal-confirm").is_hidden()
+    assert page.locator("[data-worksite-action='broadcast']").count() == 0
     assert page.locator(".worksite-modal-tc").is_hidden()
-    assert "cannot be changed" in page.locator(".worksite-modal-body").inner_text().lower()
+    assert page.locator(".worksite-modal-stage").is_visible()
+    width = panel.bounding_box()["width"]
     page.close()
+    assert width <= 700
 
 
 @pytest.mark.parametrize("state", ["choose", "refused", "completion"])

@@ -47,7 +47,8 @@ def _band_page(live_browser: tuple[Browser, str]) -> Page:
 def test_worksite_change_button_is_pointer_interactive(live_browser: tuple[Browser, str]) -> None:
     """MUTATION EVIDENCE: Injecting `pointer-events: none` on the footer button makes `button.click()` raise `TimeoutError: Locator.click: Timeout 5000ms exceeded` before the modal becomes visible."""
     page = _band_page(live_browser)
-    button = page.locator(f'tr.expand-row[data-deed-uid="{DEED}"] button.worksite-change-btn')
+    # the band's change-worksite control is the harvest-bar cog now (`.worksite-change-btn` is gone)
+    button = page.locator(f'tr.expand-row[data-deed-uid="{DEED}"] [data-slot-action="open-worksite-modal"]')
     button.wait_for(timeout=5_000)
     assert button.is_visible()
     assert button.is_enabled()
@@ -63,7 +64,8 @@ def test_worksite_change_button_is_pointer_interactive(live_browser: tuple[Brows
 def test_worksite_change_button_keyboard_path_still_works(live_browser: tuple[Browser, str]) -> None:
     """MUTATION EVIDENCE: Removing the footer button's delegated modal-open action makes `modal.wait_for(state="visible")` raise `TimeoutError` after Enter."""
     page = _band_page(live_browser)
-    button = page.locator(f'tr.expand-row[data-deed-uid="{DEED}"] button.worksite-change-btn')
+    # the band's change-worksite control is the harvest-bar cog now (`.worksite-change-btn` is gone)
+    button = page.locator(f'tr.expand-row[data-deed-uid="{DEED}"] [data-slot-action="open-worksite-modal"]')
     button.wait_for(timeout=5_000)
     button.focus()
     assert button.evaluate("element => document.activeElement === element")
