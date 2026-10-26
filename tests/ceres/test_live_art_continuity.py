@@ -156,6 +156,7 @@ def test_live_art_slot_order_and_fixed_frames(report, details_by_id, tmp_path):
                     const cell = band?.querySelectorAll('.slot-tile-cell')[4];
                     if (!cell) return;
                     observer.disconnect();
+                    cell.style.transition = 'none';  // the slot grid animates transform (.2s); the fault must land at once
                     cell.style.transform = 'translateX(4px)';
                   });
                   observer.observe(band, {attributes: true, childList: true, subtree: true});
