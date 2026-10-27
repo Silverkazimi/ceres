@@ -21,14 +21,33 @@ CSS = STATIC / "ceres.css"
 MENU = STATIC / "header-menu.js"
 
 # sha256 of each page's `<span class="player-switch" ...> ... </span>` block at 1.0.1 (HEAD before ), and of every
-# ceres.css line that styled the player field before . The maintainer's rule: keep it exactly as it is.
+# ceres.css line that styled the player field before . The maintainer's rule: keep it exactly as it is. Hashed without
+# comments and with whitespace runs collapsed (_code_lines): the public export rewrites comments (ticket ids, wording), and
+# this check must hold on the private tree and on the export alike; markup and rules are hashed byte for byte otherwise.
 PLAYER_SWITCH_SHA = {
-    "index.html": "b2d6c2a546fa9a481c1a8448fbc1c3c8bcadd3c011178f6fa0beb57e1810c5ad",
-    "cards.html": "1ce2d02c2b612976eb3a264c95a0d959ee694bea7029961916cfaa099b649c3c",
+    "index.html": "9f73f629607796631698eaaa1ae4f1416fab9f05a0791078570d17a7c13006b5",
+    "cards.html": "b9055defc9a666b6c3759710aa40c6d4410a2d667286f6919eb693d0409d83b0",
 }
-PLAYER_CSS_SHA = "7c631e807b3e2bb9e5b32292c9737510d9299ca1f775fd281e9170aa9f760568"
-BLOCK_MARK = " design 4 (maintainer go ) -- the desktop header"
+PLAYER_CSS_SHA = "ff399efb288d475f2cf5251ab49fad6e09463bf6298dd0c4c624de7fecca79c1"
+BLOCK_MARK = "the desktop header: logo, Menu, the page's name"
 DESKTOP = "html:not(.ceres-lw-le-1279)"
+
+
+def _code_lines(text: str) -> list[str]:
+    text = re.sub(r"<!--.*?-->|/\*.*?\*/", "", text, flags=re.S)
+    return [" ".join(line.split()) for line in text.splitlines() if line.strip()]
+
+
+def _selector_parts(selector: str) -> list[str]:
+    """Split a selector list at its top-level commas only (not the ones inside :is(...) / :not(...))."""
+    parts, depth, start = [], 0, 0
+    for index, char in enumerate(selector):
+        depth += char == "(" or -(char == ")")
+        if char == "," and depth == 0:
+            parts.append(selector[start:index])
+            start = index + 1
+    parts.append(selector[start:])
+    return [part.strip() for part in parts if part.strip()]
 
 
 def _player_switch(html: str) -> str:
@@ -57,15 +76,15 @@ def _header_row(html: str) -> str:
 def test_player_field_with_avatar_ring_is_the_same_markup_on_both_pages():
     for page in (INDEX, CARDS):
         block = _player_switch(page.read_text(encoding="utf-8"))
-        assert hashlib.sha256(block.encode()).hexdigest() == PLAYER_SWITCH_SHA[page.name], page.name
+        assert hashlib.sha256("\n".join(_code_lines(block)).encode()).hexdigest() == PLAYER_SWITCH_SHA[page.name], page.name
         assert 'id="player-avatar" class="player-avatar"' in block and 'id="player-input"' in block
 
 
 def test_player_field_css_is_unchanged_and_design_4_only_moves_it():
     css = CSS.read_text(encoding="utf-8")
-    before_block = css[:css.index(BLOCK_MARK)]
-    lines = "".join(line + "\n" for line in before_block.splitlines() if re.search(r"player-avatar|player-switch|player-input|player-go", line))
-    assert hashlib.sha256(lines.encode()).hexdigest() == PLAYER_CSS_SHA
+    before_block = css[:css.rfind("/*", 0, css.index(BLOCK_MARK))]
+    lines = [line for line in _code_lines(before_block) if re.search(r"player-avatar|player-switch|player-input|player-go", line)]
+    assert hashlib.sha256("\n".join(lines).encode()).hexdigest() == PLAYER_CSS_SHA
     touching = [(sel, body) for sel, body in _rules(_block()) if re.search(r"player-(avatar|switch|input|go)", sel)]
     assert touching == [(f"{DESKTOP} header.board-header .player-switch", "order: 5;")]
 
@@ -101,11 +120,15 @@ def test_desktop_rules_never_reach_the_phone_header():
             continue
         if selector.startswith(panel):
             continue  # the panel only opens from the desktop-only Menu button
-        assert all(part.strip().startswith(DESKTOP) for part in selector.split(",") if part.strip()), selector
+        assert all(part.startswith(DESKTOP) for part in _selector_parts(selector)), selector
     hides = {sel: body for sel, body in rules}
     assert hides[f"{DESKTOP} header.board-header :is(.ceres-page-switch, .cb-mode, #account-menu-btn)"] == "display: none;"
     assert hides[f'{DESKTOP} header.board-header #checkout-btn.is-icon-only:not([aria-expanded="true"])'] == "display: none;"
-    assert hides[f"{DESKTOP} body.card-browser .cb-controls label:has(#cb-mode-combine)"] == "display: none;"
+    # Find combinables: hidden on desktop by the Cards page's own sheet (ceres.css carries no .card-browser rule, )
+    cards_rules = dict(_rules((STATIC / "card-browser.css").read_text(encoding="utf-8")))
+    assert cards_rules[f"{DESKTOP} body.card-browser .cb-controls label:has(#cb-mode-combine)"] == "display: none;"
+    # the confirmation pill opens under the desktop header, so Changes stays clickable while a signed change is pending
+    assert hides[f"{DESKTOP} .ceres-pill.worksite-banner"] == "top: calc(var(--ceres-header-height, 4.25rem) + 0.5rem);"
     # the mobile stylesheet is not part of this change and keeps its phone scope (P-0)
     assert "hdr-menu" not in (STATIC / "mobile-plot.css").read_text(encoding="utf-8")
 

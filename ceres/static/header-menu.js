@@ -89,8 +89,9 @@ export function mountHeaderMenu(options = {}) {
     if (!open) return;
     const box = button.getBoundingClientRect();
     const header = button.closest('header')?.getBoundingClientRect();
-    panel.style.insetInlineStart = `${Math.round(box.left)}px`;
-    panel.style.insetBlockStart = `${Math.round((header ? header.bottom : box.bottom) + 8)}px`;
+    // unrounded: the panel's edge lines up with the Menu button's even when the header puts it on a fraction of a pixel
+    panel.style.insetInlineStart = `${box.left}px`;
+    panel.style.insetBlockStart = `${(header ? header.bottom : box.bottom) + 8}px`;
   };
   const entries = () => [...panel.querySelectorAll('[data-menu-entry]')];
   const setOpen = (next, { focusButton = false } = {}) => {

@@ -126,7 +126,12 @@ def _run(width: int, height: int) -> dict:
             page.keyboard.press("Escape")
             page.wait_for_function("document.getElementById('combine-dialog-overlay').hidden === true")
             after_close = page.evaluate("document.querySelector('#cx-list [data-cx-action=\"combine\"]')?.textContent || null")
-            page.uncheck("#cb-mode-combine", force=True)
+            if width > 1279:  # design 4: on desktop the pill is hidden; the way back is the Menu's My cards
+                page.click("#hdr-menu-btn")
+                page.locator("#hdr-menu [data-menu-entry='myCards']").click()
+                page.wait_for_function("document.body.dataset.cbMode === 'cards'", timeout=30000)
+            else:
+                page.uncheck("#cb-mode-combine", force=True)
             back = page.evaluate("() => ({ mode: document.body.dataset.cbMode, cards: document.getElementById('cb-mode-cards').getAttribute('aria-pressed') })")
             return {"header": header_modes, "mode": mode, "before": before, "after": after, "url_same": page.url == url_before,
                     "dialog": dialog, "after_close": after_close, "back": back, "errors": errors}

@@ -8421,8 +8421,10 @@ html:not(.ceres-lw-le-1279) header.board-header .player-switch { order: 5; }
 html:not(.ceres-lw-le-1279) header.board-header :is(.ceres-page-switch, .cb-mode, #account-menu-btn) { display: none; }
 /* Changes shows only while something is staged: the icon-only state (nothing staged) stays hidden unless its panel is open. */
 html:not(.ceres-lw-le-1279) header.board-header #checkout-btn.is-icon-only:not([aria-expanded="true"]) { display: none; }
-/* Find combinables is a Menu entry on desktop; the rest of the Cards filter row is unchanged. */
-html:not(.ceres-lw-le-1279) body.card-browser .cb-controls label:has(#cb-mode-combine) { display: none; }
+/* The confirmation pill (operations.js) opens under the desktop header, not over it: design 4 puts Changes in the header's
+ middle, where the pill's top edge and its Dismiss button sat, so a signed change could not reopen Changes while its
+ pill showed. Size, look and centring are unchanged; the phone keeps its own placement. */
+html:not(.ceres-lw-le-1279) .ceres-pill.worksite-banner { top: calc(var(--ceres-header-height, 4.25rem) + 0.5rem); }
 
 /* The Menu panel: a standard window (W-1) under the Menu button, one list in three columns. */
 .hdr-menu-panel {
