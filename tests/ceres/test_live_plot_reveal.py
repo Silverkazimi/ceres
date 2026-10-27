@@ -1084,10 +1084,12 @@ async def _g19(f, expect_cover_mutation=False, after_scene_mutation=None):
         hiddenByAria:!!run.closest('.editor-splinter-affinity').parentElement.closest('[aria-hidden="true"]'),controlsGated:!!band.querySelector('WORKSITE_CONTROL')?.closest('[inert]'),coverOverlap:overlap>0&&vertical>0,
         runTop:r.top,runBottom:r.bottom,coverTop:cr.top,coverBottom:cr.bottom};
     }""".replace("WORKSITE_CONTROL", WORKSITE_CONTROL))
+    # A red cover must reach its own geometry guard even if a separate exposure
+    # invariant also fails while the scene is held.
+    assert not early["coverOverlap"], "G19 worker cover excludes the full footer affinity run"
     assert early["veilParent"] and early["veilZ"] > early["mainZ"], "G19 scenic veil remains above the affinity stacking context"
     assert abs(early["height"] - f.reserved) <= 0.5 and not early["hiddenByAria"], (early, f.reserved)
     assert early["controlsGated"], "G19 worker controls remain gated during scenic release"
-    assert not early["coverOverlap"], "G19 worker cover excludes the full footer affinity run"
     await f.screenshot("badges-beneath-initial-veil")
     f.release("scene")
     await f.page.wait_for_function("() => {const n=document.querySelector('.editor-band .eos-scenic-veil');return n&&(n.hidden||getComputedStyle(n).opacity==='0')}",timeout=1200)
