@@ -22,11 +22,14 @@ rather than re-executed in a sandboxed slice."""
 
 from __future__ import annotations
 
+import io
 import json
+import re
 import urllib.parse
 import urllib.request
 
 import pytest
+from PIL import Image
 from playwright.sync_api import Browser
 
 from .conftest import spawn_live_ceres
@@ -41,18 +44,47 @@ def live_browser() -> tuple[Browser, str]:
         yield browser, base_url
 
 
+def _png() -> bytes:
+    buffer = io.BytesIO()
+    Image.new("RGBA", (4, 4), (90, 120, 60, 255)).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def _serve_land_art(page, missing: str | None = None) -> None:
+    """The public tree carries no game artwork (land/ art is downloaded or maintainer-side), and the
+    band only sets `--scene-worksite` once its image has decoded. Every land image request gets a
+    small stand-in image, so the URL the scene resolved is what the band shows; requests whose
+    path contains `missing` get a 404 instead, as for an image that is not there."""
+    body = _png()
+
+    def handler(route) -> None:
+        if missing and missing in route.request.url:
+            route.fulfill(status=404, body="")
+        else:
+            route.fulfill(status=200, content_type="image/png", body=body)
+
+    page.route("**/static/assets/land/**", handler)
+
+
 def _scene_worksite_url(page, base_url: str, deed_uid: str) -> str | None:
     page.goto(base_url)
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=30_000)
     page.locator(f"tr.plot-row[data-deed-uid='{deed_uid}']").click()
     band = page.locator(".editor-band")
     band.wait_for(timeout=30_000)
-    style = band.get_attribute("style") or ""
-    if "--scene-worksite: none" in style:
+    # The band is drawn with `--scene-worksite:none`; the plot-open sequence (eos.js applyScene)
+    # sets the resolved art once its scene images have settled, so read the value after the band
+    # leaves its "preparing" state.
+    page.wait_for_function(
+        "() => { const band = document.querySelector('.editor-band'); return !!band && band.dataset.plotState !== 'preparing'; }",
+        timeout=30_000,
+    )
+    value = band.evaluate("el => getComputedStyle(el).getPropertyValue('--scene-worksite').trim()")
+    if value in ("", "none"):
         return None
-    marker = "--scene-worksite: url('"
-    start = style.index(marker) + len(marker)
-    return style[start:style.index("')", start)]
+    match = re.fullmatch(r"""url\((["']?)(.*)\1\)""", value)
+    assert match, value
+    return match.group(2)
 
 
 def test_plot_mid_worksite_change_resolves_art_for_its_incoming_worksite(live_browser: tuple[Browser, str]) -> None:
@@ -71,7 +103,18 @@ def test_plot_mid_worksite_change_resolves_art_for_its_incoming_worksite(live_br
     if row is None:
         pytest.skip(f"maintainer snapshot no longer contains the one plot in this state ({MID_CHANGE_DEED})")
 
+    # A plot mid worksite-change shows the construction scaffold for its own terrain (art.js
+    # constructionOverlayFile), with the incoming worksite's finished art as the fallback layer.
     page = browser.new_page(viewport={"width": 1400, "height": 900})
+    _serve_land_art(page)
+    url = _scene_worksite_url(page, base_url, MID_CHANGE_DEED)
+    assert url is not None, "a plot mid worksite-change rendered as never-built land (no scene-worksite background)"
+    assert urllib.parse.urlsplit(url).path == "/static/assets/land/constructions/construction_forest.png", f"resolved the wrong construction art: {url}"
+    page.close()
+
+    # Without the scaffold image, the scene falls back to the incoming worksite's own art.
+    page = browser.new_page(viewport={"width": 1400, "height": 900})
+    _serve_land_art(page, missing="/land/constructions/")
     url = _scene_worksite_url(page, base_url, MID_CHANGE_DEED)
     assert url is not None, "a plot mid worksite-change rendered as never-built land (no scene-worksite background)"
     assert "wood" in url, f"resolved art for the wrong worksite: {url}"
@@ -97,6 +140,7 @@ def test_never_built_land_legitimately_has_no_worksite_art(live_browser: tuple[B
         pytest.skip("maintainer snapshot no longer contains a real never-built plot")
 
     page = browser.new_page(viewport={"width": 1400, "height": 900})
+    _serve_land_art(page)  # art is servable, so a `none` here is the resolver's, not a missing file's
     url = _scene_worksite_url(page, base_url, never_built["deed_uid"])
     assert url is None, f"never-built land rendered worksite art: {url}"
     page.close()
