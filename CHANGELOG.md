@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1
+
+- At window widths around 1290 px the board no longer opens as an empty table.
+- A worker portrait whose last download attempt times out shows its named fallback instead of staying on "Preparing worker art…".
+- When a plot opens, the splinter-affinity badges appear with the scene and are readable by screen readers; worker buttons still wait for the worker portraits.
+- Tests follow the current screens: the Changes panel without a Prepare step, the worksite status pill, and the large-board checks on a synthetic 6,303-deed board that runs in CI.
+
 ## 1.0.0
 
 First stable release of Ceres.
