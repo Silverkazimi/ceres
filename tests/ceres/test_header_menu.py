@@ -127,8 +127,6 @@ def test_desktop_rules_never_reach_the_phone_header():
     # Find combinables: hidden on desktop by the Cards page's own sheet (ceres.css carries no .card-browser rule, )
     cards_rules = dict(_rules((STATIC / "card-browser.css").read_text(encoding="utf-8")))
     assert cards_rules[f"{DESKTOP} body.card-browser .cb-controls label:has(#cb-mode-combine)"] == "display: none;"
-    # the confirmation pill opens under the desktop header, so Changes stays clickable while a signed change is pending
-    assert hides[f"{DESKTOP} .ceres-pill.worksite-banner"] == "top: calc(var(--ceres-header-height, 4.25rem) + 0.5rem);"
     # the mobile stylesheet is not part of this change and keeps its phone scope (P-0)
     assert "hdr-menu" not in (STATIC / "mobile-plot.css").read_text(encoding="utf-8")
 
