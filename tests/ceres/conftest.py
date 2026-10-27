@@ -29,6 +29,8 @@ from pathlib import Path
 
 import pytest
 
+from .stage_harness import hide_running_constructions
+
 
 @pytest.fixture(autouse=True)
 def _capture_in_process(monkeypatch):

@@ -8,6 +8,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import settle, spawn_live_ceres, wait_for_board
+from .stage_harness import hide_running_constructions
 
 
 @pytest.fixture(scope="module")
@@ -21,6 +22,12 @@ def _expand(page: Page, index: int) -> None:
     if row.locator("xpath=following-sibling::tr[1]").evaluate("node => node.style.display") == "none":
         row.click()
     page.locator("tr.expand-row").nth(index).locator(".slot-editor").wait_for(timeout=30_000)
+    # The editor first draws a loading skeleton (view-only empty tiles with a spinner)
+    # until the plot's details arrive; only then are its empty slots real.
+    page.wait_for_function(
+        f"!document.querySelectorAll('tr.expand-row')[{index}]?.querySelector('.slot-editor .slot-loading-spinner')",
+        timeout=30_000,
+    )
 
 
 def _candidate_name(candidate) -> str:
@@ -38,7 +45,7 @@ def _stage_worker(page: Page, index: int, used_name: str | None = None) -> tuple
     worker = expanded.locator(".slot-group[data-group-id='worker']")
     if int(worker.locator(".slot-group-count").inner_text().split("/")[1]) == 0:
         raise AssertionError("selected plot has no worker capacity")
-    empty = worker.locator(".slot-grid .slot-tile.is-empty").first
+    empty = worker.locator(".slot-grid > .slot-tile-cell > .slot-tile.is-empty:not(.is-view-only)").first
     assert empty.count() == 1
     with page.expect_request("**/api/plots/*/candidates*"):
         empty.click()
@@ -136,6 +143,7 @@ def test_game_refusal_aborts_later_checkout_chunks(live_browser: tuple[Browser, 
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(_counting_keychain())
+    hide_running_constructions(page)
     page.goto(base_url)
     wait_for_board(page)
     deed_a, deed_b = _stage_two_workers(page)
@@ -162,7 +170,6 @@ def test_game_refusal_aborts_later_checkout_chunks(live_browser: tuple[Browser, 
     )
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
     page.wait_for_function("window.__hkRefusalBroadcastCount === 1", timeout=30_000)
@@ -191,6 +198,7 @@ def test_polled_game_refusal_is_handled_without_an_unhandled_rejection(
     page.add_init_script(_counting_keychain())
     page_errors: list[str] = []
     page.on("pageerror", lambda error: page_errors.append(str(error)))
+    hide_running_constructions(page)
     page.goto(base_url)
     wait_for_board(page)
     deed_a = _stage_one_worker(page)
@@ -219,7 +227,6 @@ def test_polled_game_refusal_is_handled_without_an_unhandled_rejection(
     page.route("**/api/op-verify*", verify)
     page.locator("#checkout-btn").click()
     panel = page.locator("#checkout-panel")
-    panel.locator("button[data-checkout-action='prepare']").click()
     panel.locator(".op-preview-review").wait_for(timeout=30_000)
     panel.locator("button[data-op-action='confirm']").click()
     page.wait_for_function("window.__hkRefusalBroadcastCount === 1", timeout=30_000)

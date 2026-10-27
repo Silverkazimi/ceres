@@ -13,6 +13,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import settle, spawn_live_ceres, wait_for_board
+from .stage_harness import hide_running_constructions
 
 
 @pytest.fixture(scope="module")
@@ -26,6 +27,7 @@ def _page(live_browser: tuple[Browser, str], *, compressed_schedule: bool = Fals
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     if compressed_schedule:
         page.add_init_script("window.__ceresOperationPollSchedule = [10, 20, 30, 40, 50, 60];")
+    hide_running_constructions(page)
     page.goto(f"{base_url}?ir1882-guard=1" if compressed_schedule else base_url)
     wait_for_board(page)
     return page
@@ -39,7 +41,8 @@ def _runi_plot(page: Page) -> tuple[int, str, dict]:
         expanded = page.locator("tr.expand-row").nth(index)
         expanded.locator(".editor-band[data-plot-state='ready']").wait_for(timeout=30_000)
         runi_tile = expanded.locator(
-            ".slot-power[data-power-state='both'], .slot-power[data-power-state='runi-only']"
+            # a Power Core still staked beside the Runi: removing the Runi leaves the Core alone
+            ".slot-power[data-power-state='both']"
         )
         if runi_tile.count() != 1:
             continue

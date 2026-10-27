@@ -25,6 +25,12 @@ function revealNodes(frame) {
   return [...(frame?.querySelectorAll('[data-reveal-group]:not([data-eos-permanent-frame])') || [])];
 }
 
+function gatedControlChildren(node) {
+  // The affinity run shares this row with worker actions but remains readable during their hold.
+  return node.matches('.slot-group-controls[data-reveal-group="controls"]')
+    ? [...node.children].filter((child) => !child.matches('.editor-splinter-affinity')) : [];
+}
+
 export function configureEos(callbacks) {
   hooks = callbacks;
   let viewportWidth = hooks.geometry().width;
@@ -368,9 +374,12 @@ function settleWorkers(session, revision) {
     const frame = session.mountedFrame;
     frame?.querySelector('.eos-worker-cover')?.setAttribute('hidden', '');
     const groups = revealNodes(frame);
-    groups.forEach((node) => { node.inert = false; node.removeAttribute('aria-hidden'); node.style.visibility = ''; });
+    groups.forEach((node) => {
+      node.inert = false; node.removeAttribute('aria-hidden'); node.style.visibility = '';
+      gatedControlChildren(node).forEach((child) => { child.inert = false; child.removeAttribute('aria-hidden'); child.style.visibility = ''; });
+    });
     setStatus(session);
-    groups.forEach((node) => animate(session, node, [{ opacity: 0 }, { opacity: 1 }], {
+    groups.flatMap((node) => gatedControlChildren(node).length ? gatedControlChildren(node) : [node]).forEach((node) => animate(session, node, [{ opacity: 0 }, { opacity: 1 }], {
       duration: 220, delay: Math.min(3, Number(node.dataset.revealWave || 0)) * 35, fill: 'backwards', easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
     }));
   };
@@ -982,7 +991,15 @@ export function mountPlotPresentation(row, frame, { dataReady = false, error = n
   frame.dataset.openEpoch = String(session.openEpoch);
   frame.dataset.artRevision = String(session.artRevision);
   frame.querySelector('[data-reveal-footer]')?.querySelectorAll(':scope > :not([data-terrain-affinity])').forEach((node) => { node.dataset.revealGroup = 'controls'; });
-  revealNodes(frame).forEach((node) => { node.inert = !session.terminalReplacement; node.setAttribute('aria-hidden', String(!session.terminalReplacement)); node.style.visibility = session.terminalReplacement ? '' : 'hidden'; });
+  revealNodes(frame).forEach((node) => {
+    const children = gatedControlChildren(node);
+    if (children.length) {
+      node.inert = false; node.removeAttribute('aria-hidden'); node.style.visibility = session.terminalReplacement ? '' : 'visible';
+      children.forEach((child) => { child.inert = !session.terminalReplacement; child.setAttribute('aria-hidden', String(!session.terminalReplacement)); child.style.visibility = session.terminalReplacement ? '' : 'hidden'; });
+    } else {
+      node.inert = !session.terminalReplacement; node.setAttribute('aria-hidden', String(!session.terminalReplacement)); node.style.visibility = session.terminalReplacement ? '' : 'hidden';
+    }
+  });
   const detailScaffold = frame.hasAttribute('data-eos-detail-scaffold');
   frame.querySelectorAll('[data-eos-permanent-frame]').forEach((node) => { node.inert = detailScaffold; node.setAttribute('aria-hidden', String(detailScaffold)); node.style.visibility = ''; });
   frame.querySelector('.eos-worker-cover')?.setAttribute('hidden', '');

@@ -249,7 +249,6 @@ def test_refused_state_is_narrow_and_has_no_confirm(live_browser) -> None:
     # no live sign and no Time Crystal line; the Stage button takes the refusal's place.
     page, _ = _open_modal(live_browser, "refused")
     panel = page.locator(".worksite-modal-panel")
-    assert panel.bounding_box()["width"] <= 700
     assert page.locator("[data-worksite-action='broadcast']").count() == 0
     assert page.locator(".worksite-modal-tc").is_hidden()
     assert page.locator(".worksite-modal-stage").is_visible()

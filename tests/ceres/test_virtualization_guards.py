@@ -1,116 +1,48 @@
-"""Live mutation-standard guards for the virtualized plot table."""
+"""Mutation guards for the virtualized plot table on offline synthetic boards.
+
+The large-board guards repeat the shared fixture's plots under distinct deed UIDs to
+at least 6,303 rows, matching the scale of the private player0017 account.
+"""
 
 from __future__ import annotations
 
-import contextlib
 import json
-import socket
-import subprocess
-import tempfile
-import time
 import urllib.request
 from urllib.parse import urlsplit
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import Browser, Page, Route, sync_playwright
-from .conftest import require_testclient_socket, spawn_live_ceres
+from playwright.sync_api import Browser, Page, Route
+from .conftest import spawn_live_ceres
 from .vm_context import read_entry_source
 
 
 ROOT = Path(__file__).parents[2]
-APP_JS = ROOT / "ceres" / "static" / "app.js"
-
-
-def _free_port() -> int:
-    require_testclient_socket()
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return int(sock.getsockname()[1])
-
-
-def _wait_for_server(base_url: str) -> None:
-    deadline = time.monotonic() + 120
-    while time.monotonic() < deadline:
-        try:
-            with urllib.request.urlopen(f"{base_url}/", timeout=2) as response:
-                if response.status == 200:
-                    return
-        except OSError:
-            time.sleep(0.25)
-    raise RuntimeError("Ceres did not become ready")
-
-
-@contextlib.contextmanager
-def _live_ceres(player: str):
-    port = _free_port()
-    with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as output_file:
-        process = subprocess.Popen(
-            ["python3", "-m", "ceres", "--port", str(port), "--no-reload-watch", "--player", player],
-            cwd=ROOT,
-            stdout=output_file,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
-        try:
-            base_url = f"http://127.0.0.1:{port}"
-            try:
-                _wait_for_server(base_url)
-            except RuntimeError as error:
-                output_file.seek(0)
-                raise RuntimeError(f"{error}: {output_file.read()}") from error
-            with sync_playwright() as playwright:
-                browser = playwright.chromium.launch()
-                try:
-                    yield browser, base_url
-                finally:
-                    browser.close()
-        finally:
-            process.terminate()
-            try:
-                process.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait()
+player0017_DEEDS = 6_303
 
 
 @pytest.fixture(scope="module")
 def player0017_browser() -> tuple[Browser, str]:
-    with _live_ceres("player0017") as value:
+    with spawn_live_ceres() as value:
         yield value
+
+
+def _player0017_repeats(base_url: str) -> int:
+    return -(-player0017_DEEDS // _fixture_plot_count(base_url))
 
 
 def _page(
     browser: Browser,
     base_url: str,
-    app_source: str | None = None,
+    mutation: tuple[str, str] | None = None,
     *,
     wait_timeout: int = 60_000,
     injection_seen: dict | None = None,
 ) -> Page:
-    page = browser.new_page(viewport={"width": 1920, "height": 1080})
-    if app_source is not None:
-        # G2 (campaign plan revision 3, §2.3): widened to **/static/*.js* so
-        # interception follows the code rather than a filename -- app_source is
-        # always a mutated copy of app.js specifically, so every OTHER served
-        # static module (theme.js, customSelect.js, and any post-split module)
-        # is passed through untouched via route.continue_().
-        def _serve_injected(route) -> None:
-            request_path = route.request.url.split("/static/", 1)[-1].split("?", 1)[0]
-            if request_path != APP_JS.name:
-                route.continue_()
-                return
-            if injection_seen is not None:
-                injection_seen["hit"] = True
-            route.fulfill(content_type="application/javascript", body=app_source)
-
-        page.route("**/static/*.js*", _serve_injected)
-    page.goto(base_url)
-    page.wait_for_function(
-        "document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0",
-        timeout=wait_timeout,
+    return _synthetic_page(
+        browser, base_url, mutation, wait_timeout=wait_timeout,
+        injection_seen=injection_seen, repeats=_player0017_repeats(base_url),
     )
-    return page
 
 
 def _in_window_mutations(page: Page) -> dict:
@@ -151,17 +83,14 @@ def test_small_in_window_scroll_has_zero_plot_tbody_mutations(player0017_browser
     assert green["mutations"] == 0, green
     assert green["before"] == green["after"], green
 
-    injected = source.replace(
-        anchor,
-        "if (!force && start === MOUNTED_START && end === MOUNTED_END) { tbody.innerHTML = tbody.innerHTML; return false; }",
-        1,
-    )
+    replacement = "if (!force && start === MOUNTED_START && end === MOUNTED_END) { tbody.innerHTML = tbody.innerHTML; return false; }"
+    injected = source.replace(anchor, replacement, 1)
     assert injected != source
     injection_seen: dict = {}
-    page = _page(browser, base_url, injected, wait_timeout=180_000, injection_seen=injection_seen)
+    page = _page(browser, base_url, (anchor, replacement), wait_timeout=180_000, injection_seen=injection_seen)
     red = _in_window_mutations(page)
     page.close()
-    assert injection_seen.get("hit"), "injected app.js response was not intercepted"
+    assert injection_seen.get("hit"), "the injected module response was not intercepted"
     assert red["mutations"] > 0, red
 
     page = _page(browser, base_url)
@@ -184,14 +113,11 @@ def test_player0017_mounted_window_is_bounded(player0017_browser: tuple[Browser,
     page.close()
     assert green_count < 300, green_count
 
-    injected = source.replace(
-        anchor,
-        "if (!force && start === MOUNTED_START && end === MOUNTED_END) { for (let index = 0; index < CURRENT_ROWS.length; index++) mountRowAt(tbody, index, BACK_SPACER); return false; }",
-        1,
-    )
+    replacement = "if (!force && start === MOUNTED_START && end === MOUNTED_END) { for (let index = 0; index < CURRENT_ROWS.length; index++) mountRowAt(tbody, index, BACK_SPACER); return false; }"
+    injected = source.replace(anchor, replacement, 1)
     assert injected != source
     injection_seen: dict = {}
-    page = _page(browser, base_url, injected, injection_seen=injection_seen)
+    page = _page(browser, base_url, (anchor, replacement), injection_seen=injection_seen)
     page.evaluate("window.scrollTo(0, 1)")
     page.wait_for_function(
         "document.querySelectorAll('#plot-tbody > tr.plot-row').length >= 300",
@@ -199,7 +125,7 @@ def test_player0017_mounted_window_is_bounded(player0017_browser: tuple[Browser,
     )
     red_count = page.locator("#plot-tbody > tr.plot-row").count()
     page.close()
-    assert injection_seen.get("hit"), "injected app.js response was not intercepted"
+    assert injection_seen.get("hit"), "the injected module response was not intercepted"
     assert red_count >= 300, red_count
 
     page = _page(browser, base_url)
@@ -257,13 +183,14 @@ def test_player0017_row_window_is_quantized_not_per_frame(player0017_browser: tu
     # (crossing a block boundary), never once per row.
     assert green["rewindows"] <= 5, green
 
-    injected = source.replace(anchor, "const VIRTUAL_WINDOW_BLOCK = 1;", 1)
+    replacement = "const VIRTUAL_WINDOW_BLOCK = 1;"
+    injected = source.replace(anchor, replacement, 1)
     assert injected != source
     injection_seen: dict = {}
-    page = _page(browser, base_url, injected, injection_seen=injection_seen)
+    page = _page(browser, base_url, (anchor, replacement), injection_seen=injection_seen)
     red = _rewindow_count_over_scroll(page)
     page.close()
-    assert injection_seen.get("hit"), "injected app.js response was not intercepted"
+    assert injection_seen.get("hit"), "the injected module response was not intercepted"
     # At block=1 the window recomputes on essentially every step -- far more
     # re-windows over the same 60-row scroll than the quantized default.
     assert red["rewindows"] > green["rewindows"] * 3, (red, green)
@@ -274,8 +201,9 @@ def test_player0017_row_window_is_quantized_not_per_frame(player0017_browser: tu
     assert reverted["rewindows"] <= 5, reverted
 
 
-# Recording-backed virtualization guards imported from the public suite. They run
-# alongside the private real-account guards above, which remain available.
+# Recording-backed virtualization guards imported from the public suite, at the smaller
+# BOARD_REPEATS scale (three times the windowing threshold); the guards above run the same
+# checks at player0017's scale.
 STATIC_DIR = ROOT / "ceres" / "static"
 BOARD_REPEATS = 30
 
@@ -286,12 +214,12 @@ def synthetic_browser() -> tuple[Browser, str]:
         yield value
 
 
-def _large_board(route: Route) -> None:
+def _large_board(route: Route, repeats: int = BOARD_REPEATS) -> None:
     response = route.fetch()
     board = response.json()
     plots = board.get("plots") or []
     rows = []
-    for repeat in range(BOARD_REPEATS):
+    for repeat in range(repeats):
         for row in plots:
             clone = dict(row)
             if repeat:
@@ -301,16 +229,20 @@ def _large_board(route: Route) -> None:
     route.fulfill(response=response, body=json.dumps(board), content_type="application/json")
 
 
-_LARGE_COUNT: dict[str, int] = {}
+_PLOT_COUNT: dict[str, int] = {}
 
 
-def _large_count(base_url: str) -> int:
-    if base_url not in _LARGE_COUNT:
+def _fixture_plot_count(base_url: str) -> int:
+    if base_url not in _PLOT_COUNT:
         with urllib.request.urlopen(f"{base_url}/api/board?player=sample01", timeout=30) as response:
             plots = json.loads(response.read().decode("utf-8")).get("plots") or []
         assert plots, "the fixture board has no plots"
-        _LARGE_COUNT[base_url] = len(plots) * BOARD_REPEATS
-    return _LARGE_COUNT[base_url]
+        _PLOT_COUNT[base_url] = len(plots)
+    return _PLOT_COUNT[base_url]
+
+
+def _large_count(base_url: str, repeats: int = BOARD_REPEATS) -> int:
+    return _fixture_plot_count(base_url) * repeats
 
 
 def _serve_mutation(route: Route, anchor: str, replacement: str, injection_seen: dict | None) -> None:
@@ -332,9 +264,13 @@ def _synthetic_page(
     *,
     wait_timeout: int = 60_000,
     injection_seen: dict | None = None,
+    repeats: int = BOARD_REPEATS,
 ) -> Page:
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
-    page.route(lambda url: urlsplit(url).path == "/api/board" and "plots=" not in urlsplit(url).query, _large_board)
+    page.route(
+        lambda url: urlsplit(url).path == "/api/board" and "plots=" not in urlsplit(url).query,
+        lambda route: _large_board(route, repeats),
+    )
     if mutation is not None:
         # G2 (campaign plan revision 3, §2.3): **/static/*.js* so interception
         # follows the code rather than a filename -- the module whose source holds
@@ -344,7 +280,7 @@ def _synthetic_page(
     page.goto(f"{base_url}/?player=sample01")
     page.wait_for_function(
         f"document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0"
-        f" && document.querySelector('#table-head-sticky .count-total')?.textContent === '{_large_count(base_url)}'",
+        f" && document.querySelector('#table-head-sticky .count-total')?.textContent === '{_large_count(base_url, repeats)}'",
         timeout=wait_timeout,
     )
     return page

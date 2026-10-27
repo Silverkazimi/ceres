@@ -136,7 +136,6 @@ def _confirmed_worksite(live_browser: tuple[Browser, str]) -> tuple[Page, object
         verdict = page.locator("#ceres-confirmation-banner.is-confirmed")
         verdict.wait_for(state="visible", timeout=30_000)
         assert page.locator("#worksite-banner").count() == 0
-        assert modal.locator("[data-worksite-verdict]").count() == 1
         assert page.locator("#ceres-confirmation-banner").count() == 1
         return page, verdict, selected_label["value"] or ""
     pytest.fail("no live worksite-change button offered a selectable worksite")
@@ -153,11 +152,10 @@ def test_worksite_confirmation_copy_has_no_forbidden_phrases(live_browser) -> No
 
 def test_worksite_confirmation_copy_never_a_bare_success_or_done(live_browser) -> None:
     """Injected defect: set the live verdict title to bare `Done`; expected red assertion: its title is not one of the forbidden bare labels."""
-    page, modal, _ = _confirmed_worksite(live_browser)
-    for element in (modal.locator(".worksite-verdict-title"), modal.locator(".worksite-verdict-detail")):
-        assert element.inner_text() not in {"Success", "Done"}
-    for element in (modal.locator(".worksite-banner-title"), modal.locator(".worksite-banner-detail")):
+    page, pill, _ = _confirmed_worksite(live_browser)
+    for element in (pill.locator(".worksite-banner-title"), pill.locator(".worksite-banner-detail")):
         assert element.inner_text().strip() not in {"Success", "Done"}
+    assert (pill.locator(".worksite-banner-detail").get_attribute("title") or "").strip() not in {"Success", "Done"}
     page.close()
 
 
@@ -169,7 +167,6 @@ def test_worksite_confirmation_no_longer_auto_closes_the_modal(live_browser) -> 
     page, modal, _ = _confirmed_worksite(live_browser)
     settle(page)
     assert modal.is_visible()
-    assert modal.locator("[data-worksite-verdict]").is_visible()
     assert modal.locator(".worksite-banner-title").is_visible()
     page.close()
 
@@ -177,13 +174,11 @@ def test_worksite_confirmation_no_longer_auto_closes_the_modal(live_browser) -> 
 def test_worksite_confirmed_copy_names_the_build_not_a_finished_state(live_browser) -> None:
     """Injected defect: replace the live detail with `Worksite changed`; expected red assertion: the rendered detail no longer names the building work in progress."""
     page, modal, selected_label = _confirmed_worksite(live_browser)
-    original_detail = modal.locator(".worksite-verdict-detail").inner_text()
-    assert "is now building" in original_detail
-    assert selected_label in original_detail
     # The pill's detail line is shortened (its full text is the line's title); the worksite being
     # built is named by the pill's WHAT fact.
-    detail = modal.locator(".worksite-banner-detail").get_attribute("title") or ""
-    assert "build has started" in detail
+    detail_pill = modal.locator(".worksite-banner-detail")
+    detail = detail_pill.get_attribute("title") or ""
+    assert "build has started" in (detail_pill.inner_text() + " " + detail)
     assert modal.locator("[data-fact='what'] .ceres-pill-value").inner_text().strip() == f"Change to {selected_label}"
     assert "active" not in detail.lower()
     page.close()
