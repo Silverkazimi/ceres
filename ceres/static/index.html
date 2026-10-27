@@ -157,6 +157,11 @@
  the owner is now reacting to. -->
   <div class="board-header-rows">
   <div class="board-header-row">
+  <!-- design 4 (maintainer go ): desktop only (ceres.css shows these two outside the phone tier, P-0). Menu opens one
+ list of the places and tools (header-menu.js); the name beside it is the page you are on. The player field, its avatar
+ and its go button below stay exactly as they are; on desktop they only move to the right end of the row (CSS order). -->
+  <button type="button" id="hdr-menu-btn" class="hdr-menu-btn ceres-btn ceres-btn--secondary" data-control-density="header" aria-haspopup="dialog" aria-expanded="false" aria-pressed="false" aria-controls="hdr-menu"><svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Menu</span></button>
+  <h1 id="hdr-place" class="hdr-place">Plots</h1>
   <span class="player-switch" data-tip="Switch player" data-tip-body="Type a player's name and press Enter to load their plots instead." aria-label="Switch player. Type a player's name and press Enter to load their plots instead.">
     <!-- the account's avatar medallion, left of the field (board.js syncPlayerAvatar). -->
     <button type="button" id="player-avatar" class="player-avatar" aria-label="Refresh board" data-tip="Refresh board" data-tip-body="Refresh board data while preserving filters and staged changes" hidden></button>
@@ -164,8 +169,8 @@
     <button class="player-go-btn ceres-btn ceres-btn--primary" data-control-density="header" data-control-mode="icon" id="player-go-btn" aria-label="Switch player"><svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><circle class="f" cx="8.6" cy="7.2" r="3.9"/><path class="f" d="M1.8 20.2c.5-4.3 3.3-7 6.8-7s6.3 2.7 6.8 7z"/><path class="d" d="M6.9 13.8 8.6 16l1.7-2.2"/><path class="a" d="M14.6 9.4h4.2V6.8l4.2 4.2-4.2 4.2v-2.6h-4.2z"/></svg><span class="spinner spinner-sm" id="player-loading" aria-hidden="true" hidden></span></button>
     <button type="button" id="account-menu-btn" class="account-menu-btn ceres-btn ceres-btn--primary" data-control-density="header" data-control-mode="icon" aria-haspopup="true" aria-expanded="false" aria-controls="account-menu" data-tip="Account" data-tip-body="Choose your wallet and, if you like, sign in to save your routing setup across devices." aria-label="Account menu"><img class="wallet-logo" src="/static/vendor/wallet/keychain.svg" alt="" aria-hidden="true"></button>
   </span>
-  <button type="button" class="harvest-header-btn ceres-btn ceres-btn--primary" data-control-density="header" data-control-mode="icon" id="harvest-btn" aria-haspopup="dialog" data-tip="Harvest" data-tip-body="Review and harvest your regions." aria-label="Harvest. Review and harvest your regions.">
-    <svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><path class="f" d="M9 15.8C5.4 11.6 7 4.7 13.5 3.3c4.7-1 8 2.2 7.2 6.1-1.4-2.4-4-3.3-6.5-2.5-3.6 1.1-5 5-3.5 8.3z"/><path class="d" d="M10.9 13.6c-.9-2.9.7-6.2 3.6-7.1"/><path class="a h" d="M9.4 15.3 3.6 21.1"/></svg>
+  <button type="button" class="harvest-header-btn ceres-btn ceres-btn--primary" data-control-density="header" id="harvest-btn" aria-haspopup="dialog" data-tip="Harvest" data-tip-body="Review and harvest your regions." aria-label="Harvest. Review and harvest your regions.">
+    <svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><path class="f" d="M9 15.8C5.4 11.6 7 4.7 13.5 3.3c4.7-1 8 2.2 7.2 6.1-1.4-2.4-4-3.3-6.5-2.5-3.6 1.1-5 5-3.5 8.3z"/><path class="d" d="M10.9 13.6c-.9-2.9.7-6.2 3.6-7.1"/><path class="a h" d="M9.4 15.3 3.6 21.1"/></svg><span class="hdr-label">Harvest</span><!-- the word shows on desktop (the phone hides this button) -->
   </button>
   <div class="checkout-dock" id="checkout-dock">
     <button class="checkout-btn ceres-btn ceres-btn--primary" data-control-density="header" id="checkout-btn" data-checkout-action="toggle" aria-controls="checkout-panel" aria-expanded="false" data-tip="Changes" hidden>

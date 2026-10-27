@@ -45,9 +45,15 @@ export function accountMenuHtml(account = walletAccount()) {
   return `${main}${!signedIn && state.note ? `<p class="acct-note acct-warn" role="status">${esc(state.note)}</p>` : ''}${state.done ? `<p class="acct-note acct-state" role="status">${esc(state.done)}</p>` : ''}${manage}<p class="acct-note acct-privacy"><a href="/static/privacy.html" target="_blank" rel="noopener">What Ceres keeps about you</a></p>`;
 }
 
+// design 4: on desktop the account button is hidden (Account is a Menu entry), so the panel hangs from the Menu
+// button and focus goes back there; on the phone, and wherever the account button is shown, nothing changes.
+function anchor() {
+  return (button?.getClientRects?.().length ? button : document.getElementById('hdr-menu-btn')) || button;
+}
+
 function place() {
   if (!panel || !button) return;
-  const box = button.getBoundingClientRect();
+  const box = anchor().getBoundingClientRect();
   panel.style.insetBlockStart = `${Math.round(box.bottom + 6)}px`;
   const left = Math.max(8, Math.round(Math.min(box.left + box.width / 2 - panel.offsetWidth + 28, window.innerWidth - panel.offsetWidth - 8)));
   panel.style.insetInlineStart = `${left}px`;
@@ -72,7 +78,7 @@ function render() {
   place();
 }
 
-function close() { if (state.open) { state.open = false; render(); button?.focus?.({ preventScroll: true }); } }
+function close() { if (state.open) { state.open = false; render(); anchor()?.focus?.({ preventScroll: true }); } }
 
 async function player0014() {
   const account = walletAccount();

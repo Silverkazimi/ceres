@@ -8390,3 +8390,57 @@ html:not(.ceres-lw-le-1279) table.plot-table th[data-key] .sort-chevron, html:no
   .board-logo > .ceres-local-marker { left: auto; right: 0.1rem; top: 0.45rem; transform: none; inline-size: 0.7rem; block-size: 0.7rem; padding: 0; gap: 0; border-width: 2px; background: var(--warn); box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg) 70%, transparent); font-size: 0; }
   .ceres-local-marker-id, .ceres-local-marker-text, .ceres-local-marker-short { display: none; }
 }
+
+/* ==========================================================================
+ design 4 (maintainer go ) -- the desktop header: logo, Menu, the page's name; at the right Changes (only while
+ something is staged), Harvest and the player field with its avatar and go button. The Plots | Cards switcher, the My cards /
+ Market / My purchases buttons and Account live in the Menu panel (header-menu.js) and are only hidden here, never removed:
+ the phone header (html.ceres-lw-le-1279, P-0) keeps every one of them exactly as before, and none of these rules reaches
+ it. The player switch is the same element as before (same markup, avatar ring and handlers); `order` only moves it to the
+ row's end. Header height, painted sky, the Iris dock and the wallet edge tabs are untouched.
+ ========================================================================== */
+/* outside desktop the new elements are not drawn; the header context outranks buttons.css `.ceres-btn { display: inline-flex }`, which loads later */
+header.board-header :is(.hdr-menu-btn, .hdr-place, .hdr-label) { display: none; }
+html:not(.ceres-lw-le-1279) header.board-header .board-header-rows { justify-content: flex-start; }
+html:not(.ceres-lw-le-1279) header.board-header .board-header-row { flex: 1 1 auto; gap: 0.5rem; }
+html:not(.ceres-lw-le-1279) header.board-header .hdr-menu-btn { display: inline-flex; order: 1; white-space: nowrap; }
+html:not(.ceres-lw-le-1279) header.board-header .hdr-place {
+  display: block; order: 2; margin: 0 auto 0 0.5rem; white-space: nowrap;
+  font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; line-height: 1.25; color: var(--heading);
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--shadow) 80%, transparent), 0 0 12px color-mix(in srgb, var(--shadow) 55%, transparent);
+}
+/* d4c (): on Light and Wood the dark name does not read on the bright clouds; a quiet label chip from Iris tokens. */
+html:not(.ceres-lw-le-1279):is([data-theme="light"], [data-theme="wood"]) header.board-header .hdr-place {
+  padding: 0.15rem 0.7rem; margin-inline-start: 0.35rem; text-shadow: none;
+  background: color-mix(in srgb, var(--bg2) 86%, transparent); border: 1px solid var(--border); border-radius: var(--radius);
+}
+html:not(.ceres-lw-le-1279) header.board-header :is(.checkout-dock, .cm-cart-btn) { order: 3; }
+html:not(.ceres-lw-le-1279) header.board-header .harvest-header-btn { order: 4; white-space: nowrap; }
+html:not(.ceres-lw-le-1279) header.board-header .harvest-header-btn > .hdr-label { display: inline; }
+html:not(.ceres-lw-le-1279) header.board-header .player-switch { order: 5; }
+html:not(.ceres-lw-le-1279) header.board-header :is(.ceres-page-switch, .cb-mode, #account-menu-btn) { display: none; }
+/* Changes shows only while something is staged: the icon-only state (nothing staged) stays hidden unless its panel is open. */
+html:not(.ceres-lw-le-1279) header.board-header #checkout-btn.is-icon-only:not([aria-expanded="true"]) { display: none; }
+/* Find combinables is a Menu entry on desktop; the rest of the Cards filter row is unchanged. */
+html:not(.ceres-lw-le-1279) body.card-browser .cb-controls label:has(#cb-mode-combine) { display: none; }
+
+/* The Menu panel: a standard window (W-1) under the Menu button, one list in three columns. */
+.hdr-menu-panel {
+  position: fixed; z-index: 60; box-sizing: border-box; inline-size: 720px; padding: 1rem;
+  background: var(--bg2); border: 1px solid var(--border-bright); border-radius: var(--radius);
+  box-shadow: 0 18px 60px color-mix(in srgb, var(--shadow) 70%, transparent);
+}
+.hdr-menu-panel[hidden] { display: none; }
+.hdr-menu-top { display: flex; align-items: center; justify-content: space-between; margin-block-end: 0.75rem; }
+.hdr-menu-top h2 { margin: 0; font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; line-height: 1.25; color: var(--heading); }
+.hdr-menu-top svg { inline-size: 1.2rem; block-size: 1.2rem; }
+.hdr-menu-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.hdr-menu-cols h3 { margin: 0 0 0.5rem; font-family: var(--font-body); font-size: 0.75rem; font-weight: 700; line-height: 1.25; color: var(--meta); letter-spacing: 0.04em; text-transform: uppercase; }
+.hdr-menu-cols ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.hdr-menu-cols li { display: flex; flex-direction: column; }
+.hdr-menu-entry { justify-content: flex-start; }
+.hdr-menu-entry > .hdr-ic { inline-size: 1.2rem; block-size: 1.2rem; flex: 0 0 1.2rem; }
+.hdr-menu-entry > .hdr-menu-img { object-fit: contain; }
+.hdr-menu-txt { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; min-inline-size: 0; }
+.hdr-menu-name { font-family: var(--font-body); font-size: 0.8rem; font-weight: 700; line-height: 1.25; }
+.hdr-menu-desc { font-family: var(--font-body); font-size: 0.7rem; font-weight: 400; line-height: 1.25; color: var(--meta); white-space: nowrap; }

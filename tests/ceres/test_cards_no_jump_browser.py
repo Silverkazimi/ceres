@@ -150,7 +150,10 @@ def _run(width: int, height: int, mode: str) -> dict:
 
 
 def _header_only(shift: dict) -> bool:
-    return bool(shift["nodes"]) and all(n.startswith("DIV#.board-header-row") for n in shift["nodes"])
+    # design 4: the desktop header row spans the width, so the controls at its right end (Harvest, the player field)
+    # are what the late --hdr-pad-right moves, not the row itself; they are the same known header slide (xfail below).
+    header = ("DIV#.board-header-row", "SPAN#.player-switch", "BUTTON#cb-harvest-btn.", "BUTTON#cm-cart-btn.")
+    return bool(shift["nodes"]) and all(n.startswith(header) for n in shift["nodes"])
 
 
 @pytest.mark.xfail(strict=True, reason=" header row: card-browser.js placeThemeDock() sets --hdr-pad-right from the measured "

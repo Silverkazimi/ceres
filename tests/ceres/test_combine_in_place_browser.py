@@ -85,7 +85,12 @@ def _run(width: int, height: int) -> dict:
             page.goto(f"{ORIGIN}/cards?player=sample01")
             page.wait_for_selector('body[data-view-ready="true"] #cb-grid .cb-tile', timeout=30000)
             header_modes = page.eval_on_selector_all(".cb-mode .ceres-btn", "(els) => els.map((b) => ({name:b.getAttribute('aria-label'), icon:!!b.querySelector('svg')}))")
-            page.click("label:has(#cb-mode-combine)")
+            if width > 1279:  # design 4: on desktop Find combinables is a Menu entry; the phone keeps the filter-row pill
+                assert not page.locator("label:has(#cb-mode-combine)").is_visible()
+                page.click("#hdr-menu-btn")
+                page.locator("#hdr-menu [data-menu-entry='combine']").click()
+            else:
+                page.click("label:has(#cb-mode-combine)")
             page.wait_for_selector("#cx-list .cx-entry", timeout=30000)
             mode = page.evaluate("() => ({ mode: document.body.dataset.cbMode, pill: document.getElementById('cb-mode-combine').checked,"
                                  " cards: document.getElementById('cb-mode-cards').getAttribute('aria-pressed') })")

@@ -11,7 +11,7 @@
  filter row is drawn once with the fields of that mode; card-market.js initialMode() reads the same two sources.
  : with no player (none in the address, none remembered) it starts on the Market, which needs no player. -->
 <script>(function(){try{var t=localStorage.getItem('ceres:theme');document.documentElement.setAttribute('data-theme',t||'dark');}catch(_){document.documentElement.setAttribute('data-theme','dark');}}());
-(function(){var m=null;try{m=new URLSearchParams(location.search).get('mode');if(m!=='market'&&m!=='cards'&&m!=='purchases'){var q=new URLSearchParams(location.search).get('player')||localStorage.getItem('ceres:lastPlayer');m=!q||localStorage.getItem('ceres:cards:mode')==='market'?'market':'cards';}}catch(_){m='cards';}document.documentElement.setAttribute('data-cb-start',m);}());</script>
+(function(){var m=null;try{m=new URLSearchParams(location.search).get('mode');if(m==='combine')m='cards';if(m!=='market'&&m!=='cards'&&m!=='purchases'){var q=new URLSearchParams(location.search).get('player')||localStorage.getItem('ceres:lastPlayer');m=!q||localStorage.getItem('ceres:cards:mode')==='market'?'market':'cards';}}catch(_){m='cards';}document.documentElement.setAttribute('data-cb-start',m);}());</script>
 <script>(function(){
   var root=document.documentElement;
   function apply(){
@@ -64,6 +64,11 @@ html:not(.ceres-lw-le-1279) .card-browser .cb-controls #cb-clear[hidden] { displ
   </span>
   <div class="board-header-rows">
   <div class="board-header-row">
+  <!-- design 4 (maintainer go ): desktop only, as on the board (index.html). The name follows the view (My cards,
+ Market, My purchases; header-menu.js). Harvest opens the board's Harvest for this player (card-browser.js). -->
+  <button type="button" id="hdr-menu-btn" class="hdr-menu-btn ceres-btn ceres-btn--secondary" data-control-density="header" aria-haspopup="dialog" aria-expanded="false" aria-pressed="false" aria-controls="hdr-menu"><svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Menu</span></button>
+  <span id="hdr-place" class="hdr-place">My cards</span>
+  <button type="button" class="harvest-header-btn ceres-btn ceres-btn--primary" data-control-density="header" id="cb-harvest-btn" data-tip="Harvest" data-tip-body="Review and harvest your regions." aria-label="Harvest. Review and harvest your regions."><svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><path class="f" d="M9 15.8C5.4 11.6 7 4.7 13.5 3.3c4.7-1 8 2.2 7.2 6.1-1.4-2.4-4-3.3-6.5-2.5-3.6 1.1-5 5-3.5 8.3z"/><path class="d" d="M10.9 13.6c-.9-2.9.7-6.2 3.6-7.1"/><path class="a h" d="M9.4 15.3 3.6 21.1"/></svg><span class="hdr-label">Harvest</span></button>
   <span class="player-switch">
     <!-- the board's avatar medallion, left of the field (card-browser.js syncCardsAvatar). -->
     <button type="button" id="player-avatar" class="player-avatar" aria-label="Refresh cards" data-tip="Refresh cards" data-tip-body="Read this player's cards again while keeping your filters" hidden></button>
