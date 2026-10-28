@@ -9,6 +9,9 @@ import { netAfterCosts } from './harvest-net.js';
 import { ASSET_BASE } from './state.js';
 import { tipAttrs } from './tooltip.js';
 import { formatCountdown } from './countdown.js';
+import { resourceFieldMap } from './resources.js';
+
+const RESOURCE_LABELS = resourceFieldMap('label');
 
 export const CAP_HOURS = 168;
 const FRESH_AFTER_MS = 60000;
@@ -38,7 +41,7 @@ export function capacityLevel(pct) {
 export function tokenLabel(token) {
   const raw = String(token || '');
   const key = raw.toLowerCase();
-  const known = { dec: 'DEC', grain: 'Grain', wood: 'Wood', stone: 'Stone', iron: 'Iron', aura: 'Aura', sps: 'SPS', research: 'Research', voucher: 'Voucher' };
+  const known = RESOURCE_LABELS; // registry: dec DEC, grain Grain, wood Wood, stone Stone, iron Iron, aura Aura, sps SPS, research Research, voucher Voucher
   return known[key] || raw;
 }
 

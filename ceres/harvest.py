@@ -16,22 +16,28 @@ that row -- so a stale snapshot row still advances from the right place.
 
 from __future__ import annotations
 
+import logging
 import math
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from . import resources as _res
+
+_LOG = logging.getLogger(__name__)
 CAP_HOURS = 168.0
 DEFAULT_TAX_RATE = 0.10
-TOKENS = ("GRAIN", "WOOD", "STONE", "IRON", "SPS", "RESEARCH", "AURA")
+# the symbol lists below are views of the resource registry (ceres/resources.py); same values, same order.
+TOKENS = _res.symbols("harvestable")  # GRAIN WOOD STONE IRON SPS RESEARCH AURA
 # the three material inputs a worksite's `resource_recipe` can name today.
 # GRAIN is deliberately excluded -- it is priced off `grain_req_per_hour`, not the recipe.
-MATERIAL_COST_SYMBOLS = ("WOOD", "STONE", "IRON")
-COST_SYMBOLS = ("GRAIN", "WOOD", "STONE", "IRON")
+MATERIAL_COST_SYMBOLS = _res.symbols("material_input")  # WOOD STONE IRON
+COST_SYMBOLS = _res.symbols("cost_input")  # GRAIN WOOD STONE IRON
 FRAGMENT_RATE = 0.000007
 LABORS_LUCK_RATE = 0.000003593
 TAX_COLLECTION_WORKSITES = frozenset({"keep", "castle"})
 # Chain resource ids seen in /land/resources/history and worksite rows.
-RESOURCE_ID_SYMBOL = {1: "GRAIN", 2: "SPS", 3: "RESEARCH", 5: "WOOD", 6: "STONE", 7: "IRON", 38: "AURA"}
+REGION_BALANCE_SYMBOLS = _res.symbols("regional")  # GRAIN WOOD STONE IRON RESEARCH AURA
+RESOURCE_ID_SYMBOL = _res.resource_id_symbol()  # {1: GRAIN, 2: SPS, 3: RESEARCH, 5: WOOD, 6: STONE, 7: IRON, 38: AURA}
 
 
 def _num(value: Any) -> float | None:
@@ -108,11 +114,11 @@ def is_tax_collection_plot(facts: dict[str, Any], worksite: dict[str, Any] | Non
 def construction_facts(worksite: dict[str, Any], fallback: dict[str, Any]) -> dict[str, Any]:
     """: what is being built and when it is ready, for the harvest box's countdown.
     Read off the fresh active-project row first, then the capture's worksite_facts."""
-    from .worksite_swap import WORKSITE_NAME
+    from .worksite_swap import WORKSITE_NAME, construction_target
     pick = lambda k: worksite.get(k) if worksite.get(k) is not None else fallback.get(k)
-    project_type = str(pick("project_type") or "")
-    to = project_type[len("worksite_"):-len("_construction")] if project_type.endswith("_construction") else None
-    to = to or None
+    # only a `worksite_<x>_construction` names a worksite target; a Land 2.0 building's project type
+    # gives None, so the box shows today's generic construction text instead of a sliced fake name.
+    to = construction_target(pick("project_type"))
     return {
         "to": to,
         "to_label": WORKSITE_NAME.get(to) if to else None,
@@ -399,10 +405,17 @@ def parse_region_quote(payload: Any, tax_rate: float = DEFAULT_TAX_RATE) -> dict
         raise ValueError("region harvestable response is not a success list")
     net: dict[str, float] = {}
     costs = {symbol: 0.0 for symbol in COST_SYMBOLS}
+    skipped: list[str] = []
     for row in payload["data"]:
         if not isinstance(row, dict):
             raise ValueError("region harvestable row is not an object")
         token = str(row.get("token_symbol") or "").upper()
+        if token and token not in TOKENS:
+            # (Land 2.0 readiness): a token Ceres does not know yet (e.g. a new ore) must not fail the
+            # whole regional quote. Skip only that row, say so in the log, keep every known row.
+            _LOG.warning("region harvestable: skipped row with unrecognised token %r", token)
+            skipped.append(token)
+            continue
         amount = _num(row.get("amount_claimable"))
         fields = {"GRAIN": _num(row.get("grain_required_for_food")), "WOOD": _num(row.get("wood_required")),
                   "STONE": _num(row.get("stone_required")), "IRON": _num(row.get("iron_required"))}
@@ -412,7 +425,10 @@ def parse_region_quote(payload: Any, tax_rate: float = DEFAULT_TAX_RATE) -> dict
         for symbol, value in fields.items():
             costs[symbol] += value
     gross = {token: value / (1 - tax_rate) for token, value in net.items()}
-    return {"net_by_token": net, "gross_by_token": gross, "cost_now": {k: v for k, v in costs.items() if v}}
+    out = {"net_by_token": net, "gross_by_token": gross, "cost_now": {k: v for k, v in costs.items() if v}}
+    if skipped:  # only present when a row was skipped, so today's result is unchanged
+        out["skipped_tokens"] = skipped
+    return out
 
 
 def parse_region_balances(payload: Any) -> dict[str, dict[str, Any]]:
@@ -426,13 +442,19 @@ def parse_region_balances(payload: Any) -> dict[str, dict[str, Any]]:
     for row in payload["data"]:
         if not isinstance(row, dict) or not isinstance(row.get("uid"), str):
             raise ValueError("regional balance row without uid")
-        balances = {symbol: _num(row.get(symbol.lower())) for symbol in ("GRAIN", "WOOD", "STONE", "IRON", "RESEARCH", "AURA")}
+        balances = {symbol: _num(row.get(symbol.lower())) for symbol in REGION_BALANCE_SYMBOLS}
         if any(balances[symbol] is None for symbol in COST_SYMBOLS):
             raise ValueError("regional balance row lacks grain/wood/stone/iron")
         name = str(row.get("name") or "")
         if " - " in name:
             name = name.split(" - ", 1)[1]
         out[row["uid"]] = {"balances": balances, "name": name, "plots_owned": row.get("plots_owned")}
+        # a balance column Ceres does not know yet (a Land 2.0 resource) is kept under `extra`
+        # instead of being dropped; the key is only present when there is one, so today's rows are unchanged.
+        extra = _res.unknown_resource_columns(row, REGION_BALANCE_SYMBOLS)
+        if extra:
+            _LOG.warning("regional balances: unrecognised resource columns %s", sorted(extra))
+            out[row["uid"]]["extra"] = extra
     return out
 
 

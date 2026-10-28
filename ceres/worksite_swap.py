@@ -9,6 +9,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from . import resources as _res
+
 TC_COST = 50  # flat cost to convert an EXISTING worksite; a fresh build is PP-scaled and out of scope
 CHANGE_HOURS = 24
 
@@ -33,24 +35,21 @@ def clearing_pp_required(rarity: Any, status: Any) -> int | None:
 # legitimate source of legality: a grain farm observed on a non-grain terrain is
 # pre-1.75 legacy state the game auto-migrates after the first harvest, not a
 # second legal grain terrain.
-_NATURAL_TERRAIN_RESOURCE = {
-    "plains": "grain", "river": "grain", "bog": "grain", "lake": "grain",
-    "swamp": "wood", "forest": "wood", "tundra": "wood", "jungle": "wood",
-    "desert": "stone", "canyon": "stone", "hills": "stone",
-    "mountain": "iron", "badlands": "iron", "caldera": "iron",
-}
+# the four tables below are views of the resource registry (ceres/resources.py), same values as before.
+# plains/river/bog/lake -> grain; swamp/forest/tundra/jungle -> wood; desert/canyon/hills -> stone
+# mountain/badlands/caldera -> iron.
+_NATURAL_TERRAIN_RESOURCE = _res.natural_terrain_resource()
 
 # Per-PP-per-hour rate, primary-sourced from support.splinterlands.com's per-resource
 # FAQs (2026-08-26). SPS deliberately has no entry -- it is a pool-share model with no
 # fixed divisor (see `projected_rate` below), never a fixed rate.
-_RATE_PER_PP = {"grain": 0.02, "wood": 0.005, "stone": 0.002, "iron": 0.0005, "aura": 0.0005, "research": 0.0001}
+# grain 0.02, wood 0.005, stone 0.002, iron 0.0005, aura 0.0005, research 0.0001.
+_RATE_PER_PP = _res.rates_per_pp()
 
-WORKSITE_NAME = {
-    "grain": "Grain Farm", "wood": "Logging Camp", "stone": "Quarry", "iron": "Ore Mine",
-    "research": "Research Hut", "sps": "Shard Mine", "aura": "Aura Lab",
-}
+# grain Grain Farm, wood Logging Camp, stone Quarry, iron Ore Mine, research Research Hut, sps Shard Mine, aura Aura Lab.
+WORKSITE_NAME = _res.worksite_names()
 
-ALL_TARGETS = frozenset({"grain", "wood", "stone", "iron", "research", "sps", "aura"})
+ALL_TARGETS = frozenset(WORKSITE_NAME)
 
 _KINGDOM_PROJECT_TYPES = {"castle_operation", "keep_operation"}
 
@@ -62,6 +61,19 @@ def _num(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def construction_target(project_type: Any) -> str | None:
+    """The worksite target named by a `worksite_<x>_construction` project type, else None.
+
+     (Land 2.0 readiness): only that exact shape names a worksite. Any other project type ending in
+    `_construction` -- a Land 2.0 building such as `building_sawmill_construction` -- used to be sliced into a
+    fake target ("ng_sawmill"); now it yields None, and the screens show their generic text ("the worksite",
+    "a new worksite") exactly as they already do for a construction with no named target."""
+    text = str(project_type or "")
+    if not (text.startswith("worksite_") and text.endswith("_construction")):
+        return None
+    return text[len("worksite_"):-len("_construction")] or None
 
 
 def resource_key(raw: Any) -> str | None:
@@ -292,7 +304,7 @@ def ready_worksite_change(
     grain = _num(wf.get("grain_required"))
     if end is None or end > datetime.now(timezone.utc) or grain is None or grain < 0:
         return None
-    to_resource = project_type[len("worksite_"):-len("_construction")] or None
+    to_resource = construction_target(project_type)
     return {
         "kind": "worksite_completion",
         "project_id": wf.get("project_id", wf.get("id")),
@@ -346,7 +358,7 @@ def build_pending_change(
     project_type = str(wf.get("project_type") or "")
     if not project_type.endswith("_construction"):
         return None
-    to_resource = project_type[len("worksite_"):-len("_construction")] or None
+    to_resource = construction_target(project_type)
     rate = _num(total_work_per_hour)
     stalled = not rate or rate <= 0.0
     # A stalled plot never receives wall-clock progress because zero rate cannot complete it.

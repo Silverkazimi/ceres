@@ -4,6 +4,7 @@
 // board's filter-row controls (customSelect.js, .board-filter-field, .board-filter-pill).
 // Only the tiles near the viewport are built: the grid grows in chunks as the page scrolls.
 import { mountThemePicker } from './theme.js';
+import { mountHeaderMenu } from './header-menu.js';
 import { initCustomSelect, selectValues, setSelectValues, syncCustomSelect } from './customSelect.js';
 import { bindCountdowns, countdownText } from './countdown.js';
 import {
@@ -576,6 +577,28 @@ function initHeader() {
   $('page-switch-plots')?.setAttribute('href', boardUrl(state.player));
   $('cb-logo-link').setAttribute('href', boardUrl(state.player));
   syncCardsAvatar(state.player);
+  // design 4 (maintainer go ): the desktop Menu and the header's Harvest. Each entry presses today's control on this
+  // page (the view buttons, the Find combinables pill, the avatar's refresh); Plots, Harvest, Changes and Account are the
+  // board's own (header Harvest and the Menu go there with ?open=, app.js runs it once the board has loaded).
+  const toBoard = (open) => { location.href = state.player ? `${boardUrl(state.player)}&open=${open}` : boardUrl(null); };
+  const viewButton = (id) => () => $(id)?.click();
+  mountHeaderMenu({ page: 'cards', actions: {
+    plots: () => { location.href = boardUrl(state.player); },
+    myCards: viewButton('cb-mode-cards'),
+    market: viewButton('cb-mode-market'),
+    purchases: viewButton('cb-mode-purchases'),
+    combine: () => {
+      const pill = $('cb-mode-combine');
+      if (!pill || pill.checked) return;
+      if (document.body.dataset.cbMode !== 'cards') $('cb-mode-cards')?.click();  // the pill belongs to My cards
+      pill.click();
+    },
+    harvest: () => toBoard('harvest'),
+    changes: () => toBoard('changes'),
+    refresh: viewButton('player-avatar'),
+    account: () => toBoard('account'),
+  } });
+  $('cb-harvest-btn')?.addEventListener('click', () => toBoard('harvest'));
 }
 
 // the same avatar medallion as the board header (board.js syncPlayerAvatar): the avatar-builder layers, retried

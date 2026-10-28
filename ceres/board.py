@@ -20,6 +20,7 @@ from praetoria.errors import CacheError, SchemaError
 from praetoria.sets import is_land_or_verico
 
 from . import SCHEMA_BOARD
+from . import resources as _res
 from .bcx_cap import resolve_bcx_max
 from .harvest import hourly_resource_costs
 from .level_cap import resolve_level_thresholds
@@ -467,7 +468,7 @@ def _row_notices(badges: list[str], deed_uid: str | None, *, messages: dict[str,
     return compact
 
 
-_RESOURCE_ABILITY_CODES = frozenset({"GRAIN", "WOOD", "STONE", "IRON", "AURA", "RESEARCH", "SPS"})
+_RESOURCE_ABILITY_CODES = frozenset(_res.symbols("harvestable"))  # registry view: GRAIN WOOD STONE IRON AURA RESEARCH SPS
 
 
 def _resource_ability_rates(

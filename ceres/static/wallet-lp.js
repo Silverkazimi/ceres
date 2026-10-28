@@ -25,6 +25,7 @@ import { plaque } from './wallet-resources.js';
 import { walletControlsHtml, walletMethodHtml, walletReady, walletSignLabelHtml, walletWaitHtml } from './wallet.js';
 import { requestBroadcastThroughGate } from './broadcast-gate.js';
 import { initCustomSelect } from './customSelect.js';
+import { resourceSymbolsWhere } from './resources.js';
 
 export const QUOTE_IDLE_MS = 700;
 export const VERIFY_SCHEDULE_MS = [0, 2000, 4000, 8000, 12000, 18000, 26000, 36000, 50000, 70000];  // the game can take ~30 s to index
@@ -1103,7 +1104,7 @@ async function poolAction(ctx, name, symbol, st) {
 // account (Hive, Splinterlands, their land regions: 3 calls), a settled amount one pools read, Review 3 fresh reads. Review then
 // Sign; signing, the stored intent and the confirmation are the swap's own (signIntent, verify), so an unknown outcome never
 // offers a second signature ( S3) and the clock applies.
-export const TRANSFER_SYMBOLS = ['GRAIN', 'WOOD', 'STONE', 'IRON'];
+export const TRANSFER_SYMBOLS = resourceSymbolsWhere('transferable'); // registry: GRAIN WOOD STONE IRON
 const ACCOUNT_NAME = /^[a-z][a-z0-9.-]{2,15}$/;
 const cleanName = text => String(text ?? '').trim().replace(/^@/, '').toLowerCase();
 function transferContext(symbol, wallet, player) {

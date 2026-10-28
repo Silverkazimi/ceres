@@ -28,7 +28,7 @@ python3 -m pip install -r requirements-ceres.txt
 python3 -m ceres
 ```
 
-Open `http://127.0.0.1:27390/`. See [installation](docs/INSTALL.md) and [configuration](docs/CONFIGURATION.md) for more detail. Ceres is at **1.0.0 release candidate**; the final 1.0.0 release will follow once all tests are green.
+Open `http://127.0.0.1:27390/`. See [installation](docs/INSTALL.md) and [configuration](docs/CONFIGURATION.md) for more detail. Releases and their notes: [GitHub Releases](https://github.com/Silverkazimi/ceres/releases) and the [CHANGELOG](CHANGELOG.md).
 
 ## Artwork
 
