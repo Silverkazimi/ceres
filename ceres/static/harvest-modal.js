@@ -26,10 +26,11 @@ import {
 } from './harvest-state.js';
 import { openWorksiteFeedModal } from './worksite.js';
 import { plaque as regionPlaque } from './wallet-resources.js';
+import { resourceSymbolsWhere } from './resources.js';
 
 const SIGNING_OFF_TEXT = 'Signing not yet enabled — awaiting first on-chain test';
 const HARVEST_ROUTING_ENABLED = false;
-const COST_ORDER = ['GRAIN', 'WOOD', 'STONE', 'IRON'];
+const COST_ORDER = resourceSymbolsWhere('cost_input'); // registry: GRAIN WOOD STONE IRON
 const TOKEN_ORDER = RESOURCE_ORDER;
 const X_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 

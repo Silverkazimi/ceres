@@ -576,6 +576,7 @@ export function setMode(mode) {
 function initialMode(player) {
   const fromUrl = new URLSearchParams(location.search).get('mode');
   if (fromUrl === 'market' || fromUrl === 'cards' || fromUrl === 'purchases') return fromUrl;
+  if (fromUrl === 'combine') return 'cards';  // Find combinables from the board's Menu is a view of My cards (card-combinables.js)
   // no player -> the Market.
   if (!player) return 'market';
   try { return localStorage.getItem(MODE_KEY) === 'market' ? 'market' : 'cards'; } catch (_) { return 'cards'; }

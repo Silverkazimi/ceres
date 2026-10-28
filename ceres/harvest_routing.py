@@ -8,11 +8,13 @@ from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation, ROUND_CEILING, ROUND_DOWN, ROUND_HALF_UP, localcontext
 from typing import Any, Mapping
 
+from . import resources as _res
+
 QUANTUM = Decimal("0.001")
 ZERO = Decimal(0)
 ONE = Decimal(1)
 INVENTORY = "inventory"
-COST_TOKENS = ("GRAIN", "WOOD", "STONE", "IRON")
+COST_TOKENS = _res.symbols("cost_input")  # registry view: GRAIN WOOD STONE IRON
 DEC_SOURCES = frozenset({"wallet", "swap_half"})
 
 

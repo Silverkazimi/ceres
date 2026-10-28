@@ -525,3 +525,7 @@ html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-c-de
 html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-c-seller { grid-column: 1 / 3; grid-row: 3; max-inline-size: 100%; }
 html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy .cm-c-act { grid-column: 3; grid-row: 3; }
 html.ceres-lw-le-1279 .card-browser .cm-dialog-panel.is-narrow .cm-copy[data-state] .cm-c-tags { grid-column: 1 / -1; grid-row: 4; }
+
+/* design 4 (maintainer go ): Find combinables is a Menu entry on desktop (header-menu.js); the rest of the Cards
+ filter row is unchanged and the phone keeps the pill. Page-scoped here, not in ceres.css (the board's sheet). */
+html:not(.ceres-lw-le-1279) body.card-browser .cb-controls label:has(#cb-mode-combine) { display: none; }

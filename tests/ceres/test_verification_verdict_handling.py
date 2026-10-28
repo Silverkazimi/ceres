@@ -329,6 +329,11 @@ def test_domain_mismatch_clears_only_the_matching_entry(live_browser: tuple[Brow
     # Signing the last transaction closes Changes; reopen it. Each staged move is a strip
     # tile: an in-flight one is marked and cannot be undone, a cleared one can.
     if not panel.is_visible():
+        # design 4: the confirmation notice overlaps Changes on desktop (maintainer: accepted); close it with its X first.
+        dismiss = page.locator("#ceres-confirmation-banner .worksite-banner-dismiss")
+        if dismiss.is_visible():
+            dismiss.click()
+            page.locator("#ceres-confirmation-banner").wait_for(state="hidden", timeout=30_000)
         page.locator("#checkout-btn").click()
     cleared_move = panel.locator(f".ch-slot[data-deed-uid='{deed_b}'][data-group-id='worker']")
     cleared_move.wait_for(timeout=30_000)

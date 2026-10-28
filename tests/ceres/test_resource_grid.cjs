@@ -5,9 +5,11 @@ const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '..', '..');
 const staticDir = path.join(root, 'ceres', 'static');
-const source = fs.readFileSync(path.join(staticDir, 'harvest-resources.js'), 'utf8')
+// RESOURCE_ORDER now comes from the generated resource registry (resources.js), loaded first.
+const strip = name => fs.readFileSync(path.join(staticDir, name), 'utf8')
   .replace(/^import .*;$/gm, '')
   .replace(/^export /gm, '');
+const source = `${strip('resources.js')}\n${strip('harvest-resources.js')}`;
 const context = {
   module: { exports: {} },
   Number,

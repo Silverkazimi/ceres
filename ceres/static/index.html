@@ -157,6 +157,11 @@
  the owner is now reacting to. -->
   <div class="board-header-rows">
   <div class="board-header-row">
+  <!-- design 4 (maintainer go ): desktop only (ceres.css shows these two outside the phone tier, P-0). Menu opens one
+ list of the places and tools (header-menu.js); the name beside it is the page you are on. The player field, its avatar
+ and its go button below stay exactly as they are; on desktop they only move to the right end of the row (CSS order). -->
+  <button type="button" id="hdr-menu-btn" class="hdr-menu-btn ceres-btn ceres-btn--secondary" data-control-density="header" aria-haspopup="dialog" aria-expanded="false" aria-pressed="false" aria-controls="hdr-menu"><svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Menu</span></button>
+  <h1 id="hdr-place" class="hdr-place">Plots</h1>
   <span class="player-switch" data-tip="Switch player" data-tip-body="Type a player's name and press Enter to load their plots instead." aria-label="Switch player. Type a player's name and press Enter to load their plots instead.">
     <!-- the account's avatar medallion, left of the field (board.js syncPlayerAvatar). -->
     <button type="button" id="player-avatar" class="player-avatar" aria-label="Refresh board" data-tip="Refresh board" data-tip-body="Refresh board data while preserving filters and staged changes" hidden></button>
@@ -164,8 +169,8 @@
     <button class="player-go-btn ceres-btn ceres-btn--primary" data-control-density="header" data-control-mode="icon" id="player-go-btn" aria-label="Switch player"><svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><circle class="f" cx="8.6" cy="7.2" r="3.9"/><path class="f" d="M1.8 20.2c.5-4.3 3.3-7 6.8-7s6.3 2.7 6.8 7z"/><path class="d" d="M6.9 13.8 8.6 16l1.7-2.2"/><path class="a" d="M14.6 9.4h4.2V6.8l4.2 4.2-4.2 4.2v-2.6h-4.2z"/></svg><span class="spinner spinner-sm" id="player-loading" aria-hidden="true" hidden></span></button>
     <button type="button" id="account-menu-btn" class="account-menu-btn ceres-btn ceres-btn--primary" data-control-density="header" data-control-mode="icon" aria-haspopup="true" aria-expanded="false" aria-controls="account-menu" data-tip="Account" data-tip-body="Choose your wallet and, if you like, sign in to save your routing setup across devices." aria-label="Account menu"><img class="wallet-logo" src="/static/vendor/wallet/keychain.svg" alt="" aria-hidden="true"></button>
   </span>
-  <button type="button" class="harvest-header-btn ceres-btn ceres-btn--primary" data-control-density="header" data-control-mode="icon" id="harvest-btn" aria-haspopup="dialog" data-tip="Harvest" data-tip-body="Review and harvest your regions." aria-label="Harvest. Review and harvest your regions.">
-    <svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><path class="f" d="M9 15.8C5.4 11.6 7 4.7 13.5 3.3c4.7-1 8 2.2 7.2 6.1-1.4-2.4-4-3.3-6.5-2.5-3.6 1.1-5 5-3.5 8.3z"/><path class="d" d="M10.9 13.6c-.9-2.9.7-6.2 3.6-7.1"/><path class="a h" d="M9.4 15.3 3.6 21.1"/></svg>
+  <button type="button" class="harvest-header-btn ceres-btn ceres-btn--primary" data-control-density="header" id="harvest-btn" aria-haspopup="dialog" data-tip="Harvest" data-tip-body="Review and harvest your regions." aria-label="Harvest. Review and harvest your regions.">
+    <svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><path class="f" d="M9 15.8C5.4 11.6 7 4.7 13.5 3.3c4.7-1 8 2.2 7.2 6.1-1.4-2.4-4-3.3-6.5-2.5-3.6 1.1-5 5-3.5 8.3z"/><path class="d" d="M10.9 13.6c-.9-2.9.7-6.2 3.6-7.1"/><path class="a h" d="M9.4 15.3 3.6 21.1"/></svg><span class="hdr-label">Harvest</span><!-- the word shows on desktop (the phone hides this button) -->
   </button>
   <div class="checkout-dock" id="checkout-dock">
     <button class="checkout-btn ceres-btn ceres-btn--primary" data-control-density="header" id="checkout-btn" data-checkout-action="toggle" aria-controls="checkout-panel" aria-expanded="false" data-tip="Changes" hidden>
@@ -495,6 +500,7 @@
 <link rel="modulepreload" href="/static/transaction-queue.js">
 <link rel="modulepreload" href="/static/regional-dec.js">
 <link rel="modulepreload" href="/static/account-menu.js">
+<link rel="modulepreload" href="/static/header-menu.js">
 <link rel="modulepreload" href="/static/badge-overlay.js">
 <link rel="modulepreload" href="/static/button-icons.js">
 <link rel="modulepreload" href="/static/plot-lock.js">
@@ -510,12 +516,15 @@
 <link rel="modulepreload" href="/static/planner.js">
 <link rel="modulepreload" href="/static/state.js">
 <link rel="modulepreload" href="/static/table.js">
+<link rel="modulepreload" href="/static/staged-sync.js">
 <link rel="modulepreload" href="/static/tooltip.js">
 <link rel="modulepreload" href="/static/art.js">
 <link rel="modulepreload" href="/static/harvest-modal.js">
 <link rel="modulepreload" href="/static/worksite.js">
 <link rel="modulepreload" href="/static/plot-warnings.js">
+<link rel="modulepreload" href="/static/stage-navigation.js">
 <link rel="modulepreload" href="/static/wallet.js">
+<link rel="modulepreload" href="/static/balances-bus.js">
 <link rel="modulepreload" href="/static/format.js">
 <link rel="modulepreload" href="/static/harvest-state.js">
 <link rel="modulepreload" href="/static/harvest-results.js">
@@ -524,32 +533,39 @@
 <link rel="modulepreload" href="/static/broadcast-gate.js">
 <link rel="modulepreload" href="/static/wallet-resources.js">
 <link rel="modulepreload" href="/static/wallet-claim.js">
+<link rel="modulepreload" href="/static/countdown.js">
 <link rel="modulepreload" href="/static/wallet-lp.js">
 <link rel="modulepreload" href="/static/account-space.js">
 <link rel="modulepreload" href="/static/badges.js">
 <link rel="modulepreload" href="/static/avatar.js">
 <link rel="modulepreload" href="/static/candidates.js">
 <link rel="modulepreload" href="/static/customSelect.js">
+<link rel="modulepreload" href="/static/ceres-ready.js">
 <link rel="modulepreload" href="/static/stage-plans.js">
+<link rel="modulepreload" href="/static/combine-chain-sign.js">
+<link rel="modulepreload" href="/static/combine-chain.js">
 <link rel="modulepreload" href="/static/editor.js">
+<link rel="modulepreload" href="/static/combine-chain-ui.js">
+<link rel="modulepreload" href="/static/ready-feed.js">
 <link rel="modulepreload" href="/static/changes-model.js">
 <link rel="modulepreload" href="/static/feed-changes.js">
-<link rel="modulepreload" href="/static/stage-navigation.js">
 <link rel="modulepreload" href="/static/fill-plot.js">
 <link rel="modulepreload" href="/static/combine-dialog.js">
 <link rel="modulepreload" href="/static/combine.js">
 <link rel="modulepreload" href="/static/terrainAffinity.js">
-<link rel="modulepreload" href="/static/countdown.js">
 <link rel="modulepreload" href="/static/ws-build.js">
 <link rel="modulepreload" href="/static/eos.js">
 <link rel="modulepreload" href="/static/scale.js">
+<link rel="modulepreload" href="/static/escape.js">
 <link rel="modulepreload" href="/static/harvest-net.js">
 <link rel="modulepreload" href="/static/harvest-routing.js">
 <link rel="modulepreload" href="/static/routing-setup.js">
 <link rel="modulepreload" href="/static/routing-window.js">
 <link rel="modulepreload" href="/static/harvest-ledger.js">
+<link rel="modulepreload" href="/static/resources.js">
 <link rel="modulepreload" href="/static/sps-rate.js">
 <link rel="modulepreload" href="/static/badge-state.js">
+<link rel="modulepreload" href="/static/card-browser-model.js">
 <link rel="modulepreload" href="/static/estimates.js">
 <link rel="modulepreload" href="/static/routing-signature-chain.js">
 <link rel="modulepreload" href="/static/routing-route-list.js">

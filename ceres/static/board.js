@@ -761,7 +761,7 @@ function populateRegionOptions() {
   sel.innerHTML = '';
   const any = document.createElement('option');
   any.value = '';
-  any.textContent = 'Any region'; // Look 2 (maintainer: category-specific "Any" for every filter, closed and as the first option)
+  any.textContent = 'All'; // K-4 (): the closed trigger shows "Region" (data-empty-label); "All" lives only in the open list
   sel.appendChild(any);
   for (const r of [...territories.keys()].sort((a, b) => Number(a) - Number(b))) {
     const opt = document.createElement('option');
@@ -822,13 +822,13 @@ function populateBadgeOptions() {
   select.dataset.account = account;
   select.replaceChildren();
   const any = document.createElement('option');
-  any.value = ''; any.textContent = 'Any badge'; select.appendChild(any);
+  any.value = ''; any.textContent = 'All'; select.appendChild(any);
   for (const { key, label, group } of badgeFilterOptions()) {
     const option = document.createElement('option');
     option.value = key; option.textContent = boardFilterLabel(label); option.dataset.group = group;
     select.appendChild(option);
   }
-  setSelectValues(select, wanted); // unknown keys drop out; none left -> Any badge
+  setSelectValues(select, wanted); // unknown keys drop out; none left -> All
 }
 
 function colourBadgeFilterControl() {

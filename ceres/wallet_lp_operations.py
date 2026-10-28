@@ -7,11 +7,12 @@ import secrets
 from decimal import Decimal
 
 from . import harvest_routing as routing
+from . import resources as _res
 from .security import validate_player
 from .transaction_identity import app_identity
 
 OP_ID = "sm_land_operation"
-RESOURCE_SYMBOLS = frozenset({"GRAIN", "WOOD", "STONE", "IRON"})
+RESOURCE_SYMBOLS = frozenset(_res.symbols_all("regional", "poolable"))  # registry view: GRAIN WOOD STONE IRON
 # the two DEC pools whose token lives in the account wallet, not in a region. The game swaps them with
 # `region_uid: ""` (maintainer txs 2026-09-28: DEC->SPS <tx id>, DEC->VOUCHER <tx id>, VOUCHER->DEC <tx id>
 # SPS->DEC <tx id> + the Active `sm_sps` transfer <tx id>).

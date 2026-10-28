@@ -25,6 +25,7 @@ from praetoria.transport import API_ORIGIN, FixedGetTransport
 from .routes_board import _require_same_origin
 from .routes_harvest_routing import _pools
 from . import client_limits
+from . import resources as _res
 from .security import player_for_request
 from .transaction_identity import app_identity
 from .transaction_diagnostics import record_verification
@@ -33,12 +34,13 @@ import time as diagnostic_time
 router = APIRouter()
 
 ACCOUNT_TOKENS = ("DEC", "SPS", "SPSP", "VOUCHER")          # SPSP = staked SPS, as /players/balances names it
-LAND_RESOURCES = ("GRAIN", "WOOD", "STONE", "IRON", "RESEARCH", "AURA")
-SOULBOUND = frozenset({"AURA", "RESEARCH"})                   # never leave their region; no DEC pool exists
+# views of the resource registry (ceres/resources.py); same values and order as the old literals.
+LAND_RESOURCES = _res.symbols("regional")                     # GRAIN WOOD STONE IRON RESEARCH AURA
+SOULBOUND = frozenset(_res.symbols("soulbound"))              # AURA, RESEARCH: never leave their region; no DEC pool exists
 LP_KINDS = ("add", "remove", "swap_sell", "swap_resource", "swap_buy")
 LP_GATE_REASONS: dict[str, str] = {}  # G2 (swap_buy) PROVEN 2026-09-28, tx <tx id>; G1 (remove) PROVEN 2026-10-04 ()
-SWAP_SYMBOLS = ("GRAIN", "WOOD", "STONE", "IRON", "VOUCHER", "SPS")  # every non-soulbound token with a DEC pool
-ACCOUNT_SWAP_SYMBOLS = ("VOUCHER", "SPS")                     # live in the account wallet: no region, region_uid ""
+SWAP_SYMBOLS = _res.symbols("poolable")                      # GRAIN WOOD STONE IRON VOUCHER SPS -- : every non-soulbound token with a DEC pool
+ACCOUNT_SWAP_SYMBOLS = tuple(s for s in SWAP_SYMBOLS if not _res.BY_SYMBOL[s].regional)  # VOUCHER SPS: account wallet, no region, region_uid ""
 TWO_STEP_SELL = ("SPS",)                                      # external pool: selling needs the Active sm_sps transfer after the swap
 SWAP_DIRECTIONS = ("swap_sell", "swap_buy")                   # both ways; a kind listed in LP_GATE_REASONS stays hidden
 SWAP_SLIPPAGE = "2.5"                                         # fixed tolerance; no user slippage field ( lesson)
@@ -95,6 +97,9 @@ def regions_section(payload) -> list[dict]:
         regions.append({"region_uid": row["uid"], "name": str(row.get("name") or ""),
                         "plots_owned": plots if isinstance(plots, int) and not isinstance(plots, bool) else None,
                         "balances": balances})
+        extra = _res.unknown_resource_columns(row, LAND_RESOURCES)  # a new resource column is kept, not dropped
+        if extra:
+            regions[-1]["extra"] = extra
     regions.sort(key=lambda r: int(r["region_uid"].rsplit("-", 1)[1]) if r["region_uid"].rsplit("-", 1)[1].isdigit() else 0)
     return regions
 
