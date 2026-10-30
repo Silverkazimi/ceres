@@ -78,6 +78,7 @@ from ceres import capture_freshness
 from ceres.config import CeresConfig
 from ceres.routes_op_preview import op_preview, plot_op_preview
 
+from .combine_door import serve_idle_cards
 from .conftest import LIVE_PLAYER, settle, spawn_live_ceres, wait_for_board, wait_ready
 from .vm_context import ENTRY, read_entry_source, run_in_module_context
 
@@ -278,10 +279,8 @@ def _survivor_and_consumed(worker: dict) -> tuple[dict, dict]:
 
 
 def _install_idle_cards_mock(page: Page, copies: list[dict]) -> None:
-    page.route(
-        "**/api/idle-cards*",
-        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"cards": copies})),
-    )
+    # The page reads the idle pool only when the board reports it loaded (combine_door.py).
+    serve_idle_cards(page, copies)
 
 
 def _mock_combine_preview(page: Page, *, buildable: bool, survivor_uid: str, destroyed_uids: list[str]) -> None:
