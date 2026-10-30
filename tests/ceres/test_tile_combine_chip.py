@@ -27,6 +27,7 @@ from pathlib import Path
 
 from playwright.sync_api import Page
 
+from .combine_door import serve_idle_cards
 from .conftest import settle, spawn_live_ceres, wait_ready
 
 SCREEN_DIR = Path(__file__).parents[2] / "work" / "combine-reachability"
@@ -70,10 +71,8 @@ def _install_idle_cards_mock(page: Page, worker: dict) -> None:
         }
         for i in range(2)
     ]
-    page.route(
-        "**/api/idle-cards*",
-        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"cards": copies})),
-    )
+    # The page reads the idle pool only when the board reports it loaded (combine_door.py).
+    serve_idle_cards(page, copies)
 
 
 def test_tile_combine_chip_is_compact_above_the_tile_not_an_inflow_block() -> None:
