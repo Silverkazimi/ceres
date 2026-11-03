@@ -14,7 +14,11 @@
 // or on /cards: the view is drawn and, in Market mode, market 'settled'
 // at ms since navigation start at which each state was first reached (boardPlot, boardFull, plot, workers
 // settled, market)
-const STATE = {
+// the state lives on window, not in this module, so a second instance of the module (same file loaded under
+// another URL -- a stale cached copy, or a test that serves the whole graph as one app.js and then dynamic-imports the
+// real files) joins the page's one state instead of resetting it to 'none'/'running'. With modulepreload covering the
+// whole graph (1.1.2) such a second instance evaluates within milliseconds of the board's 'full' and wiped it.
+const STATE = window.__ceresReadyState || (window.__ceresReadyState = {
   version: 1,
   page: 'board',
   board: 'none',
@@ -26,7 +30,7 @@ const STATE = {
   view: false,
   ready: false,
   at: {},
-};
+});
 
 function now() {
   return Math.round(typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
@@ -68,4 +72,4 @@ export function readyState() {
   return window.__ceresReady || publish();
 }
 
-publish();
+if (!window.__ceresReady) publish(); // a second instance never re-announces; the first one already did
