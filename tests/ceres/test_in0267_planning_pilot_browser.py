@@ -115,8 +115,17 @@ def test_planning_entry_is_local_one_changed_row_and_live_round_trip_is_unchange
         live_stage = page.evaluate(f"() => localStorage.getItem('{STAGE_KEY}')")
 
         # 1. Entry: one saved empty plan, label in the existing header place, zero requests of any kind.
-        requests: list[str] = []
-        page.on("request", lambda request: requests.append(request.url))
+        requests: list[tuple[str, str]] = []  # (method, URL): includes static images and modules
+        all_requests: list[tuple[str, str]] = []
+        def record_request(request):
+            item = (request.method.upper(), request.url)
+            requests.append(item)
+            all_requests.append(item)
+        page.on("request", record_request)
+        wallet_workers: list[str] = []
+        relay_sockets: list[str] = []
+        page.on("worker", lambda worker: wallet_workers.append(worker.url))
+        page.on("websocket", lambda socket: relay_sockets.append(socket.url))
         aborted_before = len(aborted)
         _toggle_planning(page)
         page.wait_for_function("document.body.dataset.boardMode === 'planning'")
@@ -124,7 +133,7 @@ def test_planning_entry_is_local_one_changed_row_and_live_round_trip_is_unchange
         saved = page.evaluate(f"() => JSON.parse(localStorage.getItem('{PLAN_KEY}'))")
         assert len(saved["plans"]) == 1 and saved["plans"][0]["name"] == "Plan 1" and saved["plans"][0]["placements"] == []
         page.wait_for_timeout(600)  # longer than the evaluator debounce
-        assert [u for u in requests if urlparse(u).path.startswith("/api/")] == []
+        assert [u for _, u in requests if urlparse(u).path.startswith("/api/")] == []
         assert len(aborted) == aborted_before, "no upstream or chain host was contacted"
         assert page.evaluate("() => window.__walletCalls") == []
         assert page.evaluate(f"() => localStorage.getItem('{STAGE_KEY}')") == live_stage
@@ -159,7 +168,7 @@ def test_planning_entry_is_local_one_changed_row_and_live_round_trip_is_unchange
         assert evaluate_bodies[0]["capture_generated_at"]
         assert f"{PLANNED_PP:,}" in changed.locator("td.col-num").first.inner_text()
         assert changed.locator(".totem-cell").count() == 1
-        api_calls = [urlparse(u).path for u in requests if urlparse(u).path.startswith("/api/")]
+        api_calls = [urlparse(u).path for _, u in requests if urlparse(u).path.startswith("/api/")]
         assert set(api_calls) == {"/api/board-plans/evaluate"}, api_calls
         assert page.evaluate("() => window.__walletCalls") == []
         planning_snapshot = page.evaluate(ROWS_SNAPSHOT)
@@ -198,5 +207,14 @@ def test_planning_entry_is_local_one_changed_row_and_live_round_trip_is_unchange
         assert page.evaluate(ROWS_SNAPSHOT) == live_rows
         assert page.evaluate(f"() => localStorage.getItem('{STAGE_KEY}')") == live_stage
         assert page.evaluate("() => window.__walletCalls") == []
-        assert not any("wallet" in url.lower() or "keychain" in url.lower() or "hiveauth" in url.lower() for url in requests)
+        # Opening Menu renders its Account icon from /static/vendor/wallet/keychain.svg.
+        # A static image/module GET is not a wallet action; detect actual signing paths.
+        action_posts = [(method, url) for method, url in all_requests if method == "POST" and (
+            urlparse(url).path.startswith(("/api/wallet/", "/api/auth/"))
+            or re.search(r"(?:sign|broadcast)", urlparse(url).path, re.I)
+        )]
+        assert action_posts == [], action_posts
+        assert not [url for _, url in all_requests if "hiveauth-worker" in url.lower() or "hive-auth.arcange.eu" in url.lower()]
+        assert not [url for url in wallet_workers if "hiveauth" in url.lower()], wallet_workers
+        assert not [url for url in relay_sockets if "hiveauth" in url.lower() or "hive-auth.arcange.eu" in url.lower()], relay_sockets
         browser.close()

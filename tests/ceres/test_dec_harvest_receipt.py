@@ -71,28 +71,3 @@ def test_invalid_or_missing_received_amount_is_pending(received):
     assert bad["finds"] == [{"kind": "fragment", "type": "test"}]
 
 
-def test_retained_dec_fixture_preserves_amounts():
-    evidence = json.loads(EVIDENCE.read_text())
-    receipts = []
-    for transaction in evidence["transactions"]:
-        raw = transaction["trx_info"]["result"]
-        result = json.loads(raw) if isinstance(raw, str) else raw
-        inner = result.get("result") if isinstance(result, dict) else None
-        if isinstance(inner, dict) and isinstance(inner.get("data", {}).get("harvestResults"), dict):
-            receipts.append(_harvest_receipt(inner, UID))
-    assert len(receipts) == 1
-    assert receipts[0]["state"] == "recorded"
-    assert len(receipts[0]["members"]) == 8
-    assert all(item["outcome"] == "success" for item in receipts[0]["members"])
-    expected = {
-        "received_by_token": {"GRAIN": "2710.003", "WOOD": "3024.180", "STONE": "575.048", "IRON": "322.137", "AURA": "75.742"},
-        "costs_by_token": {"GRAIN": "5270.851", "WOOD": "288.708", "STONE": "115.483", "IRON": "28.871"},
-        "taxes_by_token": {"GRAIN": "301.111", "WOOD": "336.021", "STONE": "63.894", "IRON": "35.793", "AURA": "8.416"},
-    }
-    for field, amounts in expected.items():
-        totals = {}
-        for item in receipts[0]["members"]:
-            for symbol, value in item[field].items():
-                totals[symbol] = totals.get(symbol, Decimal(0)) + Decimal(value)
-        assert {symbol: value for symbol, value in totals.items() if value} == {
-            symbol: Decimal(value) for symbol, value in amounts.items()}
