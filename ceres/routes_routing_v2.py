@@ -31,7 +31,10 @@ def _clean(value, limit=300) -> str:
 
 
 def _refused(request: Request, player: str, exc: Exception) -> HTTPException:
-    """: a 409 used to log only its status; keep the reason (a plain RoutingError text, never a payload)."""
+    """: a 409 used to log only its status; keep the reason (a plain RoutingError text, never a payload).
+    : a paced confirmation read is a 429 with Retry-After -- "read later", never a refusal."""
+    if isinstance(exc, runs.RoutingRateLimited):
+        return HTTPException(429, str(exc), headers={"Retry-After": str(max(1, round(exc.retry_after)))})
     _log.warning("refused path=%s player=%s reason=%s", request.url.path.rsplit("/", 1)[-1], _clean(player, 40), _clean(exc))
     return HTTPException(409, str(exc))
 
@@ -125,14 +128,23 @@ async def attach_transaction(request: Request, player: str | None = None):
         raise _refused(request, player, exc) from exc
 
 
-@router.post("/api/harvest/routing/v2/find")
-async def find_signed(request: Request, player: str | None = None):
-    """Owner-pressed: find a transaction the wallet signed but never reported (one metered account-history read), then attach it."""
+@router.post("/api/harvest/routing/v2/unsent")
+async def mark_unsent(request: Request, player: str | None = None):
+    """: the browser's own-history reads (, incl. the one read at Hive expiry) proved a claimed bundle
+    without id absent; past Hive's lifetime it stops and releases its reservations. Zero calls. (The former maintainer-pressed
+    `find` route is gone: the shared confirmer finds a missing id by itself and attaches it.)"""
     body = await _body(request)
     player = player_for_request(request, player)
+    from .routes_confirm import ledger_absence
+
+    def act(folder, record):
+        # fix round 1 (MEDIUM-3): the server's own proof, never the browser's claim.
+        status = record.get("bundles", {}).get(body.get("bundle_id")) or {}
+        operations = (status.get("claim") or {}).get("operations")
+        proof = ledger_absence(request, player, body.get("attempt"), operations) if operations else None
+        return runs.mark_unsent(folder, record, body.get("bundle_id"), absence_proof=proof)
     try:
-        return await asyncio.to_thread(_execute, request, player, body.get("run_id"),
-            lambda folder, record: runs.find_signed(folder, record, body.get("bundle_id")))
+        return await asyncio.to_thread(_execute, request, player, body.get("run_id"), act)
     except routing.RoutingError as exc:
         raise _refused(request, player, exc) from exc
 
@@ -163,13 +175,13 @@ async def counted_hive_head(request: Request, player: str | None = None):
 
 @router.post("/api/harvest/routing/v2/reconcile")
 async def reconcile_transaction(request: Request, player: str | None = None):
-    """Meter at most one physical probe or verdict lookup per explicit request."""
+    """At most one counted probe or verdict lookup per request (the shared confirmer schedules them; )."""
     body = await _body(request)
     player = player_for_request(request, player)
     try:
         return await asyncio.to_thread(_execute, request, player, body.get("run_id"),
             lambda folder, record: runs.reconcile(folder, record, body.get("bundle_id"),
-                body.get("mode"), body.get("operation_index"), manual=body.get("manual") is True))
+                body.get("mode"), body.get("operation_index")))
     except routing.RoutingError as exc:
         raise _refused(request, player, exc) from exc
 

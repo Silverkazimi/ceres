@@ -2,14 +2,14 @@ import { prepareSigningBatch, requestSignatureThroughGate } from './broadcast-ga
 import { signedQueueRows } from './transaction-queue.js';
 import { walletCanSignTransaction, walletReady } from './wallet.js';
 import { routingApprovalCounts, routingWindowHtml } from './routing-window.js';
+import { confirmAction, confirmationState } from './shared-confirmer.js';
 
 const ROOT = '/api/harvest/routing/v2/';
 const FINISHED = new Set(['confirmed', 'refused', 'skipped', 'stopped']);
 const SEEN_RUNS = new Set();
-const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-// Five scheduled game checks spread like the harvest verifier (3, 8, 15, 30, 45 s): the same call count
-// but a game that takes longer than 15 s to post its verdict no longer leaves the bundle "unknown".
-const CHECK_WAITS_MS = [3000, 5000, 7000, 15000, 15000];
+// a bundle is confirmed by the shared confirmer (shared-confirmer.js) -- its schedule, its own-history finder
+// for a missing id () and its one read at Hive expiry. This module hands it one read (`readBundle`) and renders
+// the per-operation states it gets back. No own pause, poll count, probe cap, call budget or manual check (IN-0706).
 
 async function request(player, path, body, method = 'POST', token = null) {
   const headers = { ...(token ? { 'X-Run-Token': token } : {}) };   // the run's own token; the server opens nothing without it
@@ -44,7 +44,7 @@ function memberClaims(player) {
 function reserveMembers(player, nonces) {
   const used = memberClaims(player);
   const queued = queueClaims(player);
-  if (nonces.some(nonce => used.has(nonce) || queued.has(nonce))) throw new Error('A route share already has a wallet claim. Check its outcome; no second signature is allowed.');
+  if (nonces.some(nonce => used.has(nonce) || queued.has(nonce))) throw new Error('A route share already has a wallet claim; Ceres is confirming it. No second signature is allowed.');
   nonces.forEach(nonce => used.add(nonce));
   localStorage.setItem(`ceres:routing-v2-members:${player}`, JSON.stringify([...used]));
 }
@@ -114,47 +114,58 @@ export function createRoutingRun({ player, onRender, isCurrent, api = request,
     return update(record);
   }
 
-  async function reconcile(bundle, manual = false) {
+  // The bundle's state as the shared confirmer's four states, per operation ( design item 4).
+  function verdict(bundle) {
+    const status = bundleStatus(bundle);
+    const perOp = (status.operation_ids || []).map((id, index) => {
+      const state = S.record.operations[id]?.state;
+      return { index, state: state === 'confirmed' ? 'confirmed' : state === 'refused' ? 'refused'
+        : state === 'stopped' ? 'never-sent' : 'pending', ...(S.record.operations[id]?.error ? { error: S.record.operations[id].error } : {}) };
+    });
+    if (status.state === 'confirmed') return { state: 'confirmed', perOp };
+    if (status.state === 'refused') return { state: 'refused', perOp, error: perOp.find(op => op.error)?.error || 'The game refused this routing step.' };
+    if (status.state === 'stopped') return { state: 'never-sent', perOp, error: 'Hive has no record of this routing transaction and it has expired. It was not sent.' };
+    return { state: 'pending', perOp, message: status.chain === 'included' ? 'On Hive; waiting for the game. Ceres keeps checking; nothing is signed again.'
+      : 'Sent; waiting for Hive. Ceres keeps checking; nothing is signed again.' };
+  }
+
+  // ONE read for the shared confirmer: attach a newly learned id, then one chain probe until Hive has the transaction
+  // then one game verdict per open operation. A paced (429) or failed read throws; the confirmer reads again.
+  async function readBundle(bundle, txId) {
+    if (!S.active || S.record?.bundles?.[bundle.id] === undefined) return { state: 'pending' };
     let status = bundleStatus(bundle);
-    if (!status.tx_id) return;
-    if (status.chain !== 'included' && ((status.chain_probes || 0) < 2 || manual)) {
-      update(await call('reconcile', { run_id: S.runId, bundle_id: bundle.id, mode: 'chain', manual }));
+    if (!status.tx_id && txId) { update(await call('attach', { run_id: S.runId, bundle_id: bundle.id, tx_id: txId })); status = bundleStatus(bundle); }
+    if (FINISHED.has(status.state)) return verdict(bundle);
+    if (status.chain !== 'included') {
+      update(await call('reconcile', { run_id: S.runId, bundle_id: bundle.id, mode: 'chain' }));
       status = bundleStatus(bundle);
+      if (status.chain !== 'included') return verdict(bundle);
     }
-    if (status.chain !== 'included') return;
     const ids = status.operation_ids || [];
     for (let index = 0; index < ids.length; index += 1) {
-      const operation = S.record.operations[ids[index]];
-      if (FINISHED.has(operation.state) || (!manual && operation.polls >= 5)) continue;
-      update(await call('reconcile', { run_id: S.runId, bundle_id: bundle.id,
-        mode: 'game', operation_index: index, manual }));
+      if (FINISHED.has(S.record.operations[ids[index]]?.state)) continue;
+      update(await call('reconcile', { run_id: S.runId, bundle_id: bundle.id, mode: 'game', operation_index: index }));
     }
+    return verdict(bundle);
   }
 
-  async function check(manual = true) {
-    const bundle = current();
-    if (!bundle || !bundleStatus(bundle).tx_id || S.busy) return;
-    S.busy = true; S.error = ''; notify();
-    try { await reconcile(bundle, manual); }
-    catch (error) { S.error = error.message; }
-    finally { S.busy = false; notify(); }
-  }
-
-  // the wallet may have signed while the page was away and the answer never arrived. On the maintainer's button, one account-history
-  // read finds the transaction by its exact claimed operations and attaches it; the usual checks then carry on. Never automatic ().
-  async function findSigned() {
-    const bundle = current();
-    if (!bundle || bundleStatus(bundle).state !== 'claimed' || bundleStatus(bundle).tx_id || S.busy) return;
-    S.busy = true; S.error = ''; notify();
+  // Confirms one signed bundle, with or without an id; resolves when the chain or the game has the final word.
+  async function confirmBundle(bundle, operations, txId = null) {
+    S.confirming = bundle.id; S.confirmMessage = ''; notify();
     try {
-      update(await call('find', { run_id: S.runId, bundle_id: bundle.id }));
-      for (let attempt = 0; attempt < CHECK_WAITS_MS.length && S.active && !FINISHED.has(bundleStatus(bundle).state); attempt += 1) {
-        await pause(CHECK_WAITS_MS[attempt]);
-        await reconcile(bundle, false);
-        if (bundleStatus(bundle).chain !== 'included' && (bundleStatus(bundle).chain_probes || 0) >= 2) break;
+      const answer = await confirmAction({ account: player, operations, txId,
+        check: id => readBundle(bundle, id),
+        onUpdate: next => { if (next.state === 'pending') { S.confirmMessage = next.message || ''; notify(); } } });
+      if (answer.state === 'never-sent' && !bundleStatus(bundle).tx_id) {
+        // Proven absent by the own-history reads at Hive expiry: the server stops the bundle and releases its shares.
+        // The server checks its OWN expiry proof for this attempt (fix round 1, MEDIUM-3); the browser only names it.
+        update(await call('unsent', { run_id: S.runId, bundle_id: bundle.id, attempt: confirmationState(player, operations)?.attemptId || null }));
+      } else if (answer.state === 'never-sent' && !FINISHED.has(bundleStatus(bundle).state)) {
+        // The confirmer's own Hive check said absent past expiry; the server's chain probe records the same verdict.
+        await readBundle(bundle, bundleStatus(bundle).tx_id).catch(() => {});
       }
-    } catch (error) { S.error = error.message || String(error); }
-    finally { S.busy = false; notify(); }
+      return answer;
+    } finally { if (S.confirming === bundle.id) { S.confirming = null; S.confirmMessage = ''; } notify(); }
   }
 
   async function signCurrent() {
@@ -166,7 +177,6 @@ export function createRoutingRun({ player, onRender, isCurrent, api = request,
     let stage = 'start';
     try {
       if (!walletReady(player)) throw new Error('Connect your Posting wallet before signing.');
-      if (S.record.call_budget.stopped || S.record.call_budget.total >= (S.record.call_budget.ceiling || 120)) throw new Error('Run call budget reached. Check the outstanding outcome.');
       if (!navigator.locks?.request) throw new Error('Safe routing coordination requires browser Web Locks.');
       const bundleMembers = bundle.operations.flatMap(operation => operation.members);
       const excludedRouteIds = bundleMembers
@@ -175,7 +185,7 @@ export function createRoutingRun({ player, onRender, isCurrent, api = request,
       stage = 'claim';
       const handoff = S.pendingReview || await navigator.locks.request(`ceres:routing-v2:${player}`, async () => {
         update(await call('state', { run_id: S.runId }));
-        if (bundleStatus(bundle).state !== 'planned') throw new Error('This route bundle was already claimed. Check its outcome.');
+        if (bundleStatus(bundle).state !== 'planned') throw new Error('This route bundle was already claimed; Ceres is confirming it.');
         const claim = await call('claim', { run_id: S.runId, bundle_id: bundle.id, excluded_route_ids: excludedRouteIds });
         update(await call('state', { run_id: S.runId }));
         if (claim.skipped) return claim;
@@ -203,33 +213,23 @@ export function createRoutingRun({ player, onRender, isCurrent, api = request,
         if (!prepared) throw new Error('The Posting wallet cannot prepare this routing bundle.');
       }
       if (!S.active || !walletReady(player)) throw new Error('Routing window or wallet changed before signing. No new signature was requested.');
-      let result;
+      let result = null;
       walletAsked = true;
       stage = 'sign';
       try { result = await sign(player, handoff.operations, null, 'Posting', prepared, { runId: `routing-v2-${S.runId}`, runKind: 'harvest' }); }
       catch (error) {
-        // broadcasted === false: the wallet refused before any signature existed, so nothing can reach the chain.
-        if (error.txId && error.broadcasted !== false) update(await call('attach', { run_id: S.runId, bundle_id: bundle.id, tx_id: error.txId }));
-        throw error;
+        // broadcasted === false: the wallet refused before anything was sent (a prepared envelope may carry an id that never
+        // reached the chain), so the claim is released below.
+        if (error.broadcasted === false) throw error;
+        // Anything else may have been signed: the shared confirmer takes over (with the id, or finds it; ).
+        report('sign', error, { bundle_id: bundle.id, wallet_asked: true, confirming: true });
+        result = { txId: error.txId || null };
       }
-      if (!result?.txId) throw new Error('Wallet outcome unknown. Check its history before doing anything else.');
       stage = 'attach';
-      update(await call('attach', { run_id: S.runId, bundle_id: bundle.id, tx_id: result.txId }));
-      stage = 'reconcile';
-      if (result.submitted) await result.submitted;
-      if (result.queued) {
-        const deadline = Date.now() + 60000;
-        while (S.active && Date.now() < deadline) {
-          const row = signedQueueRows(player).find(item => item.txId === result.txId);
-          if (!row || ['included', 'unknown', 'rejected', 'expired', 'cancelled', 'blocked'].includes(row.state)) break;
-          await pause(1000);
-        }
-      }
-      for (let attempt = 0; attempt < CHECK_WAITS_MS.length && S.active && !FINISHED.has(bundleStatus(bundle).state); attempt += 1) {
-        await pause(CHECK_WAITS_MS[attempt]);
-        await reconcile(bundle, false);
-        if (bundleStatus(bundle).chain !== 'included' && (bundleStatus(bundle).chain_probes || 0) >= 2) break;
-      }
+      if (result?.txId) update(await call('attach', { run_id: S.runId, bundle_id: bundle.id, tx_id: result.txId }));
+      stage = 'confirm';
+      S.busy = false; notify();   // signing is over; the confirmation shows its own automatic line
+      await confirmBundle(bundle, handoff.operations, result?.txId || null);
     } catch (error) {
       report(stage, error, { bundle_id: bundle.id, wallet_asked: walletAsked, operations: claimed?.operations?.[0]?.length,
         bytes: claimed ? JSON.stringify(claimed.operations).length : undefined });
@@ -267,7 +267,7 @@ export function createRoutingRun({ player, onRender, isCurrent, api = request,
       const after = bundleStatus(bundle).state;
       if (after === 'planned') return;                       // declined in the wallet: nothing sent, the button stays
       if (after === 'claimed' && S.pendingReview) continue;   // re-priced LP amounts: approve them straight away
-      if (!FINISHED.has(after)) return;                       // outcome still open: the checks carry on as before
+      if (!FINISHED.has(after)) return;                       // still open (page left): the confirmer carries on
     }
   }
 
@@ -299,6 +299,7 @@ export function createRoutingRun({ player, onRender, isCurrent, api = request,
   return { get runId() { return S.runId; }, get busy() { return S.busy; }, get record() { return S.record; },
     get counts() { return routingApprovalCounts(S.record?.manifest); },
     html: () => S.record ? routingWindowHtml(S.record, { player, busy: S.busy, error: S.error, excludedRouteIds: excluded, viewBundleId: S.viewBundle,
+      confirming: S.confirming, confirmMessage: S.confirmMessage,
       changedAmountReview: S.pendingReview?.changed_amount_review || [] }) : '',
     action: (name, node) => {
       if (name === 'view-bundle') { S.viewBundle = node?.dataset.r3BundleId || null; notify(); return; }
@@ -311,7 +312,7 @@ export function createRoutingRun({ player, onRender, isCurrent, api = request,
         notify();
         return;
       }
-      return ({ sign: signAll, check, stop, find: findSigned })[name]?.();
+      return ({ sign: signAll, stop })[name]?.();   // no manual check or find control
     },
     load, create, stop, discardFinished, detach: () => { S.active = false; try { window.removeEventListener('pagehide', onLeave); } catch (_) { /* no window */ } },
   };

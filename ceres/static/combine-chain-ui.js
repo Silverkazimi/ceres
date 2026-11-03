@@ -236,7 +236,7 @@ export function chainCardHtml(id, plan, now = Date.now()) {
     states[2] = plan.state === 'combine_signed' ? 'active' : plan.problem ? 'problem' : 'done';
     states[3] = plan.problem ? 'problem' : plan.state === 'done' ? 'done' : 'active';
     combine = (plan.state === 'combine_signed' ? '<p>Combine signed · checking with the game. Do not combine these copies again.</p>' : '<p>Combine confirmed.</p>') + combineRows + result;
-    if (plan.state === 'combine_signed' || plan.problem?.code === 'combine_mismatch') combine += `<button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="compact" data-upgrade-action="check-combine" data-chain-id="${esc(id)}">Check again</button>`;
+    // no "Check again" -- the shared confirmer reads the signed combine by itself.
     if (placement) place = place.replace('signable after the combine', plan.problem ? 'placement on hold' : placement.cooldown?.ready ? 'ready to stake · next Sign' : 'waiting for the board read');
   } else if (derived.state === 'ready' || plan.problem?.code === 'combine_refused') {
     combine += `<button type="button" class="ceres-btn ceres-btn--secondary chain-desktop" data-control-density="compact" data-upgrade-action="review" data-chain-id="${esc(id)}">Review and combine</button>`;
@@ -436,7 +436,6 @@ export async function handleUpgradeAction(event) {
     if (card) await openUpgradeWindow(card, { kind: button.dataset.upgradeIndex === 'occupant' ? 'tile' : 'picker', deed_uid: picker.deedUid, slot_index: picker.slotIndex });
   } else if (action === 'close') { ++upgradeRequest; UPGRADE_WINDOW = null; closeCombineDialog(); }
   else if (action === 'review') await openPlanReview(button.dataset.chainId);
-  else if (action === 'check-combine') await verifyPlanCombine(button.dataset.chainId);
   else if (action === 'use-result' || action === 'cancel-placement') await resolvePlanMismatch(button.dataset.chainId, action === 'use-result');
   else if (action === 'finish') {
     const plan = chainPlans()[button.dataset.chainId];

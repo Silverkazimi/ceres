@@ -4,6 +4,7 @@ import { upgradeActionHtml } from './combine-chain-ui.js';
 import { abilityRowText, abilityTipModel, bloodlineOutranked, foilBadgeHtml, workerSubType } from './badges.js';
 import { CB_ABILITY_LABELS, CB_ANY_ABILITY, cbAbilityCodes, cbList } from './card-browser-model.js';
 import { BOARD, catalogNotice, noticeMessage } from './board.js';
+import { boardPlanningActive, boardPlanningPlan } from './board-planning.js';
 import { tokenIcon, tokenLabel } from './harvest-state.js';
 import { candidateCombineInfo, combineTipModel } from './combine.js';
 import { editorCardImageHtml, editorSlotLabel } from './editor.js';
@@ -35,7 +36,21 @@ export function workerUpgradeIsAvailable(worker, options) {
   return !(Number.isFinite(bcx) && Number.isFinite(bcxMax) && bcx >= bcxMax);
 }
 
+// IN-0267: while planning, the picker reserves the plan's own other placements (one asset per plan), not the
+// live stage; the live staged roster is not sent, because the plan is a separate virtual sheet.
+function pickerReservedRefs(picker) {
+  if (!boardPlanningActive()) return typeof stagedIncomingAssetRefs === 'function' ? stagedIncomingAssetRefs() : new Set();
+  const plan = boardPlanningPlan();
+  return new Set((plan?.placements || []).filter((p) => !(String(p.deed_uid) === String(picker?.deedUid) && p.group_id === picker?.groupId
+    && p.slot_index === picker?.slotIndex)).map((p) => String(p.asset_ref)));
+}
+function pickerElsewhereBlocked(ref, picker) {
+  if (boardPlanningActive()) return false;
+  return typeof pendingIncomingRefElsewhere === 'function' && pendingIncomingRefElsewhere(ref, picker.deedUid, picker.groupId, picker.slotIndex);
+}
+
 function appendStagedPlan(params, deedUid) {
+  if (boardPlanningActive()) return;
   const entries = typeof stagedEntriesForRow === 'function'
     ? stagedEntriesForRow(deedUid).filter((entry) => !entry.txId && !entry._synthetic && !entry._asset?.planned)
     : [];
@@ -63,7 +78,7 @@ function workerUpgradeCopyCount(row, candidate) {
 }
 
 export function pickerEditionOptionsHtml(picker) {
-  return '<option value="">Any edition</option>' + (picker.availableEditions || [])
+  return '<option value="">All</option>' + (picker.availableEditions || [])
     .map((id) => `<option value="${id}"${String(picker.filters.edition) === String(id) ? ' selected' : ''}>${esc(editionDisplayLabel(id))}</option>`).join('');
 }
 
@@ -81,7 +96,7 @@ export function candidateQuery(picker, offset) {
     sort: workerLike ? (picker.sort || 'construction_pp') : itemLike ? (picker.sort || 'boost') : 'net_gain',
     slot: String(picker.slotIndex),
   });
-  stagedReleasedItemRefs(picker.groupId, picker.deedUid).forEach((ref) => params.append('released_asset_ref', ref));
+  if (!boardPlanningActive()) stagedReleasedItemRefs(picker.groupId, picker.deedUid).forEach((ref) => params.append('released_asset_ref', ref));
   // reserve the inputs even before the first signature; only then expose the result.
   if (picker.groupId === 'worker') {
     const summaries = [];
@@ -97,8 +112,7 @@ export function candidateQuery(picker, offset) {
   if (filters.rarity) params.set('rarity', filters.rarity);
   if (itemLike) {
     // No splinter/edition/min_pp/bucket/preset: those describe worker cards only.
-    const reserved = typeof stagedIncomingAssetRefs === 'function' ? stagedIncomingAssetRefs() : new Set();
-    reserved.forEach((assetRef) => params.append('reserved_asset_ref', assetRef));
+    pickerReservedRefs(picker).forEach((assetRef) => params.append('reserved_asset_ref', assetRef));
     appendStagedPlan(params, picker.deedUid);
     return `/api/plots/${encodeURIComponent(picker.deedUid)}/candidates?${params}`;
   }
@@ -130,8 +144,7 @@ export function candidateQuery(picker, offset) {
     const legacyPreset = ({ base_pp: 'highest_pp', cooldown_free: 'cooldown_free', everything: 'everything' })[picker.preset] || 'net_gain_default';
     params.set('preset', legacyPreset);
   }
-  const reserved = typeof stagedIncomingAssetRefs === 'function' ? stagedIncomingAssetRefs() : new Set();
-  reserved.forEach((assetRef) => params.append('reserved_asset_ref', assetRef));
+  pickerReservedRefs(picker).forEach((assetRef) => params.append('reserved_asset_ref', assetRef));
   appendStagedPlan(params, picker.deedUid);
   return `/api/plots/${encodeURIComponent(picker.deedUid)}/candidates?${params}`;
 }
@@ -265,7 +278,7 @@ export function candidateStatusModel(candidate) {
   }
   if (cooldown.state === 'survival_locked') {
     const bracket = candidate.survival_bracket ? `Bracket ${candidate.survival_bracket} · ` : '';
-    return { tone: 'danger', icon: '✕', label: 'Dead in Survival', countdownUntil: cooldown.ready_at || null, detail: `${bracket}may revive earlier at the season reset`, selectable: false };
+    return { tone: 'danger', icon: '✕', label: 'Dead in Survival', countdownUntil: cooldown.ready_at || null, detail: `${bracket}may revive earlier at the season reset`, selectable: boardPlanningActive() }; // IN-0267: plannable as a waiting card, never signable
   }
   if (cooldown.state === 'cooling') {
     // with a known source plot the detail line is "Unstaked from" + the shared plot
@@ -493,10 +506,7 @@ function itemMoveSourceHtml(candidate) {
 
 function itemCopyAvailable(candidate, picker) {
   if (!candidate?.asset_ref) return false;
-  const reserved = typeof stagedIncomingAssetRefs === 'function' ? stagedIncomingAssetRefs() : new Set();
-  return !reserved.has(String(candidate.asset_ref))
-    && (typeof pendingIncomingRefElsewhere !== 'function'
-      || !pendingIncomingRefElsewhere(candidate.asset_ref, picker.deedUid, picker.groupId, picker.slotIndex));
+  return !pickerReservedRefs(picker).has(String(candidate.asset_ref)) && !pickerElsewhereBlocked(candidate.asset_ref, picker);
 }
 
 function renderCandidateRow(candidate, index, picker, replacing) {
@@ -651,10 +661,9 @@ function renderItemRarityGridCards(picker, replacing) {
     return rarities.indexOf(right) - rarities.indexOf(left);
   });
   const assetLabel = isTitle ? 'Title' : 'Totem';
-  const reserved = typeof stagedIncomingAssetRefs === 'function' ? stagedIncomingAssetRefs() : new Set();
+  const reserved = pickerReservedRefs(picker);
   const tierOf = (item) => String(item?.rarity || item?.name?.split(' ')[0] || '').toLowerCase();
-  const isFree = (item) => item?.asset_ref && !reserved.has(String(item.asset_ref))
-    && (typeof pendingIncomingRefElsewhere !== 'function' || !pendingIncomingRefElsewhere(item.asset_ref, picker.deedUid, picker.groupId, picker.slotIndex));
+  const isFree = (item) => item?.asset_ref && !reserved.has(String(item.asset_ref)) && !pickerElsewhereBlocked(item.asset_ref, picker);
   return orderedRarities.map((rarity) => {
     const group = picker.rarityGroups?.[rarity] || { count: 0, candidate: null };
     const copies = [...new Map([group.candidate, ...(picker.candidates || []).filter((item) => tierOf(item) === rarity)]
@@ -868,15 +877,15 @@ export function renderInlineCandidatePicker(row) {
   // splinter still shows its icon + name (customSelect's existing decorateOption).
   const nameField = `<label class="picker-filter-field"${tip('Search by name', 'Matches any part of the card name.')}><span class="sr-only">Name</span><input type="text" class="ceres-wide-input" data-picker-filter="q" value="${esc(filter.q)}" placeholder="Search name…" aria-label="Search by name"></label>`;
   const workerNameField = `<label class="board-filter-field picker-filter-field"${tip('Search by name', 'Matches any part of the card name.')}><span class="sr-only">Name</span><input type="text" class="ceres-wide-input" data-picker-filter="q" value="${esc(filter.q)}" placeholder="Search name…" aria-label="Search by name"></label>`;
-  const rarityField = (label, values) => `<label class="picker-filter-field"${tip(label, `Show only one ${label.toLowerCase()}.`)}><span class="sr-only">${esc(label)}</span><select data-picker-filter="rarity" aria-label="${esc(label)} filter"><option value="">Any ${label.toLowerCase()}</option>${values.map((value) => `<option value="${value}"${filter.rarity === value ? ' selected' : ''}>${esc(value.charAt(0).toUpperCase() + value.slice(1))}</option>`).join('')}</select></label>`;
+  const rarityField = (label, values) => `<label class="picker-filter-field"${tip(label, `Show only one ${label.toLowerCase()}.`)}><span class="sr-only">${esc(label)}</span><select data-picker-filter="rarity" aria-label="${esc(label)} filter"><option value="">All</option>${values.map((value) => `<option value="${value}"${filter.rarity === value ? ' selected' : ''}>${esc(value.charAt(0).toUpperCase() + value.slice(1))}</option>`).join('')}</select></label>`;
   // Worker: the plot's splinter icons are the Splinter filter (maintainer, §9); Runi keeps the dropdown.
-  const splinterSelect = isWorker ? '' : `<label class="picker-filter-field"${tip('Splinter', 'Show only one splinter.')}><span class="sr-only">Splinter</span><select data-picker-filter="splinter" aria-label="Splinter filter"><option value="">Any splinter</option>${['fire', 'water', 'earth', 'life', 'death', 'dragon', 'neutral'].map((value) => `<option value="${value}"${filter.splinter === value ? ' selected' : ''}>${esc(value.charAt(0).toUpperCase() + value.slice(1))}</option>`).join('')}</select></label>`;
+  const splinterSelect = isWorker ? '' : `<label class="picker-filter-field"${tip('Splinter', 'Show only one splinter.')}><span class="sr-only">Splinter</span><select data-picker-filter="splinter" aria-label="Splinter filter"><option value="">All</option>${['fire', 'water', 'earth', 'life', 'death', 'dragon', 'neutral'].map((value) => `<option value="${value}"${filter.splinter === value ? ' selected' : ''}>${esc(value.charAt(0).toUpperCase() + value.slice(1))}</option>`).join('')}</select></label>`;
   const abilityField = `<label class="picker-filter-field"${tip('Ability', 'Match any selected Land ability among loaded candidates.')}><span class="sr-only">Ability</span><select data-picker-filter="ability" aria-label="Ability filter" multiple><option value="">All</option><option value="${CB_ANY_ABILITY}"${cbList(filter.ability).includes(CB_ANY_ABILITY) ? ' selected' : ''}>Has an ability</option>${Object.entries(CB_ABILITY_LABELS).map(([code, label]) => `<option value="${code}"${cbList(filter.ability).includes(code) ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select></label>`;
   // no Source filter; the list always shows idle and staked cards.
   const workerFields = isWorker
     ? `${workerNameField}<label class="board-filter-field picker-filter-field"${tip('Min Base PP', 'Only cards with at least this Base PP.')}><span class="sr-only">Min Base PP</span><input type="text" class="ceres-wide-input" data-picker-filter="min_pp" inputmode="decimal" value="${esc(filter.min_pp)}" placeholder="Min PP" aria-label="Min Base PP"></label><label class="board-filter-field picker-filter-field"${tip('Max Base PP', "Only cards with at most this Base PP -- for filling the plot's Base PP cap precisely.")}><span class="sr-only">Max Base PP</span><input type="text" class="ceres-wide-input" data-picker-filter="max_pp" inputmode="decimal" value="${esc(filter.max_pp || '')}" placeholder="Max PP" aria-label="Max Base PP"></label><span class="controls-sep" aria-hidden="true"></span>${rarityField('Rarity', ['common', 'rare', 'epic', 'legendary'])}<label class="picker-filter-field"${tip('Edition', 'Show only one edition.')}><span class="sr-only">Edition</span><select data-picker-filter="edition" aria-label="Edition filter">${editionOptions}</select></label>${abilityField}<span class="controls-sep" aria-hidden="true"></span>${toggle('ready_now', 'Ready only', filter.ready_now === true, "Only cards that can be staked right now -- no cooldown running, not dead in Survival. Cards already on land are hidden unless 'On land' is on.")}${toggle('include_on_land', 'On land', filter.include_on_land === true, 'Also show cards already staked on another plot. Moving one here costs a 72 h cooldown.')}${toggle('land_only', 'Land Cards', filter.land_only === true, 'Only cards with land abilities: the Land set and Visions of Verico.')}${S.CERES_PICKER?.bloodlineSubTypes?.length ? toggle('bloodline_pairs', 'Bloodline pairs', filter.bloodline_pairs, 'Only cards that pair with a Toil and Kin holder on this plot.') : ''}`
     : `${rarityField('Rarity', ['common', 'rare', 'epic', 'legendary'])}${splinterSelect}<label class="picker-filter-field"${tip('Edition', 'Show only one edition.')}><span class="sr-only">Edition</span><select data-picker-filter="edition" aria-label="Edition filter">${editionOptions}</select></label>${nameField}<label class="picker-filter-field"${tip('Min Base PP', 'Only cards with at least this Base PP.')}><span class="sr-only">Min Base PP</span><input type="text" class="ceres-wide-input" data-picker-filter="min_pp" inputmode="decimal" value="${esc(filter.min_pp)}" placeholder="Min PP" aria-label="Min Base PP"></label><label class="picker-filter-field"${tip('Max Base PP', "Only cards with at most this Base PP -- for filling the plot's Base PP cap precisely.")}><span class="sr-only">Max Base PP</span><input type="text" class="ceres-wide-input" data-picker-filter="max_pp" inputmode="decimal" value="${esc(filter.max_pp || '')}" placeholder="Max PP" aria-label="Max Base PP"></label>${toggle('ready_now', 'Ready only', filter.ready_now === true, "Only cards that can be staked right now -- no cooldown running, not dead in Survival. Cards already on land are hidden unless 'On land' is on.")}${toggle('include_on_land', 'On land', filter.include_on_land === true, 'Also show cards already staked on another plot. Moving one here costs a 72 h cooldown.')}`;
-  const legacyFields = `${nameField}${rarityField('Rarity', ['common', 'rare', 'epic', 'legendary'])}<label class="picker-filter-field"><span class="sr-only">Splinter</span><select data-picker-filter="splinter" aria-label="Splinter filter"><option value="">Any splinter</option>${['fire', 'water', 'earth', 'life', 'death', 'dragon', 'neutral'].map((value) => `<option value="${value}"${filter.splinter === value ? ' selected' : ''}>${value}</option>`).join('')}</select></label><label class="picker-filter-field"><span class="sr-only">Edition</span><input type="text" class="ceres-wide-input" data-picker-filter="edition" inputmode="numeric" value="${esc(filter.edition)}" placeholder="Any edition" aria-label="Edition"></label><label class="picker-filter-field"><span class="sr-only">Min PP</span><input type="text" class="ceres-wide-input" data-picker-filter="min_pp" inputmode="decimal" value="${esc(filter.min_pp)}" placeholder="Min PP" aria-label="Min PP"></label>`;
+  const legacyFields = `${nameField}${rarityField('Rarity', ['common', 'rare', 'epic', 'legendary'])}<label class="picker-filter-field"><span class="sr-only">Splinter</span><select data-picker-filter="splinter" aria-label="Splinter filter"><option value="">All</option>${['fire', 'water', 'earth', 'life', 'death', 'dragon', 'neutral'].map((value) => `<option value="${value}"${filter.splinter === value ? ' selected' : ''}>${value}</option>`).join('')}</select></label><label class="picker-filter-field"><span class="sr-only">Edition</span><input type="text" class="ceres-wide-input" data-picker-filter="edition" inputmode="numeric" value="${esc(filter.edition)}" placeholder="Edition" aria-label="Edition"></label><label class="picker-filter-field"><span class="sr-only">Min PP</span><input type="text" class="ceres-wide-input" data-picker-filter="min_pp" inputmode="decimal" value="${esc(filter.min_pp)}" placeholder="Min PP" aria-label="Min PP"></label>`;
   // Totem tier ladder is Common/Rare/Epic/Legendary; Title's is Rare/Epic/Legendary
   // only (no Common title exists -- the internal rules's title-boost ladder). Different
   // asset classes, different value lists -- never merge them.

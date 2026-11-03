@@ -365,8 +365,17 @@ def op_inclusion(body: dict[str, Any], request: Request, player: str | None = No
     transaction, reason_kind = get_transaction(tx_id)
     block_num = transaction.get("block_num") if transaction else None
     included = True if block_num is not None else False if reason_kind == "not_found" else None
-    if included is False and not _old_enough_to_be_absent(body.get("created_at")):
-        included = None  # too young: the first "not found" never frees the duplicate-sign guard
+    if included is False:
+        # fix round 2 (aletheia-r2 LOW-2/LOW-3, astra-r2 P1-7): the age is the SERVER's own: the moment the
+        # confirm ledger learned the attempt's wallet request was closed, or the moment this server first heard of this
+        # transaction id (an id exists only after signing), whichever is earlier; neither is ever before the signing. The browser's created_at and
+        # answered_ms_ago are ignored: a wrong or moved browser clock can never make a transaction "absent".
+        from .routes_confirm import ledger_anchor, tx_first_seen
+        anchor = ledger_anchor(request, account, body.get("intent")) if body.get("intent") is not None else None
+        first_seen = tx_first_seen(request, account, tx_id) if isinstance(tx_id, str) else time.time()
+        anchor = min(anchor, first_seen) if anchor is not None else first_seen   # both are never before the signing
+        if time.time() - anchor < TX_ABSENCE_GRACE_SECONDS:
+            included = None  # too young by the server's clock: "not found" never frees the duplicate-sign guard
     return JSONResponse(content={"included": included, "block_num": block_num})
 
 

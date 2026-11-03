@@ -22,7 +22,7 @@ const click = action => __panel.click({
   target: { closest: selector => selector === '[data-account]' ? { dataset: { account: action }, disabled: false } : null },
   stopPropagation() {},
 });
-click('player0014');
+click('player0015');
 await new Promise(resolve => setTimeout(resolve, 20));
 const challenge = oldWorker.messages.find(message => message.action === 'challenge');
 if (!challenge || oldWorker.messages.some(message => message.action === 'connect')) throw Error('saved session did not select challenge');

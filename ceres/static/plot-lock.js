@@ -1,6 +1,7 @@
 import { esc, formatPlotLabel } from './format.js';
 import { tipAttrs } from './tooltip.js';
 import { prepareSigningBatch, requestSignatureThroughGate } from './broadcast-gate.js';
+import { confirmAction, waitThrough } from './shared-confirmer.js';
 import { walletCanSignTransaction } from './wallet.js';
 import { currentCeresAppIdentity } from './transaction-queue.js';
 import { playerQueryAppend } from './board.js';
@@ -10,13 +11,9 @@ export const STAGED_PLOT_LOCKS = new Map();
 let planAccount = null;
 const reviews = new Map();
 const deedId = (value) => /^I-[0-9]+-[A-Za-z0-9]+$/.test(value || '');
-// a signed lock/unlock used to wait for
-// the board's deed state alone, so a lock the game refused left the button disabled forever. Its transaction is now
-// read by id (never a history scan) on a fixed schedule after the signature: accepted -> it keeps waiting for the live
-// deed state; refused -> the entry goes and the game's reason is shown; unknown once the claims window (, 25 s)
-// has passed -> "not found" with a dismiss; no answer at all -> Check again.
-export const LOCK_VERIFY_SCHEDULE_MS = [3000, 8000, 15000, 30000, 60000];
-export const LOCK_NOT_FOUND_AFTER_MS = 25000;
+// a signed lock/unlock is read by id (never a history scan) through the shared confirmer: accepted ->
+// it keeps waiting for the live deed state; refused -> the entry goes and the game's reason is shown; never sent (Hive
+// reports it absent past its lifetime) -> "not sent" with a dismiss. No 25-second "not found", no Check again.
 const verifying = new Set();
 
 export function plotLockState(row) {
@@ -98,6 +95,9 @@ export function reconcilePlotLockPlans(board) {
   for (const [uid, entry] of STAGED_PLOT_LOCKS) {
     const row = rows.get(uid);
     const state = plotLockState(row);
+    // fix round 2 (astra-r2 shape 5): a SIGNED entry is settled only by its operation's verdict, never by the
+    // board: until the game has accepted it, the board looking "done" (or the deed missing) removes nothing.
+    if (entry.txId && !entry.accepted) { delete entry.blockedReason; continue; }
     if (entry.txId && row && state.known && ((entry.action === 'lock' && state.locked)
       || (entry.action === 'unlock' && row.unlock_date !== entry.baselineUnlockDate))) {
       dropPlan(uid);
@@ -122,65 +122,49 @@ function announce(uid, status, message = '') {
   window.dispatchEvent(new CustomEvent('ceres:plot-lock-verdict', { detail: { uid, status, message } }));
 }
 
-// one bounded run of by-id checks for a signed lock. Dependencies are injectable for tests.
-export async function verifySignedPlotLock(uid, { fetchImpl = (...args) => fetch(...args), sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), now = () => Date.now() } = {}) {
+// one read for the shared confirmer. `fetchImpl` is injectable for tests; the clock is the confirmer's seam.
+export async function verifySignedPlotLock(uid, { fetchImpl = (...args) => fetch(...args) } = {}) {
   const start = STAGED_PLOT_LOCKS.get(uid);
   if (!start?.txId || start.accepted || start.notFound || verifying.has(uid)) return null;
   verifying.add(uid);
   const txId = start.txId;
-  const signedAt = Number.isFinite(start.signedAt) ? start.signedAt : now();
+  const action = start.action;
   const same = () => { const entry = STAGED_PLOT_LOCKS.get(uid); return entry && entry.txId === txId ? entry : null; };
-  let last = null;
+  // fix round 2 (astra-r2 shape 5): the verdict is the OPERATION's (the game's record of this transaction), read
+  // even when the plan has left this page meanwhile; a missing plan is never "confirmed".
+  const check = async ({ signal } = {}) => {
+    const response = await fetchImpl(playerQueryAppend('/api/plot-lock/verify'), { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tx_id: txId, deed_uid: uid, action }), ...(signal ? { signal } : {}) });
+    if (!response.ok) throw Error(`plot-lock verify ${response.status}`);
+    const result = await response.json();
+    if (result?.status === 'failed') return { state: 'refused', result };
+    if (result?.status === 'accepted') return { state: 'confirmed', result };
+    return { state: 'pending' };
+  };
   try {
-    for (const offset of LOCK_VERIFY_SCHEDULE_MS) {
-      const wait = signedAt + offset - now();
-      if (wait > 0) await sleep(wait);
-      const entry = same();
-      if (!entry) return 'gone';  // the board confirmed it (or it was dismissed) meanwhile
-      let result;
-      try {
-        const response = await fetchImpl(playerQueryAppend('/api/plot-lock/verify'), { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tx_id: txId, deed_uid: uid, action: entry.action }) });
-        if (!response.ok) { last = 'error'; continue; }
-        result = await response.json();
-      } catch (_) { last = 'error'; continue; }
-      last = result?.status || 'error';
-      if (last === 'failed') {
-        dropPlan(uid); reviews.delete(uid);
-        try { savePlans(); } catch (_) { /* the in-memory state is already correct */ }
-        announce(uid, 'failed', String(result.message || 'The game refused this deed lock change.'));
-        return 'failed';
-      }
-      if (last === 'accepted') {
-        entry.accepted = true; delete entry.checkPaused;
-        try { savePlans(); } catch (_) { /* in memory */ }
-        announce(uid, 'accepted');
-        return 'accepted';
-      }
-      if (last === 'not_found' && now() - signedAt >= LOCK_NOT_FOUND_AFTER_MS) break;
-    }
+    const signedAt = Number.isFinite(start.signedAt) ? new Date(start.signedAt).toISOString() : undefined;
+    const answer = start.operations
+      ? await confirmAction({ account: planAccount, operations: start.operations, txId, check: (_tx, options) => check(options) })
+      : await waitThrough({ key: `plot-lock:${uid}:${txId}`, account: planAccount, txId, since: signedAt, check }).done;
     const entry = same();
-    if (!entry) return 'gone';
-    if (last === 'not_found') {
-      entry.notFound = true; delete entry.checkPaused;
-      try { savePlans(); } catch (_) { /* in memory */ }
-      announce(uid, 'not_found');
-      return 'not_found';
+    if (!entry || answer.gone) return 'gone';
+    if (answer.state === 'refused') {
+      dropPlan(uid); reviews.delete(uid);
+      try { savePlans(); } catch (_) { /* the in-memory state is already correct */ }
+      announce(uid, 'failed', String(answer.result?.message || 'The game refused this deed lock change.'));
+      return 'failed';
     }
-    entry.checkPaused = true;  // no answer from the game at all: say so, with Check again
-    announce(uid, 'paused');
-    return 'paused';
+    if (answer.state === 'confirmed') {
+      entry.accepted = true;
+      try { savePlans(); } catch (_) { /* in memory */ }
+      announce(uid, 'accepted');
+      return 'accepted';
+    }
+    entry.notFound = true;   // never sent: Hive has no record past its lifetime
+    try { savePlans(); } catch (_) { /* in memory */ }
+    announce(uid, 'not_found');
+    return 'not_found';
   } finally { verifying.delete(uid); }
-}
-
-// "Check again" on a signed lock whose checks got no answer; restarts the bounded schedule from now.
-export function recheckPlotLock(uid) {
-  const entry = STAGED_PLOT_LOCKS.get(uid);
-  if (!entry?.txId || entry.accepted) return false;
-  delete entry.checkPaused; delete entry.notFound; entry.signedAt = Date.now();
-  try { savePlans(); } catch (_) { /* in memory */ }
-  verifySignedPlotLock(uid).catch(() => {});
-  return true;
 }
 
 // a signed lock the game has no record of is dismissed; nothing else is.
@@ -195,10 +179,9 @@ export function dismissPlotLock(uid) {
 // Plain words for a signed entry's state, shared by the Changes surfaces.
 export function signedPlotLockText(entry) {
   if (!entry?.txId) return '';
-  if (entry.notFound) return 'Transaction not found — the game has no record of it; your deed did not change.';
+  if (entry.notFound) return 'Not sent — Hive has no record of it; your deed did not change.';
   if (entry.accepted) return 'Accepted — waiting for the live deed state';
-  if (entry.checkPaused) return 'No answer from the game yet. Check again reads it once more; nothing is signed again.';
-  return 'Signed — checking with the game…';
+  return 'Signed — Ceres is confirming it with the game; nothing is signed again.';
 }
 
 export function togglePlotLock(row) {
@@ -294,6 +277,7 @@ export async function signPlotLockReview(row) {
   const result = await requestSignatureThroughGate(planAccount, review.operations, null, 'Active', review.prepared,
     { reviewedActiveLock: review.witness });
   entry.txId = result.txId;
+  entry.operations = review.operations;   // the shared confirmer's identity for this lock
   entry.signedAt = Date.now();
   savePlans();
   queueMicrotask(() => { verifySignedPlotLock(row.deed_uid).catch(() => {}); });

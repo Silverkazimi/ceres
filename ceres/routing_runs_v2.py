@@ -40,6 +40,21 @@ TX_EXPIRY_SECONDS = 3900
 _CALLS = {"preview_context": 9, "harvest_receipt": 3, "segment_context": 8,
           "hive_head": 4, "chain_probe": 16, "game_verdict": 65,
           "bridge_history": 8, "pending_id": 1, "manual_retry": 6}
+# (maintainer IN-0705: "technically impossible to fail"; IN-0706: no manual control): a confirmation read is never
+# refused for good. The plan's call budget (, still part of the reviewed manifest) is COUNTED, never a give-up
+# no per-operation poll cap, no chain-probe cap, no run ceiling that stops checking, no `manual` bypass. What remains is
+# a rate limit -- one read per (bundle, mode, operation) per READ_MIN_INTERVAL_S -- answered as "not yet, read later"
+# (RoutingRateLimited, HTTP 429), which the browser's shared confirmer treats as pending and simply reads again.
+READ_MIN_INTERVAL_S = 1.0
+_CONFIRM_READS = {"chain_probe", "game_verdict"}
+CALL_LOG_KEEP = 200   # the per-run call log is diagnostic only; it keeps the latest entries
+
+
+class RoutingRateLimited(routing.RoutingError):
+    """A confirmation read came sooner than READ_MIN_INTERVAL_S after the previous one for the same key: read later."""
+    def __init__(self, retry_after: float):
+        super().__init__("Routing reads are paced; Ceres reads again by itself")
+        self.retry_after = max(0.1, retry_after)
 
 
 # (stage 2): a one-time run lives in the memory of this server process ONLY -- no run file exists. A restart ends every run by nature; what may have been
@@ -559,55 +574,35 @@ def attach(folder: Path, record: dict, bundle_id: str, tx_id: str) -> dict:
     return record
 
 
-def _history_transaction(rows: list, expected: list) -> str | None:
-    """The id of the newest transaction in recent account history whose custom_json ops are exactly the claimed ones; zero calls."""
-    def canonical(item: dict) -> str:
-        payload = item.get("json")
-        if isinstance(payload, str):
-            try:
-                payload = json.loads(payload)
-            except ValueError:
-                return ""
-        return json.dumps({"id": item.get("id"), "json": payload,
-                           "required_auths": item.get("required_auths"),
-                           "required_posting_auths": item.get("required_posting_auths")}, sort_keys=True)
-    wanted = [canonical(op[1]) for op in expected]
-    grouped: dict[str, list[str]] = {}
-    for row in rows:
-        entry = row[1] if isinstance(row, list) and len(row) == 2 and isinstance(row[1], dict) else {}
-        op, tx_id = entry.get("op"), entry.get("trx_id")
-        if isinstance(op, list) and len(op) == 2 and op[0] == "custom_json" and isinstance(op[1], dict) \
-                and isinstance(tx_id, str) and _TX_ID.fullmatch(tx_id):
-            grouped.setdefault(tx_id.lower(), []).append(canonical(op[1]))
-    found = [tx_id for tx_id, ops in grouped.items() if ops == wanted]
-    return found[-1] if found else None
+def absence_digest(player: str, operations: list) -> str:
+    """The confirm ledger's binding of an attempt to its exact operations (routes_confirm._digest, same formula)."""
+    return hashlib.sha256(json.dumps([player, operations], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
-def find_signed(folder: Path, record: dict, bundle_id: str, *, history_get: Callable[[str], list] | None = None) -> dict:
-    """: a wallet signed but its answer never reached the page. On the maintainer's button, ONE account-history read finds the
-    transaction by its exact claimed operations and attaches it, so the normal checks can carry on. Never automatic ()."""
+def mark_unsent(folder: Path, record: dict, bundle_id: str, absence_proof: dict | None = None) -> dict:
+    """: a claimed bundle whose wallet never returned an id was never sent -- but only on the SERVER's own proof
+    (fix round 1, Aletheia MEDIUM-3: a browser's claim of absence is never trusted, ): `absence_proof` is the
+    confirm ledger's record of the one expiry read that the server itself made of the signer's own history
+    (routes_confirm.find: paged back to the signing moment, node head past the expiry), bound to exactly these claimed
+    operations. Allowed only when no id is attached and the claim is older than Hive's longest lifetime; the bundle
+    stops and its reservations are released exactly as a by-id "absent past expiry" does. Zero calls."""
     _bundle(record, bundle_id)
     status = record["bundles"][bundle_id]
-    if status.get("tx_id"):
+    if status["state"] in _TERMINAL:
         return record
-    if status["state"] != "claimed":
-        raise routing.RoutingError("Nothing is waiting for a wallet answer")
-    _charge(folder, record, "chain_probe", "condenser_api.get_account_history", record["player"], manual=True)
-    if history_get is None:
-        from .harvest_routing_bridge import _history
-        history_get = lambda account: _history(account, -1)
-    try:
-        rows = history_get(record["player"])
-    except routing.RoutingError:
-        raise
-    except Exception as exc:
-        _log.warning("find_signed_failed run=%s bundle=%s error=%s", record.get("run_id"), bundle_id, type(exc).__name__)
-        raise routing.RoutingError("Your wallet history could not be read. Try again in a moment") from exc
-    tx_id = _history_transaction(rows, status["claim"]["operations"])
-    if tx_id is None:
-        write(folder, record)
-        raise routing.RoutingError("Your wallet history does not show this transaction yet. If you approved it, wait a few seconds and press the button again; if you did not, stop here and start again")
-    return attach(folder, record, bundle_id, tx_id)
+    if status["state"] != "claimed" or status.get("tx_id"):
+        raise routing.RoutingError("Only a claimed bundle without a transaction id can be marked as not sent")
+    claimed_at = status.get("claimed_at")
+    if not isinstance(claimed_at, (int, float)) or time.time() - claimed_at <= TX_EXPIRY_SECONDS:
+        raise routing.RoutingError("The transaction has not expired yet")
+    operations = (status.get("claim") or {}).get("operations")
+    if (not isinstance(absence_proof, dict) or absence_proof.get("status") != "absent" or not operations
+            or absence_proof.get("digest") != absence_digest(record["player"], operations)):
+        raise routing.RoutingError("Ceres has not proven from your own history that this bundle was never sent")
+    _mark_expired_absent(record, bundle_id)
+    _refresh_state(record)
+    write(folder, record)
+    return record
 
 
 def release(folder: Path, record: dict, bundle_id: str) -> dict:
@@ -652,35 +647,37 @@ def head(folder: Path, record: dict, bundle_id: str) -> dict:
 
 
 def _charge(folder: Path, record: dict, action: str, endpoint: str, account: str,
-            *, manual: bool = False, probe_status: dict | None = None,
-            poll_status: dict | None = None) -> None:
-    """Persist one physical attempt before dispatch; calls no endpoint itself."""
+            *, probe_status: dict | None = None, poll_status: dict | None = None,
+            rate_key: str | None = None) -> None:
+    """Count one physical attempt before dispatch; calls no endpoint itself. : never a give-up -- only the rate
+    limit on `rate_key` may refuse, and it says "read later" (RoutingRateLimited)."""
     budget = record["call_budget"]
     actions = budget["actions"]
-    charged_action = "manual_retry" if manual else action
-    if budget["stopped"] or budget["total"] >= budget["ceiling"]:
-        budget["stopped"] = True
-        record["state"] = "checking_stopped"
-        for status in record["bundles"].values():
-            if status["state"] in {"claimed", "attached", "checking", "outcome_unknown"}:
-                status["state"] = "outcome_unknown"
-        write(folder, record)
-        raise routing.RoutingError("Run call budget reached; unresolved outcomes remain unknown")
-    ceilings = (record.get("manifest", {}).get("call_budget") or {}).get("action_ceilings") or _CALLS
-    if actions.get(charged_action, 0) >= ceilings.get(charged_action, _CALLS[charged_action]):
-        raise routing.RoutingError("Action call budget reached; unresolved outcome remains unknown")
+    now = time.time()
+    if rate_key is not None:
+        last = budget.setdefault("last_read", {}).get(rate_key)
+        if isinstance(last, (int, float)) and now - last < READ_MIN_INTERVAL_S:
+            raise RoutingRateLimited(READ_MIN_INTERVAL_S - (now - last))
+        budget["last_read"][rate_key] = now
+    if action not in _CONFIRM_READS:
+        # Reads BEFORE a signature (pricing a bundle, the Hive head) keep their plan ceiling: refusing one sends
+        # nothing and confirms nothing, so it is not a confirmation give-up.
+        ceilings = (record.get("manifest", {}).get("call_budget") or {}).get("action_ceilings") or _CALLS
+        if actions.get(action, 0) >= ceilings.get(action, _CALLS[action]):
+            raise routing.RoutingError("Action call budget reached before signing; nothing was sent")
     budget["total"] += 1
-    actions[charged_action] = actions.get(charged_action, 0) + 1
+    actions[action] = actions.get(action, 0) + 1
     if probe_status is not None:
         probe_status["chain_probes"] = probe_status.get("chain_probes", 0) + 1
-    if poll_status is not None and not manual:
+    if poll_status is not None:
         poll_status["polls"] += 1
     key = f"{endpoint} | {account}"
     budget["endpoints"][key] = budget["endpoints"].get(key, 0) + 1
-    budget["log"].append({"endpoint": endpoint, "account": account, "action": charged_action,
+    budget["log"].append({"endpoint": endpoint, "account": account, "action": action,
                           "request_action": action,
-                          "run": record["run_id"], "attempt": actions[charged_action],
-                          "count": budget["total"], "manual": manual, "at": time.time()})
+                          "run": record["run_id"], "attempt": actions[action],
+                          "count": budget["total"], "at": now})
+    del budget["log"][:-CALL_LOG_KEEP]
     write(folder, record)
 
 
@@ -817,10 +814,12 @@ def _refresh_state(record: dict) -> None:
 
 
 def reconcile(folder: Path, record: dict, bundle_id: str, mode: str,
-              operation_index: int | None = None, *, manual: bool = False,
+              operation_index: int | None = None, *,
               game_get: Callable[[str], Any] | None = None,
               chain_get: Callable[[str], tuple[dict | None, str | None]] | None = None) -> dict:
-    """Issue at most one metered chain or game call per request, with zero retries."""
+    """Issue at most one counted chain or game call per request, with zero retries. : the browser's shared
+    confirmer decides when to read; nothing here ends the checks (no poll or probe cap, no budget stop), and a
+    bundle ends only on the chain's or the game's word: confirmed, refused, or absent past Hive's expiry."""
     _bundle(record, bundle_id)
     status = record["bundles"][bundle_id]
     if status["state"] in _TERMINAL:
@@ -830,10 +829,8 @@ def reconcile(folder: Path, record: dict, bundle_id: str, mode: str,
     if mode == "chain":
         if status.get("chain") == "included":
             return record
-        if status.get("chain_probes", 0) >= 2 and not manual:
-            raise routing.RoutingError("Chain probe allowance reached; outcome remains unknown")
         _charge(folder, record, "chain_probe", "condenser_api.get_transaction", record["player"],
-                manual=manual, probe_status=status)
+                probe_status=status, rate_key=f"chain:{bundle_id}")
         try:
             tx, reason = (chain_get or chain_verify.get_transaction)(status["tx_id"])
             if tx is not None and _chain_match(tx, status["claim"]["operations"]):
@@ -861,13 +858,11 @@ def reconcile(folder: Path, record: dict, bundle_id: str, mode: str,
         member = record["operations"][op["id"]]
         if member["state"] in _TERMINAL:
             return record
-        if member["polls"] >= 5 and not manual:
-            raise routing.RoutingError("Scheduled verdict checks ended; use Check again")
         if status.get("chain") != "included":
             raise routing.RoutingError("Chain inclusion is not confirmed")
         lookup_id = status["tx_id"] if operation_index == 0 else f"{status['tx_id']}-{operation_index}"
         _charge(folder, record, "game_verdict", "/transactions/lookup", record["player"],
-                manual=manual, poll_status=member)
+                poll_status=member, rate_key=f"game:{bundle_id}:{operation_index}")
         try:
             response = (game_get or (lambda url: FixedGetTransport(timeout=15, retries=1).get_json(url).data))(
                 API_ORIGIN + "/transactions/lookup?" + urlencode({"trx_id": lookup_id}))
@@ -888,13 +883,6 @@ def reconcile(folder: Path, record: dict, bundle_id: str, mode: str,
     else:
         raise routing.RoutingError("Unknown reconciliation mode")
     _refresh_state(record)
-    if record["call_budget"]["total"] >= record["call_budget"]["ceiling"]:
-        record["call_budget"]["stopped"] = True
-        if record["state"] == "ready":
-            record["state"] = "checking_stopped"
-        for unresolved in record["bundles"].values():
-            if unresolved["state"] in {"claimed", "attached", "checking"}:
-                unresolved["state"] = "outcome_unknown"
     write(folder, record)
     return record
 

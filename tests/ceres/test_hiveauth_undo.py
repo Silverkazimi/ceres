@@ -321,7 +321,15 @@ def test_tx_id_probe_preserves_lookup_failure_as_inconclusive(monkeypatch) -> No
     assert json.loads(routes_op_preview.op_inclusion({"tx_id": "missing"}, object()).body) == {"included": None, "block_num": None}
     assert json.loads(routes_op_preview.op_inclusion({"tx_id": "missing", "created_at": young}, object()).body) == {"included": None, "block_num": None}
     assert json.loads(routes_op_preview.op_inclusion({"tx_id": "missing", "created_at": "garbage"}, object()).body) == {"included": None, "block_num": None}
-    assert json.loads(routes_op_preview.op_inclusion({"tx_id": "missing", "created_at": old}, object()).body) == {"included": False, "block_num": None}
+    # fix round 2 (aletheia-r2 LOW-2, astra-r2 P1-7): a browser-supplied created_at never ages a transaction
+    # only the server's own first sight of the id does (an id exists only after signing).
+    assert json.loads(routes_op_preview.op_inclusion({"tx_id": "missing", "created_at": old}, object()).body) == {"included": None, "block_num": None}
+    import time as real_time
+    seen = real_time.time()
+    monkeypatch.setattr(routes_op_preview.time, "time", lambda: seen + routes_op_preview.TX_ABSENCE_GRACE_SECONDS + 5)
+    from ceres import routes_confirm
+    monkeypatch.setattr(routes_confirm.time, "time", lambda: seen + routes_op_preview.TX_ABSENCE_GRACE_SECONDS + 5)
+    assert json.loads(routes_op_preview.op_inclusion({"tx_id": "missing"}, object()).body) == {"included": False, "block_num": None}
     assert json.loads(routes_op_preview.op_inclusion({"tx_id": "failed"}, object()).body) == {
         "included": None, "block_num": None,
     }

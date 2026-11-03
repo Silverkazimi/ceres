@@ -33,6 +33,7 @@ from .routes_dec import router as dec_router
 from .routes_plot_lock import router as plot_lock_router  # by-id verdict for a signed deed lock
 from .routes_wallet import router as wallet_router
 from .routes_wallet_lp import router as wallet_lp_router
+from .routes_confirm import router as confirm_router
 from .routes_board import router as board_router
 from .routes_candidates import router as candidates_router
 from .routes_combine import router as combine_router
@@ -40,6 +41,7 @@ from .routes_combine_chain import router as combine_chain_router
 from .routes_op_preview import router as op_preview_router
 from .routes_harvest import router as harvest_router
 from .routes_stage_plans import router as stage_plans_router  # phase 2
+from .routes_board_plans import router as board_plans_router  # IN-0267 phase 1: planned values on the capture
 from .routes_fill_plot import router as fill_plot_router  # Fill plot
 from .routes_cards import router as cards_router  # card browser
 from .routes_market import router as market_router  # card market (read only, on the maintainer's press)
@@ -193,6 +195,7 @@ def create_app(config: CeresConfig | None = None) -> FastAPI:
     app.include_router(plot_lock_router)
     app.include_router(wallet_router)  # multi-resource wallet reads
     app.include_router(wallet_lp_router)
+    app.include_router(confirm_router)
     app.include_router(harvest_routing_router)
     app.include_router(routing_v2_router)
     app.include_router(auth_router)  # optional Posting-key login
@@ -203,6 +206,7 @@ def create_app(config: CeresConfig | None = None) -> FastAPI:
     app.include_router(op_preview_router)
     app.include_router(harvest_router)
     app.include_router(stage_plans_router)  # phase 2: live check of kept stage plans
+    app.include_router(board_plans_router)  # IN-0267 phase 1: planned values for a virtual board plan
     app.include_router(fill_plot_router)  # read-only fill proposal for one plot
     app.include_router(cards_router)  # read-only card browser rows
     app.include_router(market_router)  # read-only market listings, only on the maintainer's press

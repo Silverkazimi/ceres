@@ -17,6 +17,9 @@ import { walletReady, walletKind, walletControlsHtml, walletSigningStatus, clear
 // reads "Signing not yet enabled — awaiting first on-chain test" until the maintainer's §10 test.
 import { ART_REV } from './art.js';
 import { requestSignatureThroughGate, prepareSigningBatch } from './broadcast-gate.js';
+import { createLagMonitor } from './chain-lag.js';
+import { confirmAction, confirmationState, waitThrough } from './shared-confirmer.js';
+import { resumeSignedQueue } from './transaction-queue.js';
 import { BOARD, CURRENT_PLAYER, playerQueryAppend } from './board.js';
 import { esc, formatPlotLabel } from './format.js';
 import { ASSET_BASE } from './state.js';
@@ -26,10 +29,11 @@ import {
 } from './harvest-state.js';
 import { openWorksiteFeedModal } from './worksite.js';
 import { plaque as regionPlaque } from './wallet-resources.js';
+import { resourceSymbolsWhere } from './resources.js';
 
 const SIGNING_OFF_TEXT = 'Signing not yet enabled — awaiting first on-chain test';
 const HARVEST_ROUTING_ENABLED = false;
-const COST_ORDER = ['GRAIN', 'WOOD', 'STONE', 'IRON'];
+const COST_ORDER = resourceSymbolsWhere('cost_input'); // registry: GRAIN WOOD STONE IRON
 const TOKEN_ORDER = RESOURCE_ORDER;
 const X_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 
@@ -136,6 +140,8 @@ export function openHarvestModal({ deedUid = null } = {}) {
   M.routeDrafts = []; // routes added in this visit only; never stored, so they cannot outlive the open window
   M.regionLayout = batchRegionLayout(); M.costsOpen = new Set();
   M.selectedTaxes = new Set(); M.taxInit = false; M.taxAsked = new Set();
+  M.lag = createLagMonitor();   // game lag behind Hive for this dialog
+  if (!deedUid) refreshGameLag();
   if (deedUid) {
     M.mode = 'plot'; M.scopeKind = 'plot'; M.deedUids = [deedUid];
     M.selectedRegions = new Set();
@@ -162,7 +168,7 @@ export function openHarvestModal({ deedUid = null } = {}) {
 }
 
 export async function closeHarvestModal() {
-  if (M.routing?.busy && M.run?.phase !== 'verification_incomplete') return;
+  if (M.routing?.busy && M.run?.phase !== 'pending') return;
   M.v2?.detach();
   M.v2 = null;
   const account = M.player;
@@ -273,7 +279,6 @@ async function loadPreview() {
 function handleAction(el, event) {
   const action = el.dataset.hm;
   if (action === 'routing-back') { M.v2?.detach(); M.v2 = null; render(); return; }
-  if (action === 'recover-harvest') { recoverHarvest(); return; }
   if (action === 'routing') { openRouting(); return; }
   // (maintainer: "Closing the routing window closes ALL harvest screens instead of returning to the previous harvest
   // screen"): while routing is open, X (and Escape) go back to the harvest screen it came from, like "Back to harvest".
@@ -315,7 +320,6 @@ function handleAction(el, event) {
   }
   if (action === 'confirm') { event.preventDefault(); if (el.getAttribute('aria-disabled') !== 'true') confirmHarvest(); return; }
   if (action === 'stop' && M.run) { M.run.stop = true; render(); }
-  if (action === 'check-now' && M.run?.pollNow) { M.run.pollNow(); return; }
   if (action === 'refresh') { if (M.deedUids[0]) refreshPlotHarvest(M.deedUids[0], { force: true }); loadPreview(); }
 }
 
@@ -342,7 +346,7 @@ function titleHtml() {
   if (M.v2) return `<h2 id="harvest-modal-title">Harvest routing</h2><p>${esc(M.player)}</p>`;
   if (M.routing) return `<h2 id="harvest-modal-title">Harvest &amp; routing</h2><p>${esc(M.player)}</p>`;
   if (M.run?.phase === 'success') return harvestSuccessHeadingHtml(M.run, { tax: isTaxCollection(), player: M.player });
-  if (M.run?.phase === 'verification_incomplete') return `<h2 id="harvest-modal-title">${M.run.txId ? 'Harvest sent' : 'Harvest outcome unknown'} — verification incomplete</h2>`;
+  if (M.run?.phase === 'pending' && !M.run.busy) return '<h2 id="harvest-modal-title">Harvest sent — confirming</h2>';
   const player = esc(M.player || '');
   if (M.mode === 'plot') {
     const row = BOARD?.plots.find((p) => p.deed_uid === M.deedUids[0]);
@@ -837,10 +841,12 @@ function footerHtml() {
     : batchSigs === 0 && pv ? esc(batchNothingText(chosenRows))
     : batchSigs != null ? `${batchSigs} Posting signature${batchSigs === 1 ? '' : 's'} · costs calculated at harvest`
     : sigs != null ? `${sigs} Posting signature${sigs === 1 ? '' : 's'}${taxPlot ? ' · no costs' : ' · costs calculated at harvest'}` : (M.error ? esc(M.error) : '');
+  const lagText = M.mode === 'batch' ? M.lag?.text() : '';
+  const noteLine = lagText && note ? `${note} · ${esc(lagText)}` : note;   // one line, existing note style
   const primary = !signingOn
     ? `<button type="button" class="hm-btn is-primary is-off ceres-btn ceres-btn--primary" data-control-density="comfortable" disabled${pv ? ' aria-describedby="harvest-signing-note"' : ''}>${pv ? 'Signing unavailable' : 'Preparing harvest…'}</button>`
     : `<button type="button" class="hm-btn is-primary ceres-btn ceres-btn--primary" data-control-density="comfortable" data-hm="confirm"${confirmGateAttrs(!pv || M.run || (M.mode === 'plot' ? (pv.blocked || !pv.chunks?.length) : (chosenBlocked || !batchSigs)))} data-control-case="commit">${COMMIT_ICON}${label}</button>`;
-  return `<footer class="hm-foot">${pv && !signingOn ? `<span class="hm-note" id="harvest-signing-note">${SIGNING_OFF_TEXT}</span>` : ''}<span class="hm-note">${note}</span><span class="hm-btns"><button type="button" class="hm-btn is-ghost ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-hm="close">Close</button>${secondary}<span class="wallet-sign-pair">${walletControlsHtml(M.player, M.walletControlId, { compactRequest: true })}${primary}</span></span></footer>`;
+  return `<footer class="hm-foot">${pv && !signingOn ? `<span class="hm-note" id="harvest-signing-note">${SIGNING_OFF_TEXT}</span>` : ''}<span class="hm-note">${noteLine}</span><span class="hm-btns"><button type="button" class="hm-btn is-ghost ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-hm="close">Close</button>${secondary}<span class="wallet-sign-pair">${walletControlsHtml(M.player, M.walletControlId, { compactRequest: true })}${primary}</span></span></footer>`;
 }
 
 const OUTCOME_TEXT = { queued: 'Signed — queued', success: 'Harvested', failed: 'Failed', pending: 'Confirmation pending', waiting: 'Waiting', not_sent: 'Not sent' };
@@ -860,8 +866,9 @@ function runBodyHtml() {
     queued: '<div class="hm-run is-busy" role="status"><span class="hm-spin" aria-hidden="true"></span><b>Signed — queued transactions are being submitted…</b></div>',
     confirming: `<div class="hm-run is-busy" role="status" aria-live="polite"><span class="hm-spin" aria-hidden="true"></span><span><b>Broadcast — confirming…</b> ${run.txId ? `Transaction ${esc(run.txId.slice(0, 12))}… is on its way; reading the game's result.` : ''}</span></div>`,
     failed: `<div class="hm-run is-bad" role="alert"><span class="hm-run-ic" aria-hidden="true">✕</span><span><b>Harvest failed.</b> ${esc(run.message || '')}</span></div>`,
-    pending: `<div class="hm-run is-pending" role="status" aria-live="polite"><span class="hm-spin" aria-hidden="true"></span><span><b>${run.recoveryAttemptId ? 'Wallet outcome unknown.' : 'Transaction progress pending.'}</b> ${esc(run.message || 'The transaction is on its way; checking automatically.')}</span><button type="button" class="hm-btn ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-hm="check-now"${run.checking ? ' disabled aria-busy="true"' : ''}>${run.checking ? 'Checking…' : 'Check now'}</button></div>`,
-    verification_incomplete: `<div class="hm-run is-pending" role="status" aria-live="polite"><span><b>${run.txId ? 'Harvest sent' : 'Harvest outcome unknown'} — verification incomplete.</b> ${esc(run.message || 'The game has not supplied a complete receipt yet.')}</span><button type="button" class="hm-btn ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-hm="check-now"${run.checking || !run.verifyIds?.size ? ' disabled' : ''}${run.checking ? ' aria-busy="true"' : ''}>${run.checking ? 'Checking…' : 'Check now'}</button></div>`,
+    // one automatic state line; no manual control (IN-0706). The shared confirmer keeps reading.
+    pending: `<div class="hm-run is-pending" role="status" aria-live="polite"><span class="hm-spin" aria-hidden="true"></span><span><b>Sent — waiting for the game's result.</b> ${esc(run.message || 'Ceres keeps checking automatically; nothing will be sent again.')}</span></div>`,
+    never_sent: `<div class="hm-run is-bad" role="alert"><span class="hm-run-ic" aria-hidden="true">✕</span><span><b>Not sent.</b> ${esc(run.message || 'Hive has no record of this harvest. Nothing changed.')}</span></div>`,
   }[run.phase] || '';
   const rows = run.members.map((m) => {
     const where = m.deed_uids?.length ? `Plot ${esc(m.plotLabel || m.deed_uids[0])}` : `Region ${esc(m.region_uid.split('-').pop().padStart(3, '0'))}`;
@@ -873,9 +880,10 @@ function runBodyHtml() {
   // a harvest sent as several transactions lists every one, not only the last.
   const txIds = [...new Set([...(run.txIds || []), ...(run.txId ? [run.txId] : [])])];
   const tx = txIds.length ? `<p class="hm-hint">${txIds.length > 1 ? 'Transactions' : 'Transaction'} ${txIds.map((id) => `<a href="https://hivehub.dev/tx/${esc(id)}" target="_blank" rel="noopener">${esc(id)}</a>`).join(' · ')}</p>` : '';
+  const lagText = M.mode === 'batch' && run.phase !== 'success' ? M.lag?.text() : '';
+  const lag = lagText ? `<p class="hm-hint">${esc(lagText)}</p>` : '';   // refreshed while the run waits
   const stop = run.busy && run.chunks > 1 ? '<button type="button" class="hm-btn ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-hm="stop">Stop after this transaction</button>' : '';
-  const recovery = run.recoveryAttemptId ? `<div class="hm-card"><label class="hr-field"><span>Harvest transaction ID from wallet history</span><input id="harvest-recovery-tx" autocomplete="off" spellcheck="false"></label><button type="button" class="ceres-btn ceres-btn--primary" data-control-density="comfortable" data-hm="recover-harvest"${run.busy ? ' disabled' : ''}>Recover harvest</button></div>` : '';
-  return `${banner}${recovery}<div class="hm-card">${table}${tx}${stop}</div>`;
+  return `${banner}<div class="hm-card">${table}${tx}${lag}${stop}</div>`;
 }
 
 function resultFooterHtml() {
@@ -966,14 +974,13 @@ function render() {
   catch (error) {
     if (!M.run || !M.open) throw error;
     const run = M.run;
-    run.phase = 'verification_incomplete';
-    run.busy = false;
     run.renderFailed = true;
-    run.message = 'The receipt could not be displayed. Check the transaction or try verification again.';
+    run.busy = false;   // closable; the shared confirmer keeps reading
+    run.message = 'The receipt could not be displayed here. Ceres keeps confirming it; nothing will be sent again.';
     const panel = document.getElementById('harvest-modal-overlay')?.querySelector('.harvest-panel');
     if (!panel) return;
     const tx = run.txId ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(run.txId)}" target="_blank" rel="noopener noreferrer">View transaction</a>` : '';
-    panel.innerHTML = `<header class="hm-headr"><h2 id="harvest-modal-title">${run.txId ? 'Harvest sent' : 'Harvest outcome unknown'} — verification incomplete</h2><button type="button" class="harvest-x ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-control-mode="icon" data-hm="close" aria-label="Close">${X_ICON}</button></header><div class="hm-body"><p role="status">${esc(run.message)}</p>${tx}</div><footer class="hm-foot"><span class="hm-btns"><button type="button" class="hm-btn ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-hm="check-now"${run.verifyIds?.size ? '' : ' disabled'}>Check now</button><button type="button" class="hm-btn ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-hm="close">Close</button></span></footer>`;
+    panel.innerHTML = `<header class="hm-headr"><h2 id="harvest-modal-title">Harvest sent</h2><button type="button" class="harvest-x ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-control-mode="icon" data-hm="close" aria-label="Close">${X_ICON}</button></header><div class="hm-body"><p role="status">${esc(run.message)}</p>${tx}</div><footer class="hm-foot"><span class="hm-btns"><button type="button" class="hm-btn ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-hm="close">Close</button></span></footer>`;
   }
 }
 
@@ -1015,8 +1022,8 @@ function onTick(now) {
 
 // signing (reachable only when the server's harvest_signing_enabled is on)
 
-async function postJson(url, body) {
-  const resp = await fetch(playerQueryAppend(url), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+async function postJson(url, body, { signal = null } = {}) {
+  const resp = await fetch(playerQueryAppend(url), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), ...(signal ? { signal } : {}) });
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) { const error = new Error(data.detail || `HTTP ${resp.status}`); error.status = resp.status; throw error; }
   return data;
@@ -1026,16 +1033,31 @@ function saveHarvestAttempt(attemptId, fields = {}) {
   return postJson('/api/harvest/attempt', { attempt_id: attemptId, run_id: M.run?.runId || null, ...fields });
 }
 
-// (live incident, 2026-09-29): a 5-region harvest (two transactions, one of 990 plots) was accepted by the
-// game but ended "verification incomplete": the game can take ~30 s to index a harvest and a busy server needed more
-// than 10 s per check, so every check was early or cut off before the 45 s deadline. Checks now run for 2 minutes and
-// each may take 30 s; "Check now" stays available afterwards.
-const VERIFY_SCHEDULE_S = [0, 5, 12, 25, 45, 75, 120];
-const VERIFY_MAX_WAIT_MS = 150000;
-const VERIFY_REQUEST_MS = 30000;
+// the wait itself lives in shared-confirmer.js (one schedule for every flow, no give-up, resume on
+// load/visible/pageshow). This modal supplies one read (/api/harvest/verify: per-op game result and amounts) and the
+// wording of its automatic state line.
+const VERIFY_PENDING_TEXT = 'The game has not supplied a complete receipt yet. Ceres keeps checking; nothing will be sent again.';
+const VERIFY_AMOUNTS_TEXT = 'The game accepted this harvest; its received amounts are not readable yet. Ceres keeps checking; nothing will be sent again.';
+const VERIFY_STALLED_TEXT = 'The game has not read a new Hive block for 3 min, so its receipt is not ready. Ceres keeps checking; nothing will be sent again.';
 
-// Polls the verifier until the game's verdict is final (). A transaction id never
-// reads as "not sent"; pending resolves itself on the schedule, and "Check now" re-reads.
+// two single reads (game last block, Hive head), throttled in chain-lag.js; never blocks signing.
+function refreshGameLag(force = false) {
+  const lag = M.lag;
+  if (!lag) return Promise.resolve(null);
+  return lag.refresh(force).then((value) => { if (M.lag === lag && M.open) render(); return value; }).catch(() => null);
+}
+
+// a queued transaction Hive reports as expired is shown as a status only; nothing is resent.
+window.addEventListener('ceres:queue-status', (event) => {
+  const detail = event?.detail || {};
+  const run = M.run;
+  if (!run || !M.open || detail.chainStatus !== 'dropped' || detail.account !== M.player) return;
+  if (![...(run.txIds || []), run.txId].includes(detail.txId)) return;
+  run.droppedNotice = detail.message;
+  if (!run.busy || run.phase === 'pending') { run.message = detail.message; render(); }
+});
+
+// The game's verdict is final per member (): accepted with evidence, or refused.
 function harvestMemberConfirmed(member) {
   return member.outcome === 'success' && member.game_state === 'accepted' && member.evidence?.length;
 }
@@ -1057,100 +1079,73 @@ function applyHarvestVerification(run, result, attemptId) {
   if (result.members.some(harvestMemberConfirmed) && !run.attemptIds.includes(attemptId)) { run.attemptIds.push(attemptId); balancesChanged({ player: M.player, assets: ['DEC', 'SPS', 'GRAIN', 'WOOD', 'STONE', 'IRON', 'RESEARCH', 'AURA'], regions: [...new Set(result.members.map(m => m.region_uid).filter(Boolean))], id: `harvest:${attemptId}` }); }
 }
 
-function boundedHarvestVerify(attemptId) {
-  let timer;
-  return Promise.race([
-    postJson('/api/harvest/verify', { attempt_id: attemptId }).catch(() => null),
-    new Promise((resolve) => { timer = setTimeout(() => resolve(null), VERIFY_REQUEST_MS); }),
-  ]).finally(() => clearTimeout(timer));
-}
-
-async function checkHarvestNow(run) {
-  if (run.checking || !run.verifyIds?.size) return;
-  run.checking = true;
-  render();
-  try {
-    const results = await Promise.all([...run.verifyIds].map(async (id) => ({ id, result: await boundedHarvestVerify(id) })));
-    if (M.run !== run || !M.open) return;
-    results.forEach(({ id, result }) => applyHarvestVerification(run, result, id));
-    if (harvestMembersTerminal(run.members)) {
-      run.phase = run.members.every(harvestMemberConfirmed) ? 'success' : 'failed';
-      run.renderFailed = false;
-    } else {
-      run.phase = 'verification_incomplete';
-      run.message = 'The game has not supplied a complete receipt. You can check again later.';
-    }
-  } finally {
-    run.checking = false;
-    if (M.run === run && M.open) render();
-  }
-}
-
-function verifyUntilFinal(attemptId, chunkMembers) {
-  return new Promise((resolve) => {
-    const run = M.run;
-    run.verifyIds ||= new Set();
-    run.verifyIds.add(attemptId);
-    run.pollers ||= new Map();
-    let settled = false;
-    const finish = (outcome) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      clearTimeout(deadlineTimer);
-      run.pollers.delete(attemptId);
-      if (outcome === 'pending') {
-        run.checking = false;
-        run.phase = 'verification_incomplete';
-        run.message = 'The game has not supplied a complete receipt. Nothing will be sent again; check the transaction or try verification later.';
-        render();
-      }
-      resolve(outcome);
-    };
-    let step = 0;
-    let timer = null;
-    const deadlineTimer = setTimeout(() => finish('pending'), VERIFY_MAX_WAIT_MS);
-    const once = async () => {
-      if (settled) return;
-      clearTimeout(timer);
-      const result = await boundedHarvestVerify(attemptId);
-      if (settled || M.run !== run || !M.open) return;
-      run.checking = false; // the manual re-check has its answer
-      applyHarvestVerification(run, result, attemptId);
-      if (harvestAmountsUnreconcilable(result?.members)) { finish('pending'); return; }
-      if (harvestMembersTerminal(result?.members)) {
-        finish(result.members.every(harvestMemberConfirmed) ? 'success' : 'failed'); return;
-      }
-      if (!M.routingRunId && ['success', 'failed'].includes(result?.outcome)) { finish(result.outcome); return; }
-      step += 1;
-      if (step >= 3 && run.phase === 'confirming') { run.phase = 'pending'; }
-      render();
-      if (run.renderFailed) { finish('pending'); return; }
-      if (step < VERIFY_SCHEDULE_S.length) timer = setTimeout(once, (VERIFY_SCHEDULE_S[step] - VERIFY_SCHEDULE_S[step - 1]) * 1000);
-      else finish('pending');
-    };
-    run.pollers.set(attemptId, once);
-    run.pollNow = () => { if (run.checking) return; if (run.phase === 'verification_incomplete') { checkHarvestNow(run); return; } run.checking = true; render(); run.pollers.forEach((poll) => poll()); };
-    once();
-  });
-}
-
-async function recoverHarvest() {
-  if (!M.run?.recoveryAttemptId || !M.routingRunId || M.run.busy) return;
+// One read for the shared confirmer. A transaction id never reads as "not sent" here; only the chain can say that.
+function verifyUntilFinal(attemptId, { operations = null, txId = null, chunkNonces = null } = {}) {
   const run = M.run;
-  const tx = document.getElementById('harvest-recovery-tx')?.value.trim();
-  run.busy = true;
-  render();
-  try {
-    await postJson('/api/harvest/routing/harvest-transaction', {
-      run_id: M.routingRunId, attempt_id: run.recoveryAttemptId, tx_id: tx,
+  const account = M.player;
+  run.verifyIds ||= new Set();
+  run.verifyIds.add(attemptId);
+  let reads = 0;
+  run.attachedIds ||= new Set();
+  // F5: each signed operation's own verdict, from the member with that operation's nonce. If any operation cannot be
+  // mapped, no per-op answer is given (the confirmer then never fans an aggregate refusal over all operations).
+  const perOpFor = (members) => {
+    if (!Array.isArray(operations) || !Array.isArray(members)) return undefined;
+    const rows = operations.map((op, index) => {
+      let nonce = null;
+      try { nonce = JSON.parse(op?.[1]?.json || '{}').n ?? null; } catch (_) { nonce = null; }
+      const member = members.find((item) => item.nonce === nonce);
+      if (!member) return null;
+      if (harvestMemberConfirmed(member)) return { index, state: 'confirmed', result: { received_by_token: member.received_by_token || null } };
+      if (member.outcome === 'failed' && member.game_state === 'refused') return { index, state: 'refused', error: member.error || 'The game refused this operation' };
+      return { index, state: 'pending' };
     });
+    return rows.every(Boolean) ? rows : undefined;
+  };
+  const check = async (id, { signal } = {}) => {
+    if (id && !(run.txIds || []).includes(id)) {
+      run.txId = id; (run.txIds ||= []).push(id);
+      if (run.phase === 'queued' || run.phase === 'keychain') run.phase = 'confirming';
+    }
+    // F9: the server learns the id until it acknowledges it; one failed save is retried on every later read.
+    if (id && !run.attachedIds.has(id)) {
+      try { await saveHarvestAttempt(attemptId, { tx_id: id, state: 'submitted' }); run.attachedIds.add(id); }
+      catch (_) { return { state: 'pending', message: VERIFY_PENDING_TEXT }; }
+    }
+    M.lag?.refresh().catch(() => {});   // throttled; never delays a check
+    // fix round 2 (astra-r2 P1-6): the read carries the scheduler's signal; an abandoned (timed-out) read is
+    // aborted, and a late answer that still arrives is ignored instead of rewriting the receipt.
+    const result = await postJson('/api/harvest/verify', { attempt_id: attemptId }, { signal });
+    if (signal?.aborted) return { state: 'pending', stale: true };
+    if (M.run === run) applyHarvestVerification(run, result, attemptId);
+    const perOp = perOpFor(result?.members);
+    if (harvestMembersTerminal(result?.members)) return { state: result.members.every(harvestMemberConfirmed) ? 'confirmed' : 'refused', result, perOp };
+    if (!M.routingRunId && result?.outcome === 'success') return { state: 'confirmed', result, perOp };
+    if (!M.routingRunId && result?.outcome === 'failed') return { state: 'refused', result, perOp };
+    return { state: 'pending', perOp, message: harvestAmountsUnreconcilable(result?.members) ? VERIFY_AMOUNTS_TEXT
+      : M.lag?.stalled ? VERIFY_STALLED_TEXT : VERIFY_PENDING_TEXT };
+  };
+  const onUpdate = (answer) => {
     if (M.run !== run || !M.open) return;
-    M.run = null;
-    await confirmHarvest();
-  } catch (error) {
-    if (M.run === run) { run.message = error.message || String(error); run.busy = false; render(); }
-  }
+    reads += 1;
+    if (answer.state === 'pending') {
+      if (answer.txId && !(run.txIds || []).includes(answer.txId)) { run.txId = answer.txId; (run.txIds ||= []).push(answer.txId); }
+      if (reads >= 3 || !run.txId) { run.phase = 'pending'; run.message = run.droppedNotice || answer.message || VERIFY_PENDING_TEXT; }
+    }
+    render();
+  };
+  const final = operations
+    ? confirmAction({ account, operations, txId, check, onUpdate })
+    : waitThrough({ key: `harvest:${attemptId}`, account, txId, check: (options) => check(txId, options), onUpdate }).done;
+  return final.then((answer) => {
+    if (answer.state === 'never-sent') {
+      run.members.forEach((member) => { if (!chunkNonces || chunkNonces.has(member.nonce)) member.outcome = 'not_sent'; });
+      run.message = answer.error || 'Hive has no record of this harvest. Nothing changed.';
+      saveHarvestAttempt(attemptId, { state: 'failed' }).catch(() => {});
+      return 'never_sent';
+    }
+    return answer.state === 'confirmed' ? 'success' : 'failed';
+  });
 }
 
 async function confirmHarvest() {
@@ -1170,6 +1165,8 @@ async function confirmHarvest() {
   let savedHarvestAttempts = [];
   M.reviewing = token;
   M.error = null;
+  M.lag ||= createLagMonitor();
+  refreshGameLag();   // before the run; never awaited, so signing is never delayed by it
   render();
   try {
     if (!walletReady(account)) { M.error = 'Wallet connection unavailable. Reconnect the selected wallet.'; return; }
@@ -1242,19 +1239,24 @@ async function confirmHarvest() {
       const attemptId = savedAttempt?.attempt_id || prepared.get(index).attemptId;
       if (savedAttempt && savedAttempt.evidence?.state !== 'rejected_before_send') {
         const evidence = savedAttempt.evidence;
-        if (!evidence?.tx_id) {
+        // a saved step without a transaction id is confirmed like any other: the id comes from this
+        // browser's confirmer record or the bounded own-history finder (). No paste field, no manual step.
+        const savedOps = pv.chunks[index]?.operations;
+        const known = evidence?.tx_id || (savedOps?.length ? confirmationState(account, savedOps)?.txId : null) || null;
+        if (known) { M.run.txId = known; (M.run.txIds ||= []).push(known); }
+        (evidence?.members || []).forEach((member) => { const target = M.run.members.find((row) => row.nonce === member.nonce); if (target) Object.assign(target, member); });
+        if (!known && !savedOps?.length) {
           M.run.phase = 'pending';
-          M.run.message = 'A saved harvest wallet request has no transaction ID. Recover its result before continuing; nothing will be sent again.';
-          M.run.recoveryAttemptId = attemptId;
+          M.run.message = 'An earlier harvest step was signed without a transaction id and this browser holds no record of it. Ceres will not send it again.';
           finalOutcome = 'pending';
           break;
         }
-        M.run.txId = evidence.tx_id; (M.run.txIds ||= []).push(M.run.txId);
-        (evidence.members || []).forEach((member) => { const target = M.run.members.find((row) => row.nonce === member.nonce); if (target) Object.assign(target, member); });
-        const outcome = harvestMembersTerminal(evidence.members)
+        M.run.phase = 'confirming'; render();
+        const outcome = harvestMembersTerminal(evidence?.members)
           ? (evidence.members.every(harvestMemberConfirmed) ? 'success' : 'failed')
-          : await verifyUntilFinal(attemptId);
+          : await verifyUntilFinal(attemptId, { operations: known ? null : savedOps, txId: known });
         const members = M.run.members.filter((member) => pv.chunks[index].members.some((expected) => expected.nonce === member.nonce));
+        if (outcome === 'never_sent') { finalOutcome = 'failed'; M.run.phase = 'never_sent'; break; }
         if (harvestMembersTerminal(members)) {
           if (members.some(harvestMemberConfirmed) && !M.run.attemptIds.includes(attemptId)) { M.run.attemptIds.push(attemptId); balancesChanged({ player: M.player, assets: ['DEC', 'SPS', 'GRAIN', 'WOOD', 'STONE', 'IRON', 'RESEARCH', 'AURA'], regions: [...new Set(members.map(m => m.region_uid).filter(Boolean))], id: `harvest:${attemptId}` }); }
           if (outcome !== 'success') finalOutcome = 'failed';
@@ -1273,8 +1275,12 @@ async function confirmHarvest() {
         const result = await requestSignatureThroughGate(account, flight.chunk.operations, (response) => {
           const id = response?.result?.id || response?.result?.tx_id || response?.tx_id;
           if (response?.success && id) {
-            txId = id; M.run.txId = id; (M.run.txIds ||= []).push(M.run.txId); M.run.phase = 'confirming'; render();
-            saveHarvestAttempt(attemptId, { tx_id: id, state: 'submitted' }).catch(() => {});
+            txId = id;
+            if (!(M.run.txIds || []).includes(id)) { M.run.txId = id; (M.run.txIds ||= []).push(id); }
+            // F3: a late or repeated answer never moves a finished run back to "confirming".
+            if (['keychain', 'queued', 'pending'].includes(M.run.phase)) M.run.phase = 'confirming';
+            render();
+            saveHarvestAttempt(attemptId, { tx_id: id, state: 'submitted' }).then(() => { (M.run.attachedIds ||= new Set()).add(id); }, () => {});
           }
         }, 'Posting', envelope);
         txId = result.txId;
@@ -1293,20 +1299,16 @@ async function confirmHarvest() {
           finalOutcome = 'failed';
           break;
         }
-        if (!txId) {
-          M.run.phase = 'pending';
-          M.run.message = 'The wallet did not return a transaction id. Nothing will be sent again; check your wallet history.';
-          finalOutcome = 'pending';
-          break;
-        }
-        submitted.push({ attemptId, txId, submission });
-        finalOutcome = 'pending';
-        M.run.message = 'The wallet response needs verification. Remaining transactions were not sent.';
+        // Sent, answer ambiguous or id missing: the shared confirmer finds the id and the result (). The
+        // remaining chunks are not signed while this one is unproven.
+        submitted.push({ attemptId, txId, submission: null, operations: flight.chunk.operations, chunkNonces });
+        M.run.phase = 'pending';
+        M.run.message = 'Signed — Ceres is finding the transaction on Hive. Nothing will be sent again; remaining transactions were not sent.';
         break;
       }
       if (M.run.phase === 'keychain') M.run.phase = 'queued';
       render();
-      submitted.push({ attemptId, txId, submission });
+      submitted.push({ attemptId, txId, submission, operations: flight.chunk.operations, chunkNonces });
     }
   } catch (error) {
     finalOutcome = M.run.txId ? 'pending' : 'failed';
@@ -1322,26 +1324,39 @@ async function confirmHarvest() {
   }
   try {
     if (submitted.length) {
-      M.run.phase = 'queued'; render();
-      const outcomes = await Promise.all(submitted.map(async ({ attemptId, txId, submission }) => {
+      if (M.run.phase !== 'pending') { M.run.phase = 'queued'; render(); }
+      // Signing is over: the modal can be closed while the shared confirmer keeps reading.
+      M.run.busy = false;
+      const outcomes = await Promise.all(submitted.map(async ({ attemptId, txId, submission, operations, chunkNonces }) => {
         try { if (submission) await submission; }
         catch (error) {
-          M.run.message = error.message;
           if (error.broadcasted === false) {
+            M.run.message = error.message;
+            M.run.members.forEach((m) => { if (chunkNonces?.has(m.nonce)) m.outcome = 'not_sent'; });
             await saveHarvestAttempt(attemptId, { state: 'failed' }).catch(() => {});
             return 'failed';
           }
-          return 'pending';
         }
-        M.run.txId = txId; M.run.phase = 'confirming'; (M.run.txIds ||= []).push(M.run.txId); render();
-        await saveHarvestAttempt(attemptId, { tx_id: txId, state: 'submitted' }).catch(() => {});
-        return verifyUntilFinal(attemptId);
+        if (txId) {
+          if (!(M.run.txIds || []).includes(txId)) { M.run.txId = txId; (M.run.txIds ||= []).push(txId); }
+          if (M.run.phase !== 'pending') M.run.phase = 'confirming';
+          render();
+          await saveHarvestAttempt(attemptId, { tx_id: txId, state: 'submitted' }).catch(() => {});
+        }
+        return verifyUntilFinal(attemptId, { operations, txId, chunkNonces });
       }));
-      if (outcomes.includes('failed')) finalOutcome = 'failed';
-      else if (outcomes.includes('pending') && finalOutcome !== 'failed') finalOutcome = 'pending';
+      if (outcomes.includes('failed') || outcomes.includes('never_sent')) finalOutcome = 'failed';
+      else if (finalOutcome !== 'failed' && outcomes.every((outcome) => outcome === 'success') && finalOutcome === 'pending') finalOutcome = 'success';
+      if (outcomes.length && outcomes.every((outcome) => outcome === 'never_sent') && M.run.members.every((member) => member.outcome === 'not_sent')) { M.run.phase = 'never_sent'; M.run.busy = false; render(); return; }
     }
-    if (M.run.renderFailed) finalOutcome = 'pending';
-    M.run.phase = finalOutcome === 'pending' ? 'verification_incomplete' : finalOutcome;
+    // F5: a run is a success only when every member was signed and confirmed; members that were never signed (the run
+    // stopped at an unproven chunk) make it a partial result that says so.
+    const unsent = M.run.members.filter((member) => member.outcome === 'not_sent');
+    if (finalOutcome === 'success' && unsent.length) {
+      finalOutcome = 'failed';
+      M.run.message = `${unsent.length} of ${M.run.members.length} were not sent. Nothing was sent twice; harvest them again when you are ready.`;
+    }
+    M.run.phase = finalOutcome;
     M.run.busy = false;
     if (finalOutcome === 'failed') {
       M.run.phase = 'failed';
@@ -1360,9 +1375,9 @@ async function confirmHarvest() {
     render();
   } catch (error) {
     if (M.run && M.open) {
-      M.run.phase = 'verification_incomplete';
+      M.run.phase = 'pending';
       M.run.busy = false;
-      M.run.message = 'The receipt could not be completed. Check the transaction or try verification later.';
+      M.run.message = 'The receipt could not be completed here. Ceres keeps confirming it; nothing will be sent again.';
       render();
     }
   }

@@ -500,6 +500,11 @@ def test_in_flight_marker_blocks_a_second_signature(live_browser: tuple[Browser,
     page.wait_for_function("window.__ceresBroadcastCount === 1", timeout=30_000)
     settle(page)
     if not panel.is_visible():
+        # design 4: the confirmation notice overlaps Changes on desktop (maintainer: accepted); close it with its X first.
+        dismiss = page.locator("#ceres-confirmation-banner .worksite-banner-dismiss")
+        if dismiss.is_visible():
+            dismiss.click()
+            page.locator("#ceres-confirmation-banner").wait_for(state="hidden", timeout=30_000)
         page.locator("#checkout-btn").click()
     marker = panel.locator(".ch-slot.is-in-flight")
     marker.wait_for(timeout=30_000)

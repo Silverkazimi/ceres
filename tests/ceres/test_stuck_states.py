@@ -123,32 +123,24 @@ context.__regionalDrawer = null;
 """
 
 
-def test_not_found_decision_waits_for_the_claims_window():
-    run_in_module_context(r"""
-const now = 1_000_000;
-if (decNotFoundFinal({ signed_at: now - 5000 }, 'not_found', now)) throw Error('must not end before the window');
-if (!decNotFoundFinal({ signed_at: now - 25000 }, 'not_found', now)) throw Error('must end once the window has passed');
-if (!decNotFoundFinal({}, 'not_found', now)) throw Error('an entry without a signing time ends at the first answer');
-if (decNotFoundFinal({ signed_at: 1 }, 'pending', now)) throw Error('only a not_found answer ends it');
-""", entry=STATIC / "regional-dec.js", extra_context_js=_REGIONAL_CONTEXT)
+def test_dec_not_found_is_no_longer_a_25_second_end():
+    """ replaces this  rule: a lagging game read as "never broadcast" after 25 s; the shared confirmer now decides from the game and the chain."""
+    dec = (STATIC / "regional-dec.js").read_text(encoding="utf-8")
+    assert "decNotFoundFinal" not in dec and "DEC_NOT_FOUND_AFTER_MS" not in dec
+    assert "confirmAction({ account: player, operations: intent.ops" in dec and "if (D.pending) check();" in dec
+    assert "'discard'" not in dec and "dec-transaction" not in dec and "Check again" not in dec
+    # continuation 4 (manager, IN-0706): the Dismiss exit is gone; an unprovable entry blocks nothing instead.
+    assert "'dismiss'" not in dec and "'Dismiss'" not in dec and "export function decUnprovable" in dec
 
 
-def test_unknown_dec_transaction_ends_as_not_found_and_dismiss_clears_it():
-    run_in_module_context(r"""
-(async () => {
-  initRegionalDec();
-  const old = { region_uid: '1-PNW-1', action: 'stake', amount: '1', nonce: 'c'.repeat(16), status: 'pending', tx_id: 'a'.repeat(40), signed_at: Date.now() - 60000 };
-  __store.set('ceres:regional-dec:pending:alice', JSON.stringify(old));
-  await openWalletDrawer('DEC');
-  if (__verifyCalls < 1) throw Error('the saved transaction must be checked on open');
-  if (D.pending?.status !== 'not_found') throw Error('an unknown transaction must end as not found, got ' + JSON.stringify(D.pending));
-  const html = __regionalDrawer.querySelector('.dec-drawer-panel').innerHTML;
-  if (!html.includes('Transaction not found') || !html.includes('data-dec="dismiss"')) throw Error('not-found state must show its message and Dismiss');
-  await act('dismiss');
-  if (D.pending !== null || __store.has('ceres:regional-dec:pending:alice')) throw Error('Dismiss must clear the saved entry');
-  if (!tabSwitchAllowed(D, 'GRAIN')) throw Error('Dismiss must unlock the tabs');
-})().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
-""", entry=STATIC / "regional-dec.js", extra_context_js=_REGIONAL_CONTEXT)
+def test_dec_unknown_transaction_keeps_confirming():
+    """ replaces this  rule: an unknown DEC transaction ended as "not found"; it is now confirmed until the game answers or Hive proves it absent."""
+    dec = (STATIC / "regional-dec.js").read_text(encoding="utf-8")
+    assert "decNotFoundFinal" not in dec and "DEC_NOT_FOUND_AFTER_MS" not in dec
+    assert "confirmAction({ account: player, operations: intent.ops" in dec and "if (D.pending) check();" in dec
+    assert "'discard'" not in dec and "dec-transaction" not in dec and "Check again" not in dec
+    # continuation 4 (manager, IN-0706): the Dismiss exit is gone; an unprovable entry blocks nothing instead.
+    assert "'dismiss'" not in dec and "'Dismiss'" not in dec and "export function decUnprovable" in dec
 
 
 def test_a_fresh_unknown_dec_transaction_is_not_ended_early():
@@ -163,18 +155,35 @@ def test_a_fresh_unknown_dec_transaction_is_not_ended_early():
 """, entry=STATIC / "regional-dec.js", extra_context_js=_REGIONAL_CONTEXT)
 
 
-def test_a_dec_change_without_transaction_id_can_be_discarded():
-    run_in_module_context(r"""
+def test_dec_change_without_id_is_found_not_discarded():
+    """ replaces this  rule: a change without id could be discarded at once; the own-history finder finds it, and the one expiry read (CONFIRM_EXPIRY_RECHECK) ends it confirmed or not sent."""
+    dec = (STATIC / "regional-dec.js").read_text(encoding="utf-8")
+    assert "decNotFoundFinal" not in dec and "DEC_NOT_FOUND_AFTER_MS" not in dec
+    assert "confirmAction({ account: player, operations: intent.ops" in dec and "if (D.pending) check();" in dec
+    assert "'discard'" not in dec and "dec-transaction" not in dec and "Check again" not in dec
+    # continuation 4 (manager, IN-0706): the Dismiss exit is gone; an unprovable entry blocks nothing instead.
+    assert "'dismiss'" not in dec and "'Dismiss'" not in dec and "export function decUnprovable" in dec
+
+
+def test_dec_unprovable_entry_has_no_button_and_blocks_nothing():
+    """IN-0706 (continuation 4): an entry saved before  with neither id nor operations cannot be read at all. It used
+    to wait for a Dismiss press; now its receipt keeps an honest line, shows no button, and Stake stays available."""
+    result = run_in_module_context(r"""
 (async () => {
   initRegionalDec();
-  __store.set('ceres:regional-dec:pending:alice', JSON.stringify({ region_uid: '1-PNW-1', action: 'stake', amount: '1', nonce: 'c'.repeat(16), status: 'pending' }));
+  const legacy = { region_uid: '1-PNW-1', action: 'stake', amount: '1', nonce: 'd'.repeat(16), status: 'pending', asked_at: Date.now() - 3 * 3600 * 1000 };
+  __store.set('ceres:regional-dec:pending:alice', JSON.stringify(legacy));
   await openWalletDrawer('DEC');
-  const html = __regionalDrawer.querySelector('.dec-drawer-panel').innerHTML;
-  if (!html.includes('data-dec="discard"')) throw Error('an entry without a transaction id needs an exit');
-  await act('discard');
-  if (D.pending !== null) throw Error('Discard must clear it');
+  for (let i = 0; i < 5; i += 1) await Promise.resolve();
+  const html = globalThis.__regionalDrawer.__panel.innerHTML;
+  if (/data-dec="dismiss"|>Dismiss</.test(html)) throw Error('a Dismiss control is still rendered');
+  if (!/cannot prove whether this change was sent/.test(html) || !/dec-unprovable/.test(html)) throw Error('no honest unprovable line: ' + html.slice(0, 400));
+  const stake = html.match(/<button[^>]*data-dec="stake"[^>]*>/);
+  if (!stake || / disabled/.test(stake[0])) throw Error('Stake is blocked by an unprovable entry: ' + (stake && stake[0]));
+  console.log('IR9545_DEC_UNPROVABLE_OK');
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "regional-dec.js", extra_context_js=_REGIONAL_CONTEXT)
+    assert "IR9545_DEC_UNPROVABLE_OK" in result.stdout   # a pending promise exits 0 too; the marker proves the checks ran
 
 
 # 2. deed lock
@@ -284,7 +293,9 @@ context.setTimeout = (fn) => { fn(); return 0; };
   const st = swapState('alice', 'SPS');
   Object.assign(st, { stage: 'confirming', receipt: { kind: 'swap_buy', pay: 'DEC', receive: 'SPS', input: 10, output: 1.234, nonce: 'n'.repeat(16), tx_id: 'a'.repeat(40), payload: {}, twoStep: false } });
   const ctx = { player: 'alice', render() {}, reload: async () => {}, drawer: () => null, wallet: () => null, setSigning() {}, account: () => 'alice' };
-  await swapAction(ctx, 'verify', { closest: () => ({ dataset: { lpSymbol: 'SPS' } }) });
+  // no Resume control; the automatic check (as after a reload) is the path under test.
+  resumeSwapChecks(ctx);
+  for (let i = 0; i < 5000 && st.checking; i++) await Promise.resolve();
 """ + body + r"""
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "wallet-lp.js", extra_context_js=extra)
@@ -296,12 +307,10 @@ def test_an_external_withdrawal_waits_for_the_pool_and_shows_no_quote():
  if (st.receipt.output !== null) throw Error('the quote must not be shown as received');
  const html = swapHtml('SPS', {}, 'alice');
  if (!html.includes('Waiting for the pool to settle') || !html.includes('Amount confirmed when the pool settles')) throw Error('settling wording');
- // the settlement is read by itself (by this swap's own id) while the card waits; the player can stop that,
- // and once checking stops, Check again is offered.
+ // the settlement is read by itself through the shared scheduler; no Stop / Check again / Look further back.
+ for (let i = 0; i < 5000 && !__urls.some(u => u.includes('/settle')); i++) await Promise.resolve();
  if (!__urls.some(u => u.includes('/settle'))) throw Error('the waiting swap must check the pool settlement by itself');
- if (!html.includes('data-dec="lp:settle-stop"')) throw Error('Stop checking must be offered while Ceres reads the pool');
- st.settleStopped = true;
- if (!swapHtml('SPS', {}, 'alice').includes('data-dec="lp:settle"')) throw Error('Check again must be offered once checking stops');
+ if (/lp:settle|lp:stop|Check again|Stop checking|further back/.test(swapHtml('SPS', {}, 'alice'))) throw Error('a manual settle control is shown');
 """)
 
 

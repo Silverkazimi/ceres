@@ -426,7 +426,8 @@ def test_checkout_source_contracts():
     assert "if (runIsOpen(open)) return 'taken'" in sign and "await adoptLate()" in sign
     # clocks
     # An unknown wallet answer stays reserved through Hive expiry plus the inclusion grace.
-    assert "CONFIRM_TTL_MS = 3 * 60 * 1000" in js and "NEVER_SENT_AFTER_MS = 3900 * 1000" in js and "RECHECK_MS = 10000" in js
+    # no 3-minute red stop and no own recheck cadence; the shared confirmer schedules every read.
+    assert "CONFIRM_TTL_MS" not in js and "RECHECK_MS" not in js and "NEVER_SENT_AFTER_MS = 3900 * 1000" in js and "confirmAction(" in js
     assert "Date.now() - Date.parse(tx.asked_at || '') >= NEVER_SENT_AFTER_MS" in js
     # The fresh combine witness uses copy UIDs internally; checkout UI must not expose market IDs or seller data.
     assert not re.search(r"market_id|seller", js.replace("// No market id, uid or seller is ever shown", ""))
@@ -524,6 +525,6 @@ console.log(JSON.stringify({ html, two: TWO_SIGNATURES }));
     assert "1 of 2 listings were not bought" in got["html"] and got["html"].count('data-co-action="combine-sign"') == 1
     js = (STATIC / "card-checkout.js").read_text(encoding="utf-8")
     sign = js[js.index("async function signCombine"):js.index("async function verifyCombine")]
-    assert "'Posting'" in sign and "g.state = g.combine_tx ? 'combine-sent' : 'combine-unknown'" in sign
+    assert "'Posting'" in sign and "g.state = 'combine-sent';" in sign   # with or without an id the confirmer decides
     build = js[js.index("async function buildCombine"):js.index("async function signCombine")]
     assert "requestBroadcastThroughGate" not in build                     # building never signs; the maintainer presses "Sign the combine"

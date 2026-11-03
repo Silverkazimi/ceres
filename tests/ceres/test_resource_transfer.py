@@ -332,7 +332,7 @@ context.__signed = [];
               "quote": {"resource_symbol": "GRAIN", "input": "10", "intermediate_dec": "0.081", "output": "9.062", "minimum": "8.835", "slippage": "2.5",
                         "fee_percent": "10", "legs": []}}
     body_js = CARD_JS + f"""
-VERIFY_SCHEDULE_MS.length = 1;
+__setConfirmerClock(Object.fromEntries([['sleep', async () => undefined]]));  // the shared schedule, frozen for the test
 const review = {json.dumps(review)};
 const order = [];
 let verdict = {{ status: 'failed', message: 'Slippage exceeded: received less than the minimum' }};

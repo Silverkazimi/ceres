@@ -540,6 +540,7 @@ function landAbilityCardChips(row) {
 // badge's text entirely -- that word is reserved for the plot TYPE
 // everywhere else on this board (Type column, filter, typeMarkHtml).
 function relevantBadgeStages(row) {
+  if (row?.planning_view === true) return []; // a planning row reads the plan only, never the live stage
   return CERES_STAGE.filter((entry) => entry?.deed_uid === row?.deed_uid || entry?._source_deed_uid === row?.deed_uid);
 }
 
@@ -836,11 +837,14 @@ function badgeChips(row) {
   const badges = (row.badges || []).filter((code) => code !== 'assets_not_loaded');
   const meta = (BOARD && BOARD.badge_meta) || {};
   const chips = [];
-  const staged = stagedChangesChip(row);
+  // in planning (a projected row) the live stage's "X Changes" / "Waiting" chips and the live
+  // worksite build's "Building" chip do not apply -- the badges read the plan only.
+  const liveStage = row?.planning_view !== true;
+  const staged = liveStage ? stagedChangesChip(row) : null;
   if (staged) chips.push({ key: 'staged_changes', rank: badgeRank('staged_changes'), html: staged });
-  const waiting = cooldownChangesChip(row);
+  const waiting = liveStage ? cooldownChangesChip(row) : null;
   if (waiting) chips.push({ key: 'staged_cooldown', rank: badgeRank('staged_cooldown'), html: waiting });
-  const pendingChange = pendingChangeChip(row);
+  const pendingChange = liveStage ? pendingChangeChip(row) : null;
   if (pendingChange) chips.push({ key: row?.pending_change?.stalled ? 'pending_change_stalled' : 'pending_change', rank: badgeRank(row?.pending_change?.stalled ? 'pending_change_stalled' : 'pending_change'), html: pendingChange });
   const regionDec = regionDecChip(row);
   if (regionDec) chips.push({ key: 'region_dec', rank: badgeRank('region_dec'), html: regionDec });

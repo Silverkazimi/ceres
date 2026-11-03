@@ -3,6 +3,7 @@ import { COMMIT_ICON } from './button-icons.js';
 import { walletSignLabelHtml, walletReady, walletName, walletControlsHtml } from './wallet.js';
 import { retryBackgroundLayers, worksiteTileArtPath } from './art.js';
 import { requestBroadcastThroughGate, requestSignatureThroughGate } from './broadcast-gate.js';
+import { confirmAction } from './shared-confirmer.js';
 import { BOARD, BOARD_GENERATION, CURRENT_PLAYER, catalogNotice, noticeMessage, playerQueryAppend, renderNotices } from './board.js';
 import { esc, fmtSpsPerPp, formatPlotLabel, num } from './format.js';
 import { refreshPlotHarvest } from './harvest-state.js';
@@ -30,9 +31,6 @@ let WORKSITE_MODAL_RETURN_FOCUS = null;
 export let WORKSITE_MODAL_SELECTED = null;
 let WORKSITE_MODAL_TC = false; // the "build instantly" opt-in; reset on every open, never sticky
 let WORKSITE_PREVIEW_TOKEN = 0; // a preview answer for an older pick, opt-in or session is dropped
-let WORKSITE_VERIFY_TIMER = null;
-const WORKSITE_VERIFY_MAX_ATTEMPTS = 6;
-const WORKSITE_VERIFY_INTERVAL_MS = 2000;
 // One title verb per body state (R-23 §3.7).
 const WORKSITE_MODAL_TITLE = { choose: 'Change worksite', refused: 'Cannot change worksite', completion: 'Complete worksite' };
 const X_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
@@ -565,14 +563,9 @@ export async function signStagedWorksiteBuild(row, target, timeCrystals = 0, pre
       chunk.inclusionBlock = result.blockNum;
       return verifyWorksiteBroadcast(row.deed_uid, chunk, result.txId);
     }).catch(error => {
-      const refused = error.broadcasted === false;
+      if (error.broadcasted !== false) return verifyWorksiteBroadcast(row.deed_uid, chunk, broadcast.txId);  // the chain decides
       return reportWorksiteVerdict(row.deed_uid, chunk, broadcast.txId, {
-        tone: refused ? 'danger' : 'caution',
-        title: refused ? 'Worksite transaction not sent' : 'Worksite transaction pending',
-        detail: error.message,
-        phase: refused ? 'refused' : 'pending',
-        state: refused ? 'is-failed' : 'is-pending',
-        retry: false,
+        tone: 'danger', title: 'Worksite transaction not sent', detail: error.message, phase: 'refused', state: 'is-failed',
       });
     });
     return { ok: true, txId: broadcast.txId, queued: broadcast.queued };
@@ -850,10 +843,9 @@ export function renderWorksiteVerdict(overlay, verdict) {
 }
 
 // once a broadcast exists the modal is closed and every verdict is the transaction
-// pill's (the Changes modal's rule, /) -- "Check again" is the pill's own action.
+// pill's (the Changes modal's rule, /). : the pill has no manual action; the shared confirmer reads on.
 function reportWorksiteVerdict(deedUid, chunk, txId, verdict) {
   const row = BOARD?.plots?.find((plot) => plot.deed_uid === deedUid);
-  const retry = verdict.retry ? () => verifyWorksiteBroadcast(deedUid, chunk, txId) : null;
   const title = chunk?.cancelConstruction && verdict.tone === 'info'
     ? (txId ? 'Awaiting confirmation' : 'Transaction sent') : verdict.title;
   setConfirmationBannerState(title, chunk?.cancelConstruction && verdict.tone === 'info' ? '' : verdict.detail || '', verdict.tone, {
@@ -865,8 +857,7 @@ function reportWorksiteVerdict(deedUid, chunk, txId, verdict) {
     items: [],
     where: row ? `Plot ${formatPlotLabel(row.plot)}` : null,
     what: chunk?.whatText || null,
-    action: retry ? { id: 'retry_verification', label: 'Check again' } : null,
-    retry,
+    action: null,
   });
 }
 
@@ -875,7 +866,7 @@ function reportWorksiteVerdict(deedUid, chunk, txId, verdict) {
 // other non-confirmed state (`chain_verified`, a lookup failure, or any state
 // this client doesn't recognise yet) means "not observable yet", not "it
 // failed", so all of those fall through to the same neutral in-progress
-// treatment with a "Check again" button. A worksite change verified moments
+// treatment, read again by the shared confirmer (). A worksite change verified moments
 // after broadcast may legitimately not show in game state yet; that is
 // expected, not an error.
 // `freshRow` is only meaningful for `domain-confirmed` -- the board row as
@@ -892,15 +883,15 @@ function worksiteGameRefusalReason(result) {
 
 function worksiteVerdictForState(state, freshRow, refusalReason = null) {
   if (state === 'domain-confirmed') {
-    return { tone: 'success', title: 'Transaction confirmed', detail: worksiteConfirmedDetailText(freshRow), phase: 'confirmed', state: 'is-confirmed', retry: false, terminal: true };
+    return { tone: 'success', title: 'Transaction confirmed', detail: worksiteConfirmedDetailText(freshRow), phase: 'confirmed', state: 'is-confirmed', terminal: true };
   }
   if (state === 'domain-mismatch') {
-    return { tone: 'danger', title: 'Game state mismatch', detail: 'The game does not reflect this change.', phase: 'mismatch', state: 'is-failed', retry: true, terminal: true };
+    return { tone: 'danger', title: 'Game state mismatch', detail: 'The game does not reflect this change.', phase: 'mismatch', state: 'is-failed', terminal: true };
   }
   if (state === 'game-refused') {
-    return { tone: 'danger', title: 'Game refused', detail: refusalReason || 'The game refused this operation.', phase: 'refused', state: 'is-failed', retry: false, terminal: true };
+    return { tone: 'danger', title: 'Game refused', detail: refusalReason || 'The game refused this operation.', phase: 'refused', state: 'is-failed', terminal: true };
   }
-  return { tone: 'info', title: 'Awaiting confirmation', detail: 'The game has not shown this change yet.', phase: 'pending', state: 'is-pending', retry: true, terminal: false };
+  return { tone: 'info', title: 'Awaiting confirmation', detail: 'The game has not shown this change yet.', phase: 'pending', state: 'is-pending', terminal: false };
 }
 
 function worksiteConfirmedDetailText(freshRow) {
@@ -981,13 +972,9 @@ export function confirmWorksiteBroadcast(row, broadcastBtn) {
     verifyWorksiteBroadcast(deedUid, chunk, txId);
   }).catch((error) => {
     if (error?.inclusionUnobserved || error?.ambiguousBroadcast) {
-      if (error.txId) S.WORKSITE_MODAL_LAST_VERIFY = { deedUid, chunk, txId: error.txId };
       closeIfOpen();
-      if (error.txId) {
-        verifyWorksiteBroadcast(deedUid, chunk, error.txId);
-      } else {
-        reportWorksiteVerdict(deedUid, chunk, null, { tone: 'caution', title: 'Wallet result unavailable', detail: error.message, phase: 'could-not-verify', state: 'is-unresolved', retry: false });
-      }
+      // with or without an id the shared confirmer finds and confirms it; never a dead end.
+      verifyWorksiteBroadcast(deedUid, chunk, error.txId || null);
       return;
     }
     // The broadcast never started (rejected or failed in Keychain): the modal stays and its footer says why.
@@ -996,69 +983,65 @@ export function confirmWorksiteBroadcast(row, broadcastBtn) {
   });
 }
 
-// Domain-verifies the broadcast (never trusts the tx id alone) and refreshes the affected row
-// only after domain confirmation. Pending results retry a bounded number of times, then leave
-// the pill's manual "Check again" available.
+// Domain-verifies the broadcast (never trusts the tx id alone) and refreshes the affected row only after domain
+// confirmation. : one /api/op-verify read per call of the shared confirmer; its schedule, bounds and resume
+// replace the former 6 x 2 s attempts and the pill's manual Check again. A missing id is found by its finder.
 export async function verifyWorksiteBroadcast(deedUid, chunk, txId) {
-  clearTimeout(WORKSITE_VERIFY_TIMER);
-  WORKSITE_VERIFY_TIMER = null;
-  chunk.verificationAttempt = (chunk.verificationAttempt || 0) + 1;
   S.WORKSITE_MODAL_LAST_VERIFY = { deedUid, chunk, txId };
-  const scheduleRecheck = () => {
-    if (chunk.verificationAttempt >= WORKSITE_VERIFY_MAX_ATTEMPTS) return;
-    WORKSITE_VERIFY_TIMER = setTimeout(() => {
-      WORKSITE_VERIFY_TIMER = null;
-      if (S.WORKSITE_MODAL_LAST_VERIFY?.deedUid === deedUid && S.WORKSITE_MODAL_LAST_VERIFY?.txId === txId) {
-        verifyWorksiteBroadcast(deedUid, chunk, txId);
-      }
-    }, WORKSITE_VERIFY_INTERVAL_MS);
-  };
-  const controller = new AbortController();
-  const deadline = setTimeout(() => controller.abort(), 20000);
-  try {
+  const account = CURRENT_PLAYER || BOARD?.player;
+  if (!txId) reportWorksiteVerdict(deedUid, chunk, null, { tone: 'info', title: 'Awaiting confirmation', detail: 'Signed — Ceres is finding the transaction on Hive; nothing is sent again.', phase: 'pending', state: 'is-pending' });
+  const check = async (id, { signal } = {}) => {
+    chunk.verificationAttempt = (chunk.verificationAttempt || 0) + 1;
+    // fix round 2 (P1-6): an abandoned read is aborted; its late answer changes nothing.
     const response = await fetch(playerQueryAppend('/api/op-verify'), {
-      signal: controller.signal,
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tx_id: txId, operations: chunk.operations, verification_attempt: chunk.verificationAttempt }),
+      body: JSON.stringify({ tx_id: id, operations: chunk.operations, verification_attempt: chunk.verificationAttempt }),
+      ...(signal ? { signal } : {}),
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.detail || `verification HTTP ${response.status}`);
-    if (result.state === 'domain-confirmed') {
-      balancesChanged({ player: CURRENT_PLAYER || BOARD?.player, assets: ['DEC', 'GRAIN', 'WOOD', 'STONE', 'IRON', 'AURA', 'RESEARCH'], id: `worksite:${txId}` });
-      // Phase 0 -- the approved copy (plan §4.3) names the plot and the exact ready
-      // time, both of which only exist on the FRESH row, so the refresh is awaited first.
-      for (const refreshedDeed of result.refreshed_deeds || []) await refreshConfirmedPlot(refreshedDeed);
-      const freshRow = BOARD.plots.find((p) => p.deed_uid === deedUid);
-      const verdict = (result.refresh_errors || []).length
-        ? { tone: 'caution', title: 'Transaction confirmed', detail: noticeMessage(catalogNotice('verification_refresh_failed')), phase: 'confirmed-partial', state: 'is-confirmed-partial', retry: false, terminal: true }
-        : worksiteVerdictForState(result.state, freshRow);
-      const completed = chunk.operations?.some((operation) => {
-        try { return JSON.parse(operation[1]?.json || '{}').op === 'update_worksite'; } catch { return false; }
-      });
-      if (completed || chunk.cancelConstruction) await refreshPlotHarvest(deedUid, { force: true });
-      if (completed && !(result.refresh_errors || []).length) {
-        verdict.title = 'Workers fed — worksite complete';
-        verdict.detail = `${freshRow?.worksite_type || 'The worksite'} is now active${freshRow ? ` on ${formatPlotLabel(freshRow.plot)}` : ''}.`;
-      }
-      if (chunk.cancelConstruction && !(result.refresh_errors || []).length) {
-        verdict.title = 'Transaction confirmed';
-        verdict.detail = '';
-      }
-      reportWorksiteVerdict(deedUid, chunk, txId, verdict);
-      return;
-    }
-    if (result.state === 'game-refused') {
-      reportWorksiteVerdict(deedUid, chunk, txId, worksiteVerdictForState(result.state, null, worksiteGameRefusalReason(result)));
-      return;
-    }
-    reportWorksiteVerdict(deedUid, chunk, txId, worksiteVerdictForState(result.state, null));
-    if (result.state !== 'domain-mismatch') scheduleRecheck();
-  } catch (error) {
-    reportWorksiteVerdict(deedUid, chunk, txId, { tone: 'caution', title: 'Could not verify', detail: 'The game result could not be checked.', phase: 'could-not-verify', state: 'is-unresolved', retry: true });
-    scheduleRecheck();
-  } finally {
-    clearTimeout(deadline);
+    if (result.state === 'domain-confirmed') return { state: 'confirmed', result };
+    if (result.state === 'game-refused' || result.state === 'domain-mismatch') return { state: 'refused', result };
+    return { state: 'pending', result };
+  };
+  const answer = await confirmAction({ account, operations: chunk.operations, txId, check,
+    onUpdate: (update) => {
+      if (update.state !== 'pending') return;
+      reportWorksiteVerdict(deedUid, chunk, update.txId || txId, update.unavailable
+        ? { tone: 'caution', title: 'Awaiting confirmation', detail: 'The game result could not be read just now; Ceres keeps checking.', phase: 'pending', state: 'is-pending' }
+        : worksiteVerdictForState(update.result?.state, null));
+    } });
+  const id = answer.txId || txId;
+  const result = answer.result || {};
+  if (answer.state === 'never-sent') {
+    reportWorksiteVerdict(deedUid, chunk, id, { tone: 'danger', title: 'Worksite transaction not sent', detail: answer.error || 'Hive has no record of it. Nothing changed.', phase: 'refused', state: 'is-failed' });
+    return;
   }
+  if (answer.state === 'refused') {
+    reportWorksiteVerdict(deedUid, chunk, id, worksiteVerdictForState(result.state, null, worksiteGameRefusalReason(result)));
+    return;
+  }
+  balancesChanged({ player: CURRENT_PLAYER || BOARD?.player, assets: ['DEC', 'GRAIN', 'WOOD', 'STONE', 'IRON', 'AURA', 'RESEARCH'], id: `worksite:${id}` });
+  // Phase 0 -- the approved copy (plan §4.3) names the plot and the exact ready
+  // time, both of which only exist on the FRESH row, so the refresh is awaited first.
+  for (const refreshedDeed of result.refreshed_deeds || []) await refreshConfirmedPlot(refreshedDeed);
+  const freshRow = BOARD.plots.find((p) => p.deed_uid === deedUid);
+  const verdict = (result.refresh_errors || []).length
+    ? { tone: 'caution', title: 'Transaction confirmed', detail: noticeMessage(catalogNotice('verification_refresh_failed')), phase: 'confirmed-partial', state: 'is-confirmed-partial', terminal: true }
+    : worksiteVerdictForState(result.state, freshRow);
+  const completed = chunk.operations?.some((operation) => {
+    try { return JSON.parse(operation[1]?.json || '{}').op === 'update_worksite'; } catch { return false; }
+  });
+  if (completed || chunk.cancelConstruction) await refreshPlotHarvest(deedUid, { force: true });
+  if (completed && !(result.refresh_errors || []).length) {
+    verdict.title = 'Workers fed — worksite complete';
+    verdict.detail = `${freshRow?.worksite_type || 'The worksite'} is now active${freshRow ? ` on ${formatPlotLabel(freshRow.plot)}` : ''}.`;
+  }
+  if (chunk.cancelConstruction && !(result.refresh_errors || []).length) {
+    verdict.title = 'Transaction confirmed';
+    verdict.detail = '';
+  }
+  reportWorksiteVerdict(deedUid, chunk, id, verdict);
 }
 
 export function worksiteChangeButtonHtml(row) {

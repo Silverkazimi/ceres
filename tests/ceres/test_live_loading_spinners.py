@@ -14,7 +14,7 @@ Two delay techniques are used, chosen per request kind:
   never lets the request reach the server (confirmed via server access logs -- the
   request is simply never dispatched). So those cases use a REAL slower fetch instead
   of an artificial delay -- `player0001` (470 deeds, mostly uncached -- a real network
-  hop per plot) rather than `player0017`, whose much larger snapshot is shared with other
+  hop per plot) rather than `player0018`, whose much larger snapshot is shared with other
   concurrent processes in this environment and was observed corrupted mid-write more
   than once during this batch's own test development -- see
   `test_profile_spinner_...` and `test_plot_open_spinner_...` below.
@@ -335,16 +335,16 @@ def test_header_hide_guard_actually_guards(live_browser: tuple[Browser, str]) ->
     page.close()
 
 
-player0017_DEEDS = 6_303
+player0018_DEEDS = 6_303
 
 
-def _player0017_scale_board(route: Route) -> None:
-    """Repeat the shared offline board with unique deed IDs to player0017 scale."""
+def _player0018_scale_board(route: Route) -> None:
+    """Repeat the shared offline board with unique deed IDs to player0018 scale."""
     response = route.fetch()
     board = response.json()
     plots = board.get("plots") or []
     assert plots, "the fixture board has no plots"
-    repeats = -(-player0017_DEEDS // len(plots))
+    repeats = -(-player0018_DEEDS // len(plots))
     board["plots"] = [
         {**row, "deed_uid": f"{row['deed_uid']}-r{repeat}" if repeat else row["deed_uid"]}
         for repeat in range(repeats) for row in plots
@@ -352,27 +352,27 @@ def _player0017_scale_board(route: Route) -> None:
     route.fulfill(response=response, body=json.dumps(board), content_type="application/json")
 
 
-def test_player0017_real_slow_load_screenshot(live_browser: tuple[Browser, str]) -> None:
+def test_player0018_real_slow_load_screenshot(live_browser: tuple[Browser, str]) -> None:
     """Capture the spinner if visible and the revealed 6,303-deed synthetic board."""
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
     page.route(
         lambda url: urlsplit(url).path == "/api/board" and "plots=" not in urlsplit(url).query,
-        _player0017_scale_board,
+        _player0018_scale_board,
     )
     page.goto(f"{base_url}/?player=sample01")
     spinner = page.locator("#board-loading")
     try:
         spinner.wait_for(state="visible", timeout=3_000)
         SCREEN_DIR.mkdir(parents=True, exist_ok=True)
-        page.screenshot(path=str(SCREEN_DIR / "player0017_real_load_pending.png"))
+        page.screenshot(path=str(SCREEN_DIR / "player0018_real_load_pending.png"))
     except Exception:
         pass  # a fast machine can reveal the board before the spinner delay
     page.wait_for_function("document.querySelectorAll('#plot-tbody > tr.plot-row').length > 0", timeout=45_000)
     listed = int(page.locator("#table-head-sticky .count-total").inner_text())
-    assert listed >= player0017_DEEDS, listed
+    assert listed >= player0018_DEEDS, listed
     SCREEN_DIR.mkdir(parents=True, exist_ok=True)
-    page.screenshot(path=str(SCREEN_DIR / "player0017_real_load_revealed.png"))
+    page.screenshot(path=str(SCREEN_DIR / "player0018_real_load_revealed.png"))
     page.close()
 
 
