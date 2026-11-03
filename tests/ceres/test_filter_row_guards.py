@@ -104,7 +104,7 @@ BOARD_FILTER_FUNCS_SOURCE = _FUNCS_START + BOARD_FILTER_FUNCS_SOURCE
 
 
 def _run_node(script: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["node", "-e", script], capture_output=True, text=True)
+    return subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True, text=True)
 
 
 _FAKE_DOM = r"""
@@ -275,7 +275,7 @@ def test_detail_replacement_refilters_an_active_badge_view() -> None:
     detail_loader = ROWS_SOURCE.split("export async function loadPlotDetail(", 1)[1].split(
         "\n  return maintainer.promise;\n}", 1
     )[0] + "\n  return maintainer.promise;\n}"
-    script = "async function loadPlotDetail(" + detail_loader + r"""
+    script = "(async () => {\nasync function loadPlotDetail(" + detail_loader + r"""
 const calls = [];
 const document = { body: { dataset: {} }, getElementById: (id) => id === 'badge-filter' ? { value: 'new-badge' } : null };
 const CURRENT_PLAYER = 'sample01', BOARD_GENERATION = 1, MOBILE_PLOT_UID = null;
@@ -296,7 +296,6 @@ const renderTable = () => {
   calls.push('table');
   CURRENT_ROWS = BOARD.plots.filter(row => row.badges?.includes('new-badge'));
 };
-(async () => {
   for (const mode of ['live', 'planning']) {
     calls.length = 0;
     document.body.dataset.boardMode = mode;
