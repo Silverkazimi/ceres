@@ -273,8 +273,10 @@ def test_detail_replacement_refilters_an_active_badge_view() -> None:
     # must re-filter Live, while Planning keeps the mounted row and avoids a
     # table rebuild (which would remount another open plot).
     detail_loader = ROWS_SOURCE.split("export async function loadPlotDetail(", 1)[1].split(
-        "\n  return maintainer.promise;\n}", 1
-    )[0] + "\n  return maintainer.promise;\n}"
+        "\n}\n", 1
+    )[0] + "\n}"
+    assert "return " in detail_loader and ".promise;" in detail_loader
+    assert "\nexport " not in detail_loader, "loadPlotDetail extraction included later exports"
     script = "(async () => {\nasync function loadPlotDetail(" + detail_loader + r"""
 const calls = [];
 const document = { body: { dataset: {} }, getElementById: (id) => id === 'badge-filter' ? { value: 'new-badge' } : null };

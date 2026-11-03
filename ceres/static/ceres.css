@@ -8438,9 +8438,6 @@ html:not(.ceres-lw-le-1279) header.board-header #checkout-btn.is-icon-only:not([
 .hdr-menu-cols h3 { margin: 0 0 0.5rem; font-family: var(--font-body); font-size: 0.75rem; font-weight: 700; line-height: 1.25; color: var(--meta); letter-spacing: 0.04em; text-transform: uppercase; }
 .hdr-menu-cols ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
 .hdr-menu-cols li { display: flex; flex-direction: column; }
-/* (hotfix IN-0215): two classes, so buttons.css `.ceres-btn { justify-content: center }` (loaded later, same weight)
- no longer wins: every row starts at the button's padding, one icon x and one text x per column. */
-.hdr-menu-panel .hdr-menu-entry { justify-content: flex-start; text-align: start; }
 .hdr-menu-entry > .hdr-ic { inline-size: 1.2rem; block-size: 1.2rem; flex: 0 0 1.2rem; }
 .hdr-menu-entry > .hdr-menu-img { object-fit: contain; }
 .hdr-menu-txt { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; min-inline-size: 0; }
