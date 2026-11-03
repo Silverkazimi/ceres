@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # pinned: ubuntu-latest moved to 26.04, where the pinned Playwright has no Chromium
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -48,7 +48,7 @@ jobs:
     # The browser tests (`-m browser`) against the synthetic fixture recording, split into parallel shards balanced by
     # measured file durations (tests/conftest.py, CERES_TEST_SHARD; tests/ceres/browser_durations.json). No test reaches the network: CERES_CI_NO_NETWORK=1, the
     # fixture server refuses outbound sockets and the pages' upstream calls are answered from the recording.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # pinned: ubuntu-latest moved to 26.04, where the pinned Playwright has no Chromium
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -110,7 +110,7 @@ jobs:
     # Shown on every run, not required: the older review guards listed in tests/ceres/browser_extended.txt that do
     # not match the current screens yet. An id leaves the list once it passes here; the job ends when the list is empty.
     continue-on-error: true
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # pinned: ubuntu-latest moved to 26.04, where the pinned Playwright has no Chromium
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -165,3 +165,37 @@ jobs:
           for path, total in seconds.most_common():
               print(f"DURATION {path} {total:.0f}")
           PY
+      # One line per test case, with the exact node id as written in tests/ceres/browser_extended.txt, so the list can be
+      # shortened from the logs (tools/extended_burndown.py in the private repo). Built from the JUnit file, never from -rf text.
+      - name: browser test results (shard ${{ matrix.shard }} of 8)
+        if: always()
+        run: |
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          report = Path("browser-shard.xml")
+          if not report.is_file():
+              raise SystemExit("no JUnit report: the test step did not finish")
+          print("RESULTS-BEGIN")
+          for case in ET.parse(report).getroot().iter("testcase"):
+              parts = case.get("classname", "").split(".")
+              # classname is the dotted module path plus any test class; the file is the longest prefix that exists.
+              for cut in range(len(parts), 0, -1):
+                  path = "/".join(parts[:cut]) + ".py"
+                  if Path(path).is_file():
+                      node = "::".join([path, *parts[cut:], case.get("name", "")])
+                      break
+              else:
+                  node = "::".join(["/".join(parts) + ".py", case.get("name", "")])
+              kinds = {child.tag for child in case}
+              state = "error" if "error" in kinds else "failed" if "failure" in kinds else "skipped" if "skipped" in kinds else "passed"
+              print(f"RESULT {state} {node}")
+          print("RESULTS-END")
+          PY
+      - name: browser test report (shard ${{ matrix.shard }} of 8)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: browser-extended-${{ matrix.shard }}
+          path: browser-shard.xml
+          if-no-files-found: ignore

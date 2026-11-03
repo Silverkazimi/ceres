@@ -501,7 +501,7 @@ def test_runi_stake_emits_null_slot_in_cards_shape():
     report["cards"].append({
         "asset_ref": "runi-new-ref", "uid": "RUNI-NEW",
         "facts": {  # noqa: keep uid duplicated top-level + facts, matching _report()'s CARD-NEW fixture shape
-            "uid": "RUNI-NEW", "player": "player0015", "market_id": None, "delegated_to": "player0005",
+            "uid": "RUNI-NEW", "player": "player0016", "market_id": None, "delegated_to": "player0005",
             "rental_type": None, "unlock_date": None, "card_detail_id": 505,
         },
     })
@@ -682,7 +682,7 @@ def test_first_clear_signs_power_workers_runi_items_and_build_in_one_four_op_tra
     report["cards"].append({
         "asset_ref": "runi-ref", "uid": "RUNI-UID",
         "facts": {
-            "uid": "RUNI-UID", "name": "Runi Alpha", "player": "player0015",
+            "uid": "RUNI-UID", "name": "Runi Alpha", "player": "player0016",
             "market_id": None, "delegated_to": "player0005", "rental_type": None,
             "unlock_date": None, "card_detail_id": 505,
         },
@@ -773,7 +773,7 @@ def test_first_clear_allows_a_runi_as_the_staged_power_source():
     report["cards"].append({
         "asset_ref": "runi-ref", "uid": "RUNI-UID",
         "facts": {
-            "uid": "RUNI-UID", "name": "Runi Alpha", "player": "player0015",
+            "uid": "RUNI-UID", "name": "Runi Alpha", "player": "player0016",
             "market_id": None, "delegated_to": "player0005", "rental_type": None,
             "unlock_date": None, "card_detail_id": 505,
         },

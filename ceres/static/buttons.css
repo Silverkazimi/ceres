@@ -99,6 +99,10 @@
   transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 100ms ease;
 }
 
+/* Menu rows use the shared button control but align their icon and
+ text at the start of each column. Keep the control's text alignment here. */
+.hdr-menu-panel .hdr-menu-entry { justify-content: flex-start; text-align: start; }
+
 .ceres-btn-group[data-control-density="compact"] .ceres-btn {
   white-space: nowrap;
 }
