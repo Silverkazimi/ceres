@@ -273,12 +273,12 @@ def test_detail_replacement_refilters_an_active_badge_view() -> None:
     # must re-filter Live, while Planning keeps the mounted row and avoids a
     # table rebuild (which would remount another open plot).
     detail_loader = ROWS_SOURCE.split("export async function loadPlotDetail(", 1)[1].split(
-        "\n// Portfolio-wide totals", 1
-    )[0]
+        "\n  return maintainer.promise;\n}", 1
+    )[0] + "\n  return maintainer.promise;\n}"
     script = "async function loadPlotDetail(" + detail_loader + r"""
 const calls = [];
 const document = { body: { dataset: {} }, getElementById: (id) => id === 'badge-filter' ? { value: 'new-badge' } : null };
-const CURRENT_PLAYER = 'maintainer', BOARD_GENERATION = 1, MOBILE_PLOT_UID = null;
+const CURRENT_PLAYER = 'sample01', BOARD_GENERATION = 1, MOBILE_PLOT_UID = null;
 let BOARD, CURRENT_ROWS;
 const EXPANDED_ROWS = new Set(), EXPANDED_DATA_LOADED = new Set(), LOADING_PLOTS = new Set();
 const EXPAND_ERRORS = new Map(), DETAIL_REQUESTS = new Map(), S = { CERES_CHECKOUT_OPEN: false };
@@ -301,7 +301,7 @@ const renderTable = () => {
     calls.length = 0;
     document.body.dataset.boardMode = mode;
     const old = { deed_uid: 'plot-1', assets_loaded: true, badges: [] };
-    BOARD = { player: 'owner', plots: [old] };
+    BOARD = { player: CURRENT_PLAYER, plots: [old] };
     CURRENT_ROWS = [old];
     EXPANDED_ROWS.add('plot-1');
     EXPANDED_DATA_LOADED.delete('plot-1');

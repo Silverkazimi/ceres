@@ -247,10 +247,17 @@ def test_in0860_planning_stage_preserves_open_plot_scroll_focus_and_other_row_no
 def test_in0862_picker_on_land_default_depends_on_mode(tmp_path):
     assets = _land("assets_active_single_worker.json")
     uid = assets["data"]["cards"][0]["stake_ref_uid"]
+    bundle = _land("deeds_multi.json")["data"]
+    deed = next(row for row in bundle["deeds"] if row["deed_uid"] == uid)
+    worksite = next(row for row in bundle["worksite_details"] if row["deed_uid"] == uid)
+    staking = next(row for row in bundle["staking_details"] if row["deed_uid"] == uid)
     # board_entries omits per-deed assets. Supply a recorded plot with one worker
-    # and free slots so the detail load can replace its loading scaffold.
+    # and the single-deed reads required by the narrow row-open path.
     fixture = write_set(tmp_path / "in0862", [
         *board_entries(),
+        entry("vapi.splinterlands.com", f"/land/deeds/{deed['plot_id']}", {"status": "success", "data": deed}),
+        entry("vapi.splinterlands.com", f"/land/projects/deed/{uid}/active", {"status": "success", "data": worksite}),
+        entry("vapi.splinterlands.com", f"/land/stake/deed/details/{uid}", {"status": "success", "data": staking}),
         entry("vapi.splinterlands.com", f"/land/stake/deeds/{uid}/assets", assets),
     ])
     with spawn_fixture_ceres(fixture) as base, playwright.sync_playwright() as p:
