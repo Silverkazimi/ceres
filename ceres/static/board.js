@@ -1,6 +1,7 @@
 import { adoptRowPresentations, invalidateRowPresentations, refreshBoardTotals } from './rows.js';
 import { onBalancesChanged } from './balances-bus.js';
 import { badgeFilterOptions, rowHasBadge } from './badges.js';
+import { boardPlanningActive, boardPlanningViewRow } from './board-planning.js';
 import { playerAvatarLayers } from './avatar.js';
 import { WORKER_UPGRADE_OPTIONS } from './candidates.js';
 import { renderCheckoutSurface } from './checkout.js';
@@ -93,6 +94,21 @@ export const CAPTURE_STATUS_FAST_POLL_ATTEMPTS = 10;
 export const CAPTURE_STATUS_MID_POLL_UNTIL_MS = 60000;
 export const CAPTURE_STATUS_SKIP_FAST_POLL_ABOVE_SECONDS = 10;
 export const CAPTURE_STATUS_MAX_WAIT_MS = 30 * 60 * 1000;
+// a read whose status shows no progress for this long gets one calm line in the loader text. A normal quick
+// read finishes in about 5 s (QUICK_TIMING_SEED, ceres/capture.py) and even a 4,357-plot account's whole read is about
+// a minute, so 90 s without ANY change in the progress fields is well past a healthy read. The poll and the 30-minute
+// ceiling above are unchanged; the line goes the moment a status shows progress again.
+export const CAPTURE_STATUS_STALL_NOTICE_MS = 90 * 1000;
+export const CAPTURE_STALL_NOTICE_TEXT = 'The game server is slow or not answering. Ceres keeps trying.';
+// the status fields that move while a read makes progress (ceres/capture.py CaptureStatus). Time passing is
+// not progress; a change in any of these is.
+export function captureProgressSignature(status) {
+  return JSON.stringify([
+    status?.state ?? null, status?.queue_position ?? null, status?.phase ?? null,
+    status?.fetched_deeds ?? null, status?.total_deeds ?? null, status?.estimated_seconds ?? null,
+    status?.board_ready === true, status?.interim === true,
+  ]);
+}
 // (2026-09-20, review of v0.9.687): defense-in-depth floor for the `wait=`
 // long-poll below -- if a status round trip comes back in under this many ms, the
 // loop sleeps out the REMAINDER of that attempt's own cadence before polling again
@@ -316,7 +332,15 @@ const CAPTURE_PHASE_TEXT = {
   gaps: 'Filling the gaps…',
 };
 
-function boardLoadingMessage(status) {
+// `stalled` (no progress for CAPTURE_STATUS_STALL_NOTICE_MS) adds one plain sentence after the usual text. It
+// names no time and no "longer than usual" ( ruling); the "about N" estimate is left out while stalled, since a
+// read that has not moved for 90 s would otherwise still promise "about 5 s".
+function boardLoadingMessage(status, stalled = false) {
+  const message = boardLoadingProgressText(status, stalled);
+  return stalled ? `${message} · ${CAPTURE_STALL_NOTICE_TEXT}` : message;
+}
+
+function boardLoadingProgressText(status, stalled) {
   // A replacement can wait briefly while the superseded worker exits and is reaped.
   if (status?.state === 'queued') return 'Replacing the previous board read…';
   const fetched = status?.fetched_deeds;
@@ -334,7 +358,7 @@ function boardLoadingMessage(status) {
   if (Number.isInteger(total) && total > 0) message += ` · ${fmtInt(total)} plots`;
   const est = status?.estimated_seconds;
   const hasEstimate = Number.isFinite(est) && est > 0;
-  if (hasEstimate) message += ` · about ${fmtDuration(est)}`;
+  if (hasEstimate && !stalled) message += ` · about ${fmtDuration(est)}`;
   return message;
 }
 
@@ -761,7 +785,7 @@ function populateRegionOptions() {
   sel.innerHTML = '';
   const any = document.createElement('option');
   any.value = '';
-  any.textContent = 'Any region'; // Look 2 (maintainer: category-specific "Any" for every filter, closed and as the first option)
+  any.textContent = 'All'; // K-4 (): the closed trigger shows "Region" (data-empty-label); "All" lives only in the open list
   sel.appendChild(any);
   for (const r of [...territories.keys()].sort((a, b) => Number(a) - Number(b))) {
     const opt = document.createElement('option');
@@ -822,13 +846,13 @@ function populateBadgeOptions() {
   select.dataset.account = account;
   select.replaceChildren();
   const any = document.createElement('option');
-  any.value = ''; any.textContent = 'Any badge'; select.appendChild(any);
+  any.value = ''; any.textContent = 'All'; select.appendChild(any);
   for (const { key, label, group } of badgeFilterOptions()) {
     const option = document.createElement('option');
     option.value = key; option.textContent = boardFilterLabel(label); option.dataset.group = group;
     select.appendChild(option);
   }
-  setSelectValues(select, wanted); // unknown keys drop out; none left -> Any badge
+  setSelectValues(select, wanted); // unknown keys drop out; none left -> All
 }
 
 function colourBadgeFilterControl() {
@@ -1018,9 +1042,9 @@ export async function loadBoard(opts = {}) {
     // already on disk. `fromCompletedCapture` is the display-only entry: same render
     // same generation guard, same failure surface, no second read. Every other caller
     // first load, player switch, the reload control -- is untouched and still live.
-    const readOnce = () => readBoard((status) => {
+    const readOnce = () => readBoard((status, progress) => {
       if (!signal.aborted && generation === BOARD_GENERATION) {
-        setBoardLoadingMessage(boardLoadingMessage(status), status);
+        setBoardLoadingMessage(boardLoadingMessage(status, progress?.stalled === true), status);
       }
     }, signal, generation);
     let read = opts.fromCompletedCapture === true ? { ok: true } : await readOnce();
@@ -1259,6 +1283,8 @@ export async function readBoard(onStatus, signal = undefined, loadGeneration = u
   }
   const startedAt = Date.now();
   let estimatedSeconds = null; // the server's own estimate steers the poll cadence
+  let progressSignature = null; // last seen progress fields, and when they last changed
+  let progressAt = startedAt;
   for (let attempt = 0; Date.now() - startedAt < CAPTURE_STATUS_MAX_WAIT_MS; attempt += 1) {
     try {
       // `wait` makes the server long-poll for up to this attempt's cadence
@@ -1272,7 +1298,11 @@ export async function readBoard(onStatus, signal = undefined, loadGeneration = u
       if (!statusResponse.ok) return { ok: false, error: new Error(`HTTP ${statusResponse.status}`) };
       const status = await statusResponse.json();
       if (signal?.aborted) return { ok: false, error: new DOMException('The board load was aborted.', 'AbortError') };
-      onStatus?.(status);
+      const signature = captureProgressSignature(status);
+      // The first answer only records where the read stands; a read stuck from the start counts from `startedAt`.
+      if (progressSignature !== null && signature !== progressSignature) progressAt = Date.now();
+      progressSignature = signature;
+      onStatus?.(status, { stalled: Date.now() - progressAt >= CAPTURE_STATUS_STALL_NOTICE_MS });
       if (Number.isFinite(status.estimated_seconds)) estimatedSeconds = status.estimated_seconds;
       if (status.state === 'running' || status.state === 'queued') {
         // `queued` polls like `running` while the superseded worker is being reaped.
@@ -1395,6 +1425,9 @@ function populateFilterOptions() {
 }
 
 export function matchesFilters(row) {
+  // round 3: in planning every filter reads the plan's projection (the same one as the cells, sort and
+  // badges): planned worker names, plan badges. In Live this is the row itself.
+  row = boardPlanningViewRow(row);
   if (S.CERES_NAV_INCLUDE && row.deed_uid === S.CERES_NAV_INCLUDE) return true; // a jumped-to plot outside the filters
   const text = document.getElementById('text-filter').value.trim().toLowerCase();
   if (text) {
@@ -1414,7 +1447,9 @@ export function matchesFilters(row) {
     ? row.plot_status === 'magical' && String(row.magic_type || '').toLowerCase() === status.split(':')[1]
     : row.plot_status === status))) return false;
   if (!passes('badge-filter', (badge) => rowHasBadge(row, badge))) return false;
-  if (document.getElementById('staged-only')?.checked && !plotHasStagedChange(row.deed_uid)) return false;
+  // in planning a "changed" plot is one the plan changes (a projected row with a plan status).
+  if (document.getElementById('staged-only')?.checked
+    && !(row.planning_view === true ? Boolean(row.planning) : plotHasStagedChange(row.deed_uid))) return false;
   return true;
 }
 // a typed id token is
@@ -1457,7 +1492,16 @@ function cmpDescFixed(x, y) {
   return 0;
 }
 
-export function sortRows(rows) {
+// `viewRow` maps each row to the values it shows. While planning it defaults to the plan's projection
+// (board-planning.js, the same one the cells read), so the order follows the planned figures, never the live
+// ones. Each view is computed once; the board's own rows are returned in that order. In Live it is null and the
+// sort is exactly the one below.
+export function sortRows(rows, viewRow = boardPlanningActive() ? boardPlanningViewRow : null) {
+  if (typeof viewRow === 'function') {
+    const liveOf = new Map();
+    const views = rows.map((row) => { const view = viewRow(row) || row; liveOf.set(view, row); return view; });
+    return sortRows(views, null).map((view) => liveOf.get(view)); // null: the views are sorted as they are
+  }
   if (S.SORT_KEY === 'plot') return sortByPlot(rows);
   return [...rows].sort((a, b) => {
     if (S.SORT_KEY === 'lock_state') {

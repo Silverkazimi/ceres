@@ -1337,9 +1337,9 @@
       "variant": "glass"
     },
     {
-      "id": "account-menu-player0014",
-      "selector": "#account-menu [data-account=\"player0014\"]",
-      "action": "data-account=player0014",
+      "id": "account-menu-player0015",
+      "selector": "#account-menu [data-account=\"player0015\"]",
+      "action": "data-account=player0015",
       "renderer": "account-menu.js",
       "surface": "account-menu",
       "group": "account-menu-actions",
@@ -1510,7 +1510,7 @@
     {
       "id": "account-wallet-choice",
       "selector": "[data-account-wallet]",
-      "action": "choose-player0014-wallet",
+      "action": "choose-player0015-wallet",
       "renderer": "account-menu.js",
       "surface": "account-menu",
       "group": "account-menu-actions",
@@ -1912,6 +1912,57 @@
       "density": "dense",
       "status": "approved",
       "approval": "  DQ-11 maintainer verdict: Improve as proposed"
+    },
+    {
+      "id": "header-menu",
+      "selector": "#hdr-menu-btn",
+      "action": "open-header-menu",
+      "renderer": "index.html|cards.html",
+      "surface": "header",
+      "group": "header-actions",
+      "treatment": "S",
+      "density": "header",
+      "status": "approved",
+      "approval": " design 4 (maintainer go ): desktop header Menu, one list in three columns; header buttons are glass ( /  D-2)",
+      "variant": "glass"
+    },
+    {
+      "id": "header-menu-entry",
+      "selector": ".hdr-menu-entry",
+      "action": "data-menu-entry",
+      "renderer": "header-menu.js",
+      "surface": "header-menu",
+      "group": "header-menu-entries",
+      "treatment": "S",
+      "density": "comfortable",
+      "status": "approved",
+      "approval": " design 4 (maintainer go ): desktop header Menu, one list in three columns; header buttons are glass ( /  D-2)",
+      "variant": "glass"
+    },
+    {
+      "id": "header-menu-close",
+      "selector": ".hdr-menu-close",
+      "action": "close-header-menu",
+      "renderer": "header-menu.js",
+      "surface": "header-menu",
+      "group": "header-menu-entries",
+      "treatment": "S",
+      "density": "compact",
+      "status": "approved",
+      "approval": " design 4 (maintainer go ): desktop header Menu, one list in three columns; header buttons are glass ( /  D-2)"
+    },
+    {
+      "id": "cards-header-harvest",
+      "selector": "#cb-harvest-btn",
+      "action": "open-board-harvest",
+      "renderer": "cards.html",
+      "surface": "header",
+      "group": "header-actions",
+      "treatment": "P",
+      "density": "header",
+      "status": "approved",
+      "approval": " design 4 (maintainer go ): desktop header Menu, one list in three columns; header buttons are glass ( /  D-2); Harvest shows on Cards too and opens the board's Harvest for this player",
+      "variant": "glass"
     }
   ],
   "legacy_allowlist": [

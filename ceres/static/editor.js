@@ -6,6 +6,8 @@ import { RETURN_ICON } from './button-icons.js';
 import { IMAGE_RETRY_DELAYS_MS, retryImageUrl, terrainBackgroundPath, worksiteArtGeometry } from './art.js';
 import { abilityRowText, abilityTipModel, bloodlineCompanionRelations, bloodlineTileBadgesHtml, costLineHtml, foilBadgeHtml, markBloodlineApplied, workerSubType } from './badges.js';
 import { BOARD, catalogNotice, noticeMessage } from './board.js';
+import { boardPlanningAssetStatus, boardPlanningPlan, boardPlanningProjection } from './board-planning.js';
+import { boardPlanRowPlacements } from './board-plans.js';
 import { cooldownReasonFragment, estimateBadge, renderInlineCandidatePicker, signedPp } from './candidates.js';
 import { stagedBasePpCap, stageTotalBasePp } from './badge-state.js';
 import { combineTileActionHtml } from './combine.js';
@@ -819,9 +821,10 @@ export function mobileOccupantDetails(occupant, group, index, row) {
 }
 
 function editorOccupantTip(occupant, group, index, row) {
-  if (group.id === 'totem' || group.id === 'title' || group.id === 'power_core') return editorItemTip(occupant, group);
-  if (group.id === 'runi') return editorRuniTip(occupant, group, index, row);
-  return editorWorkerTip(occupant, group, index, row);
+  let tip = group.id === 'totem' || group.id === 'title' || group.id === 'power_core'
+    ? editorItemTip(occupant, group) : group.id === 'runi' ? editorRuniTip(occupant, group, index, row) : editorWorkerTip(occupant, group, index, row);
+  if (occupant?.planning_proposal) tip = { ...tip, foot: [tip.foot, `Planned · ${occupant.planning_label} · ${occupant.planning_source_label}`].filter(Boolean).join(' ') };
+  return tip;
 }
 
 function powerCoresLeft(deedUid) {
@@ -1264,7 +1267,14 @@ function renderEditorTile(row, group, index, occupant, options = {}) {
   // unpowered is a full-width band (Echo's .tc-badge--unpowered "Not powered"), not a corner flag.
   const unpoweredBand = unpowered ? `<span class="slot-wait-badge is-unpowered"${tipAttrs({ title: 'Unpowered slot', body: `This plot now has ${group.poweredCapacity} powered worker slots; this card is still staked but sits beyond them. Stake a Power Core or an Energized worker to power it again.`, peer: 'tile_warnings' })}><span class="slot-wait-label">Not powered</span></span>` : '';
   // one band, by TILE_BAND_PRIORITY.
-  const band = tileBand({ unpowered: unpoweredBand, waiting: waitBadge, planned: plannedReturnChip(occupant, row.deed_uid, index) });
+  // IN-0267: a planned card's band names its REAL state from the loaded board (never "Ready"): waiting (cooldown or
+  // Survival, with its timer), staked on another plot, available, or unknown while that state is not known.
+  const proposalBadge = occupant.planning_proposal
+    ? occupant.planning_state === 'waiting'
+      ? stageWaitBadgeHtml('blocked', occupant.cooldown, group.id)
+      : `<span class="slot-wait-badge is-planned"${tipAttrs({ title: `Planned · ${occupant.planning_label}`, body: `Planned only; nothing is staked or signed. ${occupant.planning_source_label}.` })}><span class="slot-wait-label">${esc(occupant.planning_label)}</span></span>`
+    : '';
+  const band = tileBand({ unpowered: unpoweredBand, waiting: waitBadge || proposalBadge, planned: plannedReturnChip(occupant, row.deed_uid, index) });
   // a freshly picked (staged) card loads directly and fades in once per pick.
   const pickKey = staged && occupant.image && !textOnly ? `${row.deed_uid}|${group.id}|${index}|${occupant.image}` : '';
   const art = textOnly ? '' : slotAssetImageHtml(occupant, group, pickKey);
@@ -1784,8 +1794,44 @@ export function renderSlotEditor(row, presentation = null, { dataReady = true, e
   } finally { managedEditorArt = false; }
 }
 
+// IN-0267: the open plot's planned roster. Asset state comes from the evaluator's capture-bound answer
+// (boardPlanningAssetStatus); the saved plan holds only names and art, never cooldowns or readiness.
+function planningSourceLabel(status) {
+  if (status.status === 'staked') {
+    const source = (BOARD?.plots || []).find((plot) => String(plot.deed_uid) === String(status.locationDeedUid));
+    return source ? `Staked on plot ${formatPlotLabel(source.plot)}${source.territory ? ` · ${source.territory}` : ''}` : 'Staked on another plot';
+  }
+  if (status.status === 'available') return 'Not staked';
+  if (status.status === 'waiting') return status.label;
+  return 'State not loaded yet';
+}
+
+export function planningEditorRow(row, plan) {
+  const renderRow = { ...row, workers: [], bonus: { power_core: null, totem: null, title: null }, _live_bonus: undefined,
+    capacity: { ...(row.capacity || {}), worker_count: 0, runi_staked: false },
+    staking_facts: { ...(row.staking_facts || {}), is_runi_staked: false } };
+  for (const placement of boardPlanRowPlacements(plan, row.deed_uid)) {
+    const status = boardPlanningAssetStatus(placement.asset_ref) || { status: 'unknown', label: 'Unknown' };
+    const asset = { ...(placement.asset || {}), asset_ref: placement.asset_ref, name: placement.asset?.name || placement.name || 'Planned card',
+      planning_proposal: true, planning_state: status.status, planning_label: status.status === 'staked' ? 'Staked' : status.label,
+      planning_source_label: planningSourceLabel(status),
+      cooldown: status.status === 'waiting' ? { state: 'cooling', ready: false, ready_at: status.until || null } : null };
+    if (placement.group_id === 'worker' || placement.group_id === 'runi') {
+      const slot = placement.group_id === 'runi' ? 0 : Number(placement.slot_index) + 1;
+      renderRow.workers = renderRow.workers.filter((worker) => Number(worker.slot) !== slot);
+      renderRow.workers.push({ ...asset, slot, ...(placement.group_id === 'runi' ? { stake_type_uid: 'STK-LND-RUNI' } : {}) });
+      if (placement.group_id === 'runi') { renderRow.capacity.runi_staked = true; renderRow.staking_facts.is_runi_staked = true; }
+    } else if (['totem', 'title', 'power_core'].includes(placement.group_id)) renderRow.bonus[placement.group_id] = asset;
+  }
+  return renderRow;
+}
+
 export function renderEditorBandContents(row, presentation, { dataReady = true, error = null, upgradeOptionsLoading = false } = {}) {
-  const groups = editorGroups(row);
+  // IN-0267: in planning the open plot shows the plan's virtual clean sheet -- only its planned cards, in the
+  // existing slots -- and ignores the live stage (Changes never sees a plan).
+  const planningPlan = boardPlanningPlan();
+  const renderRow = planningPlan ? planningEditorRow(row, planningPlan) : row;
+  const groups = editorGroups(renderRow);
   const worker = groups.find((group) => group.id === 'worker');
   const bundled = groups.filter((group) => group.capacity === 1 && !['power_core', 'runi'].includes(group.id));
   const largeCapacity = worker && worker.capacity > 20;
@@ -1794,7 +1840,7 @@ export function renderEditorBandContents(row, presentation, { dataReady = true, 
     || groups.find((group) => group.id === 'runi');
   const columnDescriptors = [];
   const placeholderColumns = [];
-  const staged = stagedEntriesForRow(row.deed_uid);
+  const staged = planningPlan ? [] : stagedEntriesForRow(row.deed_uid);
   let capAllocation = null;
   if (staged.length) {
     const workers = effectiveWorkerRoster(row, staged);
@@ -1804,10 +1850,10 @@ export function renderEditorBandContents(row, presentation, { dataReady = true, 
   } else {
     clearCapDerivationState(row.deed_uid);
   }
-  const delta = stageDeltaForRow(row.deed_uid);
-  const stageImpact = stageImpactForRow(row.deed_uid);
+  const delta = planningPlan ? null : stageDeltaForRow(row.deed_uid);
+  const stageImpact = planningPlan ? null : stageImpactForRow(row.deed_uid);
   const powerLead = renderPowerSlot(row, groups);
-  const frameRow = dataReady ? row : { ...row, workers: [], bonus: {} };
+  const frameRow = dataReady ? renderRow : { ...renderRow, workers: [], bonus: {} };
   const frameGroups = dataReady ? groups : editorGroups(frameRow);
   const frameWorker = frameGroups.find((group) => group.id === 'worker');
   // the staged-change badges are computed before the groups so the worker group can dock them
@@ -1817,16 +1863,23 @@ export function renderEditorBandContents(row, presentation, { dataReady = true, 
   const changeBadgesHtml = renderChangeBadges(basePpStageEstimate, delta, staged.length, stageTotal, stageImpact?.resulting_harvest, row, stageImpact?.resulting_work_per_hour ?? null, stageImpact?.grain_economics ?? null);
   // the "no worker-slot power" warning is decided on the roster that REMAINS after the
   // staged changes -- clearing every worker leaves nothing to power, so it no longer fires.
+  // in planning the warning reads the plan only -- the shared projection's power answer and Total PP
+  // and the planned roster's workers -- never the live row, its notices or the live stage. A planned roster
+  // without a complete answer has no power value, so no warning shows.
+  const planned = boardPlanningProjection(row);
+  const powerRow = planned ? planned.row : row;
   const runiCount = row.capacity?.runi_staked === true || row.staking_facts?.is_runi_staked === true ? 1 : 0;
-  const remainingRoster = effectiveWorkerRoster(row, staged);
+  const remainingRoster = planned ? boardPlanRowPlacements(planningPlan, row.deed_uid).filter((placement) => placement.group_id === 'worker')
+    : effectiveWorkerRoster(row, staged);
   const remainingWorkers = remainingRoster ? remainingRoster.length
     : Array.isArray(row.workers) ? row.workers.filter((worker) => Number(worker?.slot) > 0).length
       : Math.max(0, Number(row.capacity?.worker_count ?? row.worker_count ?? 0) - runiCount);
-  const hasPowerConcern = plotPoweredAfterStage(row) === false
-    && (remainingWorkers > 0 || (!staged.length && Number(row.harvest_pp || 0) > 0));
+  const unpowered = planned ? powerRow.powered === false : plotPoweredAfterStage(row) === false;
+  const hasPowerConcern = unpowered
+    && (remainingWorkers > 0 || (!staged.length && Number(powerRow.harvest_pp || 0) > 0));
   // when the plot knows which card is unpowered, the warning names the slot, the card and
   // what it costs the whole plot (the same message the WKR badge carries); otherwise the general text.
-  const detailedPowerMessage = (row.notices || []).find((notice) => notice.code === 'unpowered_worker'
+  const detailedPowerMessage = (powerRow.notices || []).find((notice) => notice.code === 'unpowered_worker'
     && /^Worker slot /.test(String(notice.message || '')))?.message;
   const powerNotice = hasPowerConcern
     ? { ...catalogNotice('workers_staged_without_power', { deed_uid: row.deed_uid }), ...(detailedPowerMessage ? { message: detailedPowerMessage } : {}) } : null;
@@ -1965,7 +2018,7 @@ export function renderEditorBandContents(row, presentation, { dataReady = true, 
   // into `.mobile-plot-affinity` (rows.js renderMobilePlotSheet). The desktop board always
   // passes a real presentation, so this column no longer renders there; the horizontal
   // row in `.slot-group-controls` is now the only desktop splinter display.
-  return `<section class="slot-editor${largeCapacity ? ' is-large-capacity' : ''}${profile?.narrow ? ' eos-narrow' : ''}"><div class="editor-band${sceneClass}" data-plot-state="preparing" aria-busy="true"${detailScaffold}${bandStyle}><div class="editor-scene" aria-hidden="true"><div class="editor-worksite-art" data-worksite-kind="${esc(worksiteKind)}"${artGeo ? ` style="--art-cx:${artGeo.cx};--art-base:${artGeo.base};--art-h:${artGeo.hRem}rem;--art-l:${artGeo.l};--art-t:${artGeo.t};--art-r:${artGeo.r};--art-ratio:${artGeo.ratio};"` : ''}></div></div><div class="editor-main">${dataReady ? facts : ''}<div class="slot-editor-body">${body}</div><footer class="slot-editor-footer" data-reveal-footer="true">${dataReady ? `${harvestBarHtml(row, { cog: !!worksiteChange })}${basePpRow}${stageSummary}` : ''}</footer>${dataReady && !presentation ? terrainAffinityHtml(row, 'editor') : ''}</div><div class="eos-scenic-veil" aria-hidden="true"><span class="eos-plot-identity">Plot ${esc(formatPlotLabel(row.plot))} · ${esc(row.terrain || 'Land')}</span><span class="eos-horizon"></span></div><div class="eos-worker-cover" aria-hidden="true"></div>${status}${closeBtn}</div>${dataReady ? `${notices}${inlinePicker}` : ''}</section>`;
+  return `<section class="slot-editor${largeCapacity ? ' is-large-capacity' : ''}${profile?.narrow ? ' eos-narrow' : ''}"><div class="editor-band${sceneClass}" data-plot-state="preparing" aria-busy="true"${detailScaffold}${bandStyle}><div class="editor-scene" aria-hidden="true"><div class="editor-worksite-art" data-worksite-kind="${esc(worksiteKind)}"${artGeo ? ` style="--art-cx:${artGeo.cx};--art-base:${artGeo.base};--art-h:${artGeo.hRem}rem;--art-l:${artGeo.l};--art-t:${artGeo.t};--art-r:${artGeo.r};--art-ratio:${artGeo.ratio};"` : ''}></div></div><div class="editor-main">${dataReady ? facts : ''}<div class="slot-editor-body">${body}</div><footer class="slot-editor-footer" data-reveal-footer="true">${dataReady ? `${harvestBarHtml(row, { cog: !!worksiteChange, ...(planningPlan || planned ? { planning: true } : {}) })}${basePpRow}${stageSummary}` : ''}</footer>${dataReady && !presentation ? terrainAffinityHtml(row, 'editor') : ''}</div><div class="eos-scenic-veil" aria-hidden="true"><span class="eos-plot-identity">Plot ${esc(formatPlotLabel(row.plot))} · ${esc(row.terrain || 'Land')}</span><span class="eos-horizon"></span></div><div class="eos-worker-cover" aria-hidden="true"></div>${status}${closeBtn}</div>${dataReady ? `${notices}${inlinePicker}` : ''}</section>`;
 }
 
 export { appendRich, appendItems } from './tooltip.js';

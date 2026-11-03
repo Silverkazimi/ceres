@@ -8,6 +8,7 @@ import { prepareSigningBatch, requestSignatureThroughGate } from './broadcast-ga
 import { releaseSignedQueueDependency, signedQueueRows } from './transaction-queue.js';
 import { createRoutingSignatureChain } from './routing-signature-chain.js';
 import { tipAttrs } from './tooltip.js';
+import { resourceSymbolsWhere } from './resources.js';
 
 const ROOT = '/api/harvest/routing/';
 const LABELS = { transfer: 'Move to a region', sell: 'Sell harvest', liquidity: 'Add to liquidity pool', liquidity_funding_swap: 'Swap pool resource for DEC', buy_remainder: 'Cover remaining costs' };
@@ -15,7 +16,7 @@ const STATE_LABELS = { ready_harvest: 'Harvest review required', planned: 'Waiti
 const resourceLabel = (symbol) => ['DEC', 'SPS'].includes(symbol) ? symbol : tokenLabel(symbol);
 const TERMINAL = new Set(['complete', 'cancelled', 'failed', 'stopped']);
 const IN_FLIGHT = new Set(['awaiting_wallet', 'pending', 'submitted', 'settling']);
-const CHAINABLE_SALE_SYMBOLS = new Set(['GRAIN', 'WOOD', 'STONE', 'IRON', 'RESEARCH', 'AURA']);
+const CHAINABLE_SALE_SYMBOLS = new Set(resourceSymbolsWhere('regional')); // registry: GRAIN WOOD STONE IRON RESEARCH AURA
 const DEFAULT_MAX_OPS_PER_TX = 4;
 const ROUTING_RUN_IDS = new Map();
 export function mintHarvestRunId(now = new Date()) {
