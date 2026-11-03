@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 import pytest
 
 from tests.ceres.fixture_live import install_routes, spawn_fixture_ceres
-from tests.ceres.fixture_upstream_mini import SAMPLE, board_entries, write_set
+from tests.ceres.fixture_upstream_mini import SAMPLE, _land, board_entries, entry, write_set
 
 playwright = pytest.importorskip("playwright.sync_api")
 pytestmark = pytest.mark.browser
@@ -245,28 +245,45 @@ def test_in0860_planning_stage_preserves_open_plot_scroll_focus_and_other_row_no
 
 
 def test_in0862_picker_on_land_default_depends_on_mode(tmp_path):
-    fixture = write_set(tmp_path / "in0862", board_entries())
+    assets = _land("assets_active_single_worker.json")
+    uid = assets["data"]["cards"][0]["stake_ref_uid"]
+    # board_entries omits per-deed assets. Supply a recorded plot with one worker
+    # and free slots so the detail load can replace its loading scaffold.
+    fixture = write_set(tmp_path / "in0862", [
+        *board_entries(),
+        entry("vapi.splinterlands.com", f"/land/stake/deeds/{uid}/assets", assets),
+    ])
     with spawn_fixture_ceres(fixture) as base, playwright.sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page(viewport={"width": 1920, "height": 1080})
         install_routes(page, fixture)
         page.goto(f"{base}/?player={SAMPLE}")
-        row = page.locator('#plot-tbody tr.plot-row').first
+        row = page.locator(f'tr.plot-row[data-deed-uid="{uid}"]')
         row.wait_for()
-        uid = row.get_attribute('data-deed-uid')
         row.click()
+        page.wait_for_selector(f'tr.expand-row[data-deed-uid="{uid}"] .editor-band[data-plot-state="ready"]')
         slot = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] [data-group-id="worker"][data-slot-action="add"]').first
-        slot.wait_for(state="attached")
+        slot.wait_for()
         slot.click()
-        on_land = page.locator('[data-picker-filter="include_on_land"]').first
-        on_land.wait_for()
+        picker = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] .inline-picker[data-picker="1"][data-picker-group="worker"]')
+        picker.wait_for()
+        on_land = picker.locator('input[data-picker-filter="include_on_land"]')
+        on_land.wait_for(state="attached")  # the checkbox is visually tucked into its styled label
         assert not on_land.is_checked(), "Live picker default must remain off"
-        slot.click()  # close this picker through the existing slot control
+        picker.locator('[data-picker-action="close"]').click()
+        picker.wait_for(state="detached")
         _toggle_planning(page)
         page.wait_for_function("document.body.dataset.boardMode === 'planning'")
+        expanded = page.locator(f'tr.expand-row[data-deed-uid="{uid}"]')
+        if not expanded.is_visible():
+            page.locator(f'tr.plot-row[data-deed-uid="{uid}"]').click()
+        page.wait_for_selector(f'tr.expand-row[data-deed-uid="{uid}"] .editor-band[data-plot-state="ready"]')
         slot = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] [data-group-id="worker"][data-slot-action="add"]').first
+        slot.wait_for()
         slot.click()
-        on_land = page.locator('[data-picker-filter="include_on_land"]').first
-        on_land.wait_for()
+        picker = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] .inline-picker[data-picker="1"][data-picker-group="worker"]')
+        picker.wait_for()
+        on_land = picker.locator('input[data-picker-filter="include_on_land"]')
+        on_land.wait_for(state="attached")
         assert on_land.is_checked(), "Planning picker must open with On land on"
         browser.close()
