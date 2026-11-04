@@ -80,7 +80,10 @@ export function hdrMenuPanelHtml(currentKey, setups = null) {
   const setupEntry = (item) => item.key.startsWith('setup:') ? `<li class="hdr-menu-setup-row"><button type="button" class="hdr-menu-entry ceres-btn ceres-btn--secondary ceres-btn--glass" data-control-density="comfortable" data-menu-entry="${hdrMenuEscape(item.key)}" title="${hdrMenuEscape(item.name)}">${item.selected ? '<span class="hdr-menu-tick" aria-hidden="true">✓</span>' : ''}<span class="hdr-menu-txt"><span class="hdr-menu-name">${hdrMenuEscape(item.name)}</span></span></button><button type="button" class="hdr-menu-setup-action ceres-btn ceres-btn--secondary ceres-btn--glass" data-control-density="compact" data-control-mode="icon" data-setup-rename="${hdrMenuEscape(item.key.slice(6))}" aria-label="Rename ${hdrMenuEscape(item.name)}" title="Rename ${hdrMenuEscape(item.name)}">${hdrMenuIcon('pencil')}</button><button type="button" class="hdr-menu-setup-action ceres-btn ceres-btn--secondary ceres-btn--glass" data-control-density="compact" data-control-mode="icon" data-setup-delete="${hdrMenuEscape(item.key.slice(6))}" aria-label="Delete ${hdrMenuEscape(item.name)}" title="Delete ${hdrMenuEscape(item.name)}">${hdrMenuIcon('bin')}</button></li>` : entry(item);
   const setupList = () => hdrMenuSetupItems(setups).map(setupEntry).join('');
   const column = (group, index) => `<div class="hdr-menu-col"><h3 id="hdr-menu-group-${index}">${group.title}</h3><ul aria-labelledby="hdr-menu-group-${index}">${group.entries.map(entry).join('')}</ul></div>`;
-  const submenu = `<div class="hdr-menu-submenu" data-menu-submenu hidden><h3>Setups</h3><ul>${setupList()}</ul></div>`;
+  // Keep the Live Menu identical to the master header. The setup panel is
+  // mounted only for Planning, where the named Planning entry opens it.
+  const submenu = document.body?.dataset?.boardMode === 'planning'
+    ? `<div class="hdr-menu-submenu" data-menu-submenu hidden><h3>Setups</h3><ul>${setupList()}</ul></div>` : '';
   return `<div class="hdr-menu-top"><h2 id="hdr-menu-title">Menu</h2><button type="button" class="harvest-x hdr-menu-close ceres-btn ceres-btn--secondary" data-control-density="compact" data-control-mode="icon" data-menu-close aria-label="Close menu">${HDR_MENU_CLOSE_ICON}</button></div>`
     + `<div class="hdr-menu-cols">${HDR_MENU_GROUPS.map(column).join('')}</div>${submenu}`;
 }

@@ -23,6 +23,10 @@ def _menu(page, expand_planning=False):
         page.locator('#hdr-menu-btn').click()
     page.wait_for_selector('#hdr-menu:not([hidden])')
     if expand_planning:
+        if page.locator('body').get_attribute('data-board-mode') != 'planning':
+            page.locator('#hdr-menu [data-menu-entry="planning"]').click()
+            page.wait_for_function("document.body.dataset.boardMode === 'planning'")
+            _menu(page)
         page.locator('#hdr-menu [data-menu-entry="planning"]').click()
         assert page.locator('[data-menu-submenu]').is_visible()
         assert page.locator('[data-menu-submenu] [data-menu-entry^="setup:"]').count() >= 1
@@ -82,11 +86,11 @@ def test_planning_setup_ci_captures(tmp_path):
         page.wait_for_load_state('networkidle')
         _menu(page)
         assert page.locator('#hdr-menu [data-menu-entry="planning"]').count() == 1
+        assert page.locator('#hdr-menu [data-menu-submenu]').count() == 0
         _capture(page, captures, '01-live-menu.png')
         page.locator('#hdr-menu [data-menu-entry="planning"]').click()
-        assert page.locator('[data-menu-submenu] [data-menu-entry^="setup:"]').count() >= 1
-        page.locator('[data-menu-submenu] [data-menu-entry^="setup:"]').first.click()
         page.wait_for_function("document.body.dataset.boardMode === 'planning'")
+        _menu(page, expand_planning=True)
         for expected_count in (2, 3):
             _menu(page, expand_planning=True)
             page.locator('[data-menu-submenu] [data-menu-entry="setup-new"]').click()

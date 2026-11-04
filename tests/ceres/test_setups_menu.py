@@ -34,6 +34,14 @@ def test_planning_submenu_has_attached_panel_and_trigger():
     assert "boardPlanningSetups({ includeLive: true })" in APP.read_text(encoding='utf-8')
 
 
+def test_live_menu_omits_setup_panel_markup():
+    html = _render(planning=False)['html']
+    assert 'data-menu-entry="planning"' in html
+    assert 'Plan placements on this board' in html
+    assert 'data-menu-submenu' not in html
+    assert 'New setup' not in html and 'Start from live' not in html
+
+
 def test_planning_label_keeps_chevron_attached_and_ellipsizes_name():
     html = _render(name='A very long northern production setup name')['html']
     css = CSS.read_text(encoding='utf-8')

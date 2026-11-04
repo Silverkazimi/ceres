@@ -67,7 +67,15 @@ OVERFLOW = """() => {
 
 def _toggle_planning(page):
     page.click("#hdr-menu-btn")
-    page.locator('#hdr-menu [data-menu-entry="planning"]').click()
+    trigger = page.locator('#hdr-menu [data-menu-entry="planning"]')
+    if page.locator('body').get_attribute('data-board-mode') == 'planning':
+        trigger.click()
+        page.locator('[data-menu-submenu]').wait_for(state='visible')
+        page.locator('[data-menu-submenu] [data-menu-entry="setup-back"]').click()
+        page.wait_for_function("document.body.dataset.boardMode !== 'planning'")
+    else:
+        trigger.click()
+        page.wait_for_function("document.body.dataset.boardMode === 'planning'")
 
 
 def _no_overflow(page):
