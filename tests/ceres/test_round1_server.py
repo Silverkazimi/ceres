@@ -115,8 +115,9 @@ def test_low6_f6_the_server_counts_at_most_six_normal_reads_per_attempt_in_ten_m
         except confirm.HTTPException:
             pass
         server.clock.now += 1
-    # Fix round 3 (astra-review-r3 N6): the window holds the reference swap's ten reads plus one at 8 min (eleven).
-    assert 1 <= len(server.world["history_calls"]) <= len(confirm.NORMAL_OFFSETS_S) <= 11, len(server.world["history_calls"])
+    # Fix round 4 (astra-review-r4 : the window holds the reference swap's schedule (ten reads, then one every 15 s)
+    # still counted by the SERVER per action, never per ask.
+    assert 1 <= len(server.world["history_calls"]) <= confirm.normal_reads_until(660), len(server.world["history_calls"])
 
 
 def test_f6_two_tabs_share_one_budget(server):

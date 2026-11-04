@@ -369,7 +369,9 @@ def op_inclusion(body: dict[str, Any], request: Request, player: str | None = No
     transaction, reason_kind = get_transaction(tx_id)
     block_num = transaction.get("block_num") if transaction else None
     included = True if block_num is not None else False if reason_kind == "not_found" else None
-    if included is False:
+    # Fix round 4 (astra-review-r4 : the first node could not answer at all (unreachable, history plugin off)
+    # the same failover as a "not found": the next nodes are asked for inclusion and, past the lifetime, for the proof.
+    if not included:
         # A bare "not found" from one node is never "never sent" ( fix round 3, astra-review-r3 N3, aletheia
         # verdict-r3 L4). Ages are the SERVER's own (fix round 2): the moment this attempt's wallet request was known
         # closed, or this server's first sight of the id (an id exists only after signing), whichever is earlier
@@ -389,10 +391,15 @@ def op_inclusion(body: dict[str, Any], request: Request, player: str | None = No
         if now - anchor >= TX_ABSENCE_GRACE_SECONDS and begin_at is not None and now - begin_at <= KNOWN_ID_PROOF_DEPTH_S:
             bound = datetime.fromtimestamp(anchor + TX_LIFETIME_SECONDS, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
             status, chain_block = known_transaction_status(tx_id, bound)
-            if status == "expired":
-                included = False
-            elif status == "included":
-                included, block_num = True, chain_block
+        elif reason_kind != "not_found":
+            status, chain_block = known_transaction_status(tx_id, None)     # inclusion only: never a proof of absence
+            status = "unknown" if status == "expired" else status
+        else:
+            status, chain_block = "unknown", None
+        if status == "expired":
+            included = False
+        elif status == "included":
+            included, block_num = True, chain_block
     return JSONResponse(content={"included": included, "block_num": block_num})
 
 

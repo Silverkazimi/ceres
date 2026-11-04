@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 import pytest
 
 from tests.ceres.fixture_live import install_routes, spawn_fixture_ceres
-from tests.ceres.fixture_upstream_mini import SAMPLE, board_entries, write_set
+from tests.ceres.fixture_upstream_mini import SAMPLE, _land, board_entries, entry, write_set
 
 playwright = pytest.importorskip("playwright.sync_api")
 pytestmark = pytest.mark.browser
@@ -217,4 +217,111 @@ def test_planning_entry_is_local_one_changed_row_and_live_round_trip_is_unchange
         assert not [url for _, url in all_requests if "hiveauth-worker" in url.lower() or "hive-auth.arcange.eu" in url.lower()]
         assert not [url for url in wallet_workers if "hiveauth" in url.lower()], wallet_workers
         assert not [url for url in relay_sockets if "hiveauth" in url.lower() or "hive-auth.arcange.eu" in url.lower()], relay_sockets
+        browser.close()
+
+
+def test_in0860_planning_stage_preserves_open_plot_scroll_focus_and_other_row_nodes(tmp_path):
+    fixture = write_set(tmp_path / "in0860", board_entries())
+    with spawn_fixture_ceres(fixture) as base, playwright.sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1920, "height": 1080})
+        install_routes(page, fixture)
+
+        def evaluator(route):
+            body = json.loads(route.request.post_data or "{}")
+            rows = [{"deed_uid": row["deed_uid"], "coverage": "complete", "harvest_pp": 10,
+                     "construction_pp": 10, "base_pp": 10, "base_pp_after_cap": 10, "multiplier": 1,
+                     "work_per_hour": 1, "capacity": {"display": "1/5", "worker_count": 1, "card_capacity": 5}}
+                    for row in body.get("rows", [])]
+            route.fulfill(status=200, content_type="application/json",
+                          body=json.dumps({"generated_at": body.get("capture_generated_at"), "rows": rows, "assets": {}}))
+
+        page.route("**/api/board-plans/evaluate**", evaluator)
+        page.goto(f"{base}/?player={SAMPLE}")
+        page.wait_for_selector("#plot-tbody tr.plot-row")
+        _toggle_planning(page)
+        page.wait_for_function("document.body.dataset.boardMode === 'planning'")
+        uids = page.locator("#plot-tbody tr.plot-row").evaluate_all("rows => rows.map(row => row.dataset.deedUid)")
+        assert len(uids) >= 2
+        changed_uid, open_uid = uids[:2]
+        page.locator(f'tr.plot-row[data-deed-uid="{open_uid}"]').click()
+        page.wait_for_selector(f'tr.expand-row[data-deed-uid="{open_uid}"] .editor-band', state="attached")
+        before = page.evaluate("""([changed, opened]) => {
+          const rows = [...document.querySelectorAll('#plot-tbody tr.plot-row')];
+          for (const row of rows) row.__ceresMark = Symbol(row.dataset.deedUid);
+          const focus = document.querySelector(`tr.expand-row[data-deed-uid="${opened}"] button`);
+          if (focus) focus.focus({ preventScroll: true });
+          window.__in0860 = { rows: new Map(rows.map(row => [row.dataset.deedUid, row])),
+            marks: new Map(rows.map(row => [row.dataset.deedUid, row.__ceresMark])),
+            focus: document.activeElement, scroll: scrollY, opened };
+          return { scroll: scrollY, open: !!document.querySelector(`tr.expand-row[data-deed-uid="${opened}"] .editor-band`) };
+        }""", [changed_uid, open_uid])
+        assert before["open"]
+        page.evaluate("""async (uid) => {
+          const { boardPlanningStore } = await import('/static/board-planning.js');
+          await boardPlanningStore().setPlacement({ deed_uid: uid, group_id: 'worker', slot_index: 0,
+            asset_ref: 'in0860-worker', name: 'Worker', asset: { asset_ref: 'in0860-worker', name: 'Worker' } });
+        }""", changed_uid)
+        page.locator(f'tr.plot-row[data-deed-uid="{changed_uid}"] [data-row-plan-status]').first.wait_for()
+        assert page.evaluate("""() => {
+          const kept = window.__in0860;
+          const open = document.querySelector(`tr.expand-row[data-deed-uid="${kept.opened}"]`);
+          return !!open && open.style.display !== 'none' && Math.abs(scrollY - kept.scroll) <= 2
+            && document.activeElement === kept.focus
+            && [...kept.rows].every(([uid, node]) => uid === [...kept.rows.keys()][0]
+              || (document.querySelector(`tr.plot-row[data-deed-uid="${uid}"]`) === node
+                && node.__ceresMark === kept.marks.get(uid)));
+        }"""), "planning stage remounted another plot, moved scroll/focus, or closed the open plot"
+        browser.close()
+
+
+def test_in0862_picker_on_land_default_depends_on_mode(tmp_path):
+    assets = _land("assets_active_single_worker.json")
+    uid = assets["data"]["cards"][0]["stake_ref_uid"]
+    bundle = _land("deeds_multi.json")["data"]
+    deed = next(row for row in bundle["deeds"] if row["deed_uid"] == uid)
+    worksite = next(row for row in bundle["worksite_details"] if row["deed_uid"] == uid)
+    staking = next(row for row in bundle["staking_details"] if row["deed_uid"] == uid)
+    # board_entries omits per-deed assets. Supply a recorded plot with one worker
+    # and the single-deed reads required by the narrow row-open path.
+    fixture = write_set(tmp_path / "in0862", [
+        *board_entries(),
+        entry("vapi.splinterlands.com", f"/land/deeds/{deed['plot_id']}", {"status": "success", "data": deed}),
+        entry("vapi.splinterlands.com", f"/land/projects/deed/{uid}/active", {"status": "success", "data": worksite}),
+        entry("vapi.splinterlands.com", f"/land/stake/deed/details/{uid}", {"status": "success", "data": staking}),
+        entry("vapi.splinterlands.com", f"/land/stake/deeds/{uid}/assets", assets),
+    ])
+    with spawn_fixture_ceres(fixture) as base, playwright.sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1920, "height": 1080})
+        install_routes(page, fixture)
+        page.goto(f"{base}/?player={SAMPLE}")
+        row = page.locator(f'tr.plot-row[data-deed-uid="{uid}"]')
+        row.wait_for()
+        row.click()
+        page.wait_for_selector(f'tr.expand-row[data-deed-uid="{uid}"] .editor-band[data-plot-state="ready"]')
+        slot = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] [data-group-id="worker"][data-slot-action="add"]').first
+        slot.wait_for()
+        slot.click()
+        picker = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] .inline-picker[data-picker="1"][data-picker-group="worker"]')
+        picker.wait_for()
+        on_land = picker.locator('input[data-picker-filter="include_on_land"]')
+        on_land.wait_for(state="attached")  # the checkbox is visually tucked into its styled label
+        assert not on_land.is_checked(), "Live picker default must remain off"
+        picker.locator('[data-picker-action="close"]').click()
+        picker.wait_for(state="detached")
+        _toggle_planning(page)
+        page.wait_for_function("document.body.dataset.boardMode === 'planning'")
+        expanded = page.locator(f'tr.expand-row[data-deed-uid="{uid}"]')
+        if not expanded.is_visible():
+            page.locator(f'tr.plot-row[data-deed-uid="{uid}"]').click()
+        page.wait_for_selector(f'tr.expand-row[data-deed-uid="{uid}"] .editor-band[data-plot-state="ready"]')
+        slot = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] [data-group-id="worker"][data-slot-action="add"]').first
+        slot.wait_for()
+        slot.click()
+        picker = page.locator(f'tr.expand-row[data-deed-uid="{uid}"] .inline-picker[data-picker="1"][data-picker-group="worker"]')
+        picker.wait_for()
+        on_land = picker.locator('input[data-picker-filter="include_on_land"]')
+        on_land.wait_for(state="attached")
+        assert on_land.is_checked(), "Planning picker must open with On land on"
         browser.close()

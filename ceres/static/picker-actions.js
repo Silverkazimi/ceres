@@ -1,5 +1,6 @@
 import { plannedPlacementReason } from './candidates.js';
 import { boardPlanningActive, boardPlanningPlan, boardPlanningStore } from './board-planning.js';
+import { pickerOnLandAtOpen } from './picker-defaults.js';
 import { chainReturn } from './combine-chain.js';
 import { chainPlans, pendingIncomingRefElsewhere } from './stage-plans.js';
 import { handleUpgradeAction, loadOccupantUpgrade } from './combine-chain-ui.js';
@@ -441,7 +442,7 @@ function openPicker(row, group, index, mode, filterOverrides, extraBloodlines = 
   const workerLike = group.id === 'worker' || group.id === 'runi';
   const itemLike = group.id === 'totem' || group.id === 'title';
   const remembered = readPickerMemory(group.id);
-  const filters = { show_upgrade: false, q: '', rarity: '', splinter: '', edition: '', ability: [], min_pp: '', max_pp: '', bucket: 'all', ready_now: false, include_on_land: false, include_terrain_penalised: false, bloodline_pairs: false, ...(remembered?.filters || {}), ...(filterOverrides || {}) };
+  const filters = { show_upgrade: false, q: '', rarity: '', splinter: '', edition: '', ability: [], min_pp: '', max_pp: '', bucket: 'all', ready_now: false, include_on_land: false, include_terrain_penalised: false, bloodline_pairs: false, ...(remembered?.filters || {}), include_on_land: pickerOnLandAtOpen(boardPlanningActive(), remembered?.filters?.include_on_land), ...(filterOverrides || {}) };
   const overrideKeys = new Set(Object.keys(filterOverrides || {}));
   // never open with both Land Cards and Bloodline pairs on; the one just asked for wins, else Bloodline pairs.
   if (filters.land_only && filters.bloodline_pairs) {

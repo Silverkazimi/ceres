@@ -99,14 +99,16 @@ def _answer_at(host: str, method: str, params) -> tuple[str, Any]:
         connection.close()
 
 
-def known_transaction_status(tx_id: str, expiration_bound: str, *, nodes=HIVE_RPC_NODES, answer_at=None) -> tuple[str, int | None]:
+def known_transaction_status(tx_id: str, expiration_bound: str | None, *, nodes=HIVE_RPC_NODES, answer_at=None) -> tuple[str, int | None]:
     """ fix round 3 (astra-review-r3 N3, aletheia-verdict-r3 L4): may a KNOWN transaction id be called "never
     sent"? Only on an expired-irreversible proof, never on a bare "not found". Per node, in failover order, ONE node
     must answer both reads itself: `condenser_api.get_transaction` says the id is unknown AND
     `transaction_status_api.find_transaction` with an expiration no earlier than the real one (`expiration_bound`,
     ISO without zone) says `expired_irreversible`. Returns ("included", block_num) | ("expired", None) | ("unknown",
     None). A node that cannot be read, lacks the status plugin or answers anything else is not proof; the next node is
-    asked. A node that contradicts itself (status says in a block, lookup says unknown) ends the check as unknown."""
+    asked. A node that contradicts itself (status says in a block, lookup says unknown) ends the check as unknown.
+    With `expiration_bound` None (fix round 4, : inclusion failover only) no status is read: ("included", n) or
+    ("unknown", None), never "expired"."""
     from fides.verify import _is_transaction_not_found_error
     ask = answer_at or _answer_at
     for host in nodes:
@@ -115,6 +117,8 @@ def known_transaction_status(tx_id: str, expiration_bound: str, *, nodes=HIVE_RP
             if kind == "result" and isinstance(value, dict) and isinstance(value.get("block_num"), int) and value["block_num"] > 0:
                 return "included", value["block_num"]
             if not ((kind == "error" and _is_transaction_not_found_error(value)) or (kind == "result" and not value)):
+                continue
+            if expiration_bound is None:
                 continue
             kind, value = ask(host, "transaction_status_api.find_transaction", {"transaction_id": tx_id, "expiration": expiration_bound})
         except _NodeUnavailable:

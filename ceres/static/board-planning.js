@@ -28,11 +28,20 @@ export function boardPlanningStore() {
   const store = createBoardPlanStore(boardPlanningStorage(), boardPlanningAccountName());
   store.load();
   // IN-0315: every saved edit tells the board, so the plan totals follow the row that changed.
-  const announce = (result) => { window.dispatchEvent(new CustomEvent(BOARD_PLANNING_CHANGED_EVENT)); return result; };
+  const announce = (deedUid) => (result) => {
+    window.dispatchEvent(new CustomEvent(BOARD_PLANNING_CHANGED_EVENT, { detail: { deeds: [String(deedUid)] } }));
+    return result;
+  };
   return { ...store,
-    setPlacement: (placement) => store.setPlacement(placement).then(announce),
-    removePlacement: (target) => store.removePlacement(target).then(announce),
-    clear: () => store.clear().then(announce) };
+    setPlacement: (placement) => store.setPlacement(placement).then(announce(placement.deed_uid)),
+    removePlacement: (target) => store.removePlacement(target).then(announce(target.deed_uid)),
+    clear: () => {
+      const deeds = [...new Set((store.selected()?.placements || []).map((placement) => String(placement.deed_uid)))];
+      return store.clear().then((result) => {
+        window.dispatchEvent(new CustomEvent(BOARD_PLANNING_CHANGED_EVENT, { detail: { deeds } }));
+        return result;
+      });
+    } };
 }
 
 async function boardPlanningRequest(body) {

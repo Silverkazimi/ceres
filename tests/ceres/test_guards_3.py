@@ -140,8 +140,10 @@ def test_g1c_gate_registers_both_branches_with_the_confirmer():
     direct = gate[gate.index("function requestBroadcastPromise("):gate.index("export function reviewedMarketPurchase")]
     queued = gate[gate.index("export async function requestSignatureThroughGate("):]
     # Fix round 2 (P1-3): the id is attached to the attempt that asked for it.
-    assert "beginAttempt(account, operations)" in direct and "attachTransaction(account, operations, txId, { attempt: attemptRow.attempt })" in direct
-    assert "announceBegin(account, operations)" in direct, "the server must hear the attempt's begin (P0-1)"
+    assert "beginAttempt(account, operations" in direct and "attachTransaction(account, operations, txId, { attempt: attemptRow.attempt })" in direct
+    # Round 4 (aletheia r4 6): the begin starts early (startBegin) and is awaited before the wallet is asked.
+    assert "startBegin(account, operations)" in direct and "await begun" in direct, "the server must hear the attempt's begin (P0-1)"
+    assert direct.index("await begun") < direct.index("requestWalletBroadcast("), "the wallet opens only after the begin answer (N1)"
     assert "markSilent(" in direct and "closed: walletClosed(response)" in direct, "silence is not an answer (P0-1)"
     assert "findSignedTransaction(account, operations)" in direct, "a lost ack must go to the own-history finder"
     assert "subscribeConfirmation(account, operations" in direct, "the hand-off must follow the confirmer's proof (HIGH-1, F2)"
@@ -460,22 +462,79 @@ HTML_EXPORT = re.compile(r"^export function ([A-Za-z0-9_]*Html)\b", re.M)
 SWEEP_MODULES = sorted(path.name for path in STATIC.glob("*.js") if HTML_EXPORT.search(path.read_text(encoding="utf-8")))
 
 
-def sweep_markup(name: str) -> list[str]:
+# Round 4 (astra-review-r4 / N8): exported renderers that render nothing for every generic argument shape (they need
+# real arguments). Recorded so the sweep can no longer be silently vacuous: a renderer that newly renders nothing fails.
+SWEEP_SILENT = {
+    'badges.js': ['badgeHtml', 'bloodlineCardBadgeHtml', 'bloodlineCompanionBadgeHtml', 'bloodlineTileBadgesHtml', 'costLineHtml', 'foilBadgeHtml'],
+    'candidates.js': ['bloodlinePairBadgeHtml', 'bloodlineRelationHtml', 'pickerRegionHtml'],
+    'card-cart.js': ['cartBundleButtonsHtml', 'cartFootHtml', 'cartMaxButtonHtml', 'cartMenuHtml'],
+    'card-checkout.js': ['groupsHtml', 'outcomeHtml', 'quoteRowsHtml'],
+    'card-combinables.js': ['cxEntryHtml'],
+    'card-market.js': ['cmFoldTileHtml', 'cmSkeletonHtml', 'cmTileHtml'],
+    'card-purchases.js': ['cpMoreStatsHtml'],
+    'checkout.js': ['mobileKeychainGuidanceHtml', 'planPlacementTileHtml'],
+    'combine-chain-ui.js': ['chainCardHtml', 'planReviewHtml', 'plotLossWarningHtml', 'upgradeActionHtml', 'upgradePlansHtml', 'upgradeWindowHtml'],
+    'combine.js': ['combineTileActionHtml'],
+    'confirm-notices.js': ['confirmNoticesHtml'],
+    'editor.js': ['editorCardImageHtml', 'stageWaitBadgeHtml'],
+    'harvest-ledger.js': ['batchSlotsHtml'],
+    'harvest-state.js': ['harvestBarHtml'],
+    'hazard.js': ['combineWarningHtml'],
+    'icons.js': ['cardSplinterTipHtml', 'rarityOptionIconHtml', 'terrainCellHtml', 'terrainEmblemHtml', 'terrainOptionIconHtml', 'territoryCellHtml', 'typeIconOnlyHtml'],
+    'operations.js': ['serverNoticeHtml'],
+    'planner.js': ['boardReadHtml', 'plannerDroppedHtml'],
+    'plot-warnings.js': ['plotWarningListHtml', 'plotWarningPillsHtml'],
+    'rows.js': ['plotRowCellsHtml'],
+    'wallet-claim.js': ['claimHtml'],
+    'wallet-lp.js': ['positionHtml', 'swapHtml'],
+    'worksite.js': ['worksiteChangeButtonHtml'],
+}
+# Modules whose WHOLE sweep is empty. Those in RENDERERS are covered by hand-written states; the others are residual N8
+# (no confirming-screen states rendered by this guard yet; build-report Round 4).
+SWEEP_EMPTY = ['card-combinables.js', 'card-market.js', 'confirm-notices.js', 'editor.js', 'harvest-state.js', 'hazard.js', 'planner.js', 'plot-warnings.js', 'wallet-claim.js', 'wallet-lp.js', 'worksite.js']
+
+
+def sweep_result(name: str) -> dict:
+    """Round 4 (astra-review-r4  / N8): the sweep reports, per exported renderer, how many argument shapes rendered
+    markup and the first error of each that threw, so an empty or broken sweep can no longer pass silently."""
     import json as _json
     from tests.ceres.vm_context import run_in_module_context
     names = HTML_EXPORT.findall((STATIC / name).read_text(encoding="utf-8"))
-    body = "const out = [];\nconst shapes = [[], [{}], [{ state: 'pending', stage: 'confirming', phase: 'confirming', status: 'pending' }], " \
+    body = "const out = []; const per = {}; const errors = {};\nconst shapes = [[], [{}], [{ state: 'pending', stage: 'confirming', phase: 'confirming', status: 'pending' }], " \
         "[{ state: 'confirmed', stage: 'done', phase: 'success', status: 'confirmed' }], [{ state: 'refused', stage: 'refused', phase: 'failed', status: 'failed', error: 'x' }], ['SPS', {}, 'alice']];\n" + \
-        "".join(f"for (const args of shapes) {{ try {{ const html = {fn}(...args); if (typeof html === 'string' && html) out.push(html); }} catch (_) {{}} }}\n" for fn in names) + \
-        "console.log('RENDERED ' + JSON.stringify(out));\n"
+        "".join(f"per[{fn!r}] = 0; for (const args of shapes) {{ try {{ const html = {fn}(...args); if (typeof html === 'string' && html) {{ out.push(html); per[{fn!r}] += 1; }} }} catch (e) {{ errors[{fn!r}] ||= String(e && e.message || e).slice(0, 80); }} }}\n" for fn in names) + \
+        "console.log('RENDERED ' + JSON.stringify({ out, per, errors }));\n"
     result = run_in_module_context(body, entry=STATIC / name, check=False)
     line = next((l for l in result.stdout.splitlines() if l.startswith("RENDERED ")), None)
-    return _json.loads(line.split(" ", 1)[1]) if line else []
+    assert line, f"{name}: the renderer sweep printed no result ({result.stderr[-600:]})"
+    out = _json.loads(line.split(" ", 1)[1])
+    out["names"] = names
+    return out
+
+
+def sweep_markup(name: str) -> list[str]:
+    return sweep_result(name)["out"]
 
 
 @pytest.mark.parametrize("name", SWEEP_MODULES, ids=lambda n: n)
 def test_g2_sweep_every_exported_renderer_shows_no_manual_control(name):
     if name in KNOWN_GAPS:
         pytest.xfail(KNOWN_GAPS[name])
-    markup = sweep_markup(name)
+    result = sweep_result(name)
+    markup = result["out"]
+    # Round 4 (/N8): the module was really rendered -- non-empty markup, and every renderer that produced nothing for
+    # every shape is a recorded one (it needs real arguments; its screen is covered by RENDERERS or is not a confirming
+    # screen). A renderer that newly renders nothing, or a module whose sweep is empty, fails here.
+    assert (name in SWEEP_EMPTY) == (not markup), f"{name}: the sweep rendered {'nothing' if not markup else 'markup'} (SWEEP_EMPTY is out of date)"
+    assert all(isinstance(html, str) and html for html in markup), name
+    silent = sorted(fn for fn in result["names"] if not result["per"].get(fn))
+    assert silent == sorted(SWEEP_SILENT.get(name, [])), (name, silent, {fn: result["errors"].get(fn) for fn in silent})
     assert manual_controls_in(markup) == [], f"{name} renders a manual confirm control"
+
+
+def test_g2_sweep_fails_when_a_renderer_breaks():
+    """Control for : an exported renderer that throws on every shape is reported, not swallowed."""
+    from tests.ceres.vm_context import run_in_module_context  # noqa: F401 (same harness as the sweep)
+    name = SWEEP_MODULES[0]
+    result = sweep_result(name)
+    assert result["names"] and sum(result["per"].values()) > 0, result["per"]

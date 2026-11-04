@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.ceres import test_ir9545_replay as replay
+from tests.ceres import test_replay as replay
 from tests.ceres.vm_context import read_entry_source
 
 HERE = Path(__file__).resolve().parents[2] / "ceres" / "static"

@@ -148,7 +148,11 @@ window.addEventListener(BOARD_PLANNING_EVALUATED_EVENT, (event) => {
   renderTotalsStrip();
   syncBadgeOverlay();
 });
-window.addEventListener(BOARD_PLANNING_CHANGED_EVENT, () => { renderTotalsStrip(); syncBadgeOverlay(); });
+window.addEventListener(BOARD_PLANNING_CHANGED_EVENT, (event) => {
+  for (const deedUid of event?.detail?.deeds || []) updateMountedRow(deedUid);
+  renderTotalsStrip();
+  syncBadgeOverlay();
+});
 
 // root fix: the opened-plot geometry reads the SAME authoritative
 // width as the table (scale.js availableTableWidth() -- the live scroller, or
@@ -1402,7 +1406,7 @@ export async function loadPlotDetail(row, generation = BOARD_GENERATION) {
     DETAIL_REQUESTS.delete(deedUid);
     LOADING_PLOTS.delete(deedUid);
     markSlowOpen(deedUid, false); // fix: detail landed or failed -- the spinner switch goes off before the redraw
-    if (BOARD && document.getElementById('badge-filter')?.value) {
+    if (BOARD && document.getElementById('badge-filter')?.value && !boardPlanningActive()) {
       renderTable();
       // The filtered board rebuild does not redraw the separate mobile sheet.
       if (MOBILE_PLOT_UID === deedUid) updateMountedRow(deedUid, { readiness: true });

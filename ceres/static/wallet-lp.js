@@ -24,7 +24,7 @@ import { tokenIcon, tokenLabel } from './harvest-state.js';
 import { plaque } from './wallet-resources.js';
 import { walletControlsHtml, walletMethodHtml, walletReady, walletSignLabelHtml, walletWaitHtml } from './wallet.js';
 import { requestBroadcastThroughGate } from './broadcast-gate.js';
-import { WALLET_NEVER_ASKED, confirmationState, findSignedTransaction, subscribeConfirmation, waitForStep, waitThrough } from './shared-confirmer.js';
+import { walletNeverAskedText, confirmationState, findSignedTransaction, subscribeConfirmation, waitForStep, waitThrough } from './shared-confirmer.js';
 import { initCustomSelect } from './customSelect.js';
 import { resourceSymbolsWhere } from './resources.js';
 
@@ -481,7 +481,7 @@ async function verify(ctx, symbol, st) {
       if (shared?.txId) {
         st.receipt = { ...st.receipt, tx_id: shared.txId, unknownOutcome: false };
         syncStoredIntent(ctx.player, symbol, st); ctx.render();
-        waitThrough({ key: waitKey, check, txId: shared.txId, intent: shared.attemptId });   // the running wait now also asks Hive by id
+        waitThrough({ key: waitKey, check, txId: shared.txId, intent: shared.attemptId, beginToken: beginTokenOf(ctx.player, st.receipt.ops, shared.attemptId) });   // the running wait now also asks Hive by id
         return 'found';
       }
       if (shared?.state === 'never-sent') return 'absent';
@@ -530,6 +530,7 @@ async function verify(ctx, symbol, st) {
   try {
     const shared = st.receipt.ops ? confirmationState(ctx.player, st.receipt.ops) : null;
     const answer = await waitThrough({ key: waitKey, check, account: ctx.player, txId: st.receipt.tx_id || null, intent: shared?.attemptId || null,
+      beginToken: shared ? beginTokenOf(ctx.player, st.receipt.ops, shared.attemptId) : null,
       since: st.receipt.signed_at, onUpdate: () => { if (current()) ctx.render(); } }).done;
     if (answer.gone || !current()) return;
     if (answer.state === 'never-sent') {
@@ -613,6 +614,11 @@ async function settleLoop(ctx, st) {
   } finally { stopFunding?.(); st.settleLooping = false; ctx.render(); }
 }
 
+// Aletheia r4 4: the begin token of the attempt the wait names, so the server can judge a known id of that attempt.
+function beginTokenOf(player, ops, attemptId) {
+  return () => { const row = confirmationState(player, ops); return row && row.attemptId === attemptId ? row.beginToken || null : null; };
+}
+
 // F1 ( fix round 1): an SPS transfer whose wallet answer was lost is resolved ONLY by the shared confirmer for that
 // exact persisted funding action: a found id is attached; "never sent" is the server's complete proof (its own-history read
 // at the transfer's expiry, back to the signing moment, with the node's head past the expiry). Only then is "Send SPS to
@@ -630,7 +636,8 @@ function watchFundingProof(ctx, st) {
     } else if (row?.state === 'never-sent') {
       const { fundingUnknown, funding_ops, ...rest } = st.receipt;
       Object.assign(st, { stage: 'funding', receipt: rest, funding: null, settleNote: '',
-        fundError: row.neverSentBy === 'wallet-expired' ? WALLET_NEVER_ASKED   // IN-0888, word for word
+        // IN-0888 word for word; a Keychain prompt open past the lifetime: PAYMENT_PROMPT_OPEN_ENDING (pending maintainer question)
+        fundError: row.neverSentBy === 'wallet-expired' ? (row.error || walletNeverAskedText(ops, row.neverAskedCause))
           : 'Your SPS transfer was not sent (Hive has no record of it and it has expired). Send it when you are ready.' });
       syncStoredIntent(ctx.player, intentSymbol(rest), st); ctx.render();
     }

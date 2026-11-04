@@ -439,6 +439,16 @@ function createHiveAuthWorker(account, expire = 0) {
         if (data.type === 'signed') {
           lateBroadcasts.delete(data.id);
           late.callback({ success: true, lateSigned: true, data: { key: late.authority || 'Posting' }, result: { id: data.txId } });
+        } else if (data.type === 'uncertain' && data.reason === 'expired') {
+          // round 4 (astra-review-r4 : HiveAuth's OWN expiry after Ceres' watchdog still reaches the attempt
+          // that asked (IN-0888); nothing is resent.
+          lateBroadcasts.delete(data.id);
+          late.callback({ success: false, late: true, ambiguousBroadcast: true, stillChecking: true, walletExpired: true,
+            error: 'Ceres is still checking whether the wallet sent this (expired)' });
+        } else if (data.type === 'declined') {
+          // A late refusal ends the request: the confirmer may then prove it was not sent (the server times the closure).
+          lateBroadcasts.delete(data.id);
+          late.callback({ success: false, late: true, declined: true, error: SIGNING_REJECTED });
         } else if (data.type !== 'sign-wait') lateBroadcasts.delete(data.id);
         if (!pending && lateBroadcasts.size === 0 && session?.expire && session.expire <= Date.now()) disposeSession();
         return;

@@ -1,6 +1,6 @@
 import { requestWalletBroadcast, walletCanSignTransaction } from './wallet.js';
 import { prepareQueueBatch, signQueuedTransaction, withQueueSigningLock, hasSignedQueueClaim, reviewedActiveLockOperation, SIGNED_QUEUE_EXPIRY_MS } from './transaction-queue.js';
-import { afterWalletSilence, allConfirmations, announceBegin, attachTransaction, beginAttempt, confirmationState, findSignedTransaction, linkAdmission, markAnswered, markConfirmation, markSilent, markWalletNeverAsked, subscribeAll, subscribeConfirmation, WALLET_SILENCE_MS } from './shared-confirmer.js';
+import { afterWalletSilence, allConfirmations, attachTransaction, beginAttempt, confirmationState, findSignedTransaction, linkAdmission, markAnswered, markConfirmation, markSilent, markWalletNeverAsked, startBegin, subscribeAll, subscribeConfirmation, WALLET_SILENCE_MS } from './shared-confirmer.js';
 
 export const KEYCHAIN_RESPONSE_TIMEOUT_MS = WALLET_SILENCE_MS;  // the deadline itself lives in shared-confirmer.js
 
@@ -489,14 +489,18 @@ function announceSigned(account, txId) {
   try { window.dispatchEvent(new CustomEvent('ceres:tx-signed', { detail: { txId, account } })); } catch (_) { /* no window in tests */ }
 }
 
-async function requestBroadcastPromise(account, operations, onResponse, authority) {
+async function requestBroadcastPromise(account, operations, onResponse, authority, metadata = {}) {
   const requestIdentities = claimBroadcastRequest(account, operations);
   const count = customOpCount(operations);
   const admissionId = requestIdentities[0];
   const admissionInstanceId = newAdmissionInstanceId();
   let attemptRow;
-  try { attemptRow = beginAttempt(account, operations); }
+  // Round 4 (aletheia-verdict-r4 3): routing's claim is released only by the server's own proof (`holdsServerClaim`).
+  try { attemptRow = beginAttempt(account, operations, { holdsServerClaim: metadata?.holdsServerClaim === true }); }
   catch (error) { releaseBroadcastRequest(account, requestIdentities); throw error; }
+  // Round 4 (aletheia-verdict-r4 6): the begin starts now, while the admission is written; it is awaited below, before
+  // the wallet opens.
+  const begun = startBegin(account, operations);
   if (count) {
     try { saveCustomOps(account, [...pendingCustomOps(account), {
       id: admissionId, instanceId: admissionInstanceId, claimIds: requestIdentities,
@@ -524,7 +528,7 @@ async function requestBroadcastPromise(account, operations, onResponse, authorit
   // fix round 3 (astra-review-r3 N1): the server records this attempt's begin BEFORE the wallet is asked (bounded
   // by BEGIN_BOUND_MS); its begin token is the pre-sign oldest edge of any later proof that it was never sent. Without
   // the token the attempt can never be proven absent (it stays pending); the wallet still opens.
-  try { await announceBegin(account, operations); } catch (_) { /* no token: absence stays unprovable for this attempt */ }
+  try { await begun; } catch (_) { /* no token: absence stays unprovable for this attempt */ }
   return new Promise((resolve, reject) => {
     let timedOut = false;
     let finished = false;
@@ -714,7 +718,7 @@ export const BroadcastGate = {
       if (count && activeAdmissions(account).reduce((sum, row) => sum + row.count, count) > CUSTOM_OP_LIMIT) {
         await waitForCustomOpBudget(account, count);
       }
-      const txId = await requestBroadcastPromise(account, operations, onResponse, authority);
+      const txId = await requestBroadcastPromise(account, operations, onResponse, authority, metadata);
       return { txId, blockNum: null };
     }));
   },
@@ -731,14 +735,19 @@ export async function requestSignatureThroughGate(account, operations, onRespons
     const broadcast = await BroadcastGate.broadcast(account, operations, onResponse, authority, metadata);
     return { ...broadcast, queued: false, submitted: Promise.resolve(broadcast) };
   }
+  const holdsServerClaim = metadata?.holdsServerClaim === true;
   try {
+    // Round 4 (aletheia-verdict-r4 6): without a prepared envelope the attempt and its begin start BEFORE the envelope
+    // is built (head read), so the begin round trip overlaps it; it is still awaited before the wallet is asked.
+    let begun = null;
+    if (!prepared) { beginAttempt(account, operations, { holdsServerClaim }); begun = startBegin(account, operations); }
     const envelope = prepared || (await prepareQueueBatch(account, [operations], authority, metadata))[0];
     if (envelope.account !== String(account).toLowerCase() || envelope.authority !== authority
       || JSON.stringify(envelope.transaction.operations) !== JSON.stringify(operations)) throw new Error('Prepared transaction does not match this review.');
     // A fresh attempt (F3), anchored to the signed envelope's own expiration (F7) when it is known.
-    beginAttempt(account, operations, { expiration: envelope.transaction?.expiration ? `${String(envelope.transaction.expiration).replace(/Z?$/, 'Z')}` : null });
+    beginAttempt(account, operations, { holdsServerClaim, expiration: envelope.transaction?.expiration ? `${String(envelope.transaction.expiration).replace(/Z?$/, 'Z')}` : null });
     // Fix round 3 (N1): the server records the begin before the wallet signs (bounded; see requestBroadcastPromise).
-    try { await announceBegin(account, operations); } catch (_) { /* absence stays unprovable for this attempt */ }
+    try { await (begun || startBegin(account, operations)); } catch (_) { /* absence stays unprovable for this attempt */ }
     const queued = await signQueuedTransaction(envelope);
     try { markAnswered(account, operations, { closed: true }); } catch (_) {}   // signed: the request is over
     try { attachTransaction(account, operations, queued.txId); } catch (_) { /* the queue row keeps the id */ }

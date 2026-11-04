@@ -3,8 +3,8 @@
 : the SERVER keeps the schedule, the budget and the clock of every own-history read (). One ledger record
 per ACTION (account + exact operations) holds the shared read budget and a found transaction id; each signing ATTEMPT
 inside it has its own begin, answer, closure, scan cursor and expiry result (fix round 3). Two tabs, a reload or a wrong
-browser clock therefore never add reads or move a window. Reads: at most eleven of the account's latest operations in
-the ten minutes after the wallet answered (the first ten at the reference swap's offsets), then ONE expiry read per
+browser clock therefore never add reads or move a window. Reads: the account's latest operations at the reference swap's offsets
+after the wallet answered (0-70 s, then every 15 s while the id is missing, fix round 4), then ONE expiry read per
 attempt that pages back over the signer's OWN history to the attempt's server-recorded, pre-sign begin, and counts as
 proof of absence only for a closed wallet request whose same history response shows a newer own operation than the
 transaction's latest possible inclusion -- , its 2026-11-03 addendum and .
@@ -43,11 +43,14 @@ TX_LIFETIME_S = 3600
 # Fix round 3 (astra-review-r3 N1): the server clock against Hive block timestamps. NOT a latency allowance: the oldest
 # edge of an absence proof is a begin the server recorded BEFORE the wallet was asked (a confirmed begin token).
 CLOCK_MARGIN_S = 120
-# "a few bounded reads within about 10 minutes", at these offsets (s) from the wallet's answer. Fix round 3
-# (astra-review-r3 N6): the first ten are exactly the maintainer's reference swap finder (IN-0708, 15c6a6da5 wallet-lp.js
-# 0/2/4/8/12/18/26/36/50/70 s), so an action whose wallet answer carried no id is found no later than the pre-fix swap
-# one more read at 8 min. Then the one expiry read.
-NORMAL_OFFSETS_S = (0, 2, 4, 8, 12, 18, 26, 36, 50, 70, 480)
+# Own-history reads of an action whose wallet gave no id, at these offsets (s) from the first ask after the wallet's
+# answer. Fix round 4 (astra-review-r4 : exactly the maintainer's reference swap finder (IN-0708, 15c6a6da5 wallet-lp.js
+# VERIFY_SCHEDULE_MS 0/2/4/8/12/18/26/36/50/70 s, then RECHECK_MS 15 s while the id is missing), so no action is found
+# later than the pre-fix swap: the ten offsets, then one read every RECHECK_S until the expiry read (: small
+# deliberate, bounded reads of the signer's own latest operations).
+NORMAL_OFFSETS_S = (0, 2, 4, 8, 12, 18, 26, 36, 50, 70)
+RECHECK_S = 15
+NORMAL_UNTIL_S = 3900           # the window of normal reads ends where the expiry read begins
 WINDOW_S = 600
 EXPIRY_RETRY_S = 60
 MAX_HISTORY_PAGES = 50          # 5,000 of the signer's own operations between signing and expiry
@@ -80,7 +83,14 @@ def _canonical(operation: list, player: str) -> str | None:
 
 
 def find_exact_action(rows: list, player: str, expected: list) -> str | None:
-    """Match the complete ordered op list, including each nonce; make no chain read."""
+    """Match the complete ordered op list, including each nonce; make no chain read. The newest match."""
+    matches = find_exact_actions(rows, player, expected)
+    return matches[-1] if matches else None
+
+
+def find_exact_actions(rows: list, player: str, expected: list) -> list[str]:
+    """Every transaction id whose complete ordered op list matches, oldest first (fix round 4, : two attempts of
+    one action can both reach Hive)."""
     wanted = [_canonical(op, player) for op in expected]
     if not wanted or len(wanted) > 5 or any(item is None for item in wanted):
         raise ValueError("Expected one to five own custom_json operations with nonces")
@@ -97,7 +107,7 @@ def find_exact_action(rows: list, player: str, expected: list) -> str | None:
             canonical = _canonical(op, player)
             # Any other operation in this tx makes the exact match fail.
             grouped.setdefault(tx_id.lower(), []).append(canonical or "")
-    return next((tx_id for tx_id, ops in reversed(list(grouped.items())) if ops == wanted), None)
+    return [tx_id for tx_id, ops in grouped.items() if ops == wanted]
 
 
 # F8: the game's record of each signed operation type (library/ceres-signing-options.md).
@@ -203,6 +213,26 @@ CONTINUE_S = 5                 # the scan has not reached the signing moment yet
 MAX_WINDOWS = 3                # ten-minute windows per action (first answer, plus at most two reopenings)
 MAX_ATTEMPTS = 8               # attempt records kept per action (older ones are dropped: they can then prove nothing)
 OVERLAP = 4                    # rows shared by adjacent pages, so a transaction of up to five ops is never split
+# Fix round 4 (astra-review-r4 : an attempt WITHOUT a confirmed pre-sign begin can never be proven absent, but its
+# transaction may lie before the server's first record of it. Its discovery depth starts at Hive's longest lifetime
+# below that first record and doubles every time the scan reaches it without a match, up to the ledger's own keep time.
+TOKENLESS_DEPTH_S = EXPIRY_AFTER_S
+TOKENLESS_MAX_DEPTH_S = LEDGER_KEEP_S
+
+
+def normal_offset(index: int) -> float:
+    """The offset (s) of the index-th normal read: the swap's ten offsets, then every RECHECK_S (fix round 4, ."""
+    if index < len(NORMAL_OFFSETS_S):
+        return NORMAL_OFFSETS_S[index]
+    return NORMAL_OFFSETS_S[-1] + RECHECK_S * (index - len(NORMAL_OFFSETS_S) + 1)
+
+
+def normal_reads_until(seconds: float) -> int:
+    """How many normal reads the schedule allows in the first `seconds` of a window (tests and budget bounds)."""
+    count = 0
+    while normal_offset(count) <= min(seconds, NORMAL_UNTIL_S):
+        count += 1
+    return count
 
 
 def _ledger_path(request: Request) -> Path | None:
@@ -265,9 +295,11 @@ def _attempts(row: dict) -> dict:
     return attempts
 
 
-def _attempt(row: dict, attempt: str, now: float) -> tuple[dict, bool]:
-    """This attempt's own record (created on first contact). A new attempt opens a new read window only when the
-    PREVIOUS attempt was proven absent by this server (a genuine re-sign), at most MAX_WINDOWS times (MEDIUM-1)."""
+def _attempt(row: dict, attempt: str, now: float, *, begin: bool = False) -> tuple[dict, bool]:
+    """This attempt's own record (created on first contact). A new attempt opens a new read window when it is a
+    genuine re-sign -- its first contact is the pre-sign begin (fix round 4, astra-review-r4 : a retry after "your
+    wallet never asked you" gets the swap's fast reads again) or the PREVIOUS attempt was proven absent by this server
+    -- at most MAX_WINDOWS times per action (MEDIUM-1: an attempt id alone still buys no reads)."""
     attempts = _attempts(row)
     record = attempts.get(attempt)
     if record is not None:
@@ -278,9 +310,41 @@ def _attempt(row: dict, attempt: str, now: float) -> tuple[dict, bool]:
     row["attempt_ids"] = (order + [attempt])[-MAX_ATTEMPTS:]
     for stale in [item for item in attempts if item not in row["attempt_ids"]]:
         del attempts[stale]
-    if previous is not None and (previous.get("expiry") or {}).get("status") == "absent" and row.get("windows", 0) < MAX_WINDOWS:
-        row.update(window_start=None, reads=0)
+    resign = begin or (previous is not None and (previous.get("expiry") or {}).get("status") == "absent")
+    if previous is not None and resign and row.get("window_start") is not None and row.get("windows", 0) < MAX_WINDOWS:
+        row.update(window_start=None, reads=0, window_attempt=None)
     return record, True
+
+
+def _found_ids(row: dict) -> dict:
+    """Fix round 4 (astra-review-r4 : the transaction id each attempt of the action was given by a server read."""
+    found = row.get("found_by")
+    if not isinstance(found, dict):
+        found = row["found_by"] = {}
+    return found
+
+
+def _excluded(row: dict, attempt: str, body: dict | None = None) -> tuple[set, set]:
+    """(ids this attempt may not be given, ids the SERVER gave other attempts). An id the server gave to ANOTHER attempt
+    of this action is that attempt's outcome: it is neither found for this attempt nor does it keep this attempt from
+    being proven absent (two attempts of one action can both reach Hive, . The browser may add ids it knows belong
+    to other attempts (an id its wallet returned); those only narrow discovery and never help prove absence."""
+    server = {tx for other, tx in _found_ids(row).items() if other != attempt and isinstance(tx, str)}
+    client = set()
+    for tx in (body or {}).get("exclude_tx_ids") or []:
+        if isinstance(tx, str) and TX_ID.fullmatch(tx):
+            client.add(tx.lower())
+    return server | client, server
+
+
+def _unanswered_for(record: dict, now: float) -> float | None:
+    """Fix round 4 (aletheia-verdict-r4 1 and 2): seconds by the SERVER's clock since its first record of this attempt
+    (the pre-sign begin when it arrived in time; never earlier than the real signing request), while no wallet answer
+    and no closure is recorded for it; None once one is. The browser's IN-0888 "never asked" lifetime ending is
+    measured with this, never with the browser's own clock."""
+    if record.get("answered_at") is not None or record.get("closed_at") is not None:
+        return None
+    return round(max(0.0, now - record["first_at"]), 3)
 
 
 def _begin_ok(record: dict | None) -> bool:
@@ -366,7 +430,7 @@ def _apply_event(row: dict, body: dict, now: float, event: str, attempt: str) ->
     begin token; only a later presentation of that token makes it a pre-sign bound (N1). `closed` and `answered` are
     timed by the server and touch only this attempt (N2/L1). Browser durations, expirations and `since` never narrow
     a proof (LOW-2). Returns {begin_token} for a recorded begin."""
-    record, new = _attempt(row, attempt, now)
+    record, new = _attempt(row, attempt, now, begin=event == "begin")
     out: dict = {}
     if event == "begin" and new:
         token = secrets.token_hex(16)
@@ -488,13 +552,16 @@ def _add_range(ranges: list[list], low: int, high: int, low_time) -> list[list]:
 
 
 def scan_own_history(account: str, operations: list, scan: dict | None, *, earliest: float, history=None,
-                     max_pages: int = PAGES_PER_CALL, wall_s: float = CALL_WALL_S, monotonic=None) -> dict:
+                     max_pages: int = PAGES_PER_CALL, wall_s: float = CALL_WALL_S, monotonic=None,
+                     exclude: set | None = None, absence_exclude: set | None = None) -> dict:
     """One bounded step of the expiry proof. Returns {status: found|covered|partial, tx_id?, scan, newest_time}.
     The scan keeps disjoint covered index ranges; every page read is merged and kept even when the step's budget ends
     in the middle of a gap (fix round 3, astra-review-r3 N7: a large new top gap can no longer be re-read for ever).
     Gaps are filled from the newest down: first new activity above the old cursor, then the old cursor's own gap, then
     back to the signing moment. `covered` = one range from this step's latest page back to before `earliest` (less
-    CLOCK_MARGIN_S) or to the account's first operation. `newest_time` comes from this step's latest page."""
+    CLOCK_MARGIN_S) or to the account's first operation. `newest_time` comes from this step's latest page.
+    Fix round 4 (: a match in `exclude` (another attempt's id) is not found for this attempt; a match outside
+    `absence_exclude` (the ids the SERVER gave other attempts) still keeps the scan from ending `covered`."""
     if history is None:
         from .harvest_routing_bridge import _history as history
     clock = monotonic or _monotonic
@@ -505,7 +572,18 @@ def scan_own_history(account: str, operations: list, scan: dict | None, *, earli
     def budget() -> bool:
         return pages < max_pages and clock() - started < wall_s
 
+    exclude = set(exclude or ())
+    absence_exclude = set(absence_exclude or ())
+    seen_other = []
+
+    def match(page):
+        ids = find_exact_actions(page, account, operations)
+        seen_other.extend(tx for tx in ids if tx in exclude and tx not in absence_exclude)
+        return next((tx for tx in reversed(ids) if tx not in exclude), None)
+
     def done(status, **extra):
+        if status == "covered" and seen_other:
+            status = "partial-other"     # a match only the browser attributed elsewhere: never proof of absence
         return {"status": status, "scan": {"ranges": ranges}, "newest_time": newest_time, **extra}
 
     latest = _page(history, account, -1)
@@ -515,7 +593,7 @@ def scan_own_history(account: str, operations: list, scan: dict | None, *, earli
     ranges = _ranges_of(scan)
     if ranges and ranges[0][1] > top_now:
         raise PageShape("history went backwards (another node behind the cursor)")
-    found = find_exact_action(latest, account, operations)
+    found = match(latest)
     ranges = _add_range(ranges, latest[0][0], top_now, _row_time(latest[0]))
     if found:
         return done("found", tx_id=found)
@@ -532,24 +610,28 @@ def scan_own_history(account: str, operations: list, scan: dict | None, *, earli
         start = min(top_now, max(upper[0] - 1 + OVERLAP, below + 100 - OVERLAP))
         page = _page(history, account, start)
         pages += 1
-        found = find_exact_action(page, account, operations)
+        found = match(page)
         ranges = _add_range(ranges, page[0][0], page[-1][0], _row_time(page[0]))
         if found:
             return done("found", tx_id=found)
 
 
 def prove_own_action(account: str, operations: list, *, earliest: float, until: float | None, history=None, head=None,
-                     scan: dict | None = None, closed: bool = True, max_pages: int = PAGES_PER_CALL) -> dict:
+                     scan: dict | None = None, closed: bool = True, max_pages: int = PAGES_PER_CALL,
+                     exclude: set | None = None, absence_exclude: set | None = None) -> dict:
     """found / absent / unproven(reason) / partial. Absence needs: a closed wallet request (`until` known), coverage back
     to `earliest`, and the newest own operation of the same latest page later than `until`. `head` is ignored (P0-2)."""
     try:
-        step = scan_own_history(account, operations, scan, earliest=earliest, history=history, max_pages=max_pages)
+        step = scan_own_history(account, operations, scan, earliest=earliest, history=history, max_pages=max_pages,
+                                exclude=exclude, absence_exclude=absence_exclude)
     except PageShape as exc:
         return {"status": "unproven", "reason": "shape", "detail": str(exc), "next_in_s": EXPIRY_RETRY_S, "scan": scan or {}}
     if step["status"] == "found":
         return {"status": "found", "tx_id": step["tx_id"], "scan": step["scan"]}
     if step["status"] == "partial":
         return {"status": "unproven", "reason": "depth", "next_in_s": CONTINUE_S, "scan": step["scan"]}
+    if step["status"] == "partial-other":
+        return {"status": "unproven", "reason": "open", "next_in_s": OPEN_RETRY_S, "scan": step["scan"]}
     if not closed or until is None:
         return {"status": "unproven", "reason": "open", "next_in_s": OPEN_RETRY_S, "scan": step["scan"]}
     if step["newest_time"] is None or step["newest_time"] <= until:
@@ -587,81 +669,114 @@ async def find(request: Request, player: str | None = None):
     def reserve(row):
         _apply_event(row, body, now, "answered" if body.get("answered") is True else "find", attempt)
         record = row["attempts"][attempt]
-        if row.get("found"):
-            return {"cached": {"status": "found", "tx_id": row["found"]}}
+        unanswered = _unanswered_for(record, now)
+        silent = {"unanswered_for_s": unanswered} if unanswered is not None else {}
+        excluded, proof_excluded = _excluded(row, attempt, body)
+        own = _found_ids(row).get(attempt)
+        if own:
+            return {"cached": {"status": "found", "tx_id": own}, **silent}
+        if row.get("found") and row["found"] not in excluded:
+            return {"cached": {"status": "found", "tx_id": row["found"]}, **silent}
         expiry = record.get("expiry") or {}
-        if expiry.get("status") in ("found", "absent"):
-            return {"cached": expiry}
+        if expiry.get("status") == "absent" or (expiry.get("status") == "found" and expiry.get("tx_id") not in excluded):
+            return {"cached": expiry, **silent}
         if row.get("window_start") is None and row.get("windows", 0) < MAX_WINDOWS:
             row["window_start"] = now
             row["windows"] = row.get("windows", 0) + 1
+            row["window_attempt"] = attempt
         reads = row.get("reads", 0)
-        if row.get("window_start") is not None and now - row["window_start"] <= WINDOW_S + 60 and reads < len(NORMAL_OFFSETS_S):
-            due = row["window_start"] + NORMAL_OFFSETS_S[reads]
+        # Fix round 4 (/: the window's fast reads belong to the attempt that opened it (an older attempt that is
+        # still watched keeps its own expiry read and retries, and never delays the new attempt's swap-speed reads).
+        owner = row.get("window_attempt") in (None, attempt)
+        if owner and row.get("window_start") is not None and normal_offset(reads) <= NORMAL_UNTIL_S:
+            due = row["window_start"] + normal_offset(reads)
             if now + 0.5 < due:
-                return {"wait": due - now}
-            row["reads"] = reads + 1
-            row.setdefault("read_times", []).append(round(now, 3))
-            return {"read": "normal"}
+                return {"wait": due - now, **silent}
+            if now - row["window_start"] <= NORMAL_UNTIL_S:
+                # A late ask (a hidden tab) takes one read now; the next follows the schedule, never a burst.
+                index = reads + 1
+                while row["window_start"] + normal_offset(index) <= now:
+                    index += 1
+                row["reads"] = index
+                row.setdefault("read_times", []).append(round(now, 3))
+                del row["read_times"][:-64]
+                return {"read": "normal", "excluded": sorted(excluded), **silent}
         expiry_at = _expiry_at(record)
         if now < expiry_at:
-            return {"wait": expiry_at - now}
+            return {"wait": expiry_at - now, **silent}
         if expiry.get("status") == "running" and now - expiry.get("at", 0) < LEASE_S:
-            return {"wait": 10}
+            return {"wait": 10, **silent}
         if expiry.get("retry_at") and now < expiry["retry_at"]:
-            return {"wait": expiry["retry_at"] - now, "unproven": expiry.get("reason")}
+            return {"wait": expiry["retry_at"] - now, "unproven": expiry.get("reason"), **silent}
         run = secrets.token_hex(8)
         record["expiry"] = {"status": "running", "at": now, "run": run}
         begin_ok = _begin_ok(record)
         # Without a confirmed pre-sign begin the scan still looks for the action (found stays possible) but can never
-        # prove absence: `closed` is False, whatever the browser says.
-        earliest = record["begin_at"] if begin_ok else (record.get("begin_at") or record["first_at"])
+        # prove absence: `closed` is False, whatever the browser says. Its discovery reaches below the server's first
+        # record of the attempt, deeper on every pass that did not find it (fix round 4, .
+        first = record.get("begin_at") or record["first_at"]
+        earliest = record["begin_at"] if begin_ok else first - record.get("discovery_depth_s", TOKENLESS_DEPTH_S)
         closed = record.get("closed_at") is not None and begin_ok
         return {"read": "expiry", "earliest": earliest, "closed": closed, "run": run, "gen": record.get("gen", 0),
-                "until": record["closed_at"] + TX_LIFETIME_S if record.get("closed_at") else None, "scan": record.get("scan")}
+                "begin_ok": begin_ok, "excluded": sorted(excluded), "proof_excluded": sorted(proof_excluded),
+                "until": record["closed_at"] + TX_LIFETIME_S if record.get("closed_at") else None, "scan": record.get("scan"), **silent}
 
     plan = await asyncio.to_thread(ledger_update, request, account, operations, reserve)
+    silent = {"unanswered_for_s": plan["unanswered_for_s"]} if plan.get("unanswered_for_s") is not None else {}
     if "cached" in plan:
         cached = plan["cached"]
-        return {"status": cached["status"], **({"tx_id": cached["tx_id"]} if cached.get("tx_id") else {}), "server_now": server_now}
+        return {"status": cached["status"], **({"tx_id": cached["tx_id"]} if cached.get("tx_id") else {}), "server_now": server_now, **silent}
     if "wait" in plan:
         return {"status": "unproven" if plan.get("unproven") else "wait", "next_in_s": round(max(0.0, plan["wait"]), 3),
-                **({"reason": plan["unproven"]} if plan.get("unproven") else {}), "server_now": server_now}
+                **({"reason": plan["unproven"]} if plan.get("unproven") else {}), "server_now": server_now, **silent}
     from .harvest_routing_bridge import _history
+    excluded = set(plan.get("excluded") or [])
     if plan["read"] == "normal":
         try:
             rows = await asyncio.to_thread(_history, account, -1)
         except Exception as exc:
             raise HTTPException(502, "Own account history unavailable") from exc
-        tx_id = find_exact_action(rows, account, operations)
+        tx_id = next((tx for tx in reversed(find_exact_actions(rows, account, operations)) if tx not in excluded), None)
         if tx_id:
-            await asyncio.to_thread(ledger_update, request, account, operations, lambda row: row.__setitem__("found", tx_id))
-            return {"status": "found", "tx_id": tx_id, "server_now": server_now}
+            await asyncio.to_thread(ledger_update, request, account, operations, lambda row: _record_found(row, attempt, tx_id))
+            return {"status": "found", "tx_id": tx_id, "server_now": server_now, **silent}
         nxt = await asyncio.to_thread(ledger_update, request, account, operations, lambda row: _next_in(row, attempt, time.time()))
-        return {"status": "wait", "next_in_s": nxt, "covered": history_covers(rows, body.get("since")), "server_now": server_now}
+        return {"status": "wait", "next_in_s": nxt, "covered": history_covers(rows, body.get("since")), "server_now": server_now, **silent}
     try:
         proof = await asyncio.to_thread(prove_own_action, account, operations, earliest=plan["earliest"], until=plan["until"],
-                                        history=_history, scan=plan.get("scan"), closed=plan["closed"])
+                                        history=_history, scan=plan.get("scan"), closed=plan["closed"],
+                                        exclude=excluded, absence_exclude=set(plan.get("proof_excluded") or []))
     except Exception:
         proof = {"status": "unproven", "reason": "unavailable", "next_in_s": EXPIRY_RETRY_S}
-    settled = expiry_settle(proof, attempt, plan["run"], plan["gen"])
+    settled = expiry_settle(proof, attempt, plan["run"], plan["gen"], widen=not plan.get("begin_ok", True))
     applied = await asyncio.to_thread(ledger_update, request, account, operations, settled)
     if proof["status"] == "found":
-        return {"status": "found", "tx_id": proof["tx_id"], "server_now": server_now}
+        return {"status": "found", "tx_id": proof["tx_id"], "server_now": server_now, **silent}
     if proof["status"] == "absent" and applied:
-        return {"status": "absent", "covered": True, "server_now": server_now}
+        return {"status": "absent", "covered": True, "server_now": server_now, **silent}
     if proof["status"] == "absent":
-        return {"status": "unproven", "reason": "stale", "next_in_s": CONTINUE_S, "server_now": server_now}
-    return {"status": "unproven", "reason": proof.get("reason"), "next_in_s": proof.get("next_in_s", EXPIRY_RETRY_S), "server_now": server_now}
+        return {"status": "unproven", "reason": "stale", "next_in_s": CONTINUE_S, "server_now": server_now, **silent}
+    nxt = applied.get("next_in_s") if isinstance(applied, dict) else None
+    return {"status": "unproven", "reason": proof.get("reason"), "next_in_s": nxt if nxt is not None else proof.get("next_in_s", EXPIRY_RETRY_S),
+            "server_now": server_now, **silent}
 
 
-def expiry_settle(proof: dict, attempt: str, run: str, gen: int):
+def _record_found(row: dict, attempt: str, tx_id: str) -> None:
+    """A server read found this attempt's transaction: it is this attempt's (found_by) and, for the first one, the
+    action's (routing /v2/unsent and the round-3 readers)."""
+    _found_ids(row).setdefault(attempt, tx_id)
+    row.setdefault("found", tx_id)
+
+
+def expiry_settle(proof: dict, attempt: str, run: str, gen: int, *, widen: bool = False):
     """The expiry worker's result, applied only to the attempt and run that started it (fix round 3, N2): a worker of an
     older run (its lease expired and another run started), of an attempt that was reopened since (new generation) or of
-    another attempt never records an absence. A found id is the action's, whoever found it."""
-    def apply(row) -> bool:
-        if proof.get("status") == "found":
-            row["found"] = proof["tx_id"]
+    another attempt never records an absence. A found id is this attempt's (and the action's first). With `widen` (no
+    confirmed pre-sign begin, fix round 4  a scan that reached its discovery depth without a match goes deeper on
+    the next pass, which follows at once. Returns False, True, or {next_in_s} when the retry was brought forward."""
+    def apply(row):
+        if proof.get("status") == "found" and row is not None:
+            _record_found(row, attempt, proof["tx_id"])
         record = _attempts(row).get(attempt) if row is not None else None
         if record is None or record.get("gen", 0) != gen or (record.get("expiry") or {}).get("run") != run:
             return False
@@ -674,15 +789,24 @@ def expiry_settle(proof: dict, attempt: str, run: str, gen: int):
                 return False
             record["expiry"] = {"status": "absent", "at": time.time()}
         else:
-            record["expiry"] = {"status": "retry", "reason": proof.get("reason"), "retry_at": time.time() + proof.get("next_in_s", EXPIRY_RETRY_S)}
+            delay = proof.get("next_in_s", EXPIRY_RETRY_S)
+            depth = record.get("discovery_depth_s", TOKENLESS_DEPTH_S)
+            deeper = widen and proof.get("reason") in ("open", "newest-edge") and depth < TOKENLESS_MAX_DEPTH_S
+            if deeper:
+                record["discovery_depth_s"] = min(TOKENLESS_MAX_DEPTH_S, depth * 2)
+                delay = CONTINUE_S
+            record["expiry"] = {"status": "retry", "reason": proof.get("reason"), "retry_at": time.time() + delay}
+            if deeper:
+                return {"next_in_s": delay}
         return True
     return apply
 
 
 def _next_in(row: dict, attempt: str, now: float) -> float:
     reads = row.get("reads", 0)
-    if reads < len(NORMAL_OFFSETS_S) and row.get("window_start") is not None:
-        return round(max(0.0, row["window_start"] + NORMAL_OFFSETS_S[reads] - now), 3)
+    if (row.get("window_start") is not None and row.get("window_attempt") in (None, attempt)
+            and normal_offset(reads) <= NORMAL_UNTIL_S):
+        return round(max(0.0, row["window_start"] + normal_offset(reads) - now), 3)
     record = _attempts(row).get(attempt) or {"first_at": row.get("first_seen", now)}
     return round(max(0.0, _expiry_at(record) - now), 3)
 

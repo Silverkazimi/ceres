@@ -138,7 +138,9 @@ def test_medium1_a_fresh_attempt_id_buys_no_new_reads(server):
             except confirm.HTTPException:
                 pass
         server.clock.now += 1
-    assert 1 <= len(server.world["history_calls"]) <= len(confirm.NORMAL_OFFSETS_S), len(server.world["history_calls"])   # one budget (fix round 3: eleven reads, N6)
+    # One budget for the action (fix round 4, : the swap's schedule, ten reads then one every 15 s; a second attempt id
+    # that did not begin a re-sign buys nothing).
+    assert 1 <= len(server.world["history_calls"]) <= confirm.normal_reads_until(660), len(server.world["history_calls"])
 
 
 # LOW-2: browser times never shape the absence proof
@@ -150,9 +152,15 @@ def test_low2_a_browser_expiration_cannot_bring_the_expiry_read_forward(server):
     server.world["log"] = log_rows(begin, newest_after=begin + 200)
     expiration = stamp(begin + 60) + "Z"
     begin_and_window(server, ops)
+    # Fix round 4 (: the swap's 15-second reads go on until the expiry read; none of them may be (or start) an
+    # expiry read before closure + 3,900 s, whatever the browser's expiration says.
+    statuses = set()
     server.clock.now = begin + 900
-    answer = server.call("find", find_body(ops, server.clock, closed=True, expiration=expiration))
-    assert answer["status"] == "wait" and answer["next_in_s"] > 2000, answer
+    while server.clock.now < begin + 3800:
+        answer = server.call("find", find_body(ops, server.clock, closed=True, expiration=expiration))
+        statuses.add(answer["status"])
+        server.clock.now += 15
+    assert statuses == {"wait"}, statuses
 
 
 def test_low3_inclusion_never_ages_a_transaction_by_the_browsers_created_at(server, monkeypatch):

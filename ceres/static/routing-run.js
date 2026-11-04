@@ -216,7 +216,9 @@ export function createRoutingRun({ player, onRender, isCurrent, api = request,
       let result = null;
       walletAsked = true;
       stage = 'sign';
-      try { result = await sign(player, handoff.operations, null, 'Posting', prepared, { runId: `routing-v2-${S.runId}`, runKind: 'harvest' }); }
+      // round 4 (aletheia-verdict-r4 3): the server releases this bundle's claim only on its own proof, so the
+      // confirmer never says "Starting again is safe" for it (CLAIM_HELD_NEVER_ASKED instead).
+      try { result = await sign(player, handoff.operations, null, 'Posting', prepared, { runId: `routing-v2-${S.runId}`, runKind: 'harvest', holdsServerClaim: true }); }
       catch (error) {
         // broadcasted === false: the wallet refused before anything was sent (a prepared envelope may carry an id that never
         // reached the chain), so the claim is released below.

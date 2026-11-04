@@ -14,7 +14,7 @@ import { CB_FOIL_LABELS } from './card-browser-model.js';
 import { cartPriceHtml } from './card-cart.js';
 import { walletAccount, walletClockTick, walletControlsHtml, walletReady, walletSignLabelHtml, walletWaitHtml } from './wallet.js';
 import { requestBroadcastThroughGate } from './broadcast-gate.js';
-import { confirmAction, confirmationState, waitForStep, waitThrough } from './shared-confirmer.js';
+import { confirmAction, confirmationState, waitForStep, waitThrough, walletNeverAskedText } from './shared-confirmer.js';
 
 // the schedule, its bounds and resume live in shared-confirmer.js; no 3-minute red stop, no rounds cap.
 export const NEVER_SENT_AFTER_MS = 3900 * 1000; // Hive expiry plus the existing inclusion grace
@@ -338,6 +338,7 @@ export function txLineHtml(tx) {
   if (tx.state === 'failed') return `<p class="cm-note co-result" data-state="sold" role="status">The game refused this purchase: ${esc(tx.message || 'no reason given')}. Nothing was bought.</p>`;
   if (tx.state === 'unknown') return `<p class="cm-note co-result" data-state="warn" role="status">${esc(tx.message ? `Not confirmed yet: ${tx.message} Ceres keeps checking; do not buy these listings again.` : tx.historyUnreadable ? 'Ceres could not read your account history; it keeps trying. Do not buy these listings again until this clears.' : UNKNOWN_TEXT)}</p>`;
   if (tx.state === 'timeout') return `<p class="cm-note co-result" data-state="warn" role="status">${esc(NOT_CONFIRMED_TEXT)}</p>`;
+  if (tx.state === 'not_sent' && tx.neverAsked) return `<p class="cm-note co-result" data-state="sold" role="status">${esc(tx.neverAsked)}</p>`;
   if (tx.state === 'not_sent') return '<p class="cm-note co-result" data-state="sold" role="status">The wallet transaction expired without being included. Nothing was spent.</p>';
   if (tx.state === 'declined') return '<p class="cm-note co-result" data-state="sold" role="status">Declined in the wallet. Nothing was sent.</p>';
   if (tx.state === 'skipped') return '<p class="cm-note co-result" data-state="sold" role="status">Not sent: an earlier purchase of this checkout did not go through, so Ceres stopped. Nothing was spent on these.</p>';
@@ -707,7 +708,10 @@ function ensureTick() {
     for (const el of overlay.querySelectorAll?.('[data-co-since]') || []) el.textContent = elapsedText(el.dataset.coSince);
   }, 1000);
 }
-function neverSent(tx) {
+function neverSent(tx, answer = null) {
+  // IN-0888: "your wallet never asked you" is the confirmer's own text (walletNeverAskedText: PAYMENT_PROMPT_OPEN_ENDING
+  // for a Keychain prompt left open past the lifetime, pending maintainer question).
+  tx.neverAsked = answer?.by === 'wallet-expired' ? (answer.error || walletNeverAskedText(tx.operations, 'lifetime')) : null;
   tx.state = 'not_sent'; tx.historyUnreadable = false; finish(tx);
 }
 function finish(tx) {
@@ -763,7 +767,7 @@ async function verify(tx) {
       : await waitThrough({ key: `checkout:${co.player}:${tx.nonce}`, account: co.player, check: (options) => check(tx.tx_id, options), since: tx.asked_at }).done;
     if (answer.state === 'confirmed') { tx.state = 'confirmed'; tx.result = answer.result ?? tx.result ?? null; finish(tx); return; }
     if (answer.state === 'refused') { tx.state = 'failed'; tx.message = answer.result?.message || answer.error; finish(tx); return; }
-    neverSent(tx);
+    neverSent(tx, answer);
   } finally { tx.checking = false; }
 }
 function resumeGroups() {
