@@ -3,14 +3,36 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 
-from tests.ceres.fixture_live import install_routes, spawn_fixture_ceres
+from tests.ceres.fixture_live import IMAGE_HOSTS, install_routes, spawn_fixture_ceres
 
 playwright = pytest.importorskip('playwright.sync_api')
 pytestmark = pytest.mark.browser
 FIXTURE = Path(__file__).parents[1] / 'fixtures' / 'upstream' / 'board-basic'
+def _synthetic_card_art(width=300, height=420):
+    """A plain synthetic card picture built at runtime (no committed image, no game art): a two-colour gradient
+    with a lighter centre panel, so the capture shows where the artwork sits and how large it is."""
+    import struct, zlib
+    rows = []
+    for y in range(height):
+        row = bytearray([0])
+        for x in range(width):
+            inner = 40 <= x < width - 40 and 60 <= y < height - 120
+            r, g, b = (60 + y * 120 // height, 40 + x * 80 // width, 140)
+            if inner:
+                r, g, b = min(255, r + 70), min(255, g + 70), min(255, b + 70)
+            row += bytes((r, g, b))
+        rows.append(bytes(row))
+    def chunk(tag, data):
+        return struct.pack('>I', len(data)) + tag + data + struct.pack('>I', zlib.crc32(tag + data) & 0xffffffff)
+    header = struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0)
+    return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', header) + chunk(b'IDAT', zlib.compress(b''.join(rows))) + chunk(b'IEND', b'')
+
+
+SYNTHETIC_CARD_ART = _synthetic_card_art()
 
 
 def _art_ready(page):
@@ -25,9 +47,17 @@ def _art_ready(page):
 def _open_lyanna(browser, base, width, height):
     page = browser.new_page(viewport={'width': width, 'height': height}, device_scale_factor=1)
     page.emulate_media(reduced_motion='reduce')
-    # The tile fixture has no bundled bitmap. Permit only the tile's existing game-art CDN
-    # through the fixture router so the capture shows Lyanna's actual artwork.
-    install_routes(page, FIXTURE, overlays=['card-actions'], images='cdn')
+    # The tile fixture has no bundled bitmap. Serve synthetic art locally for both
+    # game image hosts, then install the normal offline fixture routes.
+    # Playwright checks the newest matching route first, so this CDN route takes
+    # precedence over install_routes' image placeholder handler.
+    def serve_synthetic_art(route):
+        if (urlsplit(route.request.url).hostname or '') in IMAGE_HOSTS:
+            return route.fulfill(status=200, content_type='image/png', body=SYNTHETIC_CARD_ART)
+        return route.fallback()
+
+    install_routes(page, FIXTURE, overlays=['card-actions'])
+    page.route('**/*', serve_synthetic_art)
     page.goto(f'{base}/cards?player=sample01&mode=cards')
     # Match the passing My cards page setup: explicitly select cards mode
     # and wait for the app's view-ready marker plus a real grid tile.
