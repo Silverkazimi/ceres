@@ -29,10 +29,18 @@ def _open_lyanna(browser, base, width, height):
     # through the fixture router so the capture shows Lyanna's actual artwork.
     install_routes(page, FIXTURE, overlays=['card-actions'], images='cdn')
     page.goto(f'{base}/cards?player=sample01')
-    page.locator('#cb-q').fill('Lyanna Natura')
-    tile = page.locator('#cb-grid .cb-tile', has_text='Lyanna Natura').first
-    tile.wait_for(state='visible')
-    tile.click()
+    # Match step2c: wait for My cards to load, then open card 27 from the same
+    # sample01 collection payload used by the rig (the virtualized tile may not
+    # be mounted when it is outside the initial grid chunk).
+    page.locator('.cb-tile').first.wait_for(state='visible')
+    page.evaluate("""async () => {
+      const cart = await import('/static/card-cart.js');
+      const body = await (await fetch('/api/cards?player=sample01')).json();
+      const copies = body.cards;
+      const row = copies.find((card) => card.card_detail_id === 27 && card.edition === 1 && card.foil === 0);
+      if (!row) throw new Error('Lyanna Natura print not found in sample01 collection');
+      cart.cartOpenOwnedMenu(row, '', { player: 'sample01', copies });
+    }""")
     _art_ready(page)
     return page
 

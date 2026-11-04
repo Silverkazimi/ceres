@@ -2,12 +2,6 @@
  "_comment": "Card menu pilot frames: one print (card 27, Beta/edition 1, regular) holds an owned unstaked, an owned staked, a lent-out and a borrowed copy (plain delegations, no rental). Synthetic.",
  "edits": [
   {
-   "match": {
-    "host": "api.splinterlands.com",
-    "method": "GET",
-    "path": "/cards/collection/sample01"
-   },
-   "select": "$.cards",
    "append": {
     "alpha_xp": 0,
     "bcx": 5,
@@ -69,15 +63,15 @@
     "unlock_date": null,
     "wagon_uid": null,
     "xp": 3
-   }
-  },
-  {
+   },
    "match": {
     "host": "api.splinterlands.com",
     "method": "GET",
     "path": "/cards/collection/sample01"
    },
-   "select": "$.cards",
+   "select": "$.cards"
+  },
+  {
    "append": {
     "alpha_xp": 0,
     "bcx": 8,
@@ -139,7 +133,13 @@
     "unlock_date": null,
     "wagon_uid": null,
     "xp": 3
-   }
+   },
+   "match": {
+    "host": "api.splinterlands.com",
+    "method": "GET",
+    "path": "/cards/collection/sample01"
+   },
+   "select": "$.cards"
   }
  ]
 }

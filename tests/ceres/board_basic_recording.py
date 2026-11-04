@@ -580,14 +580,31 @@ def _overlays(collection_cards: list[dict]) -> dict[str, dict]:
         card = dict(worker, uid=uid, xp=1, bcx=1, level=1, stake_ref_uid=None, stake_start_date=None, stake_plot=None,
                     stake_region=None, created_tx=tx(f"partner:{n}"))
         partners.append(card)
-    collection = {"method": "GET", "host": API, "path": f"/cards/collection/{PLAYER}"}
+    collection = {"host": API, "method": "GET", "path": f"/cards/collection/{PLAYER}"}
     deeds = {"method": "GET", "host": VAPI, "path": "/land/deeds"}
     rented = dict(collection_card(_card("rented", 62, 1, 450.0, level=2, bcx=3)), uid=RENTED_CARD, player=RENTER,
                   delegated_to=PLAYER, rental_type="season", rental_days=None, rental_date="2026-10-01T00:00:00.000Z",
                   delegation_tx=tx("rented"))
     soulkeep = dict(collection_card(_card("soulkeep", 63, 1, 510.0, level=1, bcx=1)), uid=SOULKEEP_CARD)
+    # Four plain delegation states of Lyanna Natura for the owned-card
+    # menu captures. Build them from the same deterministic collection record
+    # shape as the base fixture, then set the synthetic copy facts explicitly.
+    lyanna = next(c for c in collection_cards if c["card_detail_id"] == 27)
+    lent = dict(lyanna, player=PLAYER, uid="C1-27-SYNLENT001", xp=3, bcx=5, level=3,
+                collection_power=18000, delegated_to="player0005", delegation_tx="synthetic-delegation-lent",
+                stake_ref_uid=None, stake_start_date=None, stake_plot=None, stake_region=None,
+                created_block=101745519, created_tx="9b09f04ccb486f22139adbcd9e669a8c6d1ab928",
+                land_base_pp="9000.000", land_dec_stake_needed=2500)
+    borrowed = dict(lent, player="player0006", uid="C1-27-SYNBORR001", bcx=8, level=4,
+                    delegated_to=PLAYER, delegation_tx="synthetic-delegation-borrowed")
+    card_actions = {
+        "_comment": "Card menu pilot frames: one print (card 27, Beta/edition 1, regular) holds an owned unstaked, an owned staked, a lent-out and a borrowed copy (plain delegations, no rental). Synthetic.",
+        "edits": [{"match": collection, "select": "$.cards", "append": dict(sorted(copy.items()))}
+                  for copy in (lent, borrowed)],
+    }
     finished = _worksite(dataclass_replace(NEVER_BUILT, building="grain", ready=True), 0.0, 0.0, 0.0)
     return {
+        "card-actions": card_actions,
         "browser-combine": {"edits": [{"match": collection, "select": "$.cards", "append": p} for p in partners]},
         "locked-plot": {"edits": [{"match": deeds, "select": f"$.data.deeds[?(@.deed_uid=='{LOCKED.uid}')]", "set": {"lock_days": 3}},
                                   {"match": {"method": "GET", "host": VAPI, "path": f"/land/deeds/{LOCKED.plot_id}"},
