@@ -28,19 +28,11 @@ def _open_lyanna(browser, base, width, height):
     # The tile fixture has no bundled bitmap. Permit only the tile's existing game-art CDN
     # through the fixture router so the capture shows Lyanna's actual artwork.
     install_routes(page, FIXTURE, overlays=['card-actions'], images='cdn')
-    page.goto(f'{base}/cards?player=sample01')
-    # Match step2c: wait for My cards to load, then open card 27 from the same
-    # sample01 collection payload used by the rig (the virtualized tile may not
-    # be mounted when it is outside the initial grid chunk).
-    page.locator('.cb-tile').first.wait_for(state='visible')
-    page.evaluate("""async () => {
-      const cart = await import('/static/card-cart.js');
-      const body = await (await fetch('/api/cards?player=sample01')).json();
-      const copies = body.cards;
-      const row = copies.find((card) => card.card_detail_id === 27 && card.edition === 1 && card.foil === 0);
-      if (!row) throw new Error('Lyanna Natura print not found in sample01 collection');
-      cart.cartOpenOwnedMenu(row, '', { player: 'sample01', copies });
-    }""")
+    page.goto(f'{base}/cards?player=sample01&mode=cards')
+    # Match the passing My cards page setup: explicitly select cards mode
+    # and wait for the app's view-ready marker plus a real grid tile.
+    page.wait_for_selector('body[data-view-ready="true"] #cb-grid .cb-tile', timeout=30_000)
+    page.locator('#cb-grid .cb-tile[aria-label*="Lyanna Natura"]').click()
     _art_ready(page)
     return page
 

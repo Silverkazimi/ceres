@@ -593,9 +593,10 @@ def _overlays(collection_cards: list[dict]) -> dict[str, dict]:
     lent = dict(lyanna, player=PLAYER, uid="C1-27-SYNLENT001", xp=3, bcx=5, level=3,
                 collection_power=18000, delegated_to="player0005", delegation_tx="synthetic-delegation-lent",
                 stake_ref_uid=None, stake_start_date=None, stake_plot=None, stake_region=None,
-                created_block=101745519, created_tx="9b09f04ccb486f22139adbcd9e669a8c6d1ab928",
+                created_block=101745519, created_tx=tx("card-actions:lent"),
                 land_base_pp="9000.000", land_dec_stake_needed=2500)
     borrowed = dict(lent, player="player0006", uid="C1-27-SYNBORR001", bcx=8, level=4,
+                    created_tx=tx("card-actions:borrowed"),
                     delegated_to=PLAYER, delegation_tx="synthetic-delegation-borrowed")
     card_actions = {
         "_comment": "Card menu pilot frames: one print (card 27, Beta/edition 1, regular) holds an owned unstaked, an owned staked, a lent-out and a borrowed copy (plain delegations, no rental). Synthetic.",
