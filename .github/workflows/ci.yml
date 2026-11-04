@@ -85,7 +85,16 @@ jobs:
           CERES_CI_NO_NETWORK: "1"
           CERES_TEST_SHARD: ${{ matrix.shard }}/20
           CERES_BROWSER_SET: core
+          CERES_CI_CAPTURES: ${{ github.workspace }}/ci-captures
         run: python -m pytest -m browser -q --junitxml=browser-shard.xml
+      - name: upload CI captures (shard ${{ matrix.shard }})
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-captures-${{ matrix.shard }}
+          path: ci-captures/
+          if-no-files-found: ignore
+          retention-days: 14
       # Seconds per test file in this shard, for refreshing tests/ceres/browser_durations.json.
       - name: browser test durations (shard ${{ matrix.shard }} of 20)
         if: always()
