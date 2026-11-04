@@ -640,7 +640,8 @@ async function requestBroadcastPromise(account, operations, onResponse, authorit
             if (response?.walletExpired && response?.relayConfirmed === true) { try { markWalletNeverAsked(account, operations, { attempt: attemptRow.attempt }); } catch (_) {} }
             return;
           }
-          markConfirmation(account, operations, 'never-sent', { error: error.message });
+          if (metadata?.holdsServerClaim) markSilent(account, operations);
+          else markConfirmation(account, operations, 'never-sent', { error: error.message });
           releaseBroadcastRequest(account, requestIdentities);
           finished = true;
           reject(requestError(error));
@@ -664,7 +665,8 @@ async function requestBroadcastPromise(account, operations, onResponse, authorit
       const failure = error instanceof Error ? error : new Error(String(error));
       failure.retryable = true;
       failure.broadcasted = false;
-      markConfirmation(account, operations, 'never-sent', { error: failure.message });
+      if (metadata?.holdsServerClaim) markSilent(account, operations);
+      else markConfirmation(account, operations, 'never-sent', { error: failure.message });
       releaseBroadcastRequest(account, requestIdentities);
       try { updateAdmission(null, true); } catch (_) { /* Keep conservative budget. */ }
       reject(requestError(failure));
@@ -769,7 +771,10 @@ export async function requestSignatureThroughGate(account, operations, onRespons
     return queued;
   } catch (error) {
     if (error.broadcasted === undefined) { error.broadcasted = false; error.retryable = false; }
-    if (error.broadcasted === false) markConfirmation(account, operations, 'never-sent', { error: error.message });
+    if (error.broadcasted === false) {
+      if (holdsServerClaim) markSilent(account, operations);
+      else markConfirmation(account, operations, 'never-sent', { error: error.message });
+    }
     throw error;
   }
 }

@@ -1482,7 +1482,7 @@ export function clearOperationPollTimer(entryId) {
 }
 
 
-export async function beginSharedOperation({ account, operations, family, context, onResponse }) {
+export async function beginSharedOperation({ account, operations, family, context, onResponse, actionId = null }) {
   let receipt = publishOperationReceipt({
     entryId: operationEntryId(), family, context, operations, phase: 'working', txId: null, attempt: 0, pollStartedAt: Date.now(),
   });
@@ -1491,7 +1491,7 @@ export async function beginSharedOperation({ account, operations, family, contex
       const txId = response?.result?.id || response?.result?.tx_id || response?.tx_id;
       if (response?.success && txId) receipt = publishOperationReceipt({ ...receipt, phase: 'in_flight', txId, answeredAt: receipt.answeredAt || Date.now() });
       onResponse?.(response);
-    });
+    }, 'Posting', { actionId });
     // answeredAt: the confirm schedule runs from the wallet's answer, as the maintainer's reference swap does (IN-0708).
     return publishOperationReceipt({ ...receipt, phase: 'in_flight', txId: broadcast.txId, inclusionBlock: broadcast.blockNum, answeredAt: receipt.answeredAt || Date.now() });
   } catch (error) {
@@ -1541,6 +1541,10 @@ async function freshReviewForSigning(target, review) {
   await requestOperationPreview(target);
   const next = CERES_PREVIEWS.get(previewKey(target));
   if (!next?.payload) return null;
+  // This is the same review's rebuild. Pass the action lineage explicitly; an unrelated
+  // new preview does not inherit it merely because its digest or target happens to match.
+  next.actionIds = review.actionIds || review.payload.chunks.map(chunk =>
+    confirmationState(review.payload.account, chunk.operations)?.actionId || null);
   if (previewSignature(next.payload) !== before) {
     next.refreshedNotice = true;
     if (target?.scope === 'portfolio') renderCheckoutSurface();
@@ -1611,7 +1615,7 @@ export async function confirmOperationBroadcast(target, { runId = null, runKind 
             if (callbackTxId) markBroadcastedChunk(review, chunk, callbackTxId);
             if (portfolio && index === chunks.length - 1 && S.CERES_CHECKOUT_OPEN) { S.CERES_CHECKOUT_OPEN = false; renderCheckoutSurface(); }
           }
-        }, 'Posting', envelopes?.[index]);
+        }, 'Posting', envelopes?.[index], { actionId: review.actionIds?.[index] || null });
         chunk.inclusionBlock = broadcast.blockNum;
         if (broadcast.queued) markBroadcastedChunk(review, chunk, broadcast.txId, true);
         review.signingStates[index] = 'signed';

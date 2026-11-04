@@ -970,11 +970,14 @@ def ledger_routing_release(request: Request, account: str, operations: list) -> 
                 for item in row.get("matches", {}).values()):
             return None
         attempts = list(_attempts(row).values())
-        if not attempts or any(not _begin_ok(rec) or rec.get("closed_at") is None
+        if not attempts or any(not _begin_ok(rec) or rec.get("wallet_tx_id")
+                               or not rec.get("verified_envelope_expiry")
                                or (rec.get("expiry") or {}).get("status") != "absent"
                                or not (rec.get("expiry") or {}).get("covered") for rec in attempts):
             return None
-        return {"status": "absent", "digest": digest, "action_id": row["action_id"]}
+        return {"status": "absent", "digest": digest, "action_id": row["action_id"],
+                "verified_expiry": min((rec["verified_envelope_expiry"] for rec in attempts
+                                        if rec.get("verified_envelope_expiry")), default=None)}
 
 
 def _body_attempt(body: dict) -> str:
@@ -1227,6 +1230,8 @@ def prove_own_action(account: str, operations: list, *, earliest: float, until: 
 
 
 def _expiry_at(record: dict) -> float:
+    if record.get("closed_at") is None and record.get("verified_envelope_expiry"):
+        return record["verified_envelope_expiry"] + CLOCK_MARGIN_S
     anchor = record.get("closed_at") or record.get("answered_at") or record.get("begin_at") or record["first_at"]
     return anchor + EXPIRY_AFTER_S
 
@@ -1256,9 +1261,17 @@ async def find(request: Request, player: str | None = None):
     if action_id is not None and (not isinstance(action_id, str) or not re.fullmatch(r"[a-f0-9]{32}", action_id)):
         raise HTTPException(422, "Invalid action id")
 
+    root = getattr(getattr(request.app.state, "ceres_config", None), "root", None)
+    verified_expiry = None
+    if root is not None:
+        from . import routing_runs_v2
+        verified_expiry = await asyncio.to_thread(routing_runs_v2.verified_envelope_expiry, root, account, operations)
     def reserve(row, budget):
         event_result = _apply_event(row, body, now, "answered" if body.get("answered") is True else "find", attempt)
         record = row["attempts"][attempt]
+        if (verified_expiry is not None and record.get("begin_at") is not None
+                and verified_expiry > record["begin_at"]):
+            record["verified_envelope_expiry"] = verified_expiry
         if "read_mode" not in record:
             _trim_account_budget(budget, now)
             epoch = f"{row['action_id']}:{attempt}"
@@ -1316,10 +1329,13 @@ async def find(request: Request, player: str | None = None):
         # record of the attempt, deeper on every pass that did not find it (fix round 4, .
         first = record.get("begin_at") or record["first_at"]
         earliest = record["begin_at"] if begin_ok else first - record.get("discovery_depth_s", TOKENLESS_DEPTH_S)
-        closed = record.get("closed_at") is not None and begin_ok
+        closed = (record.get("closed_at") is not None or
+                  (record.get("verified_envelope_expiry") is not None
+                   and now >= record["verified_envelope_expiry"] + CLOCK_MARGIN_S)) and begin_ok
         return {"read": "expiry", "earliest": earliest, "closed": closed, "run": run, "gen": record.get("gen", 0),
                 "begin_ok": begin_ok, "excluded": sorted(excluded), "proof_excluded": sorted(proof_excluded),
-                "until": record["closed_at"] + TX_LIFETIME_S if record.get("closed_at") else None, "scan": record.get("scan"), **common}
+                "until": (record["closed_at"] + TX_LIFETIME_S if record.get("closed_at") else
+                          record.get("verified_envelope_expiry")), "scan": record.get("scan"), **common}
 
     plan = ledger_update(request, account, operations, reserve,
                          action_id=action_id, attempt=attempt, with_account=True)

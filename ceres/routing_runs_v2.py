@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 import copy
+from datetime import datetime, timezone
 import hashlib
 import hmac
 import threading
@@ -641,7 +642,8 @@ def mark_unsent(folder: Path, record: dict, bundle_id: str, absence_proof: dict 
     (fix round 1, Aletheia MEDIUM-3: a browser's claim of absence is never trusted, ): `absence_proof` is the
     confirm ledger's record of the one expiry read that the server itself made of the signer's own history
     (routes_confirm.find: paged back to the signing moment, node head past the expiry), bound to exactly these claimed
-    operations. Allowed only when no id is attached and the claim is older than Hive's longest lifetime; the bundle
+    operations. Allowed only when no id is attached and the verified envelope has expired (or the legacy
+    claim has aged past Hive's longest lifetime); the bundle
     stops and its reservations are released exactly as a by-id "absent past expiry" does. Zero calls."""
     _bundle(record, bundle_id)
     status = record["bundles"][bundle_id]
@@ -650,7 +652,12 @@ def mark_unsent(folder: Path, record: dict, bundle_id: str, absence_proof: dict 
     if status["state"] != "claimed" or status.get("tx_id"):
         raise routing.RoutingError("Only a claimed bundle without a transaction id can be marked as not sent")
     claimed_at = status.get("claimed_at")
-    if not isinstance(claimed_at, (int, float)) or time.time() - claimed_at <= TX_EXPIRY_SECONDS:
+    verified_expiry = status.get("verified_envelope_expiry")
+    envelope_proven = (isinstance(verified_expiry, (int, float))
+                       and absence_proof and absence_proof.get("verified_expiry") == verified_expiry
+                       and time.time() > verified_expiry + 120)
+    legacy_proven = isinstance(claimed_at, (int, float)) and time.time() - claimed_at > TX_EXPIRY_SECONDS
+    if not (envelope_proven or legacy_proven):
         raise routing.RoutingError("The transaction has not expired yet")
     operations = (status.get("claim") or {}).get("operations")
     if (not isinstance(absence_proof, dict) or absence_proof.get("status") != "absent" or not operations
@@ -697,6 +704,28 @@ def replay_account_claims(root: Path, player: str, proof_lookup) -> int:
     return released
 
 
+def verified_envelope_expiry(root: Path, player: str, operations: list) -> float | None:
+    """Read one durable sign-only claim's server-verified envelope bound after restart."""
+    matches = []
+    with locked(root, player) as folder:
+        directory = Path(root) / "routing_claims_r6" / validate_player(player)
+        paths = list(directory.glob("*.json")) if directory.is_dir() else []
+        with _MEM:
+            ids = {run_id for account, run_id in _RUNS if account == player}
+        ids.update(path.stem for path in paths if _RUN_ID.fullmatch(path.stem))
+        for run_id in ids:
+            try:
+                record = read(folder, player, run_id)
+            except routing.RoutingError:
+                continue
+            for status in record.get("bundles", {}).values():
+                if (status.get("state") == "claimed" and not status.get("tx_id")
+                        and (status.get("claim") or {}).get("operations") == operations
+                        and isinstance(status.get("verified_envelope_expiry"), (int, float))):
+                    matches.append(status["verified_envelope_expiry"])
+    return matches[0] if len(matches) == 1 else None
+
+
 def release(folder: Path, record: dict, bundle_id: str) -> dict:
     """Return a claimed bundle to planned when the wallet produced no signature; zero calls.
 
@@ -734,8 +763,48 @@ def head(folder: Path, record: dict, bundle_id: str) -> dict:
             or not isinstance(props.get("head_block_id"), str)
             or not isinstance(props.get("time"), str)):
         raise routing.RoutingError("Hive head response is incomplete; outcome remains unknown")
-    return {"head_block_number": props["head_block_number"],
-            "head_block_id": props["head_block_id"], "time": props["time"]}
+    result = {"head_block_number": props["head_block_number"],
+              "head_block_id": props["head_block_id"], "time": props["time"]}
+    record["bundles"][bundle_id]["prepare_head"] = result
+    write(folder, record)
+    return result
+
+
+def bind_envelope(folder: Path, record: dict, bundle_id: str, transaction: dict) -> dict:
+    """Store the exact sign-only envelope bound derived from the server's counted head."""
+    _bundle(record, bundle_id)
+    status = record["bundles"][bundle_id]
+    head_props = status.get("prepare_head")
+    claim = status.get("claim") or {}
+    if status.get("state") != "claimed" or not head_props or status.get("tx_id"):
+        raise routing.RoutingError("Claim and prepare this bundle before signing")
+    if not isinstance(transaction, dict) or transaction.get("operations") != claim.get("operations") or transaction.get("extensions") != []:
+        raise routing.RoutingError("Prepared transaction differs from the claimed operations")
+    block_id = head_props["head_block_id"]
+    if not re.fullmatch(r"[a-fA-F0-9]{40}", block_id):
+        raise routing.RoutingError("Counted Hive head is invalid")
+    prefix = int.from_bytes(bytes.fromhex(block_id[8:16]), "little")
+    if transaction.get("ref_block_num") != head_props["head_block_number"] & 65535 or transaction.get("ref_block_prefix") != prefix:
+        raise routing.RoutingError("Prepared transaction uses a different Hive head")
+    try:
+        from .routes_confirm import TX_LIFETIME_S
+        stamp, end = head_props["time"], transaction["expiration"]
+        if not isinstance(end, str) or not re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d", end):
+            raise ValueError("invalid expiration format")
+        if not isinstance(stamp, str) or not re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d", stamp):
+            raise ValueError("invalid head time format")
+        prepared_at = datetime.fromisoformat(stamp).replace(tzinfo=timezone.utc).timestamp()
+        expiry = datetime.fromisoformat(end).replace(tzinfo=timezone.utc).timestamp()
+    except (KeyError, TypeError, ValueError) as exc:
+        raise routing.RoutingError("Prepared transaction has an invalid expiry") from exc
+    if expiry != prepared_at + 600 or expiry <= time.time() + 5 or expiry > time.time() + TX_LIFETIME_S:
+        raise routing.RoutingError("Prepared transaction expiry differs from the counted Hive head")
+    prior = status.get("verified_envelope_expiry")
+    if prior is not None and prior != expiry:
+        raise routing.RoutingError("This claim already has a different prepared envelope")
+    status["verified_envelope_expiry"] = expiry
+    write(folder, record)
+    return record
 
 
 def _charge(folder: Path, record: dict, action: str, endpoint: str, account: str,

@@ -278,10 +278,12 @@ def test_routing_release_predicate_and_crash_replay(tmp_path):
         assert confirm.ledger_routing_release(request, player, ops) is None
         def covered(row):
             row["attempts"][attempt].update(begin_confirmed=True, closed_at=200,
+                                              verified_envelope_expiry=300,
                                               expiry={"status": "absent", "covered": True})
         ledger_update(request, player, ops, covered, action_id=action_id, attempt=attempt)
         proof = confirm.ledger_routing_release(request, player, ops)
         assert proof and proof["status"] == "absent"
+        record["bundles"][bundle_id]["verified_envelope_expiry"] = 300
         record["bundles"][bundle_id]["claimed_at"] -= runs.TX_EXPIRY_SECONDS + 1
         runs.replay_release(folder, record, lambda _: proof)
         first = record["bundles"][bundle_id]["state"]
@@ -292,6 +294,88 @@ def test_routing_release_predicate_and_crash_replay(tmp_path):
         assert restored["bundles"][bundle_id]["state"] == first
         runs.replay_release(folder, restored, lambda _: proof)
         assert restored["bundles"][bundle_id]["state"] == first
+
+
+def test_sign_only_envelope_bound_is_server_checked_and_survives_restart(tmp_path):
+    """Revision 6 §4: a silent claim needs the exact envelope from a counted head."""
+    from datetime import datetime, timezone
+    from ceres import routing_runs_v2 as runs
+    from tests.ceres.test_routing_v2_service import _preview
+    player = "fixtureowner"
+    with runs.locked(tmp_path, player) as folder:
+        record = runs.create(folder, player, _preview(player), {"sale_dec"})
+        bundle_id = record["manifest"]["bundles"][0]["id"]
+        claim = runs.claim(folder, record, bundle_id, {"sale_dec"}, True)
+        now = int(runs.time.time())
+        stamp = datetime.fromtimestamp(now, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+        head = {"head_block_number": 12345, "head_block_id": "0" * 40, "time": stamp}
+        record["bundles"][bundle_id]["prepare_head"] = head
+        runs.write(folder, record)
+        envelope = {"ref_block_num": 12345, "ref_block_prefix": 0,
+                    "expiration": datetime.fromtimestamp(now + 600, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),
+                    "operations": claim["operations"], "extensions": []}
+        with pytest.raises(Exception):
+            runs.bind_envelope(folder, record, bundle_id, {**envelope, "expiration": stamp})
+        with pytest.raises(Exception):
+            runs.bind_envelope(folder, record, bundle_id, {**envelope, "operations": []})
+        bound = runs.bind_envelope(folder, record, bundle_id, envelope)
+        assert bound["bundles"][bundle_id]["verified_envelope_expiry"] == now + 600
+        run_id = record["run_id"]
+        runs._RUNS.pop((player, run_id), None)
+        assert runs.verified_envelope_expiry(tmp_path, player, claim["operations"]) == now + 600
+        assert runs.verified_envelope_expiry(tmp_path, player, []) is None
+
+
+def test_silent_sign_only_release_requires_verified_expiry_and_covered_proof(tmp_path):
+    """Revision 6 §4 / OR-1092: an unanswered direct request has no release proof."""
+    from ceres import routing_runs_v2 as runs
+    from tests.ceres.test_routing_v2_service import _preview
+    player = "fixtureowner"
+    request = _request(tmp_path)
+    with runs.locked(tmp_path, player) as folder:
+        record = runs.create(folder, player, _preview(player), {"sale_dec"})
+        bundle_id = record["manifest"]["bundles"][0]["id"]
+        ops = runs.claim(folder, record, bundle_id, {"sale_dec"}, True)["operations"]
+        attempt = "a" * 16
+        action = ledger_update(request, player, ops,
+            lambda row: confirm._apply_event(row, {"operations": ops}, 100, "begin", attempt),
+            register_attempt=attempt, attempt=attempt)["action_id"]
+        def covered(row):
+            row["attempts"][attempt].update(begin_confirmed=True,
+                expiry={"status": "absent", "covered": True})
+        ledger_update(request, player, ops, covered, action_id=action, attempt=attempt)
+        assert confirm.ledger_routing_release(request, player, ops) is None
+        def bound(row):
+            row["attempts"][attempt]["verified_envelope_expiry"] = 200
+        ledger_update(request, player, ops, bound, action_id=action, attempt=attempt)
+        proof = confirm.ledger_routing_release(request, player, ops)
+        assert proof and proof["verified_expiry"] == 200
+        record["bundles"][bundle_id]["verified_envelope_expiry"] = 200
+        runs.replay_release(folder, record, lambda _: proof)
+        assert record["bundles"][bundle_id]["state"] == "stopped"
+
+
+def test_direct_keychain_approval_id_needs_matching_chain_transaction(tmp_path):
+    """Revision 6 §4 / OR-1092: callback id alone cannot confirm the claim."""
+    from ceres import routing_runs_v2 as runs
+    from tests.ceres.test_routing_v2_service import _preview
+    player = "fixtureowner"
+    with runs.locked(tmp_path, player) as folder:
+        record = runs.create(folder, player, _preview(player), {"sale_dec"})
+        bundle_id = record["manifest"]["bundles"][0]["id"]
+        claim = runs.claim(folder, record, bundle_id, {"sale_dec"}, True)
+        assert record["bundles"][bundle_id].get("verified_envelope_expiry") is None
+        tx_id = "f" * 40
+        runs.attach(folder, record, bundle_id, tx_id)
+        runs.reconcile(folder, record, bundle_id, "chain",
+                       chain_get=lambda _tx: ({"operations": _ops("othernonce")}, None))
+        assert record["bundles"][bundle_id]["chain"] == "mismatch"
+        assert record["bundles"][bundle_id]["state"] == "outcome_unknown"
+        # Only the exact transaction reported by Hive can advance the claim.
+        record["call_budget"]["last_read"].clear()  # admit the next scheduled probe
+        runs.reconcile(folder, record, bundle_id, "chain",
+                       chain_get=lambda seen: ({"operations": claim["operations"]}, None) if seen == tx_id else (None, "not_found"))
+        assert record["bundles"][bundle_id]["chain"] == "included"
 
 
 def test_by_id_budget_fences_physical_hive_call_before_transport(tmp_path):

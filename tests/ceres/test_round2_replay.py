@@ -82,6 +82,62 @@ def test_e2e_worksite_silent_wallet_is_never_reported_not_sent():
     assert outcome["state"] == "never-sent" and outcome["wallet"] == 1, outcome
 
 
+def test_worksite_real_adapter_two_wallets_rebuilds_restored_preview():
+    """Revision 6 §§1, 3: each wallet sees a newly reviewed, nonce-distinct vector."""
+    entry, source = _exposed("worksite.js", ["keychainReady", "worksiteWhatText", "worksiteModalStillOpenFor", "renderWorksiteVerdict", "closeWorksiteModal", "refreshConfirmedPlot", "reportWorksiteVerdict"])
+    body = r"""
+(async () => {
+CURRENT_PLAYER = 'alice'; BOARD = { player: 'alice', plots: [{ deed_uid: '', plot: '1-1-1', worksite_type: 'Grain Farm' }] };
+keychainReady = () => true; worksiteWhatText = () => 'worksite'; worksiteModalStillOpenFor = () => true;
+renderWorksiteVerdict = () => {}; closeWorksiteModal = () => {}; refreshConfirmedPlot = async () => {};
+reportWorksiteVerdict = () => {};
+document.getElementById = id => id === 'worksite-modal-overlay' ? { hidden: false, dataset: { deedUid: '' } } : null;
+const signed = []; const realWallet = window.hive_keychain.requestBroadcast;
+window.hive_keychain.requestBroadcast = (account, operations, authority, callback) => {
+  signed.push(JSON.parse(JSON.stringify(operations)));
+  realWallet(account, operations, authority, callback);
+};
+__world.scenario = { lag: 0 };
+let verifies = 0;
+__world.gameFetch = async (path, body) => {
+  if (path === '/api/plots//worksite-preview') return __world.reply(S.WORKSITE_MODAL_PREVIEW.payload);
+  if (path === '/api/op-verify') { verifies += 1; return __world.reply({ state: 'domain-confirmed', refreshed_deeds: [''], refresh_errors: [] }); }
+  return null;
+};
+const op = nonce => ['custom_json', { id: 'sm_land_operation', required_auths: [], required_posting_auths: ['alice'],
+  json: JSON.stringify({ op: 'start_worksite', n: nonce }) }];
+const preview = nonce => ({ account: 'alice', kind: 'worksite', target: 'grain', chunks: [{ operations: [op(nonce)] }] });
+S.WORKSITE_MODAL_PREVIEW = { payload: preview('worksitea1') };
+confirmWorksiteBroadcast({ deed_uid: '', plot: '1-1-1' }, null);
+for (let i = 0; i < 10 && __world.walletCalls < 1; i++) await __advance(2000);
+if (__world.walletCalls !== 1) throw Error('first wallet not reached');
+await __advance(10000);
+// Restore a persisted preview with an old nonce. The real handoff fetches the new server preview.
+S.WORKSITE_MODAL_PREVIEW = JSON.parse(JSON.stringify({ payload: preview('worksitea1') }));
+const originalFetch = __world.gameFetch;
+__world.gameFetch = async (path, body) => path === '/api/plots//worksite-preview'
+  ? __world.reply(preview('worksiteb2')) : originalFetch(path, body);
+__world.txId = 'cd'.repeat(20);
+confirmWorksiteBroadcast({ deed_uid: '', plot: '1-1-1' }, null);
+await __advance(1000);
+if (__world.walletCalls !== 1) throw Error('changed terms skipped the second review');
+confirmWorksiteBroadcast({ deed_uid: '', plot: '1-1-1' }, null);
+for (let i = 0; i < 10 && __world.walletCalls < 2; i++) await __advance(2000);
+if (__world.walletCalls !== 2) throw Error('second wallet not reached');
+for (let i = 0; i < 10 && verifies < 2; i++) await __advance(2000);
+if (verifies < 2) throw Error('both signed vectors did not reach the real verification adapter');
+const nonces = signed.map(ops => JSON.parse(ops[0][1].json).n);
+if (JSON.stringify(nonces) !== JSON.stringify(['worksitea1', 'worksiteb2'])) throw Error('signed vectors reused preview: ' + nonces);
+console.log('IR9545-RESULT ' + JSON.stringify({ state: 'confirmed', wallet: __world.walletCalls, nonces }));
+process.exit(0);
+})().catch(error => { console.log('IR9545-RESULT ' + JSON.stringify({ state: 'error:' + (error.stack || error.message) })); process.exit(0); });
+"""
+    outcome = _run(body, entry, source)
+    assert outcome["state"] == "confirmed", outcome
+    assert outcome["wallet"] == 2, outcome
+    assert outcome["nonces"] == ["worksitea1", "worksiteb2"], outcome
+
+
 PLOT_LOCK = r"""
 (async () => {
 const s = SCENARIO; __world.scenario = s;

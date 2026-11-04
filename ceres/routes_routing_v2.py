@@ -132,18 +132,16 @@ async def attach_transaction(request: Request, player: str | None = None):
 
 @router.post("/api/harvest/routing/v2/unsent")
 async def mark_unsent(request: Request, player: str | None = None):
-    """: the browser's own-history reads (, incl. the one read at Hive expiry) proved a claimed bundle
-    without id absent; past Hive's lifetime it stops and releases its reservations. Zero calls. (The former maintainer-pressed
-    `find` route is gone: the shared confirmer finds a missing id by itself and attaches it.)"""
+    """Release an id-less claim only on the server's durable sign-only envelope and own-history proof."""
     body = await _body(request)
     player = player_for_request(request, player)
-    from .routes_confirm import ledger_absence
+    from .routes_confirm import ledger_routing_release
 
     def act(folder, record):
         # fix round 1 (MEDIUM-3): the server's own proof, never the browser's claim.
         status = record.get("bundles", {}).get(body.get("bundle_id")) or {}
         operations = (status.get("claim") or {}).get("operations")
-        proof = ledger_absence(request, player, body.get("attempt"), operations) if operations else None
+        proof = ledger_routing_release(request, player, operations) if operations else None
         return runs.mark_unsent(folder, record, body.get("bundle_id"), absence_proof=proof)
     try:
         return await asyncio.to_thread(_execute, request, player, body.get("run_id"), act)
@@ -165,6 +163,18 @@ async def counted_hive_head(request: Request, player: str | None = None):
     try:
         return await asyncio.to_thread(_execute, request, player, body.get("run_id"),
             lambda folder, record: runs.head(folder, record, body.get("bundle_id")))
+    except routing.RoutingError as exc:
+        raise _refused(request, player, exc) from exc
+
+
+@router.post("/api/harvest/routing/v2/envelope")
+async def bind_sign_only_envelope(request: Request, player: str | None = None):
+    """Persist a server-checked expiry before the sign-only wallet prompt opens."""
+    body = await _body(request)
+    player = player_for_request(request, player)
+    try:
+        return await asyncio.to_thread(_execute, request, player, body.get("run_id"),
+            lambda folder, record: runs.bind_envelope(folder, record, body.get("bundle_id"), body.get("transaction")))
     except routing.RoutingError as exc:
         raise _refused(request, player, exc) from exc
 

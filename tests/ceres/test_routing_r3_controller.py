@@ -70,11 +70,12 @@ const api = async (_player, path, body) => {
   if (path === 'claim') { record.bundles['bundle-1'].state = 'claimed'; return {
     authority: 'Posting', member_nonces: ['member-1'], operations: [['custom_json', { id: 'sm_land_operation', json: '{"n":"member-1"}' }]] }; }
   if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-09-24T00:00:00' };
+  if (path === 'envelope') return { verified_envelope_expiry: 1 };
   if (path === 'attach') { record.bundles['bundle-1'] = { state: 'outcome_unknown', tx_id: body.tx_id }; return record; }
   if (path === 'reconcile') return record;   // Hive has not answered: stays pending, the confirmer keeps reading
   throw Error('unexpected endpoint ' + path);
 };
-const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txId: 'b'.repeat(40) }],
+const run = createRoutingRun({ player: 'alice', api, prepare: async (_player, groups) => [{ txId: 'b'.repeat(40), transaction: { operations: groups[0] } }],
   sign: async (_player, _ops, _callback, authority) => {
     if (authority !== 'Posting') throw Error('wrong authority');
     signatures += 1;
@@ -113,6 +114,7 @@ const api = async (_player, path, body) => {
   if (path === 'run' || path === 'state') return record;
   if (path === 'claim') { record.bundles['bundle-1'].state = 'claimed'; return { authority: 'Posting', member_nonces: ['m1', 'm2'], operations: ops }; }
   if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-11-03T00:00:00' };
+  if (path === 'envelope') return { verified_envelope_expiry: 1 };
   if (path === 'attach') { Object.assign(record.bundles['bundle-1'], { state: 'attached', tx_id: body.tx_id, operation_ids: ['op-1', 'op-2'] }); return record; }
   if (path === 'reconcile' && body.mode === 'chain') { probes += 1; if (probes >= 3) { record.bundles['bundle-1'].chain = 'included'; record.bundles['bundle-1'].state = 'checking'; } return record; }
   if (path === 'reconcile' && body.mode === 'game') {
@@ -127,7 +129,7 @@ fetch = async (url) => {
   if (String(url).startsWith('/api/confirm/find')) { finds += 1; return { ok: true, status: 200, json: async () => (finds >= 2 ? { status: 'found', tx_id: 'c'.repeat(40) } : { status: 'not_found', covered: true }) }; }
   throw Error('unexpected fetch ' + url);
 };
-const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txId: null }],
+const run = createRoutingRun({ player: 'alice', api, prepare: async (_player, groups) => [{ txId: null, transaction: { operations: groups[0] } }],
   sign: async () => { const error = Error('The wallet answer was lost'); error.confirmPending = true; error.ambiguousBroadcast = true; throw error; } });
 (async () => {
   await run.create({ preview_id: 'preview', preview_digest: 'digest' });

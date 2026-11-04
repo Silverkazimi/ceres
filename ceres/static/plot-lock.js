@@ -1,7 +1,7 @@
 import { esc, formatPlotLabel } from './format.js';
 import { tipAttrs } from './tooltip.js';
 import { prepareSigningBatch, requestSignatureThroughGate } from './broadcast-gate.js';
-import { confirmAction, waitThrough } from './shared-confirmer.js';
+import { confirmAction, confirmationState, waitThrough } from './shared-confirmer.js';
 import { walletCanSignTransaction } from './wallet.js';
 import { currentCeresAppIdentity } from './transaction-queue.js';
 import { playerQueryAppend } from './board.js';
@@ -49,6 +49,7 @@ function readablePlan(entry) {
     lockDays: 3,
     ...(typeof entry.txId === 'string' && /^[0-9a-f]{40}$/.test(entry.txId) ? { txId: entry.txId } : {}),
     ...(Number.isFinite(entry.signedAt) && entry.signedAt > 0 ? { signedAt: entry.signedAt } : {}),
+    ...(typeof entry.actionId === 'string' && /^[a-f0-9]{32}$/.test(entry.actionId) ? { actionId: entry.actionId } : {}),
     ...(entry.accepted === true ? { accepted: true } : {}),
     ...(entry.notFound === true ? { notFound: true } : {}),
     // fix round 3: the signed lock operation is kept across a reload, so the shared confirmer finds the attempt
@@ -275,6 +276,9 @@ export async function preparePlotLockReview(row) {
 export async function signPlotLockReview(row) {
   if (!walletCanSignTransaction(planAccount)) throw new Error('Locking needs Hive Keychain (Active key)');
   const entry = STAGED_PLOT_LOCKS.get(row?.deed_uid);
+  const previous = reviews.get(row?.deed_uid);
+  const actionId = entry?.actionId || (previous?.action === entry?.action && previous?.baselineDays === entry?.baselineDays
+    ? confirmationState(planAccount, previous.operations)?.actionId || null : null);
   // A review and its signed envelope are consumed as a pair. A retry gets a new UUID.
   reviews.delete(row?.deed_uid);
   const review = await preparePlotLockReview(row);
@@ -284,8 +288,16 @@ export async function signPlotLockReview(row) {
   const current = plotLockState(row);
   if (!current.known || current.days !== entry.baselineDays || row.unlock_date !== entry.baselineUnlockDate) throw new Error('The live deed lock state changed. Refresh before signing.');
   reviews.delete(row.deed_uid);
-  const result = await requestSignatureThroughGate(planAccount, review.operations, null, 'Active', review.prepared,
-    { reviewedActiveLock: review.witness });
+  let result;
+  try {
+    result = await requestSignatureThroughGate(planAccount, review.operations, null, 'Active', review.prepared,
+      { reviewedActiveLock: review.witness, actionId });
+  } catch (error) {
+    entry.actionId = confirmationState(planAccount, review.operations)?.actionId || actionId || null;
+    savePlans();
+    throw error;
+  }
+  entry.actionId = confirmationState(planAccount, review.operations)?.actionId || actionId || null;
   entry.txId = result.txId;
   entry.operations = review.operations;   // the shared confirmer's identity for this lock
   entry.signedAt = Date.now();

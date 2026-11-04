@@ -714,6 +714,8 @@ async function settleCheckResult(ctx, st, intent, result, older) {
 // only, ); nothing is shown as an error.
 async function fund(ctx, st) {
   const intent = st.receipt;
+  const actionId = Array.isArray(intent?.funding_ops)
+    ? confirmationState(ctx.player, intent.funding_ops)?.actionId || null : null;
   st.busy = true; st.fundError = ''; ctx.render();
   try {
     // A funding operation is one handoff only. Rebuild its nonce from the same pool receipt
@@ -766,7 +768,7 @@ async function fund(ctx, st) {
       const result = await requestBroadcastThroughGate(ctx.player, st.funding.operations, response => {
         const id = response?.result?.id || response?.result?.tx_id || response?.tx_id;
         if (typeof id === 'string' && /^[a-f0-9]{40}$/i.test(id)) { tx = id; lateAnswer(id); }
-      }, 'Active', { direct: true });  // one Keychain "sign and send" prompt, like the game
+      }, 'Active', { direct: true, actionId });  // one Keychain "sign and send" prompt, like the game
       tx = result.txId || tx;
     } catch (failure) {
       if (typeof failure?.txId === 'string' && /^[a-f0-9]{40}$/i.test(failure.txId) && failure?.broadcasted !== false) tx = failure.txId;
@@ -851,6 +853,8 @@ export async function swapAction(ctx, name, target) {
 // One wallet handoff for a swap or a pool add/withdraw (): reserve the intent across tabs, one fresh server build of
 // exactly what the card shows, the intent on disk BEFORE the wallet is asked, then the game's confirmation.
 async function signIntent(ctx, symbol, st, base, body, fromFresh, onRefused, previewPath = 'preview') {
+  const actionId = Array.isArray(st.receipt?.ops) && st.stage === 'edit'
+    ? confirmationState(ctx.player, st.receipt.ops)?.actionId || null : null;
   // the earlier swap was sent late -> adopted, no second one. : a new swap starts only after a SUCCESSFUL read of every
   // watched nonce says not_found; a failed read refuses here and the wallet is never opened on an unknown.
   if (readWatch(ctx.player, symbol).length) {
@@ -899,7 +903,7 @@ async function signIntent(ctx, symbol, st, base, body, fromFresh, onRefused, pre
       if (typeof tx === 'string' && /^[a-f0-9]{40}$/i.test(tx)) {
         st.receipt.tx_id = tx; syncStoredIntent(ctx.player, symbol, st); ctx.render();
       }
-    }, 'Posting');
+    }, 'Posting', { actionId });
     st.receipt.tx_id = result.txId || st.receipt.tx_id;
   } catch (failure) {
     if (typeof failure?.txId === 'string' && /^[a-f0-9]{40}$/i.test(failure.txId)) st.receipt.tx_id = failure.txId;

@@ -3,7 +3,7 @@ import { COMMIT_ICON } from './button-icons.js';
 import { walletSignLabelHtml, walletReady, walletName, walletControlsHtml } from './wallet.js';
 import { retryBackgroundLayers, worksiteTileArtPath } from './art.js';
 import { requestBroadcastThroughGate, requestSignatureThroughGate } from './broadcast-gate.js';
-import { confirmAction } from './shared-confirmer.js';
+import { confirmAction, confirmationState } from './shared-confirmer.js';
 import { BOARD, BOARD_GENERATION, CURRENT_PLAYER, catalogNotice, noticeMessage, playerQueryAppend, renderNotices } from './board.js';
 import { esc, fmtSpsPerPp, formatPlotLabel, num } from './format.js';
 import { refreshPlotHarvest } from './harvest-state.js';
@@ -576,7 +576,10 @@ export async function signStagedWorksiteBuild(row, target, timeCrystals = 0, pre
     const freshEnvelope = (await prepareSigningBatch(plan.account, [chunk.operations], 'Posting', {
       runId: `worksite-${row.deed_uid}-${Date.now()}`, runKind: 'plan',
     }))?.[0] || null;
-    const broadcast = await requestSignatureThroughGate(plan.account, chunk.operations, () => {}, 'Posting', freshEnvelope);
+    const actionId = prepared?.chunk?.operations
+      ? confirmationState(plan.account, prepared.chunk.operations)?.actionId || null : null;
+    const broadcast = await requestSignatureThroughGate(plan.account, chunk.operations, () => {}, 'Posting', freshEnvelope,
+      { actionId });
     broadcast.submitted.then(result => {
       chunk.inclusionBlock = result.blockNum;
       return verifyWorksiteBroadcast(row.deed_uid, chunk, result.txId);
@@ -772,11 +775,16 @@ export function renderWorksiteModalBody(row) {
 // Hive operation or refuses with a reason. Never builds the op client-side.
 export async function requestWorksitePreview(row, target, timeCrystals, action = null) {
   const token = ++WORKSITE_PREVIEW_TOKEN;
+  const prior = S.WORKSITE_MODAL_PREVIEW;
+  const actionId = prior?.payload && prior.payload.account === CURRENT_PLAYER
+    && prior.payload.target === target && (prior.payload.time_crystals || 0) === (timeCrystals || 0)
+    ? prior.actionId || confirmationState(prior.payload.account, prior.payload.chunks?.[0]?.operations)?.actionId || null
+    : null;
   S.WORKSITE_MODAL_PREVIEW = { loading: true, error: null, payload: null };
   renderWorksiteModalBody(row);
   let next;
   try {
-    next = { loading: false, error: null, payload: await fetchWorksitePreview(row.deed_uid, action ? { action } : { target, time_crystals: timeCrystals }) };
+    next = { loading: false, error: null, payload: await fetchWorksitePreview(row.deed_uid, action ? { action } : { target, time_crystals: timeCrystals }), actionId };
   } catch (error) {
     next = { loading: false, error: String(error), payload: null };
   }
@@ -981,12 +989,16 @@ export async function confirmWorksiteBroadcast(row, broadcastBtn) {
     const freshPayload = await fetchWorksitePreview(deedUid, body);
     if (!worksiteModalStillOpenFor(overlay, deedUid)) return;
     if (worksiteEconomicVector(preview.payload.chunks[0].operations) !== worksiteEconomicVector(freshPayload.chunks[0].operations)) {
-      S.WORKSITE_MODAL_PREVIEW = { loading: false, error: null, payload: freshPayload };
+      const actionId = preview.actionId || confirmationState(preview.payload.account,
+        preview.payload.chunks[0].operations)?.actionId || null;
+      S.WORKSITE_MODAL_PREVIEW = { loading: false, error: null, payload: freshPayload, actionId };
       renderWorksiteModalBody(row);
       renderWorksiteVerdict(overlay, { tone: 'info', title: 'Review changed worksite terms', detail: 'The live worksite terms changed. Review them and sign again.' });
       return;
     }
-    S.WORKSITE_MODAL_PREVIEW = { loading: false, error: null, payload: freshPayload };
+    S.WORKSITE_MODAL_PREVIEW = { loading: false, error: null, payload: freshPayload,
+      actionId: preview.actionId || confirmationState(preview.payload.account,
+        preview.payload.chunks[0].operations)?.actionId || null };
     preview = S.WORKSITE_MODAL_PREVIEW;
   } catch (error) {
     if (worksiteModalStillOpenFor(overlay, deedUid)) {
@@ -1007,7 +1019,7 @@ export async function confirmWorksiteBroadcast(row, broadcastBtn) {
       closeIfOpen();
       reportWorksiteVerdict(deedUid, chunk, txId, { tone: 'info', title: 'Transaction sent', detail: 'Waiting for confirmation.', phase: 'accepted', state: 'is-sent' });
     }
-  }).then(({ txId }) => {
+  }, 'Posting', { actionId: preview.actionId || null }).then(({ txId }) => {
     closeIfOpen();
     verifyWorksiteBroadcast(deedUid, chunk, txId);
   }).catch((error) => {

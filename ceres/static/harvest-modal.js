@@ -1163,6 +1163,10 @@ async function confirmHarvest() {
   const current = () => M.open && M.openId === openId && M.player === account && (CURRENT_PLAYER || BOARD?.player || null) === account;
   const token = {};
   let pv = M.preview;
+  const chunkIntentKey = chunk => JSON.stringify((chunk?.members || []).map(member =>
+    [member.op, member.region_uid, member.deed_uid, member.deed_uids]).sort());
+  const actionByIntent = new Map((pv?.chunks || []).map(chunk => [chunkIntentKey(chunk),
+    confirmationState(account, chunk.operations)?.actionId || null]));
   let savedHarvestAttempts = [];
   M.reviewing = token;
   M.error = null;
@@ -1286,7 +1290,7 @@ async function confirmHarvest() {
             render();
             saveHarvestAttempt(attemptId, { tx_id: id, state: 'submitted' }).then(() => { (M.run.attachedIds ||= new Set()).add(id); }, () => {});
           }
-        }, 'Posting', envelope);
+        }, 'Posting', envelope, { actionId: actionByIntent.get(chunkIntentKey(flight.chunk)) || null });
         txId = result.txId;
         submission = result.submitted;
         if (result.queued) {

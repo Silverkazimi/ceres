@@ -211,6 +211,9 @@ export function createRoutingRun({ player, onRender, isCurrent, api = request,
           runId: `routing-v2-${S.runId}`, runKind: 'harvest', headProperties: head,
         }))?.[0] || null;
         if (!prepared) throw new Error('The Posting wallet cannot prepare this routing bundle.');
+        // The server binds this exact envelope to its own counted head before Keychain opens.
+        // A silent sign-only prompt can be released only after this verified expiry and own-history coverage.
+        await call('envelope', { run_id: S.runId, bundle_id: bundle.id, transaction: prepared.transaction });
       }
       if (!S.active || !walletReady(player)) throw new Error('Routing window or wallet changed before signing. No new signature was requested.');
       let result = null;
@@ -238,6 +241,11 @@ export function createRoutingRun({ player, onRender, isCurrent, api = request,
       if (claimed && !bundleStatus(bundle).tx_id && walletAsked && !error?.broadcasted && !error?.declined) {
         S.error = 'Waiting for your Keychain answer; nothing is sent again';
       } else S.error = error.message || String(error);
+      if (claimed && !bundleStatus(bundle).tx_id && walletAsked) {
+        // A silent sign-only prompt is still discoverable. The finder observes the
+        // server's verified envelope bound; the claim stays held until its proof.
+        confirmBundle(bundle, claimed.operations, null).catch(() => {});
+      }
     }
     finally { S.busy = false; notify(); }
   }

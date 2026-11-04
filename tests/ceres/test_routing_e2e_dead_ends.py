@@ -186,7 +186,7 @@ def test_stopped_never_sent_run_frees_its_harvest_but_a_sent_one_does_not(tmp_pa
     assert len(routing_safety.overlapping(tmp_path, PLAYER, ["attempt-1"])) == 1
 
 
-def test_wallet_refusal_releases_the_claim_and_allows_signing_again():
+def test_wallet_refusal_keeps_claim_reserved_until_server_proof():
     run_in_module_context(r"""
 walletReady = () => true;
 walletCanSignTransaction = () => true;
@@ -201,12 +201,13 @@ const api = async (_player, path, body) => {
   if (path === 'claim') { record.bundles['bundle-1'] = { state: 'claimed' }; return {
     authority: 'Posting', member_nonces: ['member-1'], operations: [['custom_json', { id: 'sm_land_operation', json: '{"n":"member-1"}' }]] }; }
   if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-09-28T00:00:00' };
+  if (path === 'envelope') return { verified_envelope_expiry: 1 };
   if (path === 'release') { record.bundles['bundle-1'] = { state: 'planned' }; return record; }
   if (path === 'attach') throw Error('an unsigned transaction was attached');
   throw Error('unexpected endpoint ' + path);
 };
 let signatures = 0;
-const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txId: 'b'.repeat(40) }],
+const run = createRoutingRun({ player: 'alice', api, prepare: async (_player, groups) => [{ txId: 'b'.repeat(40), transaction: { operations: groups[0] } }],
   sign: async () => {
     signatures += 1;
     const error = Error('The wallet did not approve this signature. Nothing was sent.');
@@ -215,12 +216,12 @@ const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txI
 (async () => {
   await run.create({ preview_id: 'preview', preview_digest: 'digest' });
   await run.action('sign');
-  if (record.bundles['bundle-1'].state !== 'planned') throw Error('refused bundle stayed claimed');
-  if (!calls.includes('release')) throw Error('release not requested');
-  if (JSON.parse(localStorage.getItem('ceres:routing-v2-members:alice') || '[]').length) throw Error('member stayed reserved');
+  if (record.bundles['bundle-1'].state !== 'claimed') throw Error('browser released a held claim');
+  if (calls.includes('release')) throw Error('browser requested release without server proof');
+  if (JSON.parse(localStorage.getItem('ceres:routing-v2-members:alice') || '[]').length !== 1) throw Error('member reservation was lost');
   if (run.html().includes('did not approve')) throw Error('an error text was shown');
   await run.action('sign');
-  if (signatures !== 2) throw Error('the refused bundle could not be signed again');
+  if (signatures !== 1) throw Error('held claim was signed again without proof');
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "routing-run.js")
 
@@ -240,12 +241,13 @@ const api = async (_player, path, body) => {
   if (path === 'claim') { record.bundles['bundle-1'] = { state: 'claimed' }; return {
     authority: 'Posting', member_nonces: ['member-1'], operations: [['custom_json', { id: 'sm_land_operation', json: '{"n":"member-1"}' }]] }; }
   if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-09-28T00:00:00' };
+  if (path === 'envelope') return { verified_envelope_expiry: 1 };
   if (path === 'release') { record.bundles['bundle-1'] = { state: 'planned' }; return record; }
   if (path === 'attach') throw Error('an unsigned transaction was attached');
   throw Error('unexpected endpoint ' + path);
 };
 let signatures = 0;
-const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txId: 'b'.repeat(40) }],
+const run = createRoutingRun({ player: 'alice', api, prepare: async (_player, groups) => [{ txId: 'b'.repeat(40), transaction: { operations: groups[0] } }],
   sign: async () => {
     signatures += 1;
     const error = Error('This transaction exceeds Hive five custom-operation limit. Nothing was sent.');
@@ -254,9 +256,9 @@ const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txI
 (async () => {
   await run.create({ preview_id: 'preview', preview_digest: 'digest' });
   await run.action('sign');
-  if (record.bundles['bundle-1'].state !== 'planned') throw Error('refused bundle stayed claimed');
-  if (!calls.includes('release')) throw Error('release not requested');
-  if (JSON.parse(localStorage.getItem('ceres:routing-v2-members:alice') || '[]').length) throw Error('member stayed reserved');
+  if (record.bundles['bundle-1'].state !== 'claimed') throw Error('browser released a held claim');
+  if (calls.includes('release')) throw Error('browser requested release without server proof');
+  if (JSON.parse(localStorage.getItem('ceres:routing-v2-members:alice') || '[]').length !== 1) throw Error('member reservation was lost');
   if (!run.html().includes('custom-operation limit')) throw Error('the failure reason was hidden');
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "routing-run.js")
@@ -348,6 +350,7 @@ const api = async (_player, path, body) => {
   if (path === 'claim') { record.bundles['bundle-1'] = { state: 'claimed' }; return {
     authority: 'Posting', member_nonces: ['member-1'], operations: [['custom_json', { id: 'sm_land_operation', json: '{"n":"member-1"}' }]] }; }
   if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-09-28T00:00:00' };
+  if (path === 'envelope') return { verified_envelope_expiry: 1 };
   if (path === 'release') { record.bundles['bundle-1'] = { state: 'planned' }; return record; }
   if (path === 'client-report') return {};
   throw Error('unexpected endpoint ' + path);
@@ -357,7 +360,7 @@ const api = async (_player, path, body) => {
 
 def test_browser_guard_follows_the_plan_sized_budget_r02():
     run_in_module_context(_RUN_HARNESS % {"total": 130, "ceiling": 500} + r"""
-const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txId: 'b'.repeat(40) }],
+const run = createRoutingRun({ player: 'alice', api, prepare: async (_player, groups) => [{ txId: 'b'.repeat(40), transaction: { operations: groups[0] } }],
   sign: async () => { const error = Error('wallet-said-no-xyz'); error.broadcasted = false; throw error; } });
 (async () => {
   await run.create({ preview_id: 'preview', preview_digest: 'digest' });
@@ -369,17 +372,17 @@ const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txI
 """, entry=STATIC / "routing-run.js")
 
 
-def test_full_browser_storage_still_releases_an_unsigned_claim_r08():
+def test_full_browser_storage_keeps_claim_until_server_proof_r08():
     run_in_module_context(_RUN_HARNESS % {"total": 0, "ceiling": 120} + r"""
 const realSet = localStorage.setItem.bind(localStorage);
-const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txId: 'b'.repeat(40) }],
+const run = createRoutingRun({ player: 'alice', api, prepare: async (_player, groups) => [{ txId: 'b'.repeat(40), transaction: { operations: groups[0] } }],
   sign: async () => { throw Error('never reached'); } });
 (async () => {
   await run.create({ preview_id: 'preview', preview_digest: 'digest' });
   localStorage.setItem = (key, value) => { if (String(key).startsWith('ceres:routing-v2-members')) throw Error('QuotaExceededError'); return realSet(key, value); };
   await run.action('sign');
-  if (!calls.includes('release')) throw Error('the claimed bundle was left claimed');
-  if (record.bundles['bundle-1'].state !== 'planned') throw Error('bundle not back to planned');
+  if (calls.includes('release')) throw Error('browser storage failure released a claim');
+  if (record.bundles['bundle-1'].state !== 'claimed') throw Error('claim was not retained for server proof');
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "routing-run.js")
 

@@ -467,6 +467,8 @@ async function signCombine(g) {
     if (fresh?.status === 'failed') { g.state = 'combine-failed'; save(); return; }
     g.state = 'waiting'; g.building = false; buildCombine(g); return;  // not handed over yet: the shared wait builds it again
   }
+  const actionId = g.action_id || (g.operation
+    ? confirmationState(co.player, [g.operation])?.actionId || null : null);
   const oldWitness = JSON.stringify(g.witness || null);
   const newWitness = JSON.stringify(fresh.witness || null);
   g.operation = fresh.operation; g.resulting_bcx = fresh.resulting_bcx ?? null;
@@ -483,9 +485,10 @@ async function signCombine(g) {
     const result = await requestBroadcastThroughGate(co.player, [g.operation], (response) => {
       const id = response?.result?.id || response?.result?.tx_id || response?.tx_id;
       if (typeof id === 'string' && /^[a-f0-9]{40}$/i.test(id)) g.combine_tx = id.toLowerCase();
-    }, 'Posting');
+    }, 'Posting', { actionId });
     if (typeof result?.txId === 'string' && /^[a-f0-9]{40}$/i.test(result.txId)) g.combine_tx = result.txId.toLowerCase();
   } catch (error) { failure = error; if (typeof error?.txId === 'string' && /^[a-f0-9]{40}$/i.test(error.txId)) g.combine_tx = error.txId.toLowerCase(); }
+  g.action_id = confirmationState(co.player, [g.operation])?.actionId || actionId || null;
   co.busy = false;
   if (failure && failure.broadcasted === false && !g.combine_tx) { g.state = 'ready'; save(); return; }  // declined: nothing sent, the button stays
   g.state = 'combine-sent';  // S3 / : with or without an id the shared confirmer decides; never a second prompt
@@ -638,6 +641,8 @@ async function sign() {
   co.stage = 'signing'; co.note = null; render();
   for (let i = 0; i < co.run.txs.length; i += 1) {
     const tx = co.run.txs[i];
+    const actionId = tx.action_id || (Array.isArray(tx.operations)
+      ? confirmationState(co.player, tx.operations)?.actionId || null : null);
     if (i > 0) {
       // A later transaction's prepared purchase record belongs to its first handoff only.
       // Requote it now, then require another review if listings or price moved.
@@ -672,9 +677,10 @@ async function sign() {
           writeRun(signingPlayer, signingRun); // late wallet callbacks persist their transaction evidence
           if (co.player === signingPlayer && co.run === signingRun) render();
         }
-      }, 'Active', { direct: true });  // one "sign and send" prompt, Active, like the game
+      }, 'Active', { direct: true, actionId });  // one "sign and send" prompt, Active, like the game
       if (typeof result?.txId === 'string' && /^[a-f0-9]{40}$/i.test(result.txId)) tx.tx_id = result.txId.toLowerCase();
     } catch (error) { failure = error; if (typeof error?.txId === 'string' && /^[a-f0-9]{40}$/i.test(error.txId)) tx.tx_id = error.txId.toLowerCase(); }
+    tx.action_id = confirmationState(signingPlayer, tx.operations)?.actionId || actionId || null;
     tx.signed_at = new Date().toISOString();
     if (failure && failure.broadcasted === false && !tx.tx_id) {
       tx.state = 'declined'; markSkipped(i + 1); writeRun(co.player, co.run); break;

@@ -5,6 +5,7 @@ import { IDLE_COMBINE_GROUPS, applyCombineConfirmedUpdate, combineApplyQuantity,
 import { editorCardImage, editorCardImageHtml, editorGroups, editorOccupant, editorSlotLabel } from './editor.js';
 import { esc, formatPlotLabel, num } from './format.js';
 import { OPERATION_RECEIPTS, beginSharedOperation, clearOperationPollTimer, publishOperationReceipt, scheduleOperationPoll, stopOperationPoll } from './operations.js';
+import { confirmationState } from './shared-confirmer.js';
 import { handleSlotEditorClick } from './picker-actions.js';
 import { updateMountedRow } from './rows.js';
 import { CERES_STAGE, mutateEditorSlot, stageForSlot, stageToast } from './staging.js';
@@ -841,6 +842,14 @@ export async function confirmCombineBroadcast() {
   const preview = COMBINE_PREVIEW?.payload;
   if (!preview?.buildable || COMBINE_SELECTION.size < 2) return;
   const uids = [...COMBINE_SELECTION.keys()];
+  const previous = [...OPERATION_RECEIPTS.values()].reverse().find(receipt => {
+    if (receipt.family !== 'combine' || receipt.phase !== 'failed' || receipt.txId
+        || receipt.context !== `Combine ${COMBINE_DIALOG?.name || 'cards'}`) return false;
+    try { return JSON.stringify(JSON.parse(receipt.operations[0][1].json).cards?.slice().sort()) === JSON.stringify(uids.slice().sort()); }
+    catch (_) { return false; }
+  });
+  const actionId = previous?.operations
+    ? confirmationState(preview.account || CURRENT_PLAYER, previous.operations)?.actionId || null : null;
   const signButton = document.querySelector('#combine-dialog-body .combine-sign');
   if (signButton) signButton.disabled = true;
   // State 05 (Sign) step 1: waiting on Keychain -- rendered by combineProgressHtml()
@@ -862,6 +871,7 @@ export async function confirmCombineBroadcast() {
       operations: [body.operation],
       family: 'combine',
       context: `Combine ${COMBINE_DIALOG?.name || 'cards'}`,
+      actionId,
       onResponse: (response) => {
         const callbackTxId = response?.result?.id || response?.result?.tx_id || response?.tx_id;
         if (response?.success && callbackTxId) {
