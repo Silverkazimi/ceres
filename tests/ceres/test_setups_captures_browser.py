@@ -15,7 +15,8 @@ PLAN_KEY = f'ceres:board-plans:v2:{SAMPLE}'
 
 
 def _entry(page, key):
-    page.locator('#hdr-menu-btn').click()
+    if page.locator('#hdr-menu').is_hidden():
+        page.locator('#hdr-menu-btn').click()
     page.wait_for_selector('#hdr-menu:not([hidden])')
     page.locator(f'#hdr-menu [data-menu-entry="{key}"]').click()
 
@@ -30,7 +31,8 @@ def _selected(page):
 
 
 def _menu(page):
-    page.locator('#hdr-menu-btn').click()
+    if page.locator('#hdr-menu').is_hidden():
+        page.locator('#hdr-menu-btn').click()
     page.wait_for_selector('#hdr-menu:not([hidden])')
 
 
