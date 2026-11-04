@@ -73,7 +73,7 @@ function hdrMenuSetupItems(setups) {
   return [...list,
     ...(setups.dirty ? [{ key: 'setup-retry', name: 'Save again', desc: 'Retry saving unsaved setup changes', icon: 'plots' }] : []),
     { key: 'setup-new', name: 'New setup', desc: 'Start with an empty sheet', icon: 'plots' },
-    { key: 'setup-live', name: 'Start from live', desc: 'Copy live occupants into a setup', icon: 'plots' },
+    { key: 'setup-live', name: 'Start from live', desc: 'Copy the live board', icon: 'plots' },
     { key: 'setup-rename', name: 'Rename setup', desc: 'Rename current setup', icon: 'plots' },
     { key: 'setup-duplicate', name: 'Duplicate setup', desc: 'Copy current setup', icon: 'plots' },
     { key: 'setup-delete', name: 'Delete setup', desc: 'Delete current setup', icon: 'plots' }];

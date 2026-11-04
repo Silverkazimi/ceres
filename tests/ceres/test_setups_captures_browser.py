@@ -78,7 +78,7 @@ def test_planning_setup_ci_captures(tmp_path):
         assert _selected(page)['name'] == 'Grain setup'
         # The native prompt is browser chrome; capture the resulting renamed state in-app.
         _menu(page)
-        _capture(page, captures, '04-rename.png')
+        _capture(page, captures, '04-after-rename.png')
         assert page.locator('#hdr-menu').get_by_text('Grain setup').count() >= 1
 
         _entry(page, 'setup-duplicate')
@@ -95,10 +95,10 @@ def test_planning_setup_ci_captures(tmp_path):
         assert page.locator('#hdr-menu [data-menu-entry^="setup:"]').count() == 3
         assert _saved(page)['selected_plan_id'] == duplicate_id
 
-        def confirm_delete(dialog):
-            _capture(page, captures, '05-delete-confirm.png')
-            dialog.accept()
-        page.once('dialog', confirm_delete)
+        _menu(page)
+        page.hover('#hdr-menu [data-menu-entry="setup-delete"]')
+        _capture(page, captures, '05-delete-entry.png')
+        page.once('dialog', lambda dialog: dialog.accept())
         _entry(page, 'setup-delete')
         page.wait_for_function('(args) => !!JSON.parse(localStorage.getItem(args[0])).tombstones[args[1]]', arg=[PLAN_KEY, duplicate_id])
         assert duplicate_id not in _saved(page)['plans']
