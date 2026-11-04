@@ -488,3 +488,40 @@ test('evaluator: a superseded capture adopts the newer board once and asks again
   assert.equal(evaluator.result('a', 'sig-old').reason, 'capture_superseded');
   assert.equal(calls, 2);
 });
+
+test('submenu row actions rename and delete a nonselected setup by id', async () => {
+  const storage = memoryStorage();
+  const store = createBoardPlanStore(storage, 'player0012'); store.load();
+  const first = store.snapshot().selectedId;
+  await store.create('Second');
+  const selected = store.snapshot().selectedId;
+  await store.rename(first, 'First renamed');
+  assert.equal(store.snapshot().plans.find((plan) => plan.id === first).name, 'First renamed');
+  assert.equal(store.snapshot().selectedId, selected);
+  const deleted = await store.delete(first);
+  assert.equal(deleted.deleted.id, first);
+  assert.equal(store.snapshot().selectedId, selected);
+  await store.undoDelete(deleted.deleted);
+  assert.equal(store.snapshot().plans.length, 2);
+});
+
+test('both desktop submenu variants render setup rows with inline controls', async () => {
+  const prior = globalThis.document;
+  globalThis.document = { body: { dataset: {} }, querySelector: () => null };
+  try {
+    const { hdrMenuPanelHtml } = await import('../../ceres/static/header-menu.js');
+    const setups = { selectedId: 'plan-one', plans: [{ id: 'plan-one', name: 'Northern grain' }] };
+    document.body.dataset = { boardMode: 'planning', boardPlanName: 'Northern grain', hdrMenuVariant: 'A' };
+    const column = hdrMenuPanelHtml('plots', setups);
+    assert.match(column, /hdr-menu-setups/);
+    assert.match(column, /data-setup-rename="plan-one"/);
+    assert.match(column, /data-setup-delete="plan-one"/);
+    assert.doesNotMatch(column, /data-menu-submenu/);
+    document.body.dataset.hdrMenuVariant = 'B';
+    const nested = hdrMenuPanelHtml('plots', setups);
+    assert.match(nested, /data-menu-submenu hidden/);
+    assert.match(nested, /Planning · Northern grain ›/);
+    assert.match(nested, /Back to live/);
+    assert.doesNotMatch(nested, /hdr-menu-setups/);
+  } finally { globalThis.document = prior; }
+});

@@ -5094,6 +5094,7 @@ html.ceres-lw-ge-1400 .candidate-visible-slice { inline-size: 100%; max-inline-s
  exact "confirmed, but I can't see it" complaint this fixes. */
 .stage-toast { position: fixed; top: calc(env(safe-area-inset-top) + .65rem); bottom: auto; left: 50%; z-index: 1400; pointer-events: none; max-width: calc(var(--ceres-vw) * 100 - 2rem); transform: translateX(-50%); border: 1px solid var(--ok); border-radius: var(--radius); background: var(--bg3); color: var(--text); padding: 0.55rem 0.9rem; font-size: 0.8rem; text-align: center; }
 .stage-toast.has-action { pointer-events: auto; }
+html:not(.ceres-lw-le-1279) body[data-board-mode="planning"] .stage-toast { top: calc(env(safe-area-inset-top) + 6rem); }
 .stage-toast.is-error { border-color: var(--danger); background: var(--bg3); color: var(--heading); }
 .stage-toast[hidden] { display: none; }
 
@@ -8431,12 +8432,24 @@ html:not(.ceres-lw-le-1279) header.board-header #checkout-btn.is-icon-only:not([
   background: var(--bg2); border: 1px solid var(--border-bright); border-radius: var(--radius);
   box-shadow: 0 18px 60px color-mix(in srgb, var(--shadow) 70%, transparent);
 }
-html:not(.ceres-lw-le-1279) body[data-board-mode="planning"] .hdr-menu-panel { max-block-size: calc(100dvh - 6rem); overflow-y: auto; }
+html:not(.ceres-lw-le-1279) body[data-board-mode="planning"]:not([data-hdr-menu-variant="B"]) .hdr-menu-panel { max-block-size: calc(100dvh - 6rem); overflow-y: auto; }
+html:not(.ceres-lw-le-1279) body[data-board-mode="planning"]:not([data-hdr-menu-variant="B"]) .hdr-menu-panel { inline-size: min(960px, calc(100vw - 2rem)); }
 .hdr-menu-panel[hidden] { display: none; }
 .hdr-menu-top { display: flex; align-items: center; justify-content: space-between; margin-block-end: 0.75rem; }
 .hdr-menu-top h2 { margin: 0; font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; line-height: 1.25; color: var(--heading); }
 .hdr-menu-top svg { inline-size: 1.2rem; block-size: 1.2rem; }
 .hdr-menu-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+body[data-board-mode="planning"]:not([data-hdr-menu-variant="B"]) .hdr-menu-cols { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.hdr-menu-submenu { position: absolute; inset-block-start: 3rem; inset-inline-start: calc(100% - 1px); inline-size: 300px; box-sizing: border-box; padding: 1rem; background: var(--bg2); border: 1px solid var(--border-bright); border-radius: var(--radius); box-shadow: 0 18px 60px color-mix(in srgb, var(--shadow) 70%, transparent); max-block-size: calc(100dvh - 7rem); overflow-y: auto; }
+.hdr-menu-submenu[hidden] { display: none; }
+.hdr-menu-submenu h3 { margin: 0 0 0.5rem; font-family: var(--font-body); font-size: 0.75rem; color: var(--meta); text-transform: uppercase; }
+.hdr-menu-submenu ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.hdr-menu-submenu li { display: flex; flex-direction: column; }
+.hdr-menu-setup-row { display: flex; flex-direction: row !important; align-items: stretch; }
+.hdr-menu-setup-row > [data-menu-entry] { flex: 1 1 auto; min-inline-size: 0; }
+.hdr-menu-setup-row > [hidden] { display: none; }
+.hdr-menu-setup-row > [data-setup-rename], .hdr-menu-setup-row > [data-setup-delete] { flex: 0 0 auto; }
+.hdr-menu-rename { flex: 1 1 auto; inline-size: 100%; min-inline-size: 0; font: inherit; color: var(--text); background: var(--bg3); border: 1px solid var(--border-bright); border-radius: var(--radius); }
 .hdr-menu-cols h3 { margin: 0 0 0.5rem; font-family: var(--font-body); font-size: 0.75rem; font-weight: 700; line-height: 1.25; color: var(--meta); letter-spacing: 0.04em; text-transform: uppercase; }
 .hdr-menu-cols ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
 .hdr-menu-cols li { display: flex; flex-direction: column; }

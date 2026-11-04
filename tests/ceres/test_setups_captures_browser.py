@@ -1,4 +1,4 @@
-"""Synthetic planning setup screenshots retained by core browser CI."""
+"""Synthetic desktop submenu captures, retained by core browser CI only."""
 from __future__ import annotations
 
 import os
@@ -14,30 +14,22 @@ pytestmark = pytest.mark.browser
 PLAN_KEY = f'ceres:board-plans:v2:{SAMPLE}'
 
 
-def _entry(page, key):
-    if page.locator('#hdr-menu').is_hidden():
-        page.locator('#hdr-menu-btn').click()
-    page.wait_for_selector('#hdr-menu:not([hidden])')
-    page.locator(f'#hdr-menu [data-menu-entry="{key}"]').click()
-
-
 def _saved(page):
     return page.evaluate('(key) => JSON.parse(localStorage.getItem(key))', PLAN_KEY)
 
 
-def _selected(page):
-    data = _saved(page)
-    return data['plans'][data['selected_plan_id']]
-
-
-def _menu(page):
+def _menu(page, variant):
     if page.locator('#hdr-menu').is_hidden():
         page.locator('#hdr-menu-btn').click()
     page.wait_for_selector('#hdr-menu:not([hidden])')
+    if variant == 'B':
+        page.locator('#hdr-menu [data-menu-entry="planning"]').click()
+        assert page.locator('[data-menu-submenu]').is_visible()
 
 
-def _capture(page, folder, name):
-    page.screenshot(path=str(folder / name), full_page=False, animations='disabled')
+def _capture(page, folder, variant, name):
+    assert page.locator('#hdr-menu').is_visible() or name == '05-long-title-notice.png'
+    page.screenshot(path=str(folder / f'{variant}-{name}'), full_page=False, animations='disabled')
 
 
 def test_planning_setup_ci_captures(tmp_path):
@@ -49,70 +41,70 @@ def test_planning_setup_ci_captures(tmp_path):
     fixture = write_set(tmp_path / 'setups-captures', board_entries())
     with spawn_fixture_ceres(fixture) as base, playwright.sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page(viewport={'width': 1920, 'height': 1080}, device_scale_factor=1)
-        page.emulate_media(reduced_motion='reduce')
-        page.add_style_tag(content='*, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; caret-color: transparent !important; }')
-        install_routes(page, fixture)
-        page.goto(f'{base}/?player={SAMPLE}')
-        page.wait_for_selector('#plot-tbody tr.plot-row')
-        page.wait_for_load_state('networkidle')
-        _menu(page)
-        _capture(page, captures, '01-live-menu-open.png')
-        assert page.locator('#hdr-menu').is_visible()
-        assert page.locator('#hdr-menu [data-menu-entry="planning"]').count() == 1
+        for variant in ('A', 'B'):
+            page = browser.new_page(viewport={'width': 1920, 'height': 1080}, device_scale_factor=1)
+            page.on('dialog', lambda dialog: pytest.fail(f'unexpected native dialog: {dialog.type}'))
+            page.emulate_media(reduced_motion='reduce')
+            install_routes(page, fixture)
+            page.goto(f'{base}/?player={SAMPLE}')
+            page.wait_for_selector('#plot-tbody tr.plot-row')
+            page.wait_for_load_state('networkidle')
+            page.evaluate('(value) => document.body.dataset.hdrMenuVariant = value', variant)
+            _menu(page, variant) if variant == 'B' else page.locator('#hdr-menu-btn').click()
+            assert page.locator('#hdr-menu [data-menu-entry="planning"]').count() == 1
+            _capture(page, captures, variant, '01-live-menu.png')
+            if variant == 'B':
+                # Select the first setup from the nested panel to enter Planning.
+                page.locator('[data-menu-submenu] [data-menu-entry^="setup:"]').first.click()
+            else:
+                page.locator('#hdr-menu [data-menu-entry="planning"]').click()
+            page.wait_for_function("document.body.dataset.boardMode === 'planning'")
+            for expected_count in (2, 3):
+                _menu(page, variant)
+                page.locator('#hdr-menu [data-menu-entry="setup-new"]').click()
+                page.wait_for_function("document.body.dataset.boardPlanName === 'New setup'")
+                page.wait_for_function('(args) => Object.keys(JSON.parse(localStorage.getItem(args[0])).plans).length === args[1]', arg=[PLAN_KEY, expected_count])
+            assert len(_saved(page)['plans']) == 3
+            _menu(page, variant)
+            assert page.locator('#hdr-menu [data-menu-entry^="setup:"]').count() == 3
+            assert page.locator('#hdr-menu .hdr-menu-setups').count() == (1 if variant == 'A' else 0)
+            _capture(page, captures, variant, '02-planning-three-setups.png')
 
-        page.locator('#hdr-menu [data-menu-entry="planning"]').click()
-        page.wait_for_function("document.body.dataset.boardMode === 'planning'")
-        assert len(_saved(page)['plans']) == 1
-        assert _selected(page)['name'] == 'Plan 1'
-        _menu(page)
-        _capture(page, captures, '02-planning-menu-one-setup.png')
-        assert page.locator('#hdr-menu').get_by_text('Plan 1').count() >= 1
+            current = _saved(page)['selected_plan_id']
+            page.locator(f'#hdr-menu [data-setup-rename="{current}"]').click()
+            field = page.locator('#hdr-menu .hdr-menu-rename')
+            assert field.is_visible() and field.input_value() == 'New setup'
+            field.fill('Grain setup')
+            _capture(page, captures, variant, '03-inline-rename.png')
+            field.press('Enter')
+            page.wait_for_function("document.body.dataset.boardPlanName === 'Grain setup'")
+            assert _saved(page)['plans'][current]['name'] == 'Grain setup'
 
-        _entry(page, 'setup-new')
-        page.wait_for_function("document.body.dataset.boardPlanName === 'New setup'")
-        plan_id = _saved(page)['selected_plan_id']
-        page.once('dialog', lambda dialog: dialog.accept('Grain setup'))
-        _entry(page, 'setup-rename')
-        page.wait_for_function("document.body.dataset.boardPlanName === 'Grain setup'")
-        assert _selected(page)['name'] == 'Grain setup'
-        # The native prompt is browser chrome; capture the resulting renamed state in-app.
-        _menu(page)
-        _capture(page, captures, '04-after-rename.png')
-        assert page.locator('#hdr-menu').get_by_text('Grain setup').count() >= 1
+            _menu(page, variant)
+            page.locator(f'#hdr-menu [data-setup-delete="{current}"]').click()
+            page.wait_for_function('(args) => !!JSON.parse(localStorage.getItem(args[0])).tombstones[args[1]]', arg=[PLAN_KEY, current])
+            assert current not in _saved(page)['plans']
+            toast = page.locator('#ceres-stage-toast')
+            assert toast.locator('.stage-toast-undo').is_visible()
+            _menu(page, variant)
+            _capture(page, captures, variant, '04-after-delete-undo.png')
+            toast.locator('.stage-toast-undo').click()
+            page.wait_for_function('(args) => !!JSON.parse(localStorage.getItem(args[0])).plans[args[1]]', arg=[PLAN_KEY, current])
+            assert len(_saved(page)['plans']) == 3
 
-        _entry(page, 'setup-duplicate')
-        page.wait_for_function("document.body.dataset.boardPlanName === 'Grain setup copy'")
-        duplicate_id = _saved(page)['selected_plan_id']
-        assert duplicate_id != plan_id and len(_saved(page)['plans']) == 3
-        page.once('dialog', lambda dialog: dialog.accept('Start from live'))
-        _entry(page, 'setup-rename')
-        page.wait_for_function("document.body.dataset.boardPlanName === 'Start from live'")
-        assert _selected(page)['name'] == 'Start from live'
-        assert len(_saved(page)['plans']) == 3
-        _menu(page)
-        _capture(page, captures, '03-planning-menu-three-setups.png')
-        assert page.locator('#hdr-menu [data-menu-entry^="setup:"]').count() == 3
-        assert _saved(page)['selected_plan_id'] == duplicate_id
-
-        _menu(page)
-        page.hover('#hdr-menu [data-menu-entry="setup-delete"]')
-        _capture(page, captures, '05-delete-entry.png')
-        page.once('dialog', lambda dialog: dialog.accept())
-        _entry(page, 'setup-delete')
-        page.wait_for_function('(args) => !!JSON.parse(localStorage.getItem(args[0])).tombstones[args[1]]', arg=[PLAN_KEY, duplicate_id])
-        assert duplicate_id not in _saved(page)['plans']
-        toast = page.locator('#ceres-stage-toast')
-        toast.wait_for(state='visible')
-        _capture(page, captures, '06-undo-notice.png')
-        assert toast.locator('.stage-toast-undo').is_visible()
-        toast.locator('.stage-toast-undo').click()
-        page.wait_for_function('(args) => !!JSON.parse(localStorage.getItem(args[0])).plans[args[1]]', arg=[PLAN_KEY, duplicate_id])
-        assert len(_saved(page)['plans']) == 3
-        assert _saved(page)['selected_plan_id'] == duplicate_id
-        assert page.locator('#hdr-menu').is_hidden()
-        assert page.evaluate("document.body.dataset.boardMode") == 'planning'
-        assert _selected(page)['name'] == 'Start from live'
-        assert page.locator('#hdr-place').inner_text().strip() == 'Planning · Start from live'
-        _capture(page, captures, '07-planning-board-header.png')
+            # A long title checks actual rectangles instead of a CSS token alone.
+            _menu(page, variant)
+            page.locator(f'#hdr-menu [data-setup-rename="{current}"]').click()
+            field = page.locator('#hdr-menu .hdr-menu-rename')
+            field.fill('Grain setup for the entire northern production region')
+            field.press('Enter')
+            page.wait_for_function("document.body.dataset.boardPlanName.includes('northern production')")
+            toast.wait_for(state='visible')
+            assert page.locator('#hdr-place').inner_text().startswith('Planning · Grain setup')
+            page.locator('#hdr-menu-btn').click() if page.locator('#hdr-menu').is_visible() else None
+            title = page.locator('#hdr-place').bounding_box()
+            notice = toast.bounding_box()
+            assert title and notice and title['y'] + title['height'] <= notice['y']
+            _capture(page, captures, variant, '05-long-title-notice.png')
+            page.close()
         browser.close()

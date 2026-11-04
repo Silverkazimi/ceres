@@ -862,18 +862,12 @@ const BOARD_MENU_ACTIONS = {
     if (picker) { S.CERES_PICKER = null; updateMountedRow(picker.deedUid); }
   },
 };
-async function boardMenuSetupAction(action, id) {
+async function boardMenuSetupAction(action, id, targetId) {
   try {
-    const current = boardPlanningSetups();
-    const selected = current?.plans.find((plan) => plan.id === current.selectedId);
-    if (action === 'rename') {
-      const name = prompt('Setup name', selected?.name || '');
-      if (name === null) return;
-      id = name;
-    }
-    if (action === 'delete' && !confirm(`Delete “${selected?.name || 'this setup'}”? You can undo this from the notice.`)) return;
+    if (action === 'rename') id = { id: targetId, name: id };
     const operation = action === 'live' ? 'start-live' : action;
     const result = await boardPlanningSetupAction(operation, id);
+    if (['select', 'new', 'live', 'duplicate'].includes(action) && !document.body.dataset.boardMode) BOARD_MENU_ACTIONS.planning();
     if (action === 'delete') {
       stageToast(`Deleted ${result.deleted.name}.`, false, { label: 'Undo', run: () => {
         boardPlanningSetupAction('undo-delete', result.deleted).then(() => stageToast('Setup restored and saved.'))
@@ -939,7 +933,8 @@ ready(() => {
 ready(initRegionalDec);
 ready(mountAccountMenu);
 
-ready(() => mountHeaderMenu({ page: 'board', actions: BOARD_MENU_ACTIONS, setups: boardPlanningSetups,
+ready(() => mountHeaderMenu({ page: 'board', actions: BOARD_MENU_ACTIONS,
+  setups: () => boardPlanningSetups() || (document.body.dataset.hdrMenuVariant === 'B' ? boardPlanningStore().refresh() : null),
   setupAction: boardMenuSetupAction }));
 window.addEventListener('ceres:board-plan-conflict', () => setTimeout(() =>
   stageToast('Both setup edits were saved. Your version is a conflict copy.', true), 0));

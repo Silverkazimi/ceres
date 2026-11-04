@@ -107,9 +107,9 @@ export async function boardPlanningSetupAction(action, value) {
     else if (action === 'start-live') {
       const live = await boardPlanningLivePlacements(account, restoreSerial);
       result = await store.create(value || 'From live', live.placements, { base_capture_generated_at: live.stamp });
-    } else if (action === 'rename') result = await store.rename(before.selectedId, value);
+    } else if (action === 'rename') result = await store.rename(value.id || before.selectedId, value.name || value);
     else if (action === 'duplicate') result = await store.duplicate(before.selectedId);
-    else if (action === 'delete') result = await store.delete(before.selectedId);
+    else if (action === 'delete') result = await store.delete(value || before.selectedId);
     else if (action === 'undo-delete') result = await store.undoDelete(value);
     else if (action === 'select') result = await store.select(value);
     else throw new Error('Unknown setup action.');

@@ -63,27 +63,35 @@ function hdrMenuEntryLabel(item) {
 
 function hdrMenuEscape(value) { return String(value).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]); }
 
+export function hdrMenuVariant() { return document.body?.dataset?.hdrMenuVariant === 'B' ? 'B' : 'A'; }
+
 function hdrMenuSetupItems(setups) {
-  if (document.body?.dataset?.boardMode !== 'planning' || !setups) return [];
+  if (!setups) return [];
   if (setups.readOnly) return setups.readOnlyReason?.includes('previous good revision')
     ? [{ key: 'setup-restore', name: 'Restore last saved setups', desc: 'Restore the previous good revision', icon: 'plots' }] : [];
   const list = setups.plans.map((plan) => ({ key: `setup:${encodeURIComponent(plan.id)}`,
-    name: `${plan.id === setups.selectedId ? '✓ ' : ''}${plan.name}`,
+    name: plan.name, selected: plan.id === setups.selectedId,
     desc: plan.id === setups.selectedId ? 'Current setup' : 'Switch setup', icon: 'plots' }));
   return [...list,
     ...(setups.dirty ? [{ key: 'setup-retry', name: 'Save again', desc: 'Retry saving unsaved setup changes', icon: 'plots' }] : []),
     { key: 'setup-new', name: 'New setup', desc: 'Start with an empty sheet', icon: 'plots' },
     { key: 'setup-live', name: 'Start from live', desc: 'Copy the live board', icon: 'plots' },
-    { key: 'setup-rename', name: 'Rename setup', desc: 'Rename current setup', icon: 'plots' },
     { key: 'setup-duplicate', name: 'Duplicate setup', desc: 'Copy current setup', icon: 'plots' },
-    { key: 'setup-delete', name: 'Delete setup', desc: 'Delete current setup', icon: 'plots' }];
+    ...(hdrMenuVariant() === 'B' && document.body?.dataset?.boardMode === 'planning' ? [{ key: 'setup-back', name: 'Back to live', desc: 'Return to the live board', icon: 'plots' }] : [])];
 }
 
 export function hdrMenuPanelHtml(currentKey, setups = null) {
-  const entry = (raw) => { const item = hdrMenuEntryLabel(raw); return `<li><button type="button" class="hdr-menu-entry ceres-btn ceres-btn--secondary ceres-btn--glass" data-control-density="comfortable" data-menu-entry="${hdrMenuEscape(item.key)}"${item.key === currentKey ? ' aria-current="page"' : ''}>${hdrMenuIcon(item.icon)}<span class="hdr-menu-txt"><span class="hdr-menu-name">${hdrMenuEscape(item.name)}</span><span class="hdr-menu-desc">${hdrMenuEscape(item.desc)}</span></span></button></li>`; };
-  const column = (group, index) => `<div class="hdr-menu-col"><h3 id="hdr-menu-group-${index}">${group.title}</h3><ul aria-labelledby="hdr-menu-group-${index}">${group.entries.map((item) => entry(item) + (item.key === 'planning' ? hdrMenuSetupItems(setups).map(entry).join('') : '')).join('')}</ul></div>`;
+  const variant = hdrMenuVariant();
+  const entry = (raw) => { const item = hdrMenuEntryLabel(raw); const planning = item.key === 'planning' && variant === 'B';
+    const name = planning ? (document.body?.dataset?.boardMode === 'planning' ? `Planning · ${document.body.dataset.boardPlanName || 'Plan 1'} ›` : 'Planning ›') : item.name;
+    return `<li><button type="button" class="hdr-menu-entry ceres-btn ceres-btn--secondary ceres-btn--glass" data-control-density="comfortable" data-menu-entry="${hdrMenuEscape(item.key)}"${planning ? ' aria-haspopup="true" aria-expanded="false"' : ''}${item.key === currentKey ? ' aria-current="page"' : ''}>${hdrMenuIcon(item.icon)}<span class="hdr-menu-txt"><span class="hdr-menu-name">${hdrMenuEscape(name)}</span><span class="hdr-menu-desc">${hdrMenuEscape(planning ? 'Choose a setup' : item.desc)}</span></span></button></li>`; };
+  const setupEntry = (item) => item.key.startsWith('setup:') ? `<li class="hdr-menu-setup-row"><button type="button" class="hdr-menu-entry ceres-btn ceres-btn--secondary ceres-btn--glass" data-control-density="comfortable" data-menu-entry="${hdrMenuEscape(item.key)}"><span class="hdr-menu-txt"><span class="hdr-menu-name">${item.selected ? '✓ ' : ''}${hdrMenuEscape(item.name)}</span></span></button><button type="button" class="hdr-menu-entry ceres-btn ceres-btn--secondary ceres-btn--glass" data-control-density="compact" data-setup-rename="${hdrMenuEscape(item.key.slice(6))}" aria-label="Rename ${hdrMenuEscape(item.name)}">Rename</button><button type="button" class="hdr-menu-entry ceres-btn ceres-btn--secondary ceres-btn--glass" data-control-density="compact" data-setup-delete="${hdrMenuEscape(item.key.slice(6))}" aria-label="Delete ${hdrMenuEscape(item.name)}">Delete</button></li>` : entry(item);
+  const setupList = () => hdrMenuSetupItems(setups).map(setupEntry).join('');
+  const column = (group, index) => `<div class="hdr-menu-col"><h3 id="hdr-menu-group-${index}">${group.title}</h3><ul aria-labelledby="hdr-menu-group-${index}">${group.entries.map(entry).join('')}</ul></div>`;
+  const setupsColumn = variant === 'A' && setups && document.body?.dataset?.boardMode === 'planning' ? `<div class="hdr-menu-col hdr-menu-setups"><h3>Setups</h3><ul>${setupList()}</ul></div>` : '';
+  const submenu = variant === 'B' ? `<div class="hdr-menu-submenu" data-menu-submenu hidden><h3>Setups</h3><ul>${setupList()}</ul></div>` : '';
   return `<div class="hdr-menu-top"><h2 id="hdr-menu-title">Menu</h2><button type="button" class="harvest-x hdr-menu-close ceres-btn ceres-btn--secondary" data-control-density="compact" data-control-mode="icon" data-menu-close aria-label="Close menu">${HDR_MENU_CLOSE_ICON}</button></div>`
-    + `<div class="hdr-menu-cols">${HDR_MENU_GROUPS.map(column).join('')}</div>`;
+    + `<div class="hdr-menu-cols">${HDR_MENU_GROUPS.map(column).join('')}${setupsColumn}</div>${submenu}`;
 }
 
 // options: { page: 'board' | 'cards', actions: { [entry key]: () => void } }
@@ -121,6 +129,15 @@ export function mountHeaderMenu(options = {}) {
     panel.style.insetBlockStart = `${(header ? header.bottom : box.bottom) + 8}px`;
   };
   const entries = () => [...panel.querySelectorAll('[data-menu-entry]')];
+  const submenu = () => panel.querySelector('[data-menu-submenu]');
+  const setSubmenu = (next, { focus = false } = {}) => {
+    const sub = submenu();
+    if (!sub) return;
+    sub.hidden = !next;
+    const trigger = panel.querySelector('[data-menu-entry="planning"]');
+    trigger?.setAttribute('aria-expanded', String(next));
+    if (focus) (next ? sub.querySelector('[data-menu-entry], [data-setup-rename]') : trigger)?.focus();
+  };
   const setOpen = (next, { focusButton = false } = {}) => {
     if (next === open) return;
     open = next;
@@ -130,6 +147,7 @@ export function mountHeaderMenu(options = {}) {
       position();
       (panel.querySelector('[data-menu-entry][aria-current="page"]') || entries()[0])?.focus({ preventScroll: true });
     } else {
+      setSubmenu(false);
       panel.hidden = true;
       if (focusButton) button.focus({ preventScroll: true });
     }
@@ -138,11 +156,49 @@ export function mountHeaderMenu(options = {}) {
   };
 
   button.addEventListener('click', () => setOpen(!open));
+  panel.addEventListener('mouseover', (event) => {
+    if (hdrMenuVariant() === 'B' && event.target.closest?.('[data-menu-entry="planning"]')) setSubmenu(true);
+  });
   panel.addEventListener('click', (event) => {
     if (event.target.closest?.('[data-menu-close]')) { setOpen(false, { focusButton: true }); return; }
+    const rename = event.target.closest?.('[data-setup-rename]');
+    if (rename) {
+      const row = rename.closest('.hdr-menu-setup-row');
+      const selected = row?.querySelector('[data-menu-entry]');
+      const name = selected?.querySelector('.hdr-menu-name');
+      if (!name) return;
+      const original = name.textContent.replace(/^✓ /, '');
+      const input = document.createElement('input');
+      input.className = 'hdr-menu-rename';
+      input.setAttribute('aria-label', 'Setup name');
+      input.value = original;
+      selected.hidden = true;
+      selected.after(input);
+      rename.hidden = true;
+      const finish = (save) => {
+        if (!input.isConnected) return;
+        const value = input.value.trim();
+        input.remove();
+        selected.hidden = false;
+        rename.hidden = false;
+        if (save && value && value !== original) {
+          setOpen(false, { focusButton: true });
+          options.setupAction?.('rename', value, decodeURIComponent(rename.dataset.setupRename));
+        } else rename.focus();
+      };
+      input.addEventListener('keydown', (keyEvent) => {
+        if (keyEvent.key === 'Enter' || keyEvent.key === 'Escape') { keyEvent.preventDefault(); keyEvent.stopPropagation(); finish(keyEvent.key === 'Enter'); }
+      });
+      input.focus(); input.select();
+      return;
+    }
+    const del = event.target.closest?.('[data-setup-delete]');
+    if (del) { setOpen(false, { focusButton: true }); options.setupAction?.('delete', decodeURIComponent(del.dataset.setupDelete)); return; }
     const entry = event.target.closest?.('[data-menu-entry]');
     if (!entry) return;
     const key = entry.dataset.menuEntry;
+    if (key === 'planning' && hdrMenuVariant() === 'B') { setSubmenu(true, { focus: true }); return; }
+    if (key === 'setup-back') { setOpen(false, { focusButton: true }); actions.planning?.(); return; }
     const action = actions[key] || (key.startsWith('setup:') ? () => options.setupAction?.('select', decodeURIComponent(key.slice(6))) :
       key.startsWith('setup-') ? () => options.setupAction?.(key.slice(6)) : null);
     setOpen(false, { focusButton: true });
@@ -150,8 +206,18 @@ export function mountHeaderMenu(options = {}) {
     if (typeof action === 'function') setTimeout(() => action(), 0);
   });
   panel.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && hdrMenuVariant() === 'B' && submenu() && !submenu().hidden) {
+      event.preventDefault(); event.stopPropagation(); setSubmenu(false, { focus: true }); return;
+    }
+    if (hdrMenuVariant() === 'B' && event.key === 'ArrowRight' && document.activeElement?.dataset?.menuEntry === 'planning') {
+      event.preventDefault(); setSubmenu(true, { focus: true }); return;
+    }
+    if (hdrMenuVariant() === 'B' && event.key === 'ArrowLeft' && submenu()?.contains(document.activeElement)) {
+      event.preventDefault(); setSubmenu(false, { focus: true }); return;
+    }
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Home' && event.key !== 'End') return;
-    const list = entries();
+    const list = [...panel.querySelectorAll('[data-menu-entry], [data-setup-rename], [data-setup-delete]')]
+      .filter((element) => !element.closest('[hidden]'));
     const at = list.indexOf(document.activeElement);
     let next = at;
     if (event.key === 'Home') next = 0;
