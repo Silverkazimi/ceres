@@ -52,8 +52,12 @@ def test_setup_crud_reload_and_live_round_trip(tmp_path):
         _entry(page, 'setup-new')
         page.wait_for_function("document.body.dataset.boardPlanName === 'New setup'")
         created = _saved(page)['selected_plan_id']
-        page.once('dialog', lambda dialog: dialog.accept('Grain setup'))
-        _entry(page, 'setup-rename')
+        page.locator('#hdr-menu-btn').click()
+        page.locator(f'#hdr-menu [data-setup-rename="{created}"]').click()
+        rename = page.locator('#hdr-menu .hdr-menu-rename')
+        assert rename.is_visible() and rename.input_value() == 'New setup'
+        rename.fill('Grain setup')
+        rename.press('Enter')
         page.wait_for_function("document.body.dataset.boardPlanName === 'Grain setup'")
         assert _selected(page)['name'] == 'Grain setup'
         _entry(page, 'setup-duplicate')
@@ -64,8 +68,8 @@ def test_setup_crud_reload_and_live_round_trip(tmp_path):
         _entry(page, f'setup:{created}')
         page.wait_for_function("document.body.dataset.boardPlanName === 'Grain setup'")
         assert _saved(page)['selected_plan_id'] == created
-        page.once('dialog', lambda dialog: dialog.accept())
-        _entry(page, 'setup-delete')
+        page.locator('#hdr-menu-btn').click()
+        page.locator(f'#hdr-menu [data-setup-delete="{created}"]').click()
         page.wait_for_function('(key) => !!JSON.parse(localStorage.getItem(key)).tombstones[%s]' % json.dumps(created), arg=PLAN_KEY)
         assert created not in _saved(page)['plans']
         page.locator('#ceres-stage-toast .stage-toast-undo').click()

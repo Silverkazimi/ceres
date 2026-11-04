@@ -25,11 +25,26 @@ def _menu(page, variant):
     if variant == 'B':
         page.locator('#hdr-menu [data-menu-entry="planning"]').click()
         assert page.locator('[data-menu-submenu]').is_visible()
+        assert page.locator('[data-menu-submenu] [data-menu-entry^="setup:"]').count() >= 1
 
 
 def _capture(page, folder, variant, name):
     assert page.locator('#hdr-menu').is_visible() or name == '05-long-title-notice.png'
     page.screenshot(path=str(folder / f'{variant}-{name}'), full_page=False, animations='disabled')
+
+
+def _assert_notice_clear(page):
+    notice = page.locator('#ceres-stage-toast').bounding_box()
+    assert notice
+    for selector in ('#hdr-place', '.controls-row', '#hdr-menu:not([hidden])',
+                     '#hdr-menu [data-menu-submenu]:not([hidden])'):
+        for target in page.locator(selector).all():
+            box = target.bounding_box()
+            if box:
+                assert (notice['x'] + notice['width'] <= box['x']
+                        or box['x'] + box['width'] <= notice['x']
+                        or notice['y'] + notice['height'] <= box['y']
+                        or box['y'] + box['height'] <= notice['y']), selector
 
 
 def test_planning_setup_ci_captures(tmp_path):
@@ -87,6 +102,7 @@ def test_planning_setup_ci_captures(tmp_path):
             toast = page.locator('#ceres-stage-toast')
             assert toast.locator('.stage-toast-undo').is_visible()
             _menu(page, variant)
+            _assert_notice_clear(page)
             _capture(page, captures, variant, '04-after-delete-undo.png')
             toast.locator('.stage-toast-undo').click()
             page.wait_for_function('(args) => !!JSON.parse(localStorage.getItem(args[0])).plans[args[1]]', arg=[PLAN_KEY, current])
@@ -101,10 +117,8 @@ def test_planning_setup_ci_captures(tmp_path):
             page.wait_for_function("document.body.dataset.boardPlanName.includes('northern production')")
             toast.wait_for(state='visible')
             assert page.locator('#hdr-place').inner_text().startswith('Planning · Grain setup')
-            page.locator('#hdr-menu-btn').click() if page.locator('#hdr-menu').is_visible() else None
-            title = page.locator('#hdr-place').bounding_box()
-            notice = toast.bounding_box()
-            assert title and notice and title['y'] + title['height'] <= notice['y']
+            _menu(page, variant)
+            _assert_notice_clear(page)
             _capture(page, captures, variant, '05-long-title-notice.png')
             page.close()
         browser.close()

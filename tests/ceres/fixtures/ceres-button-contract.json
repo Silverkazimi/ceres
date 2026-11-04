@@ -1952,6 +1952,19 @@
       "variant": "glass"
     },
     {
+      "id": "header-menu-setup-actions",
+      "selector": ".hdr-menu-setup-action",
+      "action": "data-setup-rename|data-setup-delete",
+      "renderer": "header-menu.js",
+      "surface": "header-menu",
+      "group": "setup-row-actions",
+      "treatment": "S",
+      "density": "compact",
+      "status": "approved",
+      "approval": " maintainer submenu pilot: compact inline setup actions",
+      "variant": "glass"
+    },
+    {
       "id": "header-menu-close",
       "selector": ".hdr-menu-close",
       "action": "close-header-menu",

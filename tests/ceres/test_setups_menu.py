@@ -26,7 +26,11 @@ def test_variant_a_is_fourth_column_with_inline_setup_controls():
     assert got['place']['name'] == 'Planning · Grain setup'
     assert 'hdr-menu-setups' in html and '<h3>Setups</h3>' in html
     assert 'data-menu-entry="planning"' in html and '>Live<' in html
-    assert '✓ Grain setup' in html
+    assert '<span class="hdr-menu-tick" aria-hidden="true">✓</span>' in html
+    assert '<span class="hdr-menu-name">Grain setup</span>' in html
+    assert 'title="Grain setup"' in html
+    assert 'data-control-mode="icon"' in html
+    assert 'title="Rename Grain setup"' in html and 'title="Delete Grain setup"' in html
     assert 'data-setup-rename="id-1"' in html and 'data-setup-delete="id-1"' in html
     assert '&lt;script&gt;Bad&lt;/script&gt;' in html and '<script>' not in html
     assert 'Rename setup' not in html and 'Delete setup' not in html
@@ -42,6 +46,7 @@ def test_variant_b_has_attached_panel_and_planning_trigger():
     assert 'Back to live' in html
     assert 'data-setup-rename="id-1"' in html
     assert 'Planning ›' in _render('B', False)['html']
+    assert "boardPlanningSetups({ includeLive: document.body.dataset.hdrMenuVariant === 'B' })" in APP.read_text(encoding='utf-8')
 
 
 def test_inline_rename_immediate_delete_and_notice_contract():
@@ -56,7 +61,7 @@ def test_inline_rename_immediate_delete_and_notice_contract():
     assert 'prompt(' not in app and 'confirm(' not in app
     assert "boardPlanningSetupAction(operation, id)" in app
     assert "label: 'Undo'" in app
-    assert 'body[data-board-mode="planning"] .stage-toast { top:' in css
+    assert 'body[data-board-mode="planning"] .stage-toast { top: auto; bottom:' in css
     assert '.stage-toast.has-action { pointer-events: auto; }' in css
 
 

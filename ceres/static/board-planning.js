@@ -73,8 +73,8 @@ export function boardPlanningStore() {
   return wrapped;
 }
 
-export function boardPlanningSetups() {
-  if (!boardPlanningActive()) return null;
+export function boardPlanningSetups({ includeLive = false } = {}) {
+  if (!includeLive && !boardPlanningActive()) return null;
   try { return boardPlanningStore().refresh(); } catch (_) { return null; }
 }
 

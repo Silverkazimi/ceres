@@ -202,7 +202,8 @@ console.log(JSON.stringify({ clicks, urls, keys: Object.keys(BOARD_MENU_ACTIONS)
     app = ENTRY.read_text(encoding="utf-8")
     # Refresh is the avatar's own refresh: the same function the avatar's click runs
     assert "refresh: () => refreshBoardFromAvatar()," in app and "avatar?.addEventListener('click', () => refreshBoardFromAvatar());" in app
-    assert "ready(() => mountHeaderMenu({ page: 'board', actions: BOARD_MENU_ACTIONS, setups: boardPlanningSetups," in app
+    assert "ready(() => mountHeaderMenu({ page: 'board', actions: BOARD_MENU_ACTIONS," in app
+    assert "setups: () => boardPlanningSetups({ includeLive: document.body.dataset.hdrMenuVariant === 'B' })," in app
     assert "initDone.then(() => runBoardOpenRequest());" in app
 
 

@@ -934,7 +934,7 @@ ready(initRegionalDec);
 ready(mountAccountMenu);
 
 ready(() => mountHeaderMenu({ page: 'board', actions: BOARD_MENU_ACTIONS,
-  setups: () => boardPlanningSetups() || (document.body.dataset.hdrMenuVariant === 'B' ? boardPlanningStore().refresh() : null),
+  setups: () => boardPlanningSetups({ includeLive: document.body.dataset.hdrMenuVariant === 'B' }),
   setupAction: boardMenuSetupAction }));
 window.addEventListener('ceres:board-plan-conflict', () => setTimeout(() =>
   stageToast('Both setup edits were saved. Your version is a conflict copy.', true), 0));
