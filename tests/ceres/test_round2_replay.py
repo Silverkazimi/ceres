@@ -20,12 +20,16 @@ const s = SCENARIO; __world.scenario = s;
 const op = ['custom_json', { id: 'sm_land_operation', required_auths: [], required_posting_auths: ['alice'], json: JSON.stringify({ op: 'start_worksite', n: 'wsit000001' }) }];
 CURRENT_PLAYER = 'alice'; BOARD = { player: 'alice', plots: [{ deed_uid: '', plot: '1-1-1', worksite_type: 'Grain Farm' }] };
 S.WORKSITE_MODAL_PREVIEW = { payload: { account: 'alice', kind: 'worksite', chunks: [{ operations: [op] }] } };
-keychainReady = () => true; worksiteWhatText = () => 'worksite'; worksiteModalStillOpenFor = () => false;
+keychainReady = () => true; worksiteWhatText = () => 'worksite'; worksiteModalStillOpenFor = () => true;
+renderWorksiteVerdict = () => {}; closeWorksiteModal = () => {};
+const overlay = { hidden: false, dataset: { deedUid: '' } };
+document.getElementById = id => id === 'worksite-modal-overlay' ? overlay : null;
 refreshConfirmedPlot = async () => {};
 const verdicts = [];
 reportWorksiteVerdict = (deed, chunk, tx, verdict) => verdicts.push({ ...verdict, tx });
 let verifies = 0;
 __world.gameFetch = async (path, body) => {
+  if (path === '/api/plots//worksite-preview') return __world.reply(S.WORKSITE_MODAL_PREVIEW.payload);
   if (path !== '/api/op-verify') return null;
   verifies += 1;
   if (s.failVerifyOnce && verifies === 1) return __world.reply({ detail: 'down' }, 503);
@@ -61,7 +65,7 @@ WORKSITE_SHAPES = {
 @pytest.mark.parametrize("shape", list(WORKSITE_SHAPES), ids=lambda s: f"{s}[history {WORKSITE_SHAPES[s][0]}]")
 def test_e2e_worksite(shape):
     _, knobs, expected = WORKSITE_SHAPES[shape]
-    entry, source = _exposed("worksite.js", ["keychainReady", "worksiteWhatText", "worksiteModalStillOpenFor", "refreshConfirmedPlot", "reportWorksiteVerdict"])
+    entry, source = _exposed("worksite.js", ["keychainReady", "worksiteWhatText", "worksiteModalStillOpenFor", "renderWorksiteVerdict", "closeWorksiteModal", "refreshConfirmedPlot", "reportWorksiteVerdict"])
     limit = 4300000 if expected == "never-sent" else 1200000
     outcome = _run(WORKSITE.replace("SCENARIO", json.dumps(knobs)).replace("LIMIT", str(limit)), entry, source)
     assert outcome["state"] == expected, outcome
@@ -71,7 +75,7 @@ def test_e2e_worksite(shape):
 def test_e2e_worksite_silent_wallet_is_never_reported_not_sent():
     """Round 2 P0-1 on the worksite, as amended by the maintainer's IN-0888 (fix round 3): a wallet that never answers leaves
     the worksite pill honestly pending for the transaction's whole lifetime; only after it is it 'not sent'."""
-    entry, source = _exposed("worksite.js", ["keychainReady", "worksiteWhatText", "worksiteModalStillOpenFor", "refreshConfirmedPlot", "reportWorksiteVerdict"])
+    entry, source = _exposed("worksite.js", ["keychainReady", "worksiteWhatText", "worksiteModalStillOpenFor", "renderWorksiteVerdict", "closeWorksiteModal", "refreshConfirmedPlot", "reportWorksiteVerdict"])
     early = _run(WORKSITE.replace("SCENARIO", json.dumps({"wallet": "silent", "neverSent": True})).replace("LIMIT", "3600000"), entry, source)
     assert early["state"].startswith("stuck:") and early["wallet"] == 1, early
     outcome = _run(WORKSITE.replace("SCENARIO", json.dumps({"wallet": "silent", "neverSent": True})).replace("LIMIT", "7200000"), entry, source)

@@ -447,8 +447,10 @@ def test_worksite_ops_come_only_from_the_server_preview():
     prepare = _function_source(worksite, "export async function prepareStagedWorksiteBuild")
     assert "await requestWorksitePreview(row, target, timeCrystals)" in prepare
     assert "const chunk = preview.payload.chunks[0]" in prepare
-    confirm = _function_source(worksite, "export function confirmWorksiteBroadcast")
+    confirm = _function_source(worksite, "export async function confirmWorksiteBroadcast")
     assert "const chunk = preview.payload.chunks[0]" in confirm
+    assert "await fetchWorksitePreview(deedUid, body)" in confirm
+    assert "worksiteEconomicVector(preview.payload.chunks[0].operations)" in confirm
     assert "operations =" not in worksite and "operations.push(" not in worksite, "worksite.js never builds an operations list"
 
 
@@ -460,7 +462,7 @@ def test_worksite_signing_uses_posting_authority_through_the_shared_gate():
     assert "import { requestBroadcastThroughGate, requestSignatureThroughGate } from './broadcast-gate.js';" in worksite
     assert "'Active'" not in worksite and '"Active"' not in worksite
 
-    confirm = _function_source(worksite, "export function confirmWorksiteBroadcast")
+    confirm = _function_source(worksite, "export async function confirmWorksiteBroadcast")
     call = re.search(r"requestBroadcastThroughGate\(preview\.payload\.account, chunk\.operations, \(response\) => \{", confirm)
     assert call, "the worksite window signs the server preview through the gate"
     # No authority argument: the gate's default applies, and that default is Posting.

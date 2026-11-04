@@ -138,9 +138,12 @@ def test_medium1_a_fresh_attempt_id_buys_no_new_reads(server):
             except confirm.HTTPException:
                 pass
         server.clock.now += 1
-    # One budget for the action (fix round 4, : the swap's schedule, ten reads then one every 15 s; a second attempt id
-    # that did not begin a re-sign buys nothing).
-    assert 1 <= len(server.world["history_calls"]) <= confirm.normal_reads_until(660), len(server.world["history_calls"])
+    # Revision 6 §4: each admitted epoch may use one fast window, while all
+    # later checks share the account tail. A second id cannot double 11 minutes
+    # of reads or exceed the rolling-hour ceiling.
+    calls = len(server.world["history_calls"])
+    assert 1 <= calls <= confirm.normal_reads_until(660) + 10, calls
+    assert calls <= 600
 
 
 # LOW-2: browser times never shape the absence proof
@@ -180,8 +183,9 @@ def test_low3_inclusion_never_ages_a_transaction_by_the_browsers_created_at(serv
 
 # P1-6: a persisted cursor; bounded work per call
 def test_p1_6_more_than_five_thousand_own_operations_continue_from_a_persisted_cursor(server):
-    """6,500 own operations after signing. Each expiry step reads at most PAGES_PER_CALL pages and saves its cursor;
-    the next steps continue and find the action. Before: 'unprovable' after 50 pages, and discovery ended for ever."""
+    """6,500 own operations after signing. Revision 6 §4 coverage fairness limits each
+    worker turn to two pages, persists the cursor, then requeues it. The many
+    turns must still find the action without declaring a false absence."""
     ops = [op("Deep000001")]
     begin = server.clock.now
     tx = "7" * 40
@@ -192,7 +196,7 @@ def test_p1_6_more_than_five_thousand_own_operations_continue_from_a_persisted_c
     begin_and_window(server, ops)
     server.clock.now = begin + 3900 + 700
     statuses, per_call = [], []
-    for _ in range(12):
+    for _ in range(100):
         before = len(server.world["history_calls"])
         answer = expiry_answer(server, ops, closed=True)
         per_call.append(len(server.world["history_calls"]) - before)
@@ -201,4 +205,4 @@ def test_p1_6_more_than_five_thousand_own_operations_continue_from_a_persisted_c
             break
         server.clock.now += max(answer.get("next_in_s", 5), 5) + 1
     assert statuses[-1] == "found" and "unprovable" not in statuses, statuses
-    assert max(per_call) <= getattr(confirm, "PAGES_PER_CALL", 10), per_call
+    assert max(per_call) <= 2, per_call

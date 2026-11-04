@@ -569,6 +569,7 @@ export async function signStagedWorksiteBuild(row, target, timeCrystals = 0, pre
     const plan = target == null ? await prepareWorksiteCompletion(row)
       : await prepareStagedWorksiteBuild(row, target, timeCrystals);
     const { chunk } = plan;
+    chunk.worksiteCompletion = plan.payload?.kind === 'worksite_completion';
     if (prepared && worksiteEconomicVector(prepared.chunk.operations) !== worksiteEconomicVector(chunk.operations)) {
       return { ok: false, reason: 'The worksite terms changed. Review the fresh build before signing.' };
     }
@@ -996,6 +997,7 @@ export async function confirmWorksiteBroadcast(row, broadcastBtn) {
   }
   const chunk = preview.payload.chunks[0];
   chunk.cancelConstruction = preview.payload.kind === 'worksite_cancel';
+  chunk.worksiteCompletion = preview.payload.kind === 'worksite_completion';
   chunk.whatText = worksiteWhatText(row, preview.payload);
   renderWorksiteVerdict(overlay, { tone: 'info', title: 'Waiting for wallet approval…', detail: '' });
   const closeIfOpen = () => { if (worksiteModalStillOpenFor(overlay, deedUid)) closeWorksiteModal(); };
@@ -1067,9 +1069,7 @@ export async function verifyWorksiteBroadcast(deedUid, chunk, txId) {
   const verdict = (result.refresh_errors || []).length
     ? { tone: 'caution', title: 'Transaction confirmed', detail: noticeMessage(catalogNotice('verification_refresh_failed')), phase: 'confirmed-partial', state: 'is-confirmed-partial', terminal: true }
     : worksiteVerdictForState(result.state, freshRow);
-  const completed = chunk.operations?.some((operation) => {
-    try { return JSON.parse(operation[1]?.json || '{}').op === 'update_worksite'; } catch { return false; }
-  });
+  const completed = chunk.worksiteCompletion === true;
   if (completed || chunk.cancelConstruction) await refreshPlotHarvest(deedUid, { force: true });
   if (completed && !(result.refresh_errors || []).length) {
     verdict.title = 'Workers fed — worksite complete';

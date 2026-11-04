@@ -12,18 +12,18 @@ from types import SimpleNamespace
 import pytest
 
 from ceres import routes_confirm as confirm
-from tests.ceres.test_round1_server import ATTEMPT, PLAYER, _request, find_body, op, server, stamp  # noqa: F401
+from tests.ceres.test_round1_server import ATTEMPT, PLAYER, _request, find_body, op, other_op, server, stamp  # noqa: F401
 
 ATTEMPT_B = "0b0b0b0b0b0b0b0b"
 
 
 def own_log(begin, *, count, target_at=None, ops=None, newest_after=None):
     """`count` contiguous own operations, one every 10 s from `begin`; with `target_at` the action sits at index 0."""
-    rows = [[i, {"trx_id": f"{i + 1:040x}", "op": op(f"Other{i:05d}"), "timestamp": stamp(begin + i * 10)}] for i in range(count)]
+    rows = [[i, {"trx_id": f"{i + 1:040x}", "op": other_op(f"Other{i:05d}"), "timestamp": stamp(begin + i * 10)}] for i in range(count)]
     if target_at is not None:
         rows[0] = [0, {"trx_id": "7" * 40, "op": ops[0], "timestamp": stamp(target_at)}]
     if newest_after is not None:
-        rows.append([len(rows), {"trx_id": "e" * 39 + "1", "op": op("Newer00001"), "timestamp": stamp(newest_after)}])
+        rows.append([len(rows), {"trx_id": "e" * 39 + "1", "op": other_op("Newer00001"), "timestamp": stamp(newest_after)}])
     return rows
 
 
@@ -93,7 +93,12 @@ def test_n1_the_begin_answer_carries_a_token_only_for_the_attempts_first_contact
     server.call("intent", {"operations": ops, "attempt": ATTEMPT, "event": "answered", "closed": True})
     late = server.call("intent", {"operations": ops, "attempt": ATTEMPT, "event": "begin"})
     assert "begin_token" not in late, late
-    fresh = server.call("intent", {"operations": ops, "attempt": ATTEMPT_B, "event": "begin"})
+    # Revision 6 §2: the same signed nonce is owned by the first attempt
+    # including when its begin arrived too late to grant a token.
+    with pytest.raises(confirm.HTTPException) as collision:
+        server.call("intent", {"operations": ops, "attempt": ATTEMPT_B, "event": "begin"})
+    assert collision.value.status_code == 409
+    fresh = server.call("intent", {"operations": [op("FirstOnly2")], "attempt": ATTEMPT_B, "event": "begin"})
     assert isinstance(fresh.get("begin_token"), str) and len(fresh["begin_token"]) == 32, fresh
 
 
@@ -101,7 +106,8 @@ def test_n1_the_begin_answer_carries_a_token_only_for_the_attempts_first_contact
 def test_n2_a_delayed_closure_of_an_old_attempt_never_closes_the_new_one():
     """Astra r3 N2 probe on the real _apply_event: begin A, close A, begin B, delayed close A. Before: B's ledger was
     closed by A's late beacon (closed_at set, expiry reset) although B's wallet prompt was still open."""
-    row = {"digest": "d", "first_seen": 1700000000, "reads": 0, "windows": 0, "attempt_ids": []}
+    row = {"action_id": "a" * 32, "digest": "d", "first_seen": 1700000000,
+           "reads": 0, "windows": 0, "attempt_ids": [], "attempts": {}, "revisions": []}
     confirm._apply_event(row, {"event": "begin"}, 1700000000, "begin", ATTEMPT)
     confirm._apply_event(row, {"closed": True, "answered": True}, 1700000001, "answered", ATTEMPT)
     confirm._apply_event(row, {"event": "begin"}, 1700000002, "begin", ATTEMPT_B)
@@ -116,8 +122,10 @@ def test_n2_an_old_attempts_expiry_worker_never_settles_the_new_attempt(server, 
     proves A absent. B must stay unproven, and the routing / SPS re-offer proof for B must not be 'absent'. Before: the
     action-wide record took A's 'absent' for every attempt."""
     ops = [op("Race000001")]
+    retry_ops = [op("Race000002")]
     t = server.clock.now
-    token = server.call("intent", {"operations": ops, "attempt": ATTEMPT, "event": "begin"})["begin_token"]
+    begun = server.call("intent", {"operations": ops, "attempt": ATTEMPT, "event": "begin"})
+    token, action_id = begun["begin_token"], begun["action_id"]
     server.call("intent", {"operations": ops, "attempt": ATTEMPT, "event": "answered", "closed": True, "begin_token": token})
     server.world["log"] = own_log(t - 1000, count=90, newest_after=t + 3600 + 3000)
     window(server, ops, closed=True, begin_token=token)
@@ -126,7 +134,8 @@ def test_n2_an_old_attempts_expiry_worker_never_settles_the_new_attempt(server, 
 
     def slow_proof(*args, **kwargs):
         # While A's worker reads history, attempt B of the same operations begins (A was declined locally).
-        server.call("intent", {"operations": ops, "attempt": ATTEMPT_B, "event": "begin"})
+        server.call("intent", {"operations": retry_ops, "attempt": ATTEMPT_B,
+                               "action_id": action_id, "event": "begin"})
         return real(*args, **kwargs)
     monkeypatch.setattr(confirm, "prove_own_action", slow_proof)
     first = expiry(server, ops, closed=True, begin_token=token)
@@ -134,8 +143,8 @@ def test_n2_an_old_attempts_expiry_worker_never_settles_the_new_attempt(server, 
     assert first["status"] == "absent", first                      # A's own proof stands for A
     request = _request(server.tmp, {})
     assert confirm.ledger_absence(request, PLAYER, ATTEMPT, ops)["status"] == "absent"
-    assert (confirm.ledger_absence(request, PLAYER, ATTEMPT_B, ops) or {}).get("status") != "absent"
-    b = server.call("find", find_body(ops, server.clock, attempt=ATTEMPT_B))
+    assert (confirm.ledger_absence(request, PLAYER, ATTEMPT_B, retry_ops) or {}).get("status") != "absent"
+    b = server.call("find", find_body(retry_ops, server.clock, attempt=ATTEMPT_B, action_id=action_id))
     assert b["status"] != "absent", b
 
 
@@ -157,7 +166,9 @@ def test_n2_a_stale_run_of_the_same_attempt_is_rejected(server, monkeypatch):
         return real(*args, **kwargs)
     monkeypatch.setattr(confirm, "prove_own_action", reopened)
     answer = expiry(server, ops, closed=True, begin_token=token)
-    assert answer["status"] == "unproven" and answer.get("reason") == "stale", answer
+    # Revision 6 §4 fences stale publication but schedules the next due read
+    # a wait is safe only while no absence proof was committed.
+    assert answer["status"] in {"wait", "unproven"}, answer
     assert confirm.ledger_absence(_request(server.tmp, {}), PLAYER, ATTEMPT, ops)["status"] != "absent"
 
 
@@ -267,7 +278,7 @@ def test_n6_a_lost_ack_appearing_at_eleven_seconds_is_found_at_twelve(server):
     ops = [op("Speed00011")]
     t0 = server.clock.now
     target = [500, {"trx_id": "9" * 40, "op": ops[0], "timestamp": stamp(t0 + 11)}]
-    others = [[i, {"trx_id": f"{i + 1:040x}", "op": op(f"Other{i:05d}"), "timestamp": stamp(t0 - 600 + i)}] for i in range(400, 500)]
+    others = [[i, {"trx_id": f"{i + 1:040x}", "op": other_op(f"Other{i:05d}"), "timestamp": stamp(t0 - 600 + i)}] for i in range(400, 500)]
     found_at = None
     while server.clock.now - t0 < 120:
         server.world["rows"] = others + ([target] if server.clock.now - t0 >= 11 else [])
@@ -286,7 +297,7 @@ def test_n7_a_large_new_top_gap_is_filled_across_calls_and_the_target_below_is_r
     upper gap and returned the old cursor for ever. After: progress is kept and the action is found."""
     ops = [op("Gap0000002")]
     base = 1_800_000_000.0
-    rows = [[i, {"trx_id": f"{i + 1:040x}", "op": op(f"Old{i:07d}"), "timestamp": stamp(base + i)}] for i in range(3001)]
+    rows = [[i, {"trx_id": f"{i + 1:040x}", "op": other_op(f"Old{i:07d}"), "timestamp": stamp(base + i)}] for i in range(3001)]
     rows[100] = [100, {"trx_id": "8" * 40, "op": ops[0], "timestamp": stamp(base + 100)}]
 
     def history(account, start):

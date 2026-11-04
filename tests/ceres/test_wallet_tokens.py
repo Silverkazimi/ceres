@@ -231,11 +231,19 @@ context.__declineActive = true;
     body_js = CARD_JS + f"""
 __setConfirmerClock(Object.fromEntries([['sleep', async () => undefined]]));  // the shared schedule, frozen for the test
 const built = {posting};
+const funding = {json.dumps(funding)};
+let fundingReplies = 0;
 const order = [];
 globalThis.fetch = async (url, options) => {{
   const path = url.split('?')[0].split('/').pop(); const body = JSON.parse(options.body); order.push([path, body]);
   const reply = path === 'preview' ? {{ ...built, signing_enabled: true, quote: {{ kind: 'swap_sell', input: '1', output: '8.124', minimum: '7.920', pool_cost: '0.005', slippage: '2.5', fee_percent: '0.5', two_step: true }}, projected: {{ dec_after: '108.124', region_after: '4' }} }}
-    : path === 'verify' ? {json.dumps(info)} : {json.dumps(funding)};
+    : path === 'verify' ? {json.dumps(info)} : (() => {{
+      const next = JSON.parse(JSON.stringify(funding));
+      const payload = JSON.parse(next.operations[0][1].json);
+      payload.params.n = 'fedcba987654321' + String(++fundingReplies);
+      next.operations[0][1].json = JSON.stringify(payload);
+      return next;
+    }})();
   return {{ ok: true, status: 200, json: async () => reply }};
 }};
 const st = swapState('player0005', 'SPS');
@@ -260,9 +268,10 @@ const target = {{ closest: () => ({{ dataset: {{ lpSymbol: 'SPS' }} }}) }};
   let retry = swapHtml('SPS', wallet, 'player0005', true);
   if ((retry.match(/data-dec="lp:fund"/g) || []).length !== 1 || !retry.includes('Send SPS to the pool') || /error|failed|rejected|cancel|two signatures|Step 2/i.test(retry)) throw new Error('retry card: ' + retry);
   await swapAction(ctx, 'fund', target);
-  if (order.filter(o => o[0] === 'sps-funding').length !== 1) throw new Error('the kept transfer is signed again, not rebuilt');
+  if (order.filter(o => o[0] === 'sps-funding').length !== 2) throw new Error('a declined transfer must be rebuilt for the second wallet invocation');
   // (stuck states): the sale is not "done" at the transfer -- it waits for the pool to settle, no quote shown.
   if (__signed.length !== 3 || __signed[2].authority !== 'Active' || st.stage !== 'settling' || st.receipt.funding_tx !== 'b'.repeat(40) || st.receipt.output !== null) throw new Error('retry settling: ' + st.stage);
+  if (__signed[1].json.params.n === __signed[2].json.params.n) throw new Error('the second funding prompt reused a nonce');
   if (!swapHtml('SPS', wallet, 'player0005', true).includes('Waiting for the pool to settle')) throw new Error('receipt');
   process.exit(0);  // the settlement loop keeps real timers alive; the checks are done
 }})().catch(error => {{ console.error(error); process.exit(1); }});

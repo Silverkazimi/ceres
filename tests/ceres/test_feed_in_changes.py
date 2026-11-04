@@ -93,6 +93,10 @@ def test_constructions_wait_and_feed_signs_from_changes(live_browser: tuple[Brow
 
     page.route("**/api/board*", board_route)
     page.route("**/worksite-preview*", preview_route)
+    page.route("**/api/confirm/intent*", lambda route: route.fulfill(
+        status=200, content_type="application/json", body=json.dumps({
+            "begin_token": "c" * 32, "action_id": "a" * 32, "revision": 1,
+            "server_now": int(datetime.now(timezone.utc).timestamp() * 1000)})))
     page.route("**/api/op-inclusion*", lambda route: route.fulfill(status=200, content_type="application/json", body='{"included":true,"block_num":123}'))
     page.route("**/api/op-verify*", lambda route: route.fulfill(status=200, content_type="application/json", body='{"state":"pending"}'))
     page.goto(f"{base_url}/?player=sample01", timeout=8_000)

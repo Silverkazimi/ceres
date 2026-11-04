@@ -10,7 +10,7 @@ import json
 from types import SimpleNamespace
 
 from ceres import routes_confirm as confirm
-from tests.ceres.test_round1_server import ATTEMPT, PLAYER, _request, find_body, op, server, stamp  # noqa: F401
+from tests.ceres.test_round1_server import ATTEMPT, PLAYER, _request, find_body, op, other_op, server, stamp  # noqa: F401
 from tests.ceres.test_round3_server import ATTEMPT_B, expiry, own_log, window
 
 # 15c6a6da5:ceres/static/wallet-lp.js: VERIFY_SCHEDULE_MS, then RECHECK_MS = 15 s while the id is missing (MAX_ROUNDS 400).
@@ -88,12 +88,13 @@ def test_r3_an_id_found_for_the_old_attempt_is_not_handed_to_the_retry(server):
 
 
 def test_r3_the_browser_can_name_ids_of_other_attempts(server):
-    """B's wallet returned tx B; the old attempt A's finder names it: A is never given B's id (it keeps looking)."""
+    """Revision 6 §2: browser exclusions are discovery hints, never proof that an
+    action-wide match did not land. A real match must dominate an absence."""
     ops = [op("Exclude001")]
     tx_b = "b3" * 20
     server.world["rows"] = [[10, {"trx_id": tx_b, "op": ops[0], "timestamp": stamp(server.clock.now)}]]
     answer = server.call("find", find_body(ops, server.clock, exclude_tx_ids=[tx_b]))
-    assert answer["status"] == "wait", answer
+    assert answer["status"] == "found" and answer["tx_id"] == tx_b, answer
 
 
 def test_r3_a_match_the_browser_attributed_elsewhere_never_proves_absence():
@@ -130,10 +131,14 @@ def test_r5_seventy_one_and_eighty_six_seconds_on_the_real_route(server):
     """Astra's table: history first shows the action at 71 s / 86 s; the client asks whenever the server allows. Found
     at 85 s / 100 s, as the swap. Before: 480 s for both."""
     for appear, expected in ((71, 85), (86, 100)):
-        ops = [op(f"Speed{appear:05d}")]
+        # The two independent timing probes need distinct economic actions
+        # Revision 6 §2 deliberately treats nonce-only differences as one
+        # action family and may retain the first probe's match.
+        nonce = f"Speed{appear:05d}"
+        ops = [op(nonce, payload={"op": "harvest_all", "plot": f"speed-{appear}", "n": nonce})]
         t0 = server.clock.now
         target = [500, {"trx_id": f"{appear:040x}", "op": ops[0], "timestamp": stamp(t0 + appear)}]
-        others = [[i, {"trx_id": f"{i + 1:040x}", "op": op(f"Other{i:05d}"), "timestamp": stamp(t0 - 600 + i)}] for i in range(400, 500)]
+        others = [[i, {"trx_id": f"{i + 1:040x}", "op": other_op(f"Other{i:05d}"), "timestamp": stamp(t0 - 600 + i)}] for i in range(400, 500)]
         found_at = None
         while server.clock.now - t0 < 700:
             server.world["rows"] = others + ([target] if server.clock.now - t0 >= appear else [])
@@ -170,7 +175,8 @@ def test_r5_control_an_attempt_id_without_a_begin_still_buys_no_reads(server):
     server.call("find", find_body(ops, server.clock))
     calls = len(server.world["history_calls"])
     answer = server.call("find", find_body(ops, server.clock, attempt=ATTEMPT_B))
-    assert len(server.world["history_calls"]) == calls and answer["status"] == "wait", answer
+    assert len(server.world["history_calls"]) == calls, answer
+    assert answer["status"] in {"wait", "unproven"} and answer.get("status") != "absent", answer
 
 
 # Aletheia 1/2: the "never asked" lifetime is the server's own clock

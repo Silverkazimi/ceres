@@ -140,14 +140,14 @@ def test_g1c_gate_registers_both_branches_with_the_confirmer():
     direct = gate[gate.index("function requestBroadcastPromise("):gate.index("export function reviewedMarketPurchase")]
     queued = gate[gate.index("export async function requestSignatureThroughGate("):]
     # Fix round 2 (P1-3): the id is attached to the attempt that asked for it.
-    assert "beginAttempt(account, operations" in direct and "attachTransaction(account, operations, txId, { attempt: attemptRow.attempt })" in direct
+    assert "beginAttempt(account, operations" in direct and "attachTransaction(account, operations, txId, { attempt: attemptRow.attempt, walletCallback: fromWallet })" in direct
     # Round 4 (aletheia r4 6): the begin starts early (startBegin) and is awaited before the wallet is asked.
     assert "startBegin(account, operations)" in direct and "await begun" in direct, "the server must hear the attempt's begin (P0-1)"
     assert direct.index("await begun") < direct.index("requestWalletBroadcast("), "the wallet opens only after the begin answer (N1)"
     assert "markSilent(" in direct and "closed: walletClosed(response)" in direct, "silence is not an answer (P0-1)"
     assert "findSignedTransaction(account, operations)" in direct, "a lost ack must go to the own-history finder"
     assert "subscribeConfirmation(account, operations" in direct, "the hand-off must follow the confirmer's proof (HIGH-1, F2)"
-    assert "beginAttempt(account, operations" in queued and "attachTransaction(account, operations, queued.txId)" in queued
+    assert "beginAttempt(account, operations" in queued and "attachTransaction(account, operations, queued.txId, { walletCallback: true })" in queued
     assert "afterWalletSilence(" in gate and "KEYCHAIN_RESPONSE_TIMEOUT_MS)" not in gate
 
 

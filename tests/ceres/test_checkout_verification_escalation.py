@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import json
+import time
 
 import pytest
 from playwright.sync_api import Browser, Page
@@ -27,6 +28,10 @@ def _page(live_browser: tuple[Browser, str], *, compressed_schedule: bool = Fals
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     if compressed_schedule:
         page.add_init_script("window.__ceresOperationPollSchedule = [10, 20, 30, 40, 50, 60];")
+    page.route("**/api/confirm/intent*", lambda route: route.fulfill(
+        status=200, content_type="application/json", body=json.dumps({
+            "begin_token": "c" * 32, "action_id": "a" * 32,
+            "revision": 1, "server_now": int(time.time() * 1000)})))
     hide_running_constructions(page)
     page.goto(f"{base_url}?ir1882-guard=1" if compressed_schedule else base_url)
     wait_for_board(page)

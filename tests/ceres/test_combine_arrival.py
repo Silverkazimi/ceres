@@ -400,6 +400,7 @@ def test_pending_verdict_stays_optimistic_never_claims_confirmation() -> None:
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-pending", "notices": []}])
             _open_dialog(page, base_url, row, worker)
+            _install_confirmer_clock(page)
 
             _sign(page)
             title = page.locator("#combine-dialog-title")

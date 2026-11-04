@@ -20,6 +20,11 @@ context.navigator.locks = { request(name, options, callback) {
 PRELUDE = r"""
 CURRENT_PLAYER='alice';BOARD={player:'alice',plots:[]};
 const assert = (value, message) => { if (!value) throw Error(message); };
+// A confirmed pre-sign begin is required before the queue may ask Keychain.
+fetch = async url => {
+ if (String(url).includes('/api/confirm/intent')) return {ok:true,json:async()=>({begin_token:'c'.repeat(32),action_id:'a'.repeat(32),revision:1,server_now:Date.now()})};
+ throw Error('unexpected fetch '+url);
+};
 const op = n => ['custom_json',{id:'sm_land_operation',required_auths:[],required_posting_auths:['alice'],json:JSON.stringify({op:'tax_collection',deed_uids:['I-1-aaaaaaaa'],n})}];
 let signatures=0, broadcasts=0, head=100;
 const sent = new Map();

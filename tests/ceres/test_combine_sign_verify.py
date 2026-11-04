@@ -139,6 +139,10 @@ def _mock_op_verify(page: Page, responses: list[dict], *, delay_ms: int = 0) -> 
 def _open_dialog(page: Page, base_url: str, row: dict, worker: dict) -> None:
     """Opens the real dialog for `worker`'s printing through the board's `?combine=` door
     (`row` names the plot the printing was found on; the dialog itself is not tied to it)."""
+    page.route("**/api/confirm/intent*", lambda route: route.fulfill(
+        status=200, content_type="application/json",
+        body=json.dumps({"begin_token": "c0b1" * 8, "action_id": "a" * 32,
+                         "revision": 1, "server_now": int(time.time() * 1000)})))
     open_combine_by_print(page, base_url, worker)
     page.locator("#combine-dialog-body .combine-sign").wait_for(timeout=15_000)
 

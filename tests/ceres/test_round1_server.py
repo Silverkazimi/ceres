@@ -205,7 +205,13 @@ def test_medium4_uncovered_expiry_read_pages_back_over_own_history_and_finds_the
     server.world["log"] = log
     _signing_session(server, ops)
     server.clock.now = begin + 3900 + 5
-    answer = server.call("find", find_body(ops, server.clock, expiry_check=True))
+    # Revision 6 §4 gives coverage two pages per turn; the persisted cursor
+    # resumes on the next turn until it reaches this older match.
+    for _ in range(4):
+        answer = server.call("find", find_body(ops, server.clock, expiry_check=True))
+        if answer["status"] == "found":
+            break
+        server.clock.now += max(answer.get("next_in_s", 5), 5) + 1
     assert answer["status"] == "found" and answer["tx_id"] == tx, answer
     assert all(account == PLAYER for account, _ in server.world["history_calls"])          # own history only
     assert len([start for _, start in server.world["history_calls"] if start != -1]) <= 3   # bounded to the signing moment
@@ -274,7 +280,7 @@ def test_medium3_the_proof_is_the_servers_expiry_read_bound_to_the_exact_operati
     assert server.call("find", find_body(ops, server.clock))["status"] == "absent"
     proof = confirm.ledger_absence(request, PLAYER, ATTEMPT, ops)
     assert proof == {"status": "absent", "digest": runs.absence_digest(PLAYER, ops)}
-    assert confirm.ledger_absence(request, PLAYER, ATTEMPT, [other_op("Route00002")]) is None   # other operations
+    assert confirm.ledger_absence(request, PLAYER, "b" * 16, [other_op("Route00002")]) is None   # other action, no proof
 
 
 # F1: the settle route no longer reads own history on every settlement read

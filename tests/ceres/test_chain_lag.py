@@ -302,6 +302,11 @@ def test_fresh_review_after_a_dropped_row_is_accepted_but_the_dropped_operations
         assert first.json_payload["n"] != second.json_payload["n"]
     run(r"""
 CURRENT_PLAYER = 'alice'; BOARD = { player: 'alice', plots: [] };
+fetch = async url => {
+  if (String(url).includes('/api/confirm/intent')) return {ok:true,json:async()=>({begin_token:'c'.repeat(32),action_id:'a'.repeat(32),revision:1,server_now:Date.now()})};
+  if (String(url).includes('/api/op-inclusion')) return {ok:true,json:async()=>({included:true,block_num:100})};
+  throw Error('unexpected fetch '+url);
+};
 const op = n => ['custom_json', { id: 'sm_land_operation', required_auths: [], required_posting_auths: ['alice'],
   json: JSON.stringify({ op: 'harvest_all', region_uid: 'LAND-1-1', deed_uids: [], app: 'ceres/1.0.0', n }) }];
 const old = { ...tx(Date.now() - 30000), operations: [op('oldNonce01')] };
