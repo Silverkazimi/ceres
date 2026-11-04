@@ -1029,8 +1029,8 @@ async function postJson(url, body, { signal = null } = {}) {
   return data;
 }
 
-function saveHarvestAttempt(attemptId, fields = {}) {
-  return postJson('/api/harvest/attempt', { attempt_id: attemptId, run_id: M.run?.runId || null, ...fields });
+function saveHarvestAttempt(attemptId, fields = {}, { signal = null } = {}) {
+  return postJson('/api/harvest/attempt', { attempt_id: attemptId, run_id: M.run?.runId || null, ...fields }, { signal });
 }
 
 // the wait itself lives in shared-confirmer.js (one schedule for every flow, no give-up, resume on
@@ -1109,7 +1109,8 @@ function verifyUntilFinal(attemptId, { operations = null, txId = null, chunkNonc
     }
     // F9: the server learns the id until it acknowledges it; one failed save is retried on every later read.
     if (id && !run.attachedIds.has(id)) {
-      try { await saveHarvestAttempt(attemptId, { tx_id: id, state: 'submitted' }); run.attachedIds.add(id); }
+      // Fix round 3 (astra-review-r3 N4): the attach read carries the scheduler's signal too.
+      try { await saveHarvestAttempt(attemptId, { tx_id: id, state: 'submitted' }, { signal }); if (!signal?.aborted) run.attachedIds.add(id); }
       catch (_) { return { state: 'pending', message: VERIFY_PENDING_TEXT }; }
     }
     M.lag?.refresh().catch(() => {});   // throttled; never delays a check

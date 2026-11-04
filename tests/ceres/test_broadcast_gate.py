@@ -32,6 +32,8 @@ window.hive_keychain = {
 fetch = async (url, init) => {
   // wallet silence hands the request to the own-history finder; that is not an inclusion wait.
   if (String(url).startsWith('/api/confirm/find?player=alice')) return { ok: true, status: 200, json: async () => ({ status: 'not_found' }) };
+  // fix round 3 (N1): the begin is recorded before the wallet opens; it is not an inclusion wait.
+  if (String(url).startsWith('/api/confirm/intent?player=alice')) return { ok: true, status: 200, json: async () => ({ ok: true }) };
   inclusionCount += 1;
   if (!String(url).startsWith('/api/op-inclusion?player=alice')) throw new Error(`wrong inclusion URL: ${url}`);
   if (JSON.parse(init.body).tx_id !== 'late-tx') throw new Error('wrong inclusion transaction');
@@ -43,7 +45,7 @@ const first = BroadcastGate.broadcast('Alice', operations).then(
   () => { throw new Error('the timeout must enter pending verification'); },
   (error) => error,
 );
-await Promise.resolve();
+for (let i = 0; i < 100 && requestCount === 0; i++) await Promise.resolve();   // round 3: the wallet opens after the recorded begin
 if (requestCount !== 1 || typeof callback !== 'function') throw new Error('Keychain was not called exactly once');
 timers.find((timer) => timer.delay === KEYCHAIN_RESPONSE_TIMEOUT_MS).callback();
 const timeout = await first;

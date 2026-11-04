@@ -26,9 +26,9 @@ def log_rows(begin, *, count=50, newest_after=None, extra=()):
 
 
 def begin_and_window(server, ops, *, closed=True, attempt=ATTEMPT, answered=True):
-    server.call("intent", {"operations": ops, "attempt": attempt, "event": "begin"})
+    token = server.call("intent", {"operations": ops, "attempt": attempt, "event": "begin"}).get("begin_token")   # fix round 3 (N1)
     for _ in range(6):
-        server.call("find", find_body(ops, server.clock, attempt=attempt, answered=answered, **({"closed": True} if closed else {})))
+        server.call("find", find_body(ops, server.clock, attempt=attempt, answered=answered, begin_token=token, **({"closed": True} if closed else {})))
         server.clock.now += 100
 
 
@@ -138,7 +138,7 @@ def test_medium1_a_fresh_attempt_id_buys_no_new_reads(server):
             except confirm.HTTPException:
                 pass
         server.clock.now += 1
-    assert 1 <= len(server.world["history_calls"]) <= 6, len(server.world["history_calls"])
+    assert 1 <= len(server.world["history_calls"]) <= len(confirm.NORMAL_OFFSETS_S), len(server.world["history_calls"])   # one budget (fix round 3: eleven reads, N6)
 
 
 # LOW-2: browser times never shape the absence proof

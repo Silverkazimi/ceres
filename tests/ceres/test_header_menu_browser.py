@@ -26,7 +26,7 @@ pytestmark = pytest.mark.browser
 ROOT = Path(__file__).resolve().parents[2]
 STATIC = ROOT / "ceres" / "static"
 ORIGIN = "http://ceres.test"
-ENTRY_NAMES = ["Plots", "My cards", "Market", "My purchases", "Harvest", "Changes", "Find combinables", "Refresh", "Account"]
+ENTRY_NAMES = ["Plots", "My cards", "Market", "My purchases", "Harvest", "Changes", "Planning", "Find combinables", "Refresh", "Account"]
 
 BOXES_JS = """() => {
   const box = (sel) => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect();
@@ -104,7 +104,7 @@ def test_board_desktop_header_menu(board_set):
               b.classList.remove('is-changes-ready'); b.classList.add('is-icon-only'); b.hidden = true; return out; }""")
             assert staged == {"iconOnly": False, "shown": True, "leftOfHarvest": True, "height": 34}
 
-            # open: dialog under Menu, focus on the current place, nine entries in three columns
+            # open: dialog under Menu, focus on the current place, ten entries in three columns
             _open_menu(page)
             opened = page.evaluate(BOXES_JS)
             info = page.evaluate("""() => { const p = document.getElementById('hdr-menu'), b = document.getElementById('hdr-menu-btn');

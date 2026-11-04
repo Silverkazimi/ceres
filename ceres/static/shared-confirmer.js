@@ -5,8 +5,8 @@
 // render the state they are given: pending (honest wording), confirmed, refused (with the game's error), never-sent.
 // Nothing here gives up and there is no manual control: a fast schedule, then spaced reads, then a slow read every five
 // minutes for as long as the action is unresolved; an immediate read on page load, visibilitychange (visible) and
-// pageshow. Absence is final only on the server's proof (own history covering the signing moment at expiry, or Hive
-// reporting the known transaction absent past its lifetime, both judged by the server's clock).
+// pageshow. Absence is final only on the server's proof (own history covering the attempt's pre-sign begin at expiry
+// or Hive reporting the known transaction expired-irreversible, both judged by the server's clock).
 // Fix round 1 (, reviews astra-review.md F1-F10 and aletheia-verdict.md)
 // an ACTION (account + exact operations) has numbered ATTEMPTS; a retry after "never sent" is a fresh pending attempt
 // (F3); transitions are monotonic: a proven transaction id beats an inferred "never sent", a final game verdict is
@@ -14,18 +14,32 @@
 // one storage key per action, merged monotonically, synchronised across tabs (storage event + BroadcastChannel); a
 // failed write keeps the row in memory and is retried (F6)
 // every request (finder, verdict, inclusion) is bounded and aborted (F4); known-id reads never go dormant (F4/F7)
-// the own-history finder follows the SERVER's schedule and budget (/api/confirm/find: at most six reads in the ten
-// minutes after the wallet answered, then the one expiry read, all on the server's clock, counted per attempt on the
-// server so two tabs share one budget) (F6/F7, )
+// the own-history finder follows the SERVER's schedule and budget (/api/confirm/find: a few reads in the ten minutes
+// after the wallet answered, then the one expiry read, all on the server's clock, counted per action on the server
+// so two tabs share one budget) (F6/F7, )
 // per-op verdicts are never manufactured from an aggregate refusal (F5).
 // Fix round 2 (astra-review-r2 P0-1, P1-3, P1-4, P1-6; aletheia-verdict-r2 MEDIUM-1, LOW-2)
 // wallet SILENCE is never an answer: `markSilent` starts the finder but the request stays OPEN; only a wallet answer
 // that ends the request (`closed`) lets the server ever prove absence, and the server times it by its own clock
-// the attempt's begin is announced to the server by a beacon as the wallet opens (no fetch, nothing awaited, )
 // late wallet proof is bound to the attempt that asked for it: an old attempt's answer never touches a newer one
 // a cached final verdict never suppresses the flow's domain receipt read (reload-before-screen, another tab)
 // a failed write falls back to sessionStorage and is flushed on pagehide (quota + close)
 // a flow read that timed out is aborted and its late result is ignored.
+// Fix round 3 (astra-review-r3 N1-N4, N6; aletheia-verdict-r3 L1, L4)
+// the attempt's begin is RECORDED by the server before the wallet is asked: `announceBegin` awaits the server's answer
+// (bounded, BEGIN_BOUND_MS) and keeps its begin token; the token is presented with every later report. Without the
+// token (no answer in time) the server can never prove this attempt absent: it stays honestly pending
+// every proof of absence is the attempt's own on the server (closure, scan, expiry result); a known id is "never
+// sent" only on Hive's expired-irreversible status, never on one node's "not found"; once Hive has reported the id
+// included, a later "absent" answer is ignored
+// the no-id finder reads at the reference swap's offsets (server NORMAL_OFFSETS_S), so it is never slower than swap
+// maintainer decision IN-0888 ("End it once the request expires"): an attempt whose wallet provably never answered
+// HiveAuth reported its own request expired unsigned, or no wallet answer at all until the transaction's longest
+// lifetime passed -- ends never-sent with WALLET_NEVER_ASKED (`neverSentBy: 'wallet-expired'`); its claim is released
+// like any never-sent. The finder keeps looking for that attempt (24 h), and a chain hit reopens it. The server
+// proves nothing from this: N1-N3 are untouched (routing's `/v2/unsent` still needs the server's own proof)
+// maintainer decision IN-0889 ("One warning line"): when a row could only be kept in sessionStorage, subscribers of
+// `subscribeStorage` are told (confirm-notices.js shows STORAGE_FULL); nothing is copied to the server.
 const PREFIX = 'ceres:confirm:v2:';
 const INDEX_KEY = 'ceres:confirm:v2-index';
 const LEGACY_KEY = 'ceres:confirm:v1';
@@ -33,10 +47,14 @@ const LEGACY_KEY = 'ceres:confirm:v1';
 // 3 min, every 30 s to 10 min, every 60 s to Hive's longest lifetime, then every 5 min for as long as it takes.
 export const CONFIRM_FAST_MS = [0, 2000, 4000, 8000, 12000, 18000, 26000, 36000, 50000, 70000];
 export const CHECK_BOUND_MS = 30000;          // one read (the harvest verifier's former per-request bound, )
+export const BEGIN_BOUND_MS = 2500;           // the wallet opens at the latest this long after Sign while the begin is recorded
 export const WALLET_SILENCE_MS = 120000;     // the wallet has not answered at all: start the own-history finder
 export const NEVER_SENT_AFTER_MS = 3900 * 1000; // Hive's longest expiry plus grace (display and schedule only; the server decides)
 export const SLOW_READ_MS = 5 * 60 * 1000;   // past the lifetime: known-id recovery keeps reading on this slow schedule
 const WINDOW_MS = 10 * 60 * 1000;
+export const WALLET_NEVER_ASKED = 'Not sent: your wallet never asked you. Starting again is safe.';
+export const STORAGE_FULL = "This browser's storage is full: keep this tab open until the action is confirmed";
+const WALLET_EXPIRED_WATCH_MS = 24 * 3600 * 1000;   // after the ending, the finder keeps looking this long for a late hit
 const FINDER_RETRY_MS = 30000;               // the server could not be reached: ask it again (it keeps the budget)
 // IN-0705 (manager decision 2026-11-03, Q1 option 1): an action signed WITHOUT a returned id that the
 // ten-minute finder did not see gets ONE more read of the account's own operations at the transaction's Hive expiry
@@ -147,19 +165,36 @@ function persist(row) {
       try { fallbackStorage()?.setItem(keyFor(row.id), JSON.stringify(row)); } catch (___) {}
       dirty.add(row.id);
       armRetry();
+      tellStorage();
       return false;
     }
   }
   dirty.delete(row.id);
   try { fallbackStorage()?.removeItem?.(keyFor(row.id)); } catch (_) {}
+  if (!dirty.size) tellStorage();
   return true;
+}
+// IN-0889: whether some row is kept only in this tab (sessionStorage / memory) because localStorage refused it.
+const storageListeners = new Set();
+let storageFullShown = false;
+function tellStorage() {
+  const full = dirty.size > 0;
+  if (full === storageFullShown) return;
+  storageFullShown = full;
+  for (const fn of [...storageListeners]) { try { fn(full); } catch (_) {} }
+}
+export function storageIsFull() { return storageFullShown; }
+export function subscribeStorage(listener) {
+  storageListeners.add(listener);
+  try { listener(storageFullShown); } catch (_) {}
+  return () => storageListeners.delete(listener);
 }
 function armRetry() {
   if (retryArmed) return;
   retryArmed = true;
   clock.sleep(5000).then(() => { retryArmed = false; flushDirty(); });
 }
-function flushDirty() { for (const id of [...dirty]) { const row = mem.get(id); if (row) persist(row); else dirty.delete(id); } }
+function flushDirty() { for (const id of [...dirty]) { const row = mem.get(id); if (row) persist(row); else dirty.delete(id); } tellStorage(); }
 let channel = null;
 try { channel = globalThis.BroadcastChannel ? new globalThis.BroadcastChannel('ceres-confirm') : null; channel?.unref?.(); } catch (_) { channel = null; }   // unref: Node only (tests)
 function saveRow(row) {
@@ -228,12 +263,11 @@ function freshAttempt(account, operations, previous, detail = {}) {
 
 export function confirmationState(account, operations) { return loadRow(identity(account, operations)); }
 // The gate starts an attempt right before the wallet is asked. A finished action (never sent, confirmed or refused) that
-// is signed again gets a fresh attempt with its own id, budget and verdict; an unresolved one is the same attempt.
+// is signed again gets a fresh attempt with its own id and verdict (the server keeps one read budget per action); an
+// unresolved one is the same attempt. The gate then awaits `announceBegin` before it opens the wallet.
 export function beginAttempt(account, operations, { expiration = null } = {}) {
   const current = confirmationState(account, operations);
   if (current && current.state === 'pending') return current;
-  // No request here: the next wallet opens at once (). The server learns the attempt from the finder's first read
-  // (answered + elapsed duration) or the inclusion probe (answered_ms_ago), on its own clock.
   return saveRow(freshAttempt(account, operations, current, expiration ? { expiration } : {}));
 }
 // Make sure a record exists (a flow confirming an action it did not sign in this page); never starts a new attempt.
@@ -255,14 +289,14 @@ export function markAnswered(account, operations, { attempt = null, closed = fal
   if (!row) return;
   if (attempt != null && (row.attempt || 1) !== attempt) { notePriorAttempt(row, attempt, { answered: true }); return; }
   const now = new Date(clock.now()).toISOString();
-  if (row.state === 'never-sent' && row.neverSentBy === 'history') {
+  if (row.state === 'never-sent' && (row.neverSentBy === 'history' || row.neverSentBy === 'wallet-expired')) {
     saveRow({ ...row, state: 'pending', neverSentBy: null, error: '', reanchor: true, reopens: (row.reopens || 0) + 1,
       answeredAt: now, closedAt: closed ? now : null, perOp: row.operations.map((_, index) => ({ index, state: 'pending' })) });
     findSignedTransaction(row.account, row.operations).catch(() => {});   // the finder carries `reanchor` to the server
     return;
   }
   if (!row.answeredAt || (closed && !row.closedAt)) saveRow({ ...row, answeredAt: row.answeredAt || now, ...(closed && !row.closedAt ? { closedAt: now } : {}) });
-  if (closed && !row.closedAt) beacon(row, { event: 'answered', answered: true, closed: true });   // the server times the closure
+  if (closed && !row.closedAt) beacon(row, { event: 'answered', answered: true, closed: true, ...(row.beginToken ? { begin_token: row.beginToken } : {}) });   // the server times the closure
 }
 // The wallet has said nothing (P0-1): the finder starts, but the request stays OPEN -- it may still be approved later, so
 // no amount of silence ever lets anything be declared "never sent".
@@ -271,12 +305,50 @@ export function markSilent(account, operations, { attempt = null } = {}) {
   if (!row || (attempt != null && (row.attempt || 1) !== attempt) || row.silentAt) return;
   saveRow({ ...row, silentAt: new Date(clock.now()).toISOString() });
 }
-// The attempt's begin, sent as the wallet opens (P0-1/LOW-2: the server's own clock gives the oldest edge of any later
-// absence proof). A beacon, not a fetch: nothing is awaited and nothing reads before the next wallet (). Without a
-// beacon the server simply never proves absence for this attempt (honest pending), never a guess.
-export function announceBegin(account, operations) {
+// IN-0888: the wallet provably never answered this attempt (HiveAuth's own request expiry, or no answer at all until the
+// transaction's longest lifetime passed). Never over a known id or a final verdict (markConfirmation keeps those).
+export function markWalletNeverAsked(account, operations, { attempt = null } = {}) {
   const row = confirmationState(account, operations);
-  return row ? beacon(row, { event: 'begin' }) : false;
+  if (!row || row.state !== 'pending' || row.txId || (attempt != null && (row.attempt || 1) !== attempt)) return row;
+  const next = markConfirmation(account, operations, 'never-sent', { by: 'wallet-expired', error: WALLET_NEVER_ASKED, message: WALLET_NEVER_ASKED });
+  findSignedTransaction(account, operations).catch(() => {});   // a late chain hit for this attempt still wins
+  return next;
+}
+function walletNeverAnswered(row) {
+  return Boolean(row?.silentAt) && !row.answeredAt && !row.txId && clock.now() - Date.parse(row.since || '') >= NEVER_SENT_AFTER_MS;
+}
+function stillLooking(row) {
+  return row?.state === 'pending' || (row?.state === 'never-sent' && row.neverSentBy === 'wallet-expired' && !row.txId
+    && clock.now() - Date.parse(row.since || '') < NEVER_SENT_AFTER_MS + WALLET_EXPIRED_WATCH_MS);
+}
+
+// The attempt's begin (fix round 3, astra-review-r3 N1): the server must RECORD it before the wallet is asked, so its
+// clock gives a guaranteed pre-sign oldest edge for any later proof of absence. The gate awaits this (at most
+// BEGIN_BOUND_MS) and only then opens the wallet. The server's answer carries a begin token; it is kept on this attempt
+// and presented with every later report. An answer that comes after the bound is ignored (the wallet may already be
+// open): without a token the server never proves this attempt absent -- it stays honestly pending, never a guess.
+export async function announceBegin(account, operations) {
+  const row = confirmationState(account, operations);
+  if (!row || typeof fetch !== 'function') return false;
+  const attempt = row.attempt || 1;
+  const attemptId = row.attemptId;
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  const from = clock.now();
+  const request = fetch(`/api/confirm/intent?player=${encodeURIComponent(row.account)}`, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ operations: row.operations, attempt: attemptId, event: 'begin' }),
+    ...(controller ? { signal: controller.signal } : {}) })
+    .then(response => (response?.ok ? response.json() : null)).catch(() => null);
+  const bound = clock.sleep(BEGIN_BOUND_MS).then(() => (clock.now() - from >= BEGIN_BOUND_MS - 1 ? 'late'
+    : new Promise(() => {})));   // a clock that did not move (instant test timers) never cuts the request off
+  const answer = await Promise.race([request, bound]);
+  if (answer === 'late') { controller?.abort(); return false; }
+  const token = typeof answer?.begin_token === 'string' && /^[a-f0-9]{16,64}$/.test(answer.begin_token) ? answer.begin_token : null;
+  if (!token) return false;
+  if (Number.isFinite(answer.server_now)) serverSkewMs = answer.server_now - clock.now();
+  const current = confirmationState(account, operations);
+  if (!current || (current.attempt || 1) !== attempt || current.attemptId !== attemptId) return false;
+  saveRow({ ...current, beginToken: token });
+  return true;
 }
 function beacon(row, fields) {
   try {
@@ -364,7 +436,7 @@ export const INCLUSION_FAST_MS = Array.from({ length: 66 }, (_, index) => index 
 // final state. A thrown, hung or malformed answer is "pending, temporarily unavailable" and never stops later reads
 // (history shape 4); a read that exceeds its bound is aborted. With a txId, reads past the fast window also ask Hive
 // (bounded) whether the transaction is included; the server answers "absent" only past its lifetime by its own clock.
-export function waitThrough({ key, check, onUpdate, since, txId, account, schedule = 'game', startedAt = null, intent = null } = {}) {
+export function waitThrough({ key, check, onUpdate, since, txId, account, schedule = 'game', startedAt = null, intent = null, beginToken = null } = {}) {
   if (!key || typeof check !== 'function') throw Error('waitThrough needs a key and a check');
   let waiter = waiters.get(key);
   if (waiter) {
@@ -378,7 +450,7 @@ export function waitThrough({ key, check, onUpdate, since, txId, account, schedu
   let resolveDone;
   const done = new Promise(resolve => { resolveDone = resolve; });
   waiter = { key, check, listeners: new Set(onUpdate ? [onUpdate] : []), startedAt: Math.min(clock.now(), startedAt ?? clock.now()),
-    since: Date.parse(since || '') || clock.now(), txId, account, schedule, intent, stopped: false, wakeFn: null, woken: false,
+    since: Date.parse(since || '') || clock.now(), txId, account, schedule, intent, beginToken, stopped: false, wakeFn: null, woken: false,
     last: null, lastChainAt: null, frozen: 0 };
   waiter.handle = { done, wake: () => wakeWaiter(waiter), stop: () => { waiter.stopped = true; waiter.wakeFn?.(); waiters.delete(key); } };
   waiters.set(key, waiter);
@@ -412,9 +484,10 @@ export function waitThrough({ key, check, onUpdate, since, txId, account, schedu
       if (answer.state === 'pending' && waiter.txId && elapsed >= WINDOW_MS
         && (waiter.lastChainAt == null || clock.now() - waiter.lastChainAt >= SLOW_READ_MS || clock.now() - waiter.since >= NEVER_SENT_AFTER_MS && waiter.chainAnswer !== true)) {
         waiter.lastChainAt = clock.now();
-        const chain = await chainInclusion(waiter.account, waiter.txId, waiter.since, waiter.intent, clock.now() - waiter.since);
+        const chain = await chainInclusion(waiter.account, waiter.txId, waiter.since, waiter.intent, clock.now() - waiter.since, waiter.beginToken?.() || null);
         // An unavailable lookup (null) is retried on the next read; it never ends the wait (F4).
-        if (chain === false) answer = { ...answer, state: 'never-sent', by: 'chain', error: 'Hive has no record of this transaction and it is past its lifetime. It was not sent.' };
+        // Once Hive reported this id included, a later "absent" (another node) never makes it never-sent (N3).
+        if (chain === false && waiter.chainAnswer !== true) answer = { ...answer, state: 'never-sent', by: 'chain', error: 'Hive has no record of this transaction and it is past its lifetime. It was not sent.' };
         else if (chain === true) { waiter.chainAnswer = true; answer = { ...answer, onChain: true, message: answer.message || 'On Hive; the game has not answered yet. Ceres keeps checking; nothing is sent again.' }; }
       }
       emit(answer);
@@ -425,12 +498,13 @@ export function waitThrough({ key, check, onUpdate, since, txId, account, schedu
   return waiter.handle;
 }
 function wakeWaiter(waiter) { waiter.woken = true; waiter.frozen = 0; waiter.wakeFn?.(); }
-async function chainInclusion(account, txId, sinceMs, intent, answeredMsAgo) {
+async function chainInclusion(account, txId, sinceMs, intent, answeredMsAgo, beginToken = null) {
   if (!account || !txId) return null;
   try {
     // The server ages the attempt by its own ledger, else by this duration (a duration is not shifted by a wrong clock).
     const answer = await boundedJson(`/api/op-inclusion?player=${encodeURIComponent(account)}`,
-      { tx_id: txId, created_at: serverIso(sinceMs), ...(intent ? { intent } : {}), answered_ms_ago: Math.max(0, Math.round(answeredMsAgo || 0)) });
+      { tx_id: txId, created_at: serverIso(sinceMs), ...(intent ? { intent } : {}), ...(beginToken ? { begin_token: beginToken } : {}),
+        answered_ms_ago: Math.max(0, Math.round(answeredMsAgo || 0)) });
     const body = answer.ok ? answer.body : null;
     return body?.included === true ? true : body?.included === false ? false : null;
   } catch (_) { return null; }
@@ -481,6 +555,7 @@ function rowWaiter(row, check, onUpdate) {
   // Anchored at the wallet's answer (as the pre-fix swap schedule was), not at the moment an id was found.
   return waitThrough({ key: `${row.id}#${attempt}`, check: check || genericVerdict(row.id), since: row.answeredAt || row.since, txId: row.txId,
     account: row.account, intent: row.attemptId, startedAt: Date.parse(row.answeredAt || '') || null,
+    beginToken: () => { const current = loadRow(row.id); return current && (current.attempt || 1) === attempt ? current.beginToken || null : null; },
     onUpdate: answer => { applyAnswer(row.id, attempt, answer); onUpdate?.(answer); } });
 }
 // A proven transaction id for the CURRENT attempt. Monotonic (F3): a final verdict keeps its id; an attempt inferred
@@ -564,7 +639,7 @@ export function afterWalletSilence(callback, ms = WALLET_SILENCE_MS) {
 // Own-history finder (: own account, that exact action; the SERVER keeps the schedule and the budget).
 // api/confirm/find answers one of: found (tx_id) | wait (next_in_s: the next read the server allows) | absent (the
 // expiry read proved it, covering the signing moment and fresh to the expiry) | unproven (next_in_s: try again later)
-// | unmatchable (the operations carry no nonce: never matched in history). The server counts the reads per attempt, so
+// | unmatchable (the operations carry no nonce: never matched in history). The server counts the reads per action, so
 // two tabs or a reload never add reads; this loop only sleeps for as long as the server says.
 const UNPROVEN = 'Your latest Hive operations do not show this action yet. Nothing will be sent again; Ceres reads them once more when the transaction expires (about an hour after signing) and then tells you if it was sent.';
 const UNCOVERED = 'Ceres could not yet read back to the moment you signed, so it cannot prove whether this action was sent. Nothing will be sent again; Ceres keeps reading.';
@@ -578,46 +653,51 @@ async function finderSleep(key, ms) {
 export async function findSignedTransaction(account, operations) {
   const row = trackSigning(account, operations);
   if (row.txId) return row.txId;
-  if (row.state !== 'pending') return null;
+  if (!stillLooking(row)) return null;
   const attempt = row.attempt || 1;
   const key = `${row.id}#${attempt}`;
   if (live.has(key)) return live.get(key);
   const task = (async () => {
     for (;;) {
       const current = loadRow(row.id);
-      if (!current || (current.attempt || 1) !== attempt || current.state !== 'pending') return current?.txId || null;
+      if (!current || (current.attempt || 1) !== attempt || !stillLooking(current)) return current?.txId || null;
       if (current.txId) return current.txId;
       let answer = null;
       try {
         const response = await boundedJson(`/api/confirm/find?player=${encodeURIComponent(current.account)}`, {
           operations: current.operations, attempt: current.attemptId, since: serverIso(Date.parse(current.since)),
           answered: Boolean(current.answeredAt), closed: Boolean(current.closedAt),
+          ...(current.beginToken ? { begin_token: current.beginToken } : {}),
           ...(current.reanchor ? { reanchor: true } : {}),
         });
         answer = response.status === 422 ? { status: 'unmatchable' } : response.ok ? response.body : null;
       } catch (_) { answer = null; }
       let now = loadRow(row.id);
-      if (!now || (now.attempt || 1) !== attempt || now.state !== 'pending') return now?.txId || null;
+      if (!now || (now.attempt || 1) !== attempt || !stillLooking(now)) return now?.txId || null;
       // Whether the own-history read itself failed (: screens say so; a failed read is never evidence).
       if (Boolean(now.findUnavailable) !== !answer || (now.reanchor && answer)) now = saveRow({ ...now, findUnavailable: !answer, ...(answer ? { reanchor: false } : {}) });
       if (answer?.status === 'found' && /^[a-f0-9]{40}$/i.test(answer.tx_id || '')) {
         const attached = attachTransaction(now.account, now.operations, answer.tx_id);
         // F9: an orphan (left by a previous page) has no flow to read it: its verifier starts at once. An in-page flow
         // reads with its own check (confirmAction subscribed and started it when the id was attached).
-        if (attached.orphan && !waiters.has(`${attached.id}#${attempt}`) && attached.state === 'pending') rowWaiter(attached);
+        // IN-0888: so does an attempt reopened after "never asked" (its screen already finished with that ending).
+        const reopened = now.state === 'never-sent' && now.neverSentBy === 'wallet-expired';
+        if ((attached.orphan || reopened) && !waiters.has(`${attached.id}#${attempt}`) && attached.state === 'pending') rowWaiter(attached);
         return answer.tx_id.toLowerCase();
       }
-      if (answer?.status === 'absent') {
+      if (answer?.status === 'absent' && now.state === 'pending') {
         markConfirmation(now.account, now.operations, 'never-sent', { by: 'history',
           error: 'Your own Hive operations show no such action, and its transaction has expired. It was not sent.' });
         return null;
       }
-      if (answer?.status === 'unmatchable') { saveRow({ ...now, message: UNMATCHABLE }); return null; }
+      if (answer?.status === 'unmatchable') { if (now.state === 'pending') saveRow({ ...now, message: UNMATCHABLE }); return null; }
+      // IN-0888: no wallet answer at all for the transaction's whole lifetime: the request expired unsigned.
+      if (now.state === 'pending' && walletNeverAnswered(now)) { markWalletNeverAsked(now.account, now.operations, { attempt }); continue; }
       const delayS = Number(answer?.next_in_s);
       // The line changes only when the wait is long (the expiry read) or the proof could not be completed yet.
       const message = answer?.status === 'unproven' ? (answer.reason === 'open' ? OPEN_REQUEST : answer.reason === 'newest-edge' ? NEWEST_EDGE : UNCOVERED)
         : answer?.status === 'wait' && delayS > WINDOW_MS / 1000 ? UNPROVEN : null;
-      if (message && now.message !== message) saveRow({ ...now, message });
+      if (message && now.state === 'pending' && now.message !== message) saveRow({ ...now, message });
       await finderSleep(key, Number.isFinite(delayS) && delayS >= 0 ? delayS * 1000 : FINDER_RETRY_MS);
     }
   })().finally(() => { live.delete(key); });
@@ -633,9 +713,9 @@ export function resumeConfirmations({ before = Infinity } = {}) {
   waiters.forEach(waiter => wakeWaiter(waiter));
   finderWakes.forEach(wake => wake());
   for (const row of allRows()) {
-    if (row.state !== 'pending' || !(Date.parse(row.since) < before)) continue;
+    if (!stillLooking(row) || !(Date.parse(row.since) < before)) continue;
     const key = `${row.id}#${row.attempt || 1}`;
-    if (before !== Infinity && !row.orphan) saveRow({ ...row, orphan: true });
+    if (before !== Infinity && !row.orphan && row.state === 'pending') saveRow({ ...row, orphan: true });
     if (row.txId) { if (!waiters.has(key)) rowWaiter(row); continue; }
     if (!live.has(key)) findSignedTransaction(row.account, row.operations).catch(() => {});
   }

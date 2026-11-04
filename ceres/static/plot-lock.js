@@ -51,7 +51,15 @@ function readablePlan(entry) {
     ...(Number.isFinite(entry.signedAt) && entry.signedAt > 0 ? { signedAt: entry.signedAt } : {}),
     ...(entry.accepted === true ? { accepted: true } : {}),
     ...(entry.notFound === true ? { notFound: true } : {}),
+    // fix round 3: the signed lock operation is kept across a reload, so the shared confirmer finds the attempt
+    // it belongs to (its recorded begin and closure); without it a dropped lock could never be proven "never sent".
+    ...(lockOperations(entry.operations) ? { operations: entry.operations } : {}),
   };
+}
+function lockOperations(operations) {
+  if (!Array.isArray(operations) || operations.length !== 1) return false;
+  const [kind, body] = operations[0] || [];
+  return kind === 'custom_json' && ['sm_lock_assets', 'sm_unlock_assets'].includes(body?.id) && typeof body.json === 'string' && body.json.length <= 4000;
 }
 function adoptOtherTabPlans() {
   try {

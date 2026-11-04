@@ -16,6 +16,8 @@ const operations = [['custom_json', { id: 'sm_claim_rewards', required_auths: []
 let walletCalls = 0, finderCalls = 0, answer;
 window.hive_keychain = { requestBroadcast(_account, _ops, _key, callback) { walletCalls++; answer = callback; } };
 fetch = async (url, init) => {
+  // fix round 3 (N1): the begin is recorded before the wallet opens.
+  if (String(url).startsWith('/api/confirm/intent?player=alice')) return { ok: true, status: 200, json: async () => ({ ok: true, begin_token: 'c'.repeat(32) }) };
   if (!String(url).startsWith('/api/confirm/find?player=alice')) throw Error('unexpected request ' + url);
   finderCalls++;
   const body = JSON.parse(init.body);
@@ -23,7 +25,7 @@ fetch = async (url, init) => {
   return { ok: true, status: 200, json: async () => ({ status: 'found', tx_id: 'b'.repeat(40) }) };
 };
 const receipt = BroadcastGate.broadcast('alice', operations).then(() => null, error => error);
-await Promise.resolve();
+for (let i = 0; i < 100 && !answer; i++) await Promise.resolve();
 if (walletCalls !== 1 || !answer) throw Error('one wallet request required');
 // history.md shapes 12 and 16: the relay window expired after approval, no tx id.
 answer({ success: false, ambiguousBroadcast: true, stillChecking: true, error: 'expired' });

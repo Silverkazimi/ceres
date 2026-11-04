@@ -115,7 +115,8 @@ def test_low6_f6_the_server_counts_at_most_six_normal_reads_per_attempt_in_ten_m
         except confirm.HTTPException:
             pass
         server.clock.now += 1
-    assert 1 <= len(server.world["history_calls"]) <= 6, len(server.world["history_calls"])
+    # Fix round 3 (astra-review-r3 N6): the window holds the reference swap's ten reads plus one at 8 min (eleven).
+    assert 1 <= len(server.world["history_calls"]) <= len(confirm.NORMAL_OFFSETS_S) <= 11, len(server.world["history_calls"])
 
 
 def test_f6_two_tabs_share_one_budget(server):
@@ -140,9 +141,10 @@ def history_log(begin, *, count=50, newest_after=None):
 
 def _signing_session(server, ops, *, answered_after=0.0):
     # Fix round 2: the begin (the wallet opened) and a CLOSING answer (P0-1), both timed by the server.
-    server.call("intent", {"operations": ops, "attempt": ATTEMPT, "event": "begin"})
+    # Fix round 3 (N1): the begin's token (the browser waited for it before opening the wallet) is presented later.
+    token = server.call("intent", {"operations": ops, "attempt": ATTEMPT, "event": "begin"}).get("begin_token")
     server.clock.now += answered_after
-    server.call("intent", {"operations": ops, "attempt": ATTEMPT, "event": "answered", "closed": True})
+    server.call("intent", {"operations": ops, "attempt": ATTEMPT, "event": "answered", "closed": True, "begin_token": token})
     for _ in range(6):                                          # the normal window, nothing found
         server.call("find", find_body(ops, server.clock))
         server.clock.now += 100

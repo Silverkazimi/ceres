@@ -134,9 +134,10 @@ export function checkoutLockedKeys(player) {
 }
 
 // ── server ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-async function post(path, body) {
+async function post(path, body, { signal = null } = {}) {
+  // fix round 3 (astra-review-r3 N4): a confirm read carries the shared scheduler's signal and is aborted with it.
   const response = await fetch(`/api/market/checkout/${path}?player=${encodeURIComponent(co.player)}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), cache: 'no-store',
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), cache: 'no-store', ...(signal ? { signal } : {}),
   });
   let result = null;
   try { result = await response.json(); } catch (_) { result = null; }
@@ -671,9 +672,10 @@ function markSkipped(from) {
 
 // the game's record by id; with no id, the player's own history by nonce. Released as "not sent"
 // only on positive evidence (a SUCCESSFUL covering history read, 3,900 seconds after the wallet was asked).
-async function lookupNonce(tx) {
+async function lookupNonce(tx, signal = null) {
   try {
-    const found = await post('find', { nonce: tx.nonce, ...(tx.asked_at ? { since: tx.asked_at } : {}) });
+    const found = await post('find', { nonce: tx.nonce, ...(tx.asked_at ? { since: tx.asked_at } : {}) }, { signal });
+    if (signal?.aborted) return 'unknown';
     if (found?.status === 'found') { tx.tx_id = found.tx_id; tx.historyUnreadable = false; return 'found'; }
     if (found?.status === 'not_found' && found.covered === true) { tx.historyUnreadable = false; return 'not_found'; }
   } catch (_) { /* unknown */ }
@@ -734,14 +736,14 @@ async function verify(tx) {
   const check = async (txId, { signal } = {}) => {
     if (txId && !tx.tx_id) { tx.tx_id = txId; if (tx.state === 'unknown') tx.state = 'sent'; save(); }
     if (!tx.tx_id) {
-      const seen = await lookupNonce(tx);
+      const seen = await lookupNonce(tx, signal);
       // fix round 2 (astra-r2 P1-7): no "not sent" from this browser's clock; a purchase without an id stays
       // honestly unresolved until its id is found (a known id is aged by the server's own clock, /api/op-inclusion).
       if (seen !== 'found') { save(); return { state: 'pending', message: 'Ceres cannot prove yet whether this purchase was sent. Nothing will be sent again; it keeps looking.' }; }
       if (tx.state === 'unknown') tx.state = 'sent';
       save();
     }
-    const result = await post('verify', { tx_id: tx.tx_id, nonce: tx.nonce, expected_payload: tx.payload });
+    const result = await post('verify', { tx_id: tx.tx_id, nonce: tx.nonce, expected_payload: tx.payload }, { signal });
     if (signal?.aborted) return { state: 'pending', stale: true };   // P1-6: an abandoned read decides nothing
     if (result.status === 'confirmed') return { state: 'confirmed', result };
     if (result.status === 'failed') return { state: 'refused', result };

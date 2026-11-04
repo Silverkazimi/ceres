@@ -24,7 +24,7 @@ import { tokenIcon, tokenLabel } from './harvest-state.js';
 import { plaque } from './wallet-resources.js';
 import { walletControlsHtml, walletMethodHtml, walletReady, walletSignLabelHtml, walletWaitHtml } from './wallet.js';
 import { requestBroadcastThroughGate } from './broadcast-gate.js';
-import { confirmationState, findSignedTransaction, subscribeConfirmation, waitForStep, waitThrough } from './shared-confirmer.js';
+import { WALLET_NEVER_ASKED, confirmationState, findSignedTransaction, subscribeConfirmation, waitForStep, waitThrough } from './shared-confirmer.js';
 import { initCustomSelect } from './customSelect.js';
 import { resourceSymbolsWhere } from './resources.js';
 
@@ -593,14 +593,19 @@ async function settleLoop(ctx, st) {
   let olderCursor = null;   // F10: the bounded sweep of older pool pages keeps its own cursor (the newest read resets st.settleCursor)
   const stopFunding = watchFundingProof(ctx, st);
   try {
-    await waitForStep({ key: `settle:${ctx.player}:${nonce || st.receipt.tx_id}`, onUpdate: () => ctx.render(), check: async () => {
+    // fix round 3 (astra-review-r3 N4): every settlement read carries the scheduler's signal. A read the
+    // scheduler abandons is aborted, frees `busy` at once (so the next scheduled or resumed read really reads) and its
+    // late answer changes nothing.
+    await waitForStep({ key: `settle:${ctx.player}:${nonce || st.receipt.tx_id}`, onUpdate: () => ctx.render(), check: async ({ signal } = {}) => {
       if (!mine()) return { state: 'confirmed', gone: true };
       if (st.busy) return { state: 'pending' };
-      await settleCheck(ctx, st, false);
+      await settleCheck(ctx, st, false, null, signal);
+      if (signal?.aborted) return { state: 'pending', stale: true };
       if (olderCursor == null && depth === 0) olderCursor = st.settleCursor;
       if (mine() && olderCursor != null && depth < 5 && Date.now() - startedAt > 5 * 60000) {
         depth += 1;
-        const next = await settleCheck(ctx, st, true, olderCursor);
+        const next = await settleCheck(ctx, st, true, olderCursor, signal);
+        if (signal?.aborted) return { state: 'pending', stale: true };
         olderCursor = Number.isInteger(next) ? next : null;
       }
       return mine() ? { state: 'pending' } : { state: 'confirmed' };
@@ -625,7 +630,8 @@ function watchFundingProof(ctx, st) {
     } else if (row?.state === 'never-sent') {
       const { fundingUnknown, funding_ops, ...rest } = st.receipt;
       Object.assign(st, { stage: 'funding', receipt: rest, funding: null, settleNote: '',
-        fundError: 'Your SPS transfer was not sent (Hive has no record of it and it has expired). Send it when you are ready.' });
+        fundError: row.neverSentBy === 'wallet-expired' ? WALLET_NEVER_ASKED   // IN-0888, word for word
+          : 'Your SPS transfer was not sent (Hive has no record of it and it has expired). Send it when you are ready.' });
       syncStoredIntent(ctx.player, intentSymbol(rest), st); ctx.render();
     }
   });
@@ -634,15 +640,19 @@ function watchFundingProof(ctx, st) {
 }
 
 // one settlement read. Settled -> done with the amount the pool paid; otherwise it stays waiting.
-async function settleCheck(ctx, st, older, cursor = null) {
+async function settleCheck(ctx, st, older, cursor = null, signal = null) {
   const intent = st.receipt;
-  st.busy = true; st.settleNote = ''; ctx.render();
+  const busy = {};   // this read's own token: an aborted read clears it at once; a late finally never clears a newer one
+  const release = () => { if (st.busy === busy) st.busy = false; };
+  st.busy = busy; st.settleNote = ''; ctx.render();
+  signal?.addEventListener?.('abort', release);
   try {
     // A legacy receipt (lost transfer, no persisted operations) may ask the server's memo search once per page load.
     const findFunding = !older && intent.fundingUnknown && !intent.funding_tx && !intent.funding_ops && !st.fundingMemoAsked;
     if (findFunding) st.fundingMemoAsked = true;
     const result = await post('settle', ctx.player, { tx_id: intent.tx_id, nonce: intent.nonce, kind: intent.kind, expected_payload: intent.payload,
-      funding_tx: intent.funding_tx || null, cursor: older ? cursor : null, ...(findFunding ? { find_funding: true } : {}) });
+      funding_tx: intent.funding_tx || null, cursor: older ? cursor : null, ...(findFunding ? { find_funding: true } : {}) }, { signal });
+    if (signal?.aborted) return null;   // abandoned by the scheduler: a late answer changes nothing
     if (older) { await settleCheckResult(ctx, st, st.receipt, result, older); return Number.isInteger(result.next_cursor) ? result.next_cursor : null; }
     if (st.receipt !== intent) return;
     // (audit #4): the SPS transfer whose wallet answer was lost was found in the account's own history -- attach it to the intent.
@@ -653,8 +663,8 @@ async function settleCheck(ctx, st, older, cursor = null) {
     }
     return await settleCheckResult(ctx, st, intent, result, older);
   } catch (_) {
-    st.settleNote = 'The pool history could not be read just now. Ceres keeps reading; nothing was signed.';
-  } finally { st.busy = false; syncStoredIntent(ctx.player, intentSymbol(intent), st); ctx.render(); }  // the confirmed event refreshes wallet balances
+    if (!signal?.aborted) st.settleNote = 'The pool history could not be read just now. Ceres keeps reading; nothing was signed.';
+  } finally { signal?.removeEventListener?.('abort', release); release(); syncStoredIntent(ctx.player, intentSymbol(intent), st); ctx.render(); }  // the confirmed event refreshes wallet balances
 }
 async function settleCheckResult(ctx, st, intent, result, older) {
   st.lastSettle = result;

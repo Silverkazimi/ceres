@@ -1,6 +1,6 @@
 import { requestWalletBroadcast, walletCanSignTransaction } from './wallet.js';
 import { prepareQueueBatch, signQueuedTransaction, withQueueSigningLock, hasSignedQueueClaim, reviewedActiveLockOperation, SIGNED_QUEUE_EXPIRY_MS } from './transaction-queue.js';
-import { afterWalletSilence, allConfirmations, announceBegin, attachTransaction, beginAttempt, confirmationState, findSignedTransaction, linkAdmission, markAnswered, markConfirmation, markSilent, subscribeAll, subscribeConfirmation, WALLET_SILENCE_MS } from './shared-confirmer.js';
+import { afterWalletSilence, allConfirmations, announceBegin, attachTransaction, beginAttempt, confirmationState, findSignedTransaction, linkAdmission, markAnswered, markConfirmation, markSilent, markWalletNeverAsked, subscribeAll, subscribeConfirmation, WALLET_SILENCE_MS } from './shared-confirmer.js';
 
 export const KEYCHAIN_RESPONSE_TIMEOUT_MS = WALLET_SILENCE_MS;  // the deadline itself lives in shared-confirmer.js
 
@@ -229,12 +229,16 @@ function pendingWalletRequestsStopped(rows, requiredCount) {
 async function probeAdmission(account, row) {
   // A10: no-id recovery cannot discover transactions through history.
   if (!row.txId) return { included: null, block_num: null };
+  // Fix round 3 (N3): the server proves a known id absent only for a named attempt whose pre-sign begin it recorded.
+  let attempt = null;
+  try { attempt = row.confirmId ? allConfirmations().find(item => item.id === row.confirmId && (!row.attempt || (item.attempt || 1) === row.attempt)) : null; } catch (_) { attempt = null; }
   let timer;
   try {
     return await Promise.race([
       fetch(`/api/op-inclusion?player=${encodeURIComponent(String(account).toLowerCase())}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tx_id: row.txId, claim_ids: row.claimIds, created_at: row.createdAt }),
+        body: JSON.stringify({ tx_id: row.txId, claim_ids: row.claimIds, created_at: row.createdAt,
+          ...(attempt?.attemptId ? { intent: attempt.attemptId } : {}), ...(attempt?.beginToken ? { begin_token: attempt.beginToken } : {}) }),
       }).then((response) => response.ok ? response.json() : null),
       new Promise((resolve) => { timer = setTimeout(() => resolve(null), 5000); }),
     ]);
@@ -485,7 +489,7 @@ function announceSigned(account, txId) {
   try { window.dispatchEvent(new CustomEvent('ceres:tx-signed', { detail: { txId, account } })); } catch (_) { /* no window in tests */ }
 }
 
-function requestBroadcastPromise(account, operations, onResponse, authority) {
+async function requestBroadcastPromise(account, operations, onResponse, authority) {
   const requestIdentities = claimBroadcastRequest(account, operations);
   const count = customOpCount(operations);
   const admissionId = requestIdentities[0];
@@ -517,6 +521,10 @@ function requestBroadcastPromise(account, operations, onResponse, authority) {
     error.broadcastRequestIds = requestIdentities;
     return error;
   };
+  // fix round 3 (astra-review-r3 N1): the server records this attempt's begin BEFORE the wallet is asked (bounded
+  // by BEGIN_BOUND_MS); its begin token is the pre-sign oldest edge of any later proof that it was never sent. Without
+  // the token the attempt can never be proven absent (it stays pending); the wallet still opens.
+  try { await announceBegin(account, operations); } catch (_) { /* no token: absence stays unprovable for this attempt */ }
   return new Promise((resolve, reject) => {
     let timedOut = false;
     let finished = false;
@@ -595,7 +603,10 @@ function requestBroadcastPromise(account, operations, onResponse, authority) {
     try {
       requestWalletBroadcast(account, operations, (response) => {
         cancelSilence();
-        try { markAnswered(account, operations, { attempt: attemptRow.attempt, closed: walletClosed(response) }); } catch (_) {}
+        // IN-0888: Ceres' own watchdog firing is not a wallet answer (the request stays silent); HiveAuth's report that its
+        // own request expired unsigned ends this attempt as "never asked" (the confirmer; a later chain hit still wins).
+        if (response?.walletNoAnswer || response?.walletExpired) { try { markSilent(account, operations, { attempt: attemptRow.attempt }); } catch (_) {} }
+        else { try { markAnswered(account, operations, { attempt: attemptRow.attempt, closed: walletClosed(response) }); } catch (_) {} }
         const answeredId = response?.success ? (response.result?.id || response.result?.tx_id || response.tx_id || null) : null;
         // After the hand-off a repeated id (the finder's) or a late failure is not rendered again (F3: no regression).
         if (!recoveryStarted || (answeredId && answeredId !== deliveredId)) {
@@ -606,11 +617,18 @@ function requestBroadcastPromise(account, operations, onResponse, authority) {
           const error = walletFailure(response);
           // LOW-7: once the own-history proof is running, a late wallet failure decides nothing: the claim and the budget
           // stay until the confirmer proves the outcome (the subscription above releases them on "never sent").
-          if (recoveryStarted) return;
+          if (recoveryStarted) {
+            if (response?.walletExpired) { try { markWalletNeverAsked(account, operations, { attempt: attemptRow.attempt }); } catch (_) {} }
+            return;
+          }
           if (!error.ambiguousBroadcast) {
             try { updateAdmission(null, true); } catch (_) { /* Retain conservative budget on storage failure. */ }
           }
-          if (error.ambiguousBroadcast) { recover({ message: error.message, stillChecking: error.stillChecking, keychainTimedOut: error.keychainTimedOut }); return; }
+          if (error.ambiguousBroadcast) {
+            recover({ message: error.message, stillChecking: error.stillChecking, keychainTimedOut: error.keychainTimedOut });
+            if (response?.walletExpired) { try { markWalletNeverAsked(account, operations, { attempt: attemptRow.attempt }); } catch (_) {} }
+            return;
+          }
           markConfirmation(account, operations, 'never-sent', { error: error.message });
           releaseBroadcastRequest(account, requestIdentities);
           finished = true;
@@ -630,8 +648,6 @@ function requestBroadcastPromise(account, operations, onResponse, authority) {
         walletIdSeen = true;
         acceptId(txId, response.lateSigned === true);
       }, authority);
-      // The wallet is open: tell the server when this attempt began (a beacon; nothing awaited, ).
-      announceBegin(account, operations);
     } catch (error) {
       cancelSilence();
       const failure = error instanceof Error ? error : new Error(String(error));
@@ -721,6 +737,8 @@ export async function requestSignatureThroughGate(account, operations, onRespons
       || JSON.stringify(envelope.transaction.operations) !== JSON.stringify(operations)) throw new Error('Prepared transaction does not match this review.');
     // A fresh attempt (F3), anchored to the signed envelope's own expiration (F7) when it is known.
     beginAttempt(account, operations, { expiration: envelope.transaction?.expiration ? `${String(envelope.transaction.expiration).replace(/Z?$/, 'Z')}` : null });
+    // Fix round 3 (N1): the server records the begin before the wallet signs (bounded; see requestBroadcastPromise).
+    try { await announceBegin(account, operations); } catch (_) { /* absence stays unprovable for this attempt */ }
     const queued = await signQueuedTransaction(envelope);
     try { markAnswered(account, operations, { closed: true }); } catch (_) {}   // signed: the request is over
     try { attachTransaction(account, operations, queued.txId); } catch (_) { /* the queue row keeps the id */ }

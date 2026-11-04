@@ -322,7 +322,6 @@ function finishPending(message) {
   if (!request) return;
   pending = null;
   clearTimeout(request.timer);
-  clearTimeout(request.ackTimer);
   // Keep the callback for every ambiguous relay answer, including expiry. A late
   // signed id is still useful after the finder has started or the page resumed.
   if (request.action === 'broadcast' && message.type === 'uncertain') {
@@ -332,7 +331,7 @@ function finishPending(message) {
   if (request.action === 'connect') {
     if (message.type === 'connected' && session && message.account === request.account && request.account === walletAccount() && Number.isFinite(message.expire) && message.expire > Date.now()) {
       session.expire = message.expire;
-      session.credentials = message.credentials;   // kept in memory so a resend can restore a fresh worker even without localStorage
+      session.credentials = message.credentials;   // kept in memory so a fresh worker can be restored even without localStorage (no request is ever resent, )
       storeSession(request.account, message.credentials);
       document.querySelectorAll('.wallet-controls').forEach((el) => {
         if (el.dataset.walletAccount === request.account) controlState(el.dataset.walletControlsId).expanded = false;
@@ -381,7 +380,11 @@ function finishPending(message) {
       // Only the wallet's own "not connected through HAS" answer proves the session is gone.
       const invalidSession = message.reason === 'invalid-session';
       if (invalidSession) disposeSession();
+      // round 3 (maintainer, IN-0888 "End it once the request expires"): `walletExpired` = HiveAuth reported its OWN
+      // request expired unsigned; `walletNoAnswer` = nothing came back at all (Ceres' watchdog fired). Neither is a wallet
+      // answer that ended a signature: the shared confirmer decides what they mean.
       request.callback({ success: false, ambiguousBroadcast: true, stillChecking,
+        ...(message.reason === 'expired' ? { walletExpired: true } : {}), ...(message.reason === 'watchdog' ? { walletNoAnswer: true } : {}),
         error: stillChecking ? `Ceres is still checking whether the wallet sent this (${message.reason}${Number.isFinite(message.waited) ? `, ${message.waited} s${message.reached ? '' : ', request never confirmed'}` : ''})`
           : invalidSession ? 'The Keychain app no longer has this HiveAuth session. Connect HiveAuth again.'
           : 'HiveAuth did not return a verified transaction id. The request may have been broadcast.' });
@@ -400,7 +403,7 @@ function startRequest(action, account, operations, callback, authority = 'Postin
   const id = crypto.randomUUID();
   const timer = setTimeout(() => finishPending({ type: action === 'connect' ? 'connect-failed' : action === 'challenge' ? 'challenge-failed' : 'uncertain', reason: action === 'connect' ? 'expired' : 'watchdog' }), 110000);
   pending = { id, action, account, callback, timer, authority, message: action === 'connect' || action === 'challenge' ? operations : undefined, reauth: Boolean(credentials), retryWithQr,
-    operations: action === 'broadcast' ? operations : undefined, relayConfirmed: false, resent: false, ackTimer: null };
+    operations: action === 'broadcast' ? operations : undefined, relayConfirmed: false };
   try { session.worker.postMessage({ id, action, account, operations: action === 'connect' || action === 'challenge' ? undefined : operations, message: action === 'connect' || action === 'challenge' ? operations : undefined, authority, ...(action === 'connect' && credentials ? { credentials } : {}) }); }
   catch (error) {
     clearTimeout(timer);
@@ -446,10 +449,8 @@ function createHiveAuthWorker(account, expire = 0) {
         notify();
       } else if (data.type === 'sign-wait') {
         if (pending.action !== 'broadcast') return;
-        // the relay holds the request now; stop the resend timer and say so.
+        // the relay holds the request now; say so. (Nothing is ever resent: removed the resend.)
         pending.relayConfirmed = true;
-        clearTimeout(pending.ackTimer);
-        pending.ackTimer = null;
         if (requestView?.account === pending.account && requestView.signing) requestView.status = RELAY_CONFIRMED;
         notify();
       } else finishPending(data);
