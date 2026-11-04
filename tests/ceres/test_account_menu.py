@@ -51,7 +51,7 @@ mountAccountMenu();
 __button.click({ stopPropagation() {} });
 selectAccountWallet('alice', 'hiveauth');
 let stopped = false;
-__panel.click({ target: { closest: selector => selector === '[data-account]' ? { dataset: { account: 'player0014' }, disabled: false } : null }, stopPropagation() { stopped = true; } });
+__panel.click({ target: { closest: selector => selector === '[data-account]' ? { dataset: { account: 'player0015' }, disabled: false } : null }, stopPropagation() { stopped = true; } });
 if (!stopped) for (const fn of __ceresListeners['doc:click'] || []) fn({ target: { closest() { return null; } } });
 await new Promise(resolve => setTimeout(resolve, 20));
 const worker = __workers.at(-1);
@@ -92,7 +92,7 @@ if (html.includes('wallet-toggle') || html.includes('wallet-drawer') || html.inc
 
 def test_signed_in_delete_options_are_folded_and_require_confirmation():
     run(r"""
-await player0014('alice', { sign: async () => 'a'.repeat(130) });
+await player0015('alice', { sign: async () => 'a'.repeat(130) });
 html = accountMenuHtml('alice');
 if (!html.includes('Signed in as alice') || !html.includes('data-account="signout"')) throw Error('signed-in state missing');
 if (!html.includes('Saved data options') || html.includes('data-account="delete-space"')) throw Error('delete options are not folded');
@@ -124,7 +124,7 @@ selectAccountWallet('alice', 'keychain');
 mountAccountMenu();
 __button.click({ stopPropagation() {} });
 const click = action => __panel.click({ target: { closest: selector => selector === '[data-account]' ? { dataset: { account: action } } : null }, stopPropagation() {} });
-click('player0014');
+click('player0015');
 await new Promise(resolve => setTimeout(resolve, 20));
 if (!approve || __panel.hidden || !__panel.innerHTML.includes('Confirm in the Keychain extension')) throw Error('Keychain approval was not shown inline');
 if (__panel.innerHTML.includes('wallet-qr')) throw Error('Keychain must not show a QR');
@@ -138,7 +138,7 @@ selectAccountWallet('alice', 'hiveauth');
 mountAccountMenu();
 __button.click({ stopPropagation() {} });
 const click = action => __panel.click({ target: { closest: selector => selector === '[data-account]' ? { dataset: { account: action } } : null }, stopPropagation() {} });
-click('player0014');
+click('player0015');
 await new Promise(resolve => setTimeout(resolve, 20));
 const worker = __workers.at(-1);
 const sent = worker.messages.find(message => message.action === 'connect');
@@ -157,7 +157,7 @@ const originalFetch = fetch;
 fetch = (url, init) => url === '/api/auth/verify'
   ? new Promise(resolve => { finishVerify = resolve; }) : originalFetch(url, init);
 const attempt = ++state.attempt;
-const signing = player0014('alice', { sign: async () => 'a'.repeat(130), shouldContinue: () => state.attempt === attempt });
+const signing = player0015('alice', { sign: async () => 'a'.repeat(130), shouldContinue: () => state.attempt === attempt });
 for (let i = 0; i < 20 && !finishVerify; i++) await new Promise(resolve => setTimeout(resolve, 1));
 if (!finishVerify) throw Error('verification did not begin');
 ++state.attempt;

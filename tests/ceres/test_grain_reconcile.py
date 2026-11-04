@@ -67,19 +67,25 @@ def test_non_grain_rewards_eaten_remains_a_grain_cost():
 
 
 def test_verification_has_a_finite_deadline_and_terminal_unreconcilable_guard():
-    source = MODAL.read_text()
-    # checks run on a fixed schedule for two minutes, each check may take 30 s, and the whole wait
-    # is still bounded: the deadline falls after the last scheduled check.
-    assert "const VERIFY_SCHEDULE_S = [0, 5, 12, 25, 45, 75, 120];" in source
-    assert "const VERIFY_MAX_WAIT_MS = 150000;" in source
-    assert "const VERIFY_REQUEST_MS = 30000;" in source
-    schedule = source.split("const VERIFY_SCHEDULE_S = [", 1)[1].split("]", 1)[0]
-    max_wait = int(source.split("const VERIFY_MAX_WAIT_MS = ", 1)[1].split(";", 1)[0])
-    assert max(int(step) for step in schedule.split(",")) * 1000 < max_wait
-    assert "const deadlineTimer = setTimeout(() => finish('pending'), VERIFY_MAX_WAIT_MS);" in source
-    assert "if (harvestAmountsUnreconcilable(result?.members)) { finish('pending'); return; }" in source
-    assert "run.phase = 'verification_incomplete';" in source
-    assert "run.pollNow = () =>" in source
+    # scales the wait with measured game lag. Exercise its actual
+    # deadline/schedule functions and the receipt guard, not their source text.
+    run_in_module_context(r"""
+const floor = scaledVerifyWaitMs(null);
+const lagged = scaledVerifyWaitMs(45);
+const ceiling = scaledVerifyWaitMs(3600);
+if (floor !== 150000 || lagged !== 195000 || ceiling !== 600000) throw Error('wait bounds');
+if (VERIFY_SCHEDULE_S.at(-1) * 1000 + VERIFY_REQUEST_MS > floor) throw Error('last check exceeds deadline');
+if (nextVerifyDelayMs({step: VERIFY_SCHEDULE_S.length, scheduleS: VERIFY_SCHEDULE_S,
+    elapsedMs: 121000, waitMs: floor}) !== null) throw Error('floor must terminate');
+if (nextVerifyDelayMs({step: VERIFY_SCHEDULE_S.length, scheduleS: VERIFY_SCHEDULE_S,
+    elapsedMs: 121000, waitMs: lagged}) !== 30000) throw Error('lag should extend checks');
+if (nextVerifyDelayMs({step: VERIFY_SCHEDULE_S.length, scheduleS: VERIFY_SCHEDULE_S,
+    elapsedMs: lagged, waitMs: lagged}) !== null) throw Error('lag deadline must terminate');
+if (!harvestAmountsUnreconcilable([{game_state:'accepted', receipt:{gaps:['game_amounts_unavailable']}}]))
+    throw Error('unreconcilable accepted receipt must terminate');
+if (harvestAmountsUnreconcilable([{game_state:'pending', receipt:{gaps:['game_amounts_unavailable']}}]))
+    throw Error('pending receipt must remain pending');
+""")
 
 
 def test_render_throw_falls_back_to_closable_receipt_with_link_and_check_now():

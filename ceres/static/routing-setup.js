@@ -6,9 +6,10 @@ import { createRoutingRun } from './routing-run.js';
 import { plannedBundles } from './routing-layout.js';
 import { withWalletChooser } from './routing-window.js';
 import { hasSession, isSynced, syncRouting } from './account-space.js';
+import { resourceOrder, resourceSymbolsWhere } from './resources.js';
 
 const TERRITORIES = { PNW: 'Pristine Northwest', BRL: 'Broken Lands', LOP: 'Land of Prosperity', CEF: 'Central Fire', WNE: 'Wild Northeast', GLL: 'Great Lowlands', SHC: 'Shimmering Coasts' };
-const SYMBOLS = ['GRAIN', 'WOOD', 'STONE', 'IRON'];
+const SYMBOLS = resourceSymbolsWhere('regional', 'poolable'); // registry: GRAIN WOOD STONE IRON
 
 export async function loadEnabledRoutingKinds(player) {
   const response = await fetch(`/api/harvest/routing/v2/kinds?player=${encodeURIComponent(player)}`);
@@ -70,7 +71,7 @@ function activeFirst(regions) {
 // one
 // route per region + resource + route kind. Add route picks the first free combination; an edit that would duplicate
 // another route is not applied, and choices that would duplicate are shown disabled.
-const HARVEST_ROUTE_RESOURCES = ['GRAIN', 'WOOD', 'STONE', 'IRON'];
+const HARVEST_ROUTE_RESOURCES = resourceSymbolsWhere('regional', 'poolable'); // registry: GRAIN WOOD STONE IRON
 function routeKindOf(rule) { return rule.kind === 'liquidity' ? (rule.dec_source === 'wallet' ? 'lp_wallet' : 'lp_sell_half') : 'sale_dec'; }
 function routeKey(rule) { return `${rule.source_region}|${String(rule.symbol || '').toUpperCase()}|${routeKindOf(rule)}`; }
 function takenBy(rules, index) { return new Set(rules.filter((_, at) => at !== index).map(routeKey)); }
@@ -109,7 +110,7 @@ function ruleHtml(rule, regions, index, enabledKinds, estimate, hasReceipts, tak
 
 // the list shows routes by region number, then resource (the
 // harvest order Grain, Wood, Stone, Iron…), then action (sale before LP); each chip keeps its own route index.
-const ROUTE_RESOURCE_ORDER = ['GRAIN', 'WOOD', 'STONE', 'IRON', 'AURA', 'SPS', 'RESEARCH'];
+const ROUTE_RESOURCE_ORDER = resourceOrder('harvest'); // registry: GRAIN WOOD STONE IRON AURA SPS RESEARCH
 function displayOrder(rules) {
   const regionNo = (rule) => Number(String(rule.source_region || '').split('-').pop()) || 0;
   const resource = (rule) => { const at = ROUTE_RESOURCE_ORDER.indexOf(String(rule.symbol || '').toUpperCase()); return at < 0 ? ROUTE_RESOURCE_ORDER.length : at; };

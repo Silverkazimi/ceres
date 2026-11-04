@@ -60,13 +60,17 @@ def test_cards_page_static_graph_stays_board_free_and_loads_the_wallet_on_demand
 
 
 def test_toggle_icons_match_the_board_icons():
+    # icons.js RESOURCE_ICON and wallet-resources.js WALLET_TABS now derive from the resource registry
+    # (ceres/resources.py -> generated resources.js), so the board side is read from the registry itself.
+    from ceres import resources
     icons = (STATIC / "icons.js").read_text(encoding="utf-8")
-    board = dict(re.findall(r"^\s+(\w+): '([^']+)',$", icons[icons.index("const RESOURCE_ICON = {"):icons.index("};", icons.index("const RESOURCE_ICON = {"))], re.M))
+    assert "const RESOURCE_ICON = resourceFieldMap('icon');" in icons
+    assert "export const WALLET_TABS = resourceOrder('wallet_tabs');" in (STATIC / "wallet-resources.js").read_text(encoding="utf-8")
+    board = resources.icon_paths()
     source = (STATIC / "cards-wallet.js").read_text(encoding="utf-8")
     block = source[source.index("CARDS_WALLET_ICON = {"):source.index("};", source.index("CARDS_WALLET_ICON = {"))]
     mine = dict(re.findall(r"(\w+): '([^']+)'", block))
-    tabs = re.search(r"WALLET_TABS = \[([^\]]+)\]", (STATIC / "wallet-resources.js").read_text(encoding="utf-8")).group(1)
-    assert set(mine) == set(re.findall(r"'(\w+)'", tabs))
+    assert set(mine) == set(resources.ORDERS["wallet_tabs"])
     assert {k.lower(): v for k, v in mine.items()} == board
 
 

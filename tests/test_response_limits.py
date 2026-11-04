@@ -99,13 +99,13 @@ def test_default_cap_is_tight_for_an_endpoint_without_an_override():
 def test_large_endpoint_override_is_explicit():
     # RED MUTATION: remove the collection/deeds overrides; this guard must turn red.
     transport = FixedGetTransport()
-    assert transport._response_limit("https://api.splinterlands.com/cards/collection/player0017") == LARGE_RESPONSE_BYTES
-    assert transport._response_limit("https://vapi.splinterlands.com/land/deeds?player=player0017") == LARGE_RESPONSE_BYTES
+    assert transport._response_limit("https://api.splinterlands.com/cards/collection/player0018") == LARGE_RESPONSE_BYTES
+    assert transport._response_limit("https://vapi.splinterlands.com/land/deeds?player=player0018") == LARGE_RESPONSE_BYTES
 
 
 def test_bundle_over_limit_returns_an_actionable_outcome():
     # RED MUTATION: let the bundle exception escape from `capture_quick`; this guard must turn red.
-    error = ResponseTooLarge("/land/deeds?player=player0017", "trace-bundle", LARGE_RESPONSE_BYTES, LARGE_RESPONSE_BYTES + 1)
+    error = ResponseTooLarge("/land/deeds?player=player0018", "trace-bundle", LARGE_RESPONSE_BYTES, LARGE_RESPONSE_BYTES + 1)
     capture = LandCapture(
         land_client=_TooLargeLandClient(error),
         collection_client=_NoopCollectionClient(),
@@ -114,9 +114,9 @@ def test_bundle_over_limit_returns_an_actionable_outcome():
         sleeper=lambda _delay: None,
     )
 
-    report = capture.capture_quick("player0017")
+    report = capture.capture_quick("player0018")
     assert report["status"] == "response_too_large"
-    assert report["response_too_large"]["endpoint"] == "/land/deeds?player=player0017"
+    assert report["response_too_large"]["endpoint"] == "/land/deeds?player=player0018"
     assert report["capture"]["outcome"]["trace_id"] == "trace-bundle"
 
 
@@ -128,7 +128,7 @@ def test_card_picker_exposes_the_collection_failure_without_a_success_response(m
                 "deed_uid": "collection",
                 "outcome": {
                     "status": "response_too_large",
-                    "endpoint": "/cards/collection/player0017",
+                    "endpoint": "/cards/collection/player0018",
                     "trace_id": "trace-collection",
                 },
             }],
@@ -146,13 +146,13 @@ def test_card_picker_exposes_the_collection_failure_without_a_success_response(m
 
     monkeypatch.setattr(routes_candidates.capture_mod, "latest_snapshot", lambda _config, _player: (report, None))
     monkeypatch.setattr(routes_candidates.capture_mod, "expand_plot", failed_refresh)
-    monkeypatch.setattr(routes_candidates, "player_for_request", lambda _request, _player: "player0017")
+    monkeypatch.setattr(routes_candidates, "player_for_request", lambda _request, _player: "player0018")
     monkeypatch.setattr(routes_candidates, "load_details_by_id", lambda: {})
     monkeypatch.setattr(routes_candidates, "rank_candidates", ranking_must_not_run)
     with caplog.at_level("WARNING", logger="ceres.routes_candidates"):
         response = routes_candidates.get_candidates("deed", request, group_id="worker")
 
-    assert refreshes == [("player0017", "deed", True)]
+    assert refreshes == [("player0018", "deed", True)]
     assert response.status_code == 202
     body = json.loads(response.body)
     assert body["status"] == "card_pool_refresh_retryable"

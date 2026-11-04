@@ -1,7 +1,11 @@
 import { requestWalletSignature, walletCanSignTransaction } from './wallet.js';
 
 const QUEUE_PREFIX = 'ceres:signed-queue:v1:';
-const QUEUE_RPC = 'https://api.hive.blog';
+// the Hive nodes Ceres reads from, in order; kept identical to ceres/hive_rpc.py HIVE_RPC_NODES (a test
+// compares them) and allowed in security_headers.py CONNECT_SRC. Broadcasts and signing-head reads stay on the first
+// node only; failover is for the inclusion probe and the lag reads.
+export const HIVE_RPC_NODES = ['https://api.hive.blog', 'https://api.openhive.network', 'https://api.deathwing.me'];
+const QUEUE_RPC = HIVE_RPC_NODES[0];
 const TERMINAL_QUEUE_STATES = new Set(['included', 'rejected', 'expired', 'cancelled', 'blocked']);
 const QUEUE_PUMPS = new Map();
 const QUEUE_SIGN_TIMEOUT = 120000;
@@ -45,11 +49,11 @@ async function updateQueueRow(account, txId, update) {
     return next;
   });
 }
-export async function queueRpc(method, params = []) {
+export async function queueRpc(method, params = [], node = QUEUE_RPC) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10000);
   try {
-    const response = await fetch(QUEUE_RPC, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    const response = await fetch(node, { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: controller.signal, credentials: 'omit' });
     if (!response.ok) throw new Error('Hive connection unavailable.');
     const data = await response.json();
@@ -62,6 +66,32 @@ export async function queueRpc(method, params = []) {
     return data.result;
   } finally { clearTimeout(timer); }
 }
+// a read with node failover. A node that cannot be reached (or answers without a usable response) is skipped
+// for the next one; a node that answers with a JSON-RPC error has spoken, so that error is returned as is.
+export async function hiveReadRpc(method, params = [], nodes = HIVE_RPC_NODES) {
+  let lastError = new Error('Hive connection unavailable.');
+  for (const node of nodes) {
+    try { return await queueRpc(method, params, node); }
+    catch (error) { if (error?.rpcError) throw error; lastError = error; }
+  }
+  throw lastError;
+}
+// transaction_status_api.find_transaction status -> what Ceres may say about it. Only `expired_irreversible` proves the
+// transaction can never be included; `expired_reversible` may still be undone by a fork, so it stays "still checking".
+export function findTransactionChainStatus(status) {
+  switch (status) {
+    case 'within_reversible_block': case 'within_irreversible_block': return 'in_block';
+    case 'within_mempool': return 'pending';
+    case 'expired_irreversible': return 'dropped';
+    case 'expired_reversible': return 'expiring';
+    default: return 'unknown';   // 'unknown', 'too_old' or anything new: inconclusive
+  }
+}
+// A fresh review mints new operation nonces (fides_land/harvest.py nonce()), so the redo is accepted while this row's own
+// operations keep their claim and stay refused.
+export const QUEUE_DROPPED_MESSAGE = 'Not included: Hive reports this transaction expired. Start the harvest again to send a new one; Ceres never resends it.';
+export const QUEUE_DROPPED_MESSAGE_OTHER = 'Not included: Hive reports this transaction expired. Review the action again to send a new one; Ceres never resends it.';
+const droppedMessage = row => (row.runKind === 'harvest' || row.context?.harvestAttemptId ? QUEUE_DROPPED_MESSAGE : QUEUE_DROPPED_MESSAGE_OTHER);
 export function reviewedActiveLockOperation(account, operations, review) {
   if (operations?.length !== 1 || !review || !['sm_lock_assets', 'sm_unlock_assets'].includes(review.id)) return false;
   const [kind, body] = operations[0] || [];
@@ -239,12 +269,29 @@ export async function signQueuedTransaction(prepared) {
     return { txId, blockNum: null, queued: true, submitted };
   });
 }
-async function probeQueueInclusion(row) {
+// find_transaction first (it tells "still in the mempool" and "expired" apart from "not seen"); inclusion is
+// still only accepted from get_transaction with a matching hash. A node without transaction_status_api falls back to the
+// get_transaction probe alone. Whatever the answer, nothing here can authorize a second send.
+export async function probeQueueInclusion(row, rpc = hiveReadRpc) {
+  let chain = 'unknown';
   try {
-    const tx = await queueRpc('condenser_api.get_transaction', [row.txId]);
-    if (Number.isInteger(tx?.block_num) && tx.block_num > 0 && await queueTransactionId(tx) === row.txId) return tx.block_num;
+    const found = await rpc('transaction_status_api.find_transaction', { transaction_id: row.txId, expiration: row.transaction?.expiration });
+    chain = findTransactionChainStatus(found?.status);
+  } catch (_) { chain = 'unsupported'; }
+  if (chain === 'pending') return { blockNum: null, chain };
+  try {
+    const tx = await rpc('condenser_api.get_transaction', [row.txId]);
+    if (Number.isInteger(tx?.block_num) && tx.block_num > 0 && await queueTransactionId(tx) === row.txId) return { blockNum: tx.block_num, chain: 'in_block' };
   } catch (_) { /* Absence or lookup failure cannot authorize a second send. */ }
-  return null;
+  // A node that says "in a block" without get_transaction proof stays unresolved; so does "dropped" before expiry.
+  return { blockNum: null, chain: chain === 'in_block' || (chain === 'dropped' && !queueExpired(row)) ? 'unknown' : chain };
+}
+// Rows whose transaction expired after an attempted submission are probed a little longer, until Hive makes the
+// expiry final (expired_irreversible) -- status only, never a resend.
+const DROPPED_CHECK_WINDOW_MS = 180000;
+function awaitingDropVerdict(row) {
+  if (!['submitting', 'submitted', 'unknown'].includes(row.state) || row.chainStatus === 'dropped' || !queueExpired(row)) return false;
+  return Date.now() - Date.parse(row.transaction.expiration + 'Z') < DROPPED_CHECK_WINDOW_MS;
 }
 async function processSignedQueue(account) {
   return queueLock(`ceres:broadcast:${account}`, async () => {
@@ -263,12 +310,18 @@ async function processSignedQueue(account) {
         inspected.add(row.txId); continue;
       }
       if (['submitting', 'submitted', 'unknown'].includes(row.state)) {
-        const blockNum = await probeQueueInclusion(row);
+        const { blockNum, chain } = await probeQueueInclusion(row);
         if (blockNum) {
-          await updateQueueRow(account, row.txId, { state: 'included', blockNum, signedTransaction: null, message: 'Included in Hive; game result still requires verification.' });
+          await updateQueueRow(account, row.txId, { state: 'included', blockNum, chainStatus: 'in_block', signedTransaction: null, message: 'Included in Hive; game result still requires verification.' });
           continue;
         }
-        await updateQueueRow(account, row.txId, { state: row.state === 'submitted' ? 'submitted' : 'unknown', message: 'Submission needs verification. This transaction will not be broadcast again.' });
+        // The state never changes here: a dropped row keeps its claim and is never broadcast again (status only).
+        const dropped = chain === 'dropped' || row.chainStatus === 'dropped';
+        await updateQueueRow(account, row.txId, { state: row.state === 'submitted' ? 'submitted' : 'unknown', chainStatus: dropped ? 'dropped' : chain,
+          message: dropped ? droppedMessage(row) : 'Submission needs verification. This transaction will not be broadcast again.' });
+        if (dropped && row.chainStatus !== 'dropped') {
+          try { globalThis.window?.dispatchEvent?.(new CustomEvent('ceres:queue-status', { detail: { account, txId: row.txId, chainStatus: 'dropped', message: droppedMessage(row) } })); } catch (_) {}
+        }
         // Even after expiry, an attempted transaction may have landed. Keep it unresolved.
         if (queueExpired(row)) { inspected.add(row.txId); continue; }
         await queueSleep(1000); continue;
@@ -311,8 +364,11 @@ export function resumeSignedQueue(account) {
   const pump = processSignedQueue(account).catch(() => {}).finally(() => {
     QUEUE_PUMPS.delete(account);
     try {
-      if (signedQueueRows(account).some(row => !TERMINAL_QUEUE_STATES.has(row.state) && row.state !== 'signing' && !queueExpired(row))) {
+      const rows = signedQueueRows(account);
+      if (rows.some(row => !TERMINAL_QUEUE_STATES.has(row.state) && row.state !== 'signing' && !queueExpired(row))) {
         setTimeout(() => resumeSignedQueue(account), 1000);
+      } else if (rows.some(awaitingDropVerdict)) {
+        setTimeout(() => resumeSignedQueue(account), 5000);   // a few more probes until the expiry is final
       }
     } catch (_) {}
   });
