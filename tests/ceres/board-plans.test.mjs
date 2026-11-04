@@ -505,23 +505,20 @@ test('submenu row actions rename and delete a nonselected setup by id', async ()
   assert.equal(store.snapshot().plans.length, 2);
 });
 
-test('both desktop submenu variants render setup rows with inline controls', async () => {
+test('Planning submenu renders setup rows with inline controls', async () => {
   const prior = globalThis.document;
   globalThis.document = { body: { dataset: {} }, querySelector: () => null };
   try {
     const { hdrMenuPanelHtml } = await import('../../ceres/static/header-menu.js');
     const setups = { selectedId: 'plan-one', plans: [{ id: 'plan-one', name: 'Northern grain' }] };
-    document.body.dataset = { boardMode: 'planning', boardPlanName: 'Northern grain', hdrMenuVariant: 'A' };
-    const column = hdrMenuPanelHtml('plots', setups);
-    assert.match(column, /hdr-menu-setups/);
-    assert.match(column, /data-setup-rename="plan-one"/);
-    assert.match(column, /data-setup-delete="plan-one"/);
-    assert.doesNotMatch(column, /data-menu-submenu/);
-    document.body.dataset.hdrMenuVariant = 'B';
+    document.body.dataset = { boardMode: 'planning', boardPlanName: 'Northern grain' };
     const nested = hdrMenuPanelHtml('plots', setups);
     assert.match(nested, /data-menu-submenu hidden/);
-    assert.match(nested, /Planning · Northern grain ›/);
+    assert.match(nested, /class="hdr-menu-planning-label">Planning · Northern grain<\/span><span class="hdr-menu-chevron">›<\/span>/);
     assert.match(nested, /Back to live/);
     assert.doesNotMatch(nested, /hdr-menu-setups/);
+    assert.match(nested, /data-setup-rename="plan-one"/);
+    assert.match(nested, /data-setup-delete="plan-one"/);
+    assert.match(nested, /class="hdr-menu-chevron"/);
   } finally { globalThis.document = prior; }
 });

@@ -63,8 +63,6 @@ function hdrMenuEntryLabel(item) {
 
 function hdrMenuEscape(value) { return String(value).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]); }
 
-export function hdrMenuVariant() { return document.body?.dataset?.hdrMenuVariant === 'B' ? 'B' : 'A'; }
-
 function hdrMenuSetupItems(setups) {
   if (!setups) return [];
   if (setups.readOnly) return setups.readOnlyReason?.includes('previous good revision')
@@ -77,21 +75,20 @@ function hdrMenuSetupItems(setups) {
     { key: 'setup-new', name: 'New setup', desc: 'Start with an empty sheet', icon: 'plots' },
     { key: 'setup-live', name: 'Start from live', desc: 'Copy the live board', icon: 'plots' },
     { key: 'setup-duplicate', name: 'Duplicate setup', desc: 'Copy current setup', icon: 'plots' },
-    ...(hdrMenuVariant() === 'B' && document.body?.dataset?.boardMode === 'planning' ? [{ key: 'setup-back', name: 'Back to live', desc: 'Return to the live board', icon: 'plots' }] : [])];
+    ...(document.body?.dataset?.boardMode === 'planning' ? [{ key: 'setup-back', name: 'Back to live', desc: 'Return to the live board', icon: 'plots' }] : [])];
 }
 
 export function hdrMenuPanelHtml(currentKey, setups = null) {
-  const variant = hdrMenuVariant();
-  const entry = (raw) => { const item = hdrMenuEntryLabel(raw); const planning = item.key === 'planning' && variant === 'B';
-    const name = planning ? (document.body?.dataset?.boardMode === 'planning' ? `Planning · ${document.body.dataset.boardPlanName || 'Plan 1'} ›` : 'Planning ›') : item.name;
-    return `<li><button type="button" class="hdr-menu-entry ceres-btn ceres-btn--secondary ceres-btn--glass" data-control-density="comfortable" data-menu-entry="${hdrMenuEscape(item.key)}"${planning ? ' aria-haspopup="true" aria-expanded="false"' : ''}${item.key === currentKey ? ' aria-current="page"' : ''}>${hdrMenuIcon(item.icon)}<span class="hdr-menu-txt"><span class="hdr-menu-name">${hdrMenuEscape(name)}</span><span class="hdr-menu-desc">${hdrMenuEscape(planning ? 'Choose a setup' : item.desc)}</span></span></button></li>`; };
+  const entry = (raw) => { const item = hdrMenuEntryLabel(raw); const planning = item.key === 'planning';
+    const name = document.body?.dataset?.boardMode === 'planning' ? document.body.dataset.boardPlanName || 'Plan 1' : '';
+    const label = planning ? `<span class="hdr-menu-planning-label">Planning${name ? ` · ${hdrMenuEscape(name)}` : ''}</span><span class="hdr-menu-chevron">›</span>` : hdrMenuEscape(item.name);
+    return `<li><button type="button" class="hdr-menu-entry ceres-btn ceres-btn--secondary ceres-btn--glass" data-control-density="comfortable" data-menu-entry="${hdrMenuEscape(item.key)}"${planning ? ' aria-haspopup="true" aria-expanded="false"' : ''}${item.key === currentKey ? ' aria-current="page"' : ''}>${hdrMenuIcon(item.icon)}<span class="hdr-menu-txt"><span class="hdr-menu-name"${planning && name ? ` title="Planning · ${hdrMenuEscape(name)}"` : ''}>${label}</span><span class="hdr-menu-desc">${hdrMenuEscape(planning ? 'Choose a setup' : item.desc)}</span></span></button></li>`; };
   const setupEntry = (item) => item.key.startsWith('setup:') ? `<li class="hdr-menu-setup-row"><button type="button" class="hdr-menu-entry ceres-btn ceres-btn--secondary ceres-btn--glass" data-control-density="comfortable" data-menu-entry="${hdrMenuEscape(item.key)}" title="${hdrMenuEscape(item.name)}">${item.selected ? '<span class="hdr-menu-tick" aria-hidden="true">✓</span>' : ''}<span class="hdr-menu-txt"><span class="hdr-menu-name">${hdrMenuEscape(item.name)}</span></span></button><button type="button" class="hdr-menu-setup-action ceres-btn ceres-btn--secondary ceres-btn--glass" data-control-density="compact" data-control-mode="icon" data-setup-rename="${hdrMenuEscape(item.key.slice(6))}" aria-label="Rename ${hdrMenuEscape(item.name)}" title="Rename ${hdrMenuEscape(item.name)}">${hdrMenuIcon('pencil')}</button><button type="button" class="hdr-menu-setup-action ceres-btn ceres-btn--secondary ceres-btn--glass" data-control-density="compact" data-control-mode="icon" data-setup-delete="${hdrMenuEscape(item.key.slice(6))}" aria-label="Delete ${hdrMenuEscape(item.name)}" title="Delete ${hdrMenuEscape(item.name)}">${hdrMenuIcon('bin')}</button></li>` : entry(item);
   const setupList = () => hdrMenuSetupItems(setups).map(setupEntry).join('');
   const column = (group, index) => `<div class="hdr-menu-col"><h3 id="hdr-menu-group-${index}">${group.title}</h3><ul aria-labelledby="hdr-menu-group-${index}">${group.entries.map(entry).join('')}</ul></div>`;
-  const setupsColumn = variant === 'A' && setups && document.body?.dataset?.boardMode === 'planning' ? `<div class="hdr-menu-col hdr-menu-setups"><h3>Setups</h3><ul>${setupList()}</ul></div>` : '';
-  const submenu = variant === 'B' ? `<div class="hdr-menu-submenu" data-menu-submenu hidden><h3>Setups</h3><ul>${setupList()}</ul></div>` : '';
+  const submenu = `<div class="hdr-menu-submenu" data-menu-submenu hidden><h3>Setups</h3><ul>${setupList()}</ul></div>`;
   return `<div class="hdr-menu-top"><h2 id="hdr-menu-title">Menu</h2><button type="button" class="harvest-x hdr-menu-close ceres-btn ceres-btn--secondary" data-control-density="compact" data-control-mode="icon" data-menu-close aria-label="Close menu">${HDR_MENU_CLOSE_ICON}</button></div>`
-    + `<div class="hdr-menu-cols">${HDR_MENU_GROUPS.map(column).join('')}${setupsColumn}</div>${submenu}`;
+    + `<div class="hdr-menu-cols">${HDR_MENU_GROUPS.map(column).join('')}</div>${submenu}`;
 }
 
 // options: { page: 'board' | 'cards', actions: { [entry key]: () => void } }
@@ -157,7 +154,7 @@ export function mountHeaderMenu(options = {}) {
 
   button.addEventListener('click', () => setOpen(!open));
   panel.addEventListener('mouseover', (event) => {
-    if (hdrMenuVariant() === 'B' && event.target.closest?.('[data-menu-entry="planning"]')) setSubmenu(true);
+    if (event.target.closest?.('[data-menu-entry="planning"]')) setSubmenu(true);
   });
   panel.addEventListener('click', (event) => {
     if (event.target.closest?.('[data-menu-close]')) { setOpen(false, { focusButton: true }); return; }
@@ -197,7 +194,7 @@ export function mountHeaderMenu(options = {}) {
     const entry = event.target.closest?.('[data-menu-entry]');
     if (!entry) return;
     const key = entry.dataset.menuEntry;
-    if (key === 'planning' && hdrMenuVariant() === 'B') { setSubmenu(true, { focus: true }); return; }
+    if (key === 'planning') { setSubmenu(true, { focus: true }); return; }
     if (key === 'setup-back') { setOpen(false, { focusButton: true }); actions.planning?.(); return; }
     const action = actions[key] || (key.startsWith('setup:') ? () => options.setupAction?.('select', decodeURIComponent(key.slice(6))) :
       key.startsWith('setup-') ? () => options.setupAction?.(key.slice(6)) : null);
@@ -206,13 +203,13 @@ export function mountHeaderMenu(options = {}) {
     if (typeof action === 'function') setTimeout(() => action(), 0);
   });
   panel.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && hdrMenuVariant() === 'B' && submenu() && !submenu().hidden) {
+    if (event.key === 'Escape' && submenu() && !submenu().hidden) {
       event.preventDefault(); event.stopPropagation(); setSubmenu(false, { focus: true }); return;
     }
-    if (hdrMenuVariant() === 'B' && event.key === 'ArrowRight' && document.activeElement?.dataset?.menuEntry === 'planning') {
+    if (event.key === 'ArrowRight' && document.activeElement?.dataset?.menuEntry === 'planning') {
       event.preventDefault(); setSubmenu(true, { focus: true }); return;
     }
-    if (hdrMenuVariant() === 'B' && event.key === 'ArrowLeft' && submenu()?.contains(document.activeElement)) {
+    if (event.key === 'ArrowLeft' && submenu()?.contains(document.activeElement)) {
       event.preventDefault(); setSubmenu(false, { focus: true }); return;
     }
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Home' && event.key !== 'End') return;

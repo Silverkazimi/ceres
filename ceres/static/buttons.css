@@ -102,7 +102,7 @@
 /* Menu rows use the shared button control but align their icon and
  text at the start of each column. Keep the control's text alignment here. */
 .hdr-menu-panel .hdr-menu-entry { justify-content: flex-start; text-align: start; }
-.hdr-menu-setup-action .hdr-ic { inline-size: var(--ceres-control-icon-size); block-size: var(--ceres-control-icon-size); fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.hdr-menu-panel .hdr-menu-setup-action .hdr-ic { inline-size: 1.2rem; block-size: 1.2rem; color: inherit; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 .ceres-btn-group[data-control-density="compact"] .ceres-btn {
   white-space: nowrap;

@@ -19,7 +19,16 @@ STAGE_KEY = f'ceres:stage-plan:v1:{SAMPLE}'
 
 def _entry(page, key):
     page.locator('#hdr-menu-btn').click()
-    page.locator(f'#hdr-menu [data-menu-entry="{key}"]').click()
+    if key == 'planning':
+        if page.locator('body').get_attribute('data-board-mode') == 'planning':
+            page.locator('#hdr-menu [data-menu-entry="planning"]').click()
+            page.locator('[data-menu-submenu] [data-menu-entry="setup-back"]').click()
+        else:
+            page.locator('#hdr-menu [data-menu-entry="planning"]').click()
+            page.locator('[data-menu-submenu] [data-menu-entry^="setup:"]').first.click()
+    else:
+        page.locator('#hdr-menu [data-menu-entry="planning"]').click()
+        page.locator(f'[data-menu-submenu] [data-menu-entry="{key}"]').click()
 
 
 def _saved(page):
@@ -53,7 +62,8 @@ def test_setup_crud_reload_and_live_round_trip(tmp_path):
         page.wait_for_function("document.body.dataset.boardPlanName === 'New setup'")
         created = _saved(page)['selected_plan_id']
         page.locator('#hdr-menu-btn').click()
-        page.locator(f'#hdr-menu [data-setup-rename="{created}"]').click()
+        page.locator('#hdr-menu [data-menu-entry="planning"]').click()
+        page.locator(f'[data-menu-submenu] [data-setup-rename="{created}"]').click()
         rename = page.locator('#hdr-menu .hdr-menu-rename')
         assert rename.is_visible() and rename.input_value() == 'New setup'
         rename.fill('Grain setup')
@@ -69,7 +79,8 @@ def test_setup_crud_reload_and_live_round_trip(tmp_path):
         page.wait_for_function("document.body.dataset.boardPlanName === 'Grain setup'")
         assert _saved(page)['selected_plan_id'] == created
         page.locator('#hdr-menu-btn').click()
-        page.locator(f'#hdr-menu [data-setup-delete="{created}"]').click()
+        page.locator('#hdr-menu [data-menu-entry="planning"]').click()
+        page.locator(f'[data-menu-submenu] [data-setup-delete="{created}"]').click()
         page.wait_for_function('(key) => !!JSON.parse(localStorage.getItem(key)).tombstones[%s]' % json.dumps(created), arg=PLAN_KEY)
         assert created not in _saved(page)['plans']
         page.locator('#ceres-stage-toast .stage-toast-undo').click()
