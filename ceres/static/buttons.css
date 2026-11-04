@@ -609,6 +609,8 @@ details > summary:focus-visible { outline: 2px solid var(--accent); outline-offs
 :is(.ceres-btn--glass, header.board-header .ceres-btn) .hdr-ic .f { fill: currentColor; }
 :is(.ceres-btn--glass, header.board-header .ceres-btn) .hdr-ic .l { stroke: currentColor; }
 :is(.ceres-btn--glass, header.board-header .ceres-btn) .hdr-ic .d { stroke: color-mix(in srgb, var(--bg2) 72%, var(--primary)); }
+/* Stroke-only setup icons (pencil, bin) take the same light colour as the Menu icons' filled parts. */
+.hdr-menu-panel .hdr-menu-setup-action.ceres-btn .hdr-ic .d { stroke: currentColor; stroke-width: 2; }
 :is(.ceres-btn--glass, header.board-header .ceres-btn) .hdr-ic .a { fill: var(--gold); stroke: color-mix(in srgb, var(--bg2) 60%, var(--shadow)); }
 :is(.ceres-btn--glass, header.board-header .ceres-btn) .hdr-ic .a.h { fill: none; stroke: var(--gold); }
 :root:not([data-theme]) :is(.ceres-btn--glass, header.board-header .ceres-btn) .hdr-ic .a,

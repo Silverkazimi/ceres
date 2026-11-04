@@ -57,8 +57,8 @@ def _assert_setup_glyph_contrast(page):
       const lum = value => value.map(v => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; })
         .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
       return els.map(button => {
-        const glyph = button.querySelector('svg');
-        const fg = rgb(getComputedStyle(glyph).color);
+        const glyph = button.querySelector('svg path');
+        const fg = rgb(getComputedStyle(glyph).stroke);
         const bg = rgb(getComputedStyle(button.closest('[data-menu-submenu]')).backgroundColor);
         const a = lum(fg), b = lum(bg);
         return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
