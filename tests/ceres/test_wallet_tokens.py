@@ -28,10 +28,10 @@ OWNER = {
                    {"op": "swap_tokens", "region_uid": "", "resource_amount": 1, "shares_out": 8.124, "max_slippage": 2.5, "resource_symbol": "SPS"}),
 }
 # Step 2 of the SPS sale: ACTIVE custom_json id sm_sps (tx 9f708b6a9b079312900596d03c866e88e2782974).
-OWNER_TRANSFER = {"action": "token_transfer", "params": {"to": "player0016", "qty": 1, "token": "SPS", "memo": "lpsid:90001"}}
+OWNER_TRANSFER = {"action": "token_transfer", "params": {"to": "player0018", "qty": 1, "token": "SPS", "memo": "lpsid:90001"}}
 # What transactions/lookup returned for tx <tx id> (result.data).
 OWNER_SPS_SALE_RESULT = {"pending_swap_id": 90001, "pending_external_amount": 1, "external_swap_required": True,
-                         "external_swap_token": "SPS", "external_transfer_account": "player0016"}
+                         "external_swap_token": "SPS", "external_transfer_account": "player0018"}
 
 
 @pytest.mark.parametrize("name,build", [
@@ -317,7 +317,7 @@ def test_the_games_nested_answer_confirms_and_builds_the_sps_transfer():
     data = {"resource": "SPS", "resource_amount": 1, "dec_amount": 8.115, "region_uid": "", "pending_swap_id": 90002,
             "pending_external_amount": 1, "pending_external_fee_amount": 0.005, "pending_external_swap_amount": 0.995,
             "external_swap_required": True, "external_swap_token": "SPS", "external_swap_player": "player0005",
-            "external_transfer_account": "player0016", "to_player": "player0005", "region_name": None}
+            "external_transfer_account": "player0018", "to_player": "player0005", "region_name": None}
     info = {"id": tx, "type": "land_operation", "player": "player0005", "data": json.dumps(payload), "success": True,
             "result": json.dumps({"success": True, "result": {"success": True, "error": "", "data": data}})}
     body = {"nonce": payload["n"], "kind": "swap_sell", "expected_payload": payload}

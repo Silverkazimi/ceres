@@ -16,7 +16,7 @@ def _payload(monkeypatch, tmp_path, **coverage):
     report = _report([_plot("a", "retrieved", 0)], [], [])
     report["coverage"]["assets"].update({"expected": 1264, "retrieved": 2, "fresh": 2, "dropped": 0, "failed": 0, "not_requested": 0, **coverage})
     report["warnings"] = []
-    config = CeresConfig(root=tmp_path, player="player0008")
+    config = CeresConfig(root=tmp_path, player="player0009")
     request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(ceres_config=config)))
     monkeypatch.setattr(routes_board, "_read_snapshot_or_503", lambda *_a: (report, SimpleNamespace(generated_at="2099")))
     monkeypatch.setattr(capture_mod, "freshness", lambda *_a: SimpleNamespace(error=None, as_dict=lambda: {}))

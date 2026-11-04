@@ -47,7 +47,7 @@ def test_each_consumer_filters_player_busy_run_and_debounces():
 
 def test_shared_approval_reminder_has_sentence_space_in_all_callers():
     wallet = (STATIC / 'wallet.js').read_text()
-    assert '${esc(text)} </span><small>${esc(WALLET_EXPIRY_TEXT)}' in wallet
+    assert '${esc(text)} </span>${relay}<small>${esc(WALLET_EXPIRY_TEXT)}' in wallet
     assert 'walletWaitHtml' in (STATIC / 'card-checkout.js').read_text()
     harvest = (STATIC / 'harvest-modal.js').read_text()
     assert 'walletSigningStatus' in harvest

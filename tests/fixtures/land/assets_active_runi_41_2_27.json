@@ -88,7 +88,7 @@
       {
         "uid": "G-6W57VHDWIO",
         "card_detail_id": 6,
-        "player": "player0010",
+        "player": "player0011",
         "bcx": 14,
         "gold": true,
         "foil": 1,
@@ -188,7 +188,7 @@
       {
         "uid": "G-5YDCLKQURK",
         "card_detail_id": 5,
-        "player": "player0010",
+        "player": "player0011",
         "bcx": 9,
         "gold": true,
         "foil": 1,
@@ -338,7 +338,7 @@
       {
         "uid": "C2-505-0000000888",
         "card_detail_id": 505,
-        "player": "player0015",
+        "player": "player0017",
         "bcx": 11,
         "gold": false,
         "foil": 0,
@@ -540,7 +540,7 @@
           "branch": 8
         },
         "facts": {
-          "player": "player0010",
+          "player": "player0011",
           "uid": "G-6W57VHDWIO",
           "card_detail_id": 6,
           "xp": 7000,
@@ -684,7 +684,7 @@
           "branch": 8
         },
         "facts": {
-          "player": "player0015",
+          "player": "player0017",
           "uid": "C2-505-0000000888",
           "card_detail_id": 505,
           "xp": 11,
@@ -756,7 +756,7 @@
           "branch": 8
         },
         "facts": {
-          "player": "player0010",
+          "player": "player0011",
           "uid": "G-5YDCLKQURK",
           "card_detail_id": 5,
           "xp": 4500,

@@ -4,6 +4,7 @@
 // board's filter-row controls (customSelect.js, .board-filter-field, .board-filter-pill).
 // Only the tiles near the viewport are built: the grid grows in chunks as the page scrolls.
 import { mountThemePicker } from './theme.js';
+import { mountHeaderMenu } from './header-menu.js';
 import { initCustomSelect, selectValues, setSelectValues, syncCustomSelect } from './customSelect.js';
 import { bindCountdowns, countdownText } from './countdown.js';
 import {
@@ -23,24 +24,13 @@ import { initCombinables, renderCombinables } from './card-combinables.js';
 import { initPurchases } from './card-purchases.js';
 import { initCardsWallet } from './cards-wallet.js';
 import { cartOpenOwnedMenu, cartRefreshOwned } from './card-cart.js';
+import { cardArtImageHtml, onCardArtError } from './card-browser-art.js';
 
 const ASSET_BASE = '/static/assets';
 const CHUNK = 48;
 const FILTER_STORE_KEY = 'ceres:cards:filters';
 const PLAYER_MEMORY_KEY = 'ceres:lastPlayer';
 
-// Card art hosts: the same tables icons.js uses for the board's card art (CARD_CDN_*).
-const CARD_CDN_BASE = 'https://d36mxiodymuqjm.cloudfront.net';
-const CARD_CDN_SET = {
-  0: 'cards_v2.2', 1: 'cards_beta', 2: 'cards_v2.2', 3: 'cards_beta', 4: 'cards_untamed', 5: 'cards_untamed',
-  6: 'cards_gladiator', 7: 'cards_chaos', 8: 'cards_riftwatchers', 9: 'cards_nightmare', 10: 'cards_soulbound',
-  11: 'cards_nightmare', 12: 'cards_rebellion', 13: 'cards_soulboundrb', 14: 'cards_v2.2', 15: 'cards_v2.2',
-  16: 'cards_v2.2', 17: 'cards_v2.2', 18: 'cards_v2.2', 19: 'cards_land', 20: 'cards_v2.2', 21: 'cards_land',
-};
-const CARD_CDN_SOURCE_SET = {
-  alpha: 'cards_v2.2', beta: 'cards_beta', chaos: 'cards_chaos', untamed: 'cards_untamed',
-  rebellion: 'cards_rebellion', soulbound: 'cards_soulbound', conclave: 'cards_v2.2',
-};
 const SET_ICON = {
   alpha: 'alpha', beta: 'beta', untamed: 'untamed', chaos: 'chaos-legion', rebellion: 'rebellion',
   conclave: 'conclave-arcana', foundations: 'foundations', land: 'eternal-land', gladius: 'eternal-land',
@@ -81,40 +71,6 @@ function setIcon(cardSet, edition = null) {
   const file = SET_ICON[cardSet];
   const label = CB_SET_LABELS[cardSet] || cap(cardSet);
   return `<img class="set-icon${file ? '' : ' set-icon-generic'}" src="${ASSET_BASE}/sets/${file || 'edition-generic'}.svg" alt="${esc(label)}"${cbSetTip(label, file, edition)}>`;
-}
-// ── card art (same CDN order as editor.js's cardArtCandidates) ───────────────
-function cardImagePart(value) {
-  return encodeURIComponent(String(value)).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
-}
-function cardArtCandidates(card) {
-  const sets = [...new Set([CARD_CDN_SET[card.edition], CARD_CDN_SOURCE_SET[String(card.card_set || '').toLowerCase()]].filter(Boolean))];
-  if (!card.name || !sets.length) return [];
-  // gold and gold arcane draw the "_gold" art, black and black arcane the "_blk" art (the official site's own file names).
-  const suffix = [1, 2].includes(card.foil) || (card.foil == null && card.gold) ? '_gold' : [3, 4].includes(card.foil) ? '_blk' : '';
-  const file = `${cardImagePart(card.name)}${suffix}`;
-  const skin = card.skin ? `/${cardImagePart(card.skin)}` : '';
-  const out = [];
-  sets.forEach((set) => ['jpg', 'png'].forEach((ext) => out.push(`${CARD_CDN_BASE}/${set}${skin}/${file}.${ext}`)));
-  if (skin) sets.forEach((set) => ['jpg', 'png'].forEach((ext) => out.push(`${CARD_CDN_BASE}/${set}/${file}.${ext}`)));
-  return [...new Set(out)];
-}
-function onArtError(event) {
-  const img = event.target;
-  if (!(img instanceof HTMLImageElement) || img.dataset.cbArt === undefined) return;
-  let list = [];
-  try { list = JSON.parse(img.dataset.cbArt || '[]'); } catch (_) { list = []; }
-  const next = Number(img.dataset.cbArtIndex || 0) + 1;
-  if (next < list.length) {
-    img.dataset.cbArtIndex = String(next);
-    img.src = list[next];
-    return;
-  }
-  const box = img.parentElement;
-  img.remove();
-  if (box) {
-    box.classList.add('cb-art-missing');
-    box.insertAdjacentHTML('afterbegin', '<span class="cb-art-missing-text">No image</span>');  // the name is on the tile's caption
-  }
 }
 // (maintainer: "there is still a strong flcker when scrolling beween tiles. this seems to stronger or only on the market
 // page"): the art is read when its tile is built (loading="eager" in tileHtml), not when the tile comes near the screen
@@ -249,7 +205,6 @@ function levelTagHtml(card) {
 function tileHtml(tile) {
   const card = tile.card;
   const extra = tile.extra || null;  // (Market mode): a price badge on the art, its own PP boxes and a market link under them
-  const art = cardArtCandidates(card);
   const foil = [1, 2, 3, 4].includes(card.foil) ? `<span class="foil-badge foil-${card.foil}"${cbFoilTip(card.foil)}>${esc(CB_FOIL_LABELS[card.foil])}</span>` : '';
   const maxed = card.maxed && !card.no_pp ? `<span class="candidate-tag is-info cb-maxed"${cbMaxedTip(card)}>Maxed</span>` : '';
   // a Market tile that is not
@@ -257,9 +212,7 @@ function tileHtml(tile) {
   const levelTag = extra && extra.levelTag !== false && !maxed && !card.maxed && card.level != null ? levelTagHtml(card) : '';
   const top = foil || maxed || levelTag ? `<span class="cb-art-tags">${foil}${maxed}${levelTag}</span>` : '';
   const artExtra = extra?.art || '';
-  const image = art.length
-    ? `<img src="${esc(art[0])}" alt="" loading="eager" decoding="async" data-cb-art="${esc(JSON.stringify(art))}" data-cb-art-index="0">`
-    : '';
+  const image = cardArtImageHtml(card);
   const level = card.max_level ? `Lv ${esc(card.level ?? '—')}/${esc(card.max_level)}` : `Lv ${esc(card.level ?? '—')}`;
   const icons = `<span class="candidate-icon-row">${(card.splinters || []).map((s) => `<span class="candidate-icon-box">${splinterIcon(s)}</span>`).join('')}<span class="candidate-icon-box">${rarityGem(card.rarity)}</span><span class="candidate-icon-box">${setIcon(card.card_set, card.edition)}</span></span>`;
   // (max level\" in the PP box must be replaced with \"PP\""): a maxed copy's box reads "PP"; the tooltip
@@ -576,6 +529,29 @@ function initHeader() {
   $('page-switch-plots')?.setAttribute('href', boardUrl(state.player));
   $('cb-logo-link').setAttribute('href', boardUrl(state.player));
   syncCardsAvatar(state.player);
+  // design 4 (maintainer go ): the desktop Menu and the header's Harvest. Each entry presses today's control on this
+  // page (the view buttons, the Find combinables pill, the avatar's refresh); Plots, Harvest, Changes and Account are the
+  // board's own (header Harvest and the Menu go there with ?open=, app.js runs it once the board has loaded).
+  const toBoard = (open) => { location.href = state.player ? `${boardUrl(state.player)}&open=${open}` : boardUrl(null); };
+  const viewButton = (id) => () => $(id)?.click();
+  mountHeaderMenu({ page: 'cards', actions: {
+    plots: () => { location.href = boardUrl(state.player); },
+    myCards: viewButton('cb-mode-cards'),
+    market: viewButton('cb-mode-market'),
+    purchases: viewButton('cb-mode-purchases'),
+    combine: () => {
+      const pill = $('cb-mode-combine');
+      if (!pill || pill.checked) return;
+      if (document.body.dataset.cbMode !== 'cards') $('cb-mode-cards')?.click();  // the pill belongs to My cards
+      pill.click();
+    },
+    harvest: () => toBoard('harvest'),
+    changes: () => toBoard('changes'),
+    planning: () => toBoard('planning'),  // IN-0267: planning is a state of the board
+    refresh: viewButton('player-avatar'),
+    account: () => toBoard('account'),
+  } });
+  $('cb-harvest-btn')?.addEventListener('click', () => toBoard('harvest'));
 }
 
 // the same avatar medallion as the board header (board.js syncPlayerAvatar): the avatar-builder layers, retried
@@ -703,12 +679,12 @@ function init() {
   const openOwnedTile = (tile) => {
     const index = [...ownedGrid.children].indexOf(tile);
     const card = state.view?.tiles?.[index]?.card;
-    if (card) cartOpenOwnedMenu(card, tile.querySelector('.cb-art img')?.getAttribute('src') || '', {
+    if (card) cartOpenOwnedMenu(card, '', {
       player: state.player, copies: state.cards, onConfirmed: () => load(),
     });
   };
   // the tile menu ships once its copy actions are approved (maintainer review menus-round-3); off until then.
-  const CB_TILE_MENU = false;
+  const CB_TILE_MENU = true;
   ownedGrid?.addEventListener('click', (event) => {
     if (!CB_TILE_MENU) return;
     if (event.target.closest?.('a')) return;  // Staked on keeps its plot link.
@@ -732,7 +708,7 @@ function init() {
   initCardsWallet();
   // the dropdowns are drawn (both sorts included); their stand-ins from cards.html go in the same task, before a paint
   document.querySelectorAll('.cb-pre-select').forEach((el) => el.remove());
-  document.addEventListener('error', onArtError, true);
+  document.addEventListener('error', onCardArtError, true);
   document.addEventListener('load', onArtLoad, true);
   const sentinel = $('cb-sentinel');
   if (sentinel && typeof IntersectionObserver === 'function') {

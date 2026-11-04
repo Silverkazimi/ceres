@@ -184,18 +184,18 @@ class LandPhase1Tests(unittest.TestCase):
         self.assertEqual(missing.confidence, "uncertain")
 
     def test_rented_in_card_is_free_but_rented_out_card_stays_blocked(self):
-        """A card rented IN (maintainer player0011, delegated to the player) keeps the rental's market_id and a past listing
-        expiration_date; it is the renter's to stake. Shape recorded from player0018's collection on 2026-10-18."""
+        """A card rented IN (maintainer player0012, delegated to the player) keeps the rental's market_id and a past listing
+        expiration_date; it is the renter's to stake. Shape recorded from player0020's collection on 2026-10-18."""
         rented_in = {
-            "uid": "C2-1053-15A6V5Z4HS", "player": "player0011", "delegated_to": "player0018", "rental_type": "season",
+            "uid": "C2-1053-15A6V5Z4HS", "player": "player0012", "delegated_to": "player0020", "rental_type": "season",
             "market_id": "718dd69c05cf5afb6312f62cf3eab2f79440e482-0", "unlock_date": None,
             "expiration_date": "2025-04-24T18:47:09.000Z", "stake_ref_uid": None, "stake_start_date": None, "stake_end_date": None,
         }
-        self.assertEqual(classify_card(rented_in, AS_OF, "player0018").bucket, "unstaked_apparent")
-        rented_out = dict(rented_in, player="player0018", delegated_to="someone")
-        self.assertEqual(classify_card(rented_out, AS_OF, "player0018").reason, "delegated to someone")
-        listed_for_rent = dict(rented_in, player="player0018", delegated_to=None)
-        self.assertEqual(classify_card(listed_for_rent, AS_OF, "player0018").branch, 2)
+        self.assertEqual(classify_card(rented_in, AS_OF, "player0020").bucket, "unstaked_apparent")
+        rented_out = dict(rented_in, player="player0020", delegated_to="someone")
+        self.assertEqual(classify_card(rented_out, AS_OF, "player0020").reason, "delegated to someone")
+        listed_for_rent = dict(rented_in, player="player0020", delegated_to=None)
+        self.assertEqual(classify_card(listed_for_rent, AS_OF, "player0020").branch, 2)
 
     def test_checked_deed_absence_marks_future_stake_as_cooling_at_exact_end(self):
         """: renamed from `stake_expired_or_historical` to `stake_cooling_down` --

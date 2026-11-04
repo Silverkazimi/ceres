@@ -17,8 +17,20 @@ from .candidates import _is_soulbound, cooldown_state
 from .metrics import rental_direction
 
 _SECRET = secrets.token_bytes(32)
-ACTIONS = ("stake", "unstake", "plot_link", "delegate", "undelegate_return", "transfer", "burn")
-UNVERIFIED = frozenset({"delegate", "undelegate_return", "transfer", "burn"})
+# maintainer decisions 2026-10-28: Phoenix Ash is left out entirely; delegation is split into the maintainer's
+# "Recall delegation" and the borrower's "Return card" (paid rentals keep the market flow); each action is released
+# only once its operation is verified, the rest stay greyed with a one-line reason (Burn for DEC until its reward
+# handling is proven on a live transaction).
+ACTIONS = ("stake", "unstake", "plot_link", "delegate", "recall_delegation", "return_card", "transfer", "burn")
+UNVERIFIED = frozenset({"delegate", "recall_delegation", "return_card", "transfer", "burn"})
+# Why each unverified operation is still greyed for a copy that otherwise qualifies (research.md, 2026-10-18).
+UNVERIFIED_REASONS = {
+    "delegate": "Not available yet — the delegation operation is not verified",
+    "recall_delegation": "Not available yet — the recall operation is not verified",
+    "return_card": "Not available yet — the return operation is not verified",
+    "transfer": "Not available yet — the signing key for giving cards is not verified",
+    "burn": "Not available yet — DEC reward handling is not proven on a live transaction",
+}
 
 
 def copy_ref(player: str, uid: str) -> str:
@@ -75,7 +87,8 @@ def _plot_label(plot: Any) -> str | None:
     return "-".join(part.zfill(width) for part, width in zip(parts, (3, 2, 3)))
 
 
-def reservation_refs(plans: list[dict[str, Any]], *, removed: Mapping[str, Any] | None = None) -> dict[str, str]:
+def reservation_refs(plans: list[dict[str, Any]], *, removed: Mapping[str, Any] | None = None,
+                     plots: Mapping[str, str] | None = None) -> dict[str, str]:
     """ raw Land refs remain server-side; caller supplies local plans too.
 
     A replaced worker and a staged unstake are reserved along with the incoming card.
@@ -88,12 +101,70 @@ def reservation_refs(plans: list[dict[str, Any]], *, removed: Mapping[str, Any] 
         key = plan.get("key")
         if key is not None and isinstance(removed, Mapping) and str(key) in removed:
             continue
-        label = _plot_label(plan.get("plot")) or "a plot"
+        # A board plan saved in browser storage names its deed, not its label; the label comes from the snapshot.
+        label = _plot_label(plan.get("plot")) or (plots or {}).get(str(plan.get("deed_uid") or "")) or "a plot"
         for field in ("asset_ref", "evict_asset_ref"):
             ref = plan.get(field)
             if isinstance(ref, str) and ref:
                 result[ref] = label
     return result
+
+
+def unverified_eligibility(facts: Mapping[str, Any], player: str) -> dict[str, dict[str, Any]]:
+    """Greyed reasons for the operations that are not verified yet. Never available.
+
+    Only rules with documented evidence are stated as prohibitions (maintainer-only actions, soulbound copies cannot
+    be delegated, given or burned for DEC, a paid rental is not a delegation); every other case reads as the
+    operation itself not being verified, so no unverified game rule is presented as proven.
+    """
+    owner = facts.get("player") or facts.get("owner")
+    if not isinstance(owner, str) or not owner:
+        return {action: _unknown() for action in UNVERIFIED}
+    owned = owner == player
+    delegated = facts.get("delegated_to")
+    rental = bool(facts.get("rental_type"))
+    soulbound = _is_soulbound(dict(facts))
+    out: dict[str, dict[str, Any]] = {}
+
+    def pending(action: str) -> dict[str, Any]:
+        return _result("unverified", UNVERIFIED_REASONS[action])
+
+    if not owned:
+        out["delegate"] = _result("not_owner", "Only the owner can delegate this card")
+        out["transfer"] = _result("not_owner", "Only the owner can give this card")
+        out["burn"] = _result("not_owner", "Only the owner can burn this card")
+    elif soulbound:
+        out["delegate"] = _result("soulbound", "Soulbound cards cannot be delegated")
+        out["transfer"] = _result("soulbound", "Soulbound cards cannot be given")
+        out["burn"] = _result("soulbound", "Soulbound cards cannot be burned for DEC")
+    else:
+        if rental and delegated and delegated != player:
+            out["delegate"] = _result("rented", "Rented out — managed on the market")
+        elif delegated and delegated != player:
+            out["delegate"] = _result("delegated", f"Already delegated to {delegated}")
+        else:
+            out["delegate"] = pending("delegate")
+        out["transfer"] = pending("transfer")
+        out["burn"] = pending("burn")
+
+    if not owned:
+        out["recall_delegation"] = _result("not_owner", "Only the owner can recall a delegation")
+    elif not delegated or delegated == player:
+        out["recall_delegation"] = _result("not_delegated", "Not delegated to anyone")
+    elif rental:
+        out["recall_delegation"] = _result("rented", "Paid rental — managed on the market")
+    else:
+        out["recall_delegation"] = pending("recall_delegation")
+
+    if owned:
+        out["return_card"] = _result("not_borrowed", "Your own card — nothing to return")
+    elif delegated != player:
+        out["return_card"] = _result("not_borrowed", "Not delegated to you")
+    elif rental:
+        out["return_card"] = _result("rented", "Paid rental — managed on the market")
+    else:
+        out["return_card"] = pending("return_card")
+    return out
 
 
 def action_eligibility(card: Mapping[str, Any] | None, *, player: str, plots: Mapping[str, str],
@@ -108,7 +179,7 @@ def action_eligibility(card: Mapping[str, Any] | None, *, player: str, plots: Ma
     facts = card.get("facts") if isinstance(card.get("facts"), Mapping) else card
     if not isinstance(facts, Mapping):
         return {action: _unknown() for action in ACTIONS}
-    result = {action: _result("not_yet_supported", "Not yet supported") for action in UNVERIFIED}
+    result = unverified_eligibility(facts, player)
     if reserved_plot:
         refusal = _result("reserved", f"Already staged for plot {reserved_plot}")
         result.update({action: dict(refusal) for action in ("stake", "unstake")})

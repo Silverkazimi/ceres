@@ -287,7 +287,7 @@ def test_worker_controls_and_candidate_layout_contract_are_scoped(live_browser: 
     # Worker-group filter controls, read off the real rendered elements.
     edition_select = page.locator("select[data-picker-filter='edition']")
     assert edition_select.locator("option").first.get_attribute("value") == ""
-    assert edition_select.locator("option").first.inner_text() == "Any edition"
+    assert edition_select.locator("option").first.inner_text() == "All"
     assert page.locator("input[data-picker-filter='ready_now']").count() == 1
     assert page.locator("input[data-picker-filter='bloodline_pairs']").count() == 1
 

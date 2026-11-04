@@ -94,34 +94,8 @@ def get_cards(request: Request, player: str | None = None):
     })
 
 
-@router.post("/api/cards/eligibility")
-async def get_card_eligibility(request: Request, player: str | None = None):
-    """One fresh collection read, plus caller's current  staged-plan refs.
-
-    The body contains only opaque copy refs and existing Land stage refs. It never
-    requests a UID and never returns one. No polling, chain read, or mutation.
-    """
-    _require_same_origin(request)
-    client_limits.limit(request, "preview")
-    account = player_for_request(request, player)
-    try:
-        body = await request.json()
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail="invalid request") from exc
-    if not isinstance(body, dict):
-        raise HTTPException(status_code=422, detail="request must be an object")
-    refs = body.get("asset_refs")
-    if not isinstance(refs, list) or len(refs) > 1000 or any(not isinstance(ref, str) or re.fullmatch(r"cc1_[0-9a-f]{48}", ref) is None for ref in refs):
-        raise HTTPException(status_code=422, detail="asset_refs must be a list of at most 1000 opaque refs")
-    if len(set(refs)) != len(refs):
-        raise HTTPException(status_code=422, detail="asset_refs must be unique")
-    plans = body.get("staged_plans")
-    if not isinstance(plans, list) or len(plans) > 200 or any(not isinstance(plan, dict) for plan in plans):
-        raise HTTPException(status_code=422, detail="staged_plans must be a list of at most 200 plans")
-    if any(len(str(plan)) > 2000 for plan in plans):
-        raise HTTPException(status_code=422, detail="staged plan too large")
-    if not refs and not plans:
-        return JSONResponse(content={"player": account, "observed_at": None, "actions": list(ACTIONS), "copies": []}, headers={"Cache-Control": "no-store"})
+async def _eligibility_context(request: Request, account: str):
+    """The stored snapshot binds opaque refs to copies; one fresh collection read supplies their current state."""
     try:
         snapshot, _ref = await asyncio.to_thread(capture_mod.latest_snapshot, request.app.state.ceres_config, account)
         if snapshot is None:
@@ -145,14 +119,54 @@ async def get_card_eligibility(request: Request, player: str | None = None):
             uid = card_uid(card)
             if uid:
                 old[copy_ref(account, uid)] = (uid, card.get("asset_ref"))
+    from .card_browser import plot_label
     plots = {}
     for plot in snapshot.get("plots") or []:
         if isinstance(plot, dict) and plot.get("deed_uid"):
-            from .card_browser import plot_label
             label = plot_label((plot.get("facts") or {}).get("plot"))
             if label:
                 plots[str(plot["deed_uid"])] = label
-    reserved = reservation_refs(plans)
+    return old, current, plots, observed_at
+
+
+def _valid_refs(refs, limit: int = 1000) -> list[str]:
+    if not isinstance(refs, list) or len(refs) > limit or any(not isinstance(ref, str) or re.fullmatch(r"cc1_[0-9a-f]{48}", ref) is None for ref in refs):
+        raise HTTPException(status_code=422, detail=f"asset_refs must be a list of at most {limit} opaque refs")
+    if len(set(refs)) != len(refs):
+        raise HTTPException(status_code=422, detail="asset_refs must be unique")
+    return refs
+
+
+def _valid_plans(plans) -> list[dict]:
+    if not isinstance(plans, list) or len(plans) > 200 or any(not isinstance(plan, dict) for plan in plans):
+        raise HTTPException(status_code=422, detail="staged_plans must be a list of at most 200 plans")
+    if any(len(str(plan)) > 2000 for plan in plans):
+        raise HTTPException(status_code=422, detail="staged plan too large")
+    return plans
+
+
+@router.post("/api/cards/eligibility")
+async def get_card_eligibility(request: Request, player: str | None = None):
+    """One fresh collection read, plus caller's current  staged-plan refs.
+
+    The body contains only opaque copy refs and existing Land stage refs. It never
+    requests a UID and never returns one. No polling, chain read, or mutation.
+    """
+    _require_same_origin(request)
+    client_limits.limit(request, "preview")
+    account = player_for_request(request, player)
+    try:
+        body = await request.json()
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="invalid request") from exc
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="request must be an object")
+    refs = _valid_refs(body.get("asset_refs"))
+    plans = _valid_plans(body.get("staged_plans"))
+    if not refs and not plans:
+        return JSONResponse(content={"player": account, "observed_at": None, "actions": list(ACTIONS), "copies": []}, headers={"Cache-Control": "no-store"})
+    old, current, plots, observed_at = await _eligibility_context(request, account)
+    reserved = reservation_refs(plans, plots=plots)
     now = datetime.now(timezone.utc)
     copies = []
     for ref in refs:
@@ -162,3 +176,56 @@ async def get_card_eligibility(request: Request, player: str | None = None):
         staged_at = reserved.get(str(old_item[1])) if old_item else None
         copies.append({"asset_ref": ref, "actions": action_eligibility(card, player=account, plots=plots, now=now, reserved_plot=staged_at)})
     return JSONResponse(content={"player": account, "observed_at": observed_at, "actions": list(ACTIONS), "copies": copies}, headers={"Cache-Control": "no-store"})
+
+
+_HANDOFF_ACTIONS = {"stake", "unstake"}
+
+
+@router.post("/api/cards/board-handoff")
+async def card_board_handoff(request: Request, player: str | None = None):
+    """ (maintainer 2026-10-28, "Through Changes"): Stake and Unstake from the card menu go through the board.
+
+    The Cards page sends the board only opaque copy refs (in its address). The board page asks here, once, which
+    of its own Land refs those copies are, after the same fresh eligibility check the menu shows. Nothing is
+    staged, signed or written here: the board stages through its ordinary picker and Changes, where the 
+    one-copy guard, the preview and the signing gate apply as for any other change. The returned ``board_ref``
+    is the board's existing per-copy ref, which only the board page reads; the Cards page never receives it.
+    """
+    _require_same_origin(request)
+    client_limits.limit(request, "preview")
+    account = player_for_request(request, player)
+    try:
+        body = await request.json()
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="invalid request") from exc
+    if not isinstance(body, dict) or body.get("action") not in _HANDOFF_ACTIONS:
+        raise HTTPException(status_code=422, detail="action must be stake or unstake")
+    action = body["action"]
+    refs = _valid_refs(body.get("asset_refs"), limit=1 if action == "stake" else 20)
+    if not refs:
+        raise HTTPException(status_code=422, detail="asset_refs must not be empty")
+    plans = _valid_plans(body.get("staged_plans", []))
+    old, current, plots, observed_at = await _eligibility_context(request, account)
+    reserved = reservation_refs(plans, plots=plots)
+    details = load_details_by_id()
+    now = datetime.now(timezone.utc)
+    copies = []
+    for ref in refs:
+        old_item = old.get(ref)
+        uid = old_item[0] if old_item else None
+        card = current.get(uid) if uid else None
+        staged_at = reserved.get(str(old_item[1])) if old_item else None
+        verdict = action_eligibility(card, player=account, plots=plots, now=now, reserved_plot=staged_at)[action]
+        if not verdict.get("available") or card is None:
+            copies.append({"asset_ref": ref, "ok": False, "reason": verdict.get("reason") or "Card status could not be checked"})
+            continue
+        facts = card.get("facts") if isinstance(card.get("facts"), dict) else card
+        detail = details.get(int(facts.get("card_detail_id") or 0)) or {}
+        entry = {"asset_ref": ref, "ok": True, "board_ref": old_item[1] or uid, "name": detail.get("name") or "",
+                 "level": facts.get("level")}
+        if action == "unstake":
+            deed = str(facts.get("stake_ref_uid") or "")
+            entry.update({"deed_uid": deed, "plot": plots.get(deed)})
+        copies.append(entry)
+    return JSONResponse(content={"player": account, "observed_at": observed_at, "action": action, "copies": copies},
+                        headers={"Cache-Control": "no-store"})

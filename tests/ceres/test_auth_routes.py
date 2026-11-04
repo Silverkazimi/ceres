@@ -56,9 +56,9 @@ def test_a_valid_posting_signature_opens_a_session_that_names_only_its_own_accou
 
 def test_another_players_key_a_wrong_browser_a_reused_challenge_and_a_missing_account_are_all_refused():
     alice, alice_pub = make_key(111)
-    player0009, _ = make_key(112)
+    player0010, _ = make_key(112)
     app, client = build({"alice": {"posting": authority(1, [(alice_pub, 1)]), "delegates": {}}})
-    assert login(client, "alice", player0009)[0].status_code == 401                                   # not alice's key
+    assert login(client, "alice", player0010)[0].status_code == 401                                   # not alice's key
     assert login(client, "alice", alice, verifier="w" * 30)[0].status_code == 401                  # another browser
     reply, data = login(client, "alice", alice)
     assert reply.status_code == 200

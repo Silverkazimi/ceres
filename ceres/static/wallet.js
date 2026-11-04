@@ -218,10 +218,20 @@ export function walletName(account = walletAccount()) { return walletKind(accoun
 // wallet app, and the player has to go there. The text is shown large and orange (`.is-action`).
 const SWITCH_TX = 'Switch to the Hive Keychain app and confirm the transaction.';
 const SWITCH_AUTH = 'Switch to the Hive Keychain app and confirm the authentication.';
-const actionClass = (text) => (text === SWITCH_TX || text === SWITCH_AUTH ? ' is-action' : '');
+// the relay answered the sign request with sign_wait, so it reached HiveAuth; the approval in the app is still open.
+const RELAY_CONFIRMED = 'The HiveAuth relay confirmed the request. Switch to the Hive Keychain app and confirm the transaction.';
+const RELAY_CONFIRMED_NOTE = 'Relay confirmed: the request reached HiveAuth.';
+const TOO_LARGE = 'This request is too large for HiveAuth. It was not sent. Sign it with Hive Keychain or in smaller parts.';
+// without a sign_wait within this time the worker's socket is treated as stale and the request is sent once more on a fresh worker.
+const RELAY_ACK_MS = 8000;
+const actionClass = (text) => (text === SWITCH_TX || text === SWITCH_AUTH || text === RELAY_CONFIRMED ? ' is-action' : '');
 export function walletSigningStatus(account = walletAccount()) {
   if (requestView?.account === account && requestView.signing) return requestView.status;
   return walletKind(account) === 'hiveauth' ? SWITCH_TX : 'Waiting for wallet approval';
+}
+// true while this account's HiveAuth transaction request has been confirmed by the relay and waits for the app.
+export function walletRelayConfirmed(account = walletAccount()) {
+  return Boolean(pending?.action === 'broadcast' && pending.account === account && pending.relayConfirmed);
 }
 export function clearStaleWalletRequest(account) {
   if (requestView?.account !== account || requestView.signing || !requestView.failed) return false;
@@ -314,6 +324,7 @@ function finishPending(message) {
   if (!request) return;
   pending = null;
   clearTimeout(request.timer);
+  clearTimeout(request.ackTimer);
   if (request.action === 'broadcast' && message.type === 'uncertain' && message.reason === 'watchdog') {
     lateBroadcasts.set(request.id, request);
     session?.worker.postMessage({ id: request.id, action: 'release' });
@@ -321,6 +332,7 @@ function finishPending(message) {
   if (request.action === 'connect') {
     if (message.type === 'connected' && session && message.account === request.account && request.account === walletAccount() && Number.isFinite(message.expire) && message.expire > Date.now()) {
       session.expire = message.expire;
+      session.credentials = message.credentials;   // kept in memory so a resend can restore a fresh worker even without localStorage
       storeSession(request.account, message.credentials);
       document.querySelectorAll('.wallet-controls').forEach((el) => {
         if (el.dataset.walletAccount === request.account) controlState(el.dataset.walletControlsId).expanded = false;
@@ -361,6 +373,7 @@ function finishPending(message) {
     } else if (message.type === 'not-sent') {
       request.callback({ success: false, notSent: true, error: message.reason === 'busy'
         ? 'The wallet is still handling the earlier request. This request was not sent.'
+        : message.reason === 'too-large' ? TOO_LARGE
         : 'HiveAuth session expired before signing.' });
     } else {
       const stillChecking = message.reason === 'watchdog' || message.reason === 'expired';
@@ -386,7 +399,8 @@ function startRequest(action, account, operations, callback, authority = 'Postin
   if (pending) throw new Error('Finish the current wallet request first.');
   const id = crypto.randomUUID();
   const timer = setTimeout(() => finishPending({ type: action === 'connect' ? 'connect-failed' : action === 'challenge' ? 'challenge-failed' : 'uncertain', reason: action === 'connect' ? 'expired' : 'watchdog' }), 110000);
-  pending = { id, action, account, callback, timer, authority, message: action === 'connect' || action === 'challenge' ? operations : undefined, reauth: Boolean(credentials), retryWithQr };
+  pending = { id, action, account, callback, timer, authority, message: action === 'connect' || action === 'challenge' ? operations : undefined, reauth: Boolean(credentials), retryWithQr,
+    operations: action === 'broadcast' ? operations : undefined, relayConfirmed: false, resent: false, ackTimer: null };
   try { session.worker.postMessage({ id, action, account, operations: action === 'connect' || action === 'challenge' ? undefined : operations, message: action === 'connect' || action === 'challenge' ? operations : undefined, authority, ...(action === 'connect' && credentials ? { credentials } : {}) }); }
   catch (error) {
     clearTimeout(timer);
@@ -394,7 +408,30 @@ function startRequest(action, account, operations, callback, authority = 'Postin
     disposeSession();
     throw error;
   }
+  if (action === 'broadcast' && pending?.id === id) pending.ackTimer = setTimeout(() => resendUnconfirmed(id), RELAY_ACK_MS);
   notify();
+}
+// no sign_wait within RELAY_ACK_MS means the request most likely went into a stale socket (the wrapper only learns of a dead
+// websocket from its close event, and does not reconnect before sign_wait). Send it ONCE more on a fresh worker (fresh websocket).
+// Never after sign_wait: the relay already has that request, and a second one could be signed twice.
+function resendUnconfirmed(id) {
+  const request = pending;
+  if (!request || request.id !== id || request.action !== 'broadcast' || request.relayConfirmed || request.resent) return;
+  if (!session || session.account !== request.account || !(session.expire > Date.now())) return;
+  const credentials = session.credentials || storedSession(request.account);
+  if (!credentials) return;
+  request.resent = true;
+  const expire = session.expire;
+  session.worker.terminate();
+  try {
+    const worker = createHiveAuthWorker(request.account, expire);
+    session.credentials = credentials;
+    worker.postMessage({ id: crypto.randomUUID(), action: 'restore', account: request.account, credentials });
+    if (pending !== request || session?.worker !== worker) return;   // the restore failed and ended the session; the watchdog reports it
+    worker.postMessage({ id: request.id, action: 'broadcast', account: request.account, operations: request.operations, authority: request.authority });
+  } catch (_) {
+    if (pending === request) finishPending({ type: 'uncertain', reason: 'transport' });
+  }
 }
 function createHiveAuthWorker(account, expire = 0) {
     const workerUrl = new URL('./vendor/hiveauth-worker.js', import.meta.url);
@@ -425,7 +462,15 @@ function createHiveAuthWorker(account, expire = 0) {
       if (data.type === 'auth-wait') {
         requestView = { title: 'HiveAuth', account, signing: pending.action === 'broadcast', status: pending.action === 'broadcast' ? SWITCH_TX : SWITCH_AUTH, link: data.link, svg: data.svg };
         notify();
-      } else if (data.type !== 'sign-wait') finishPending(data);
+      } else if (data.type === 'sign-wait') {
+        if (pending.action !== 'broadcast') return;
+        // the relay holds the request now; stop the resend timer and say so.
+        pending.relayConfirmed = true;
+        clearTimeout(pending.ackTimer);
+        pending.ackTimer = null;
+        if (requestView?.account === pending.account && requestView.signing) requestView.status = RELAY_CONFIRMED;
+        notify();
+      } else finishPending(data);
     };
     worker.onerror = () => {
       if (session?.worker !== worker) return;
@@ -445,6 +490,7 @@ function restoreHiveAuth(account) {
   if (!credentials || !hiveAuthAvailable()) return;
   try {
     const worker = createHiveAuthWorker(account, credentials.expire);
+    session.credentials = credentials;
     worker.postMessage({ id: crypto.randomUUID(), action: 'restore', account, credentials });
     scheduleExpiry(credentials.expire);
   } catch (_) { disposeSession(); }
@@ -493,10 +539,12 @@ export function walletWaitHtml(account = walletAccount(), authority = 'Posting',
   const kind = walletKind(account);
   const key = authority === 'Active' ? ' (Active key)' : '';
   const text = kind === 'hiveauth' ? `Check the Keychain app on your phone now and approve the request${key}.` : `Approve the request in the Keychain extension now${key}.`;
+  // once the relay confirmed the request, a green line says it reached HiveAuth (the wait box itself stays amber: the approval is open).
+  const relay = kind === 'hiveauth' && walletRelayConfirmed(account) ? ` <small class="wallet-relay-confirmed">${esc(RELAY_CONFIRMED_NOTE)}</small>` : '';
   const since = Number(options.since);
-  if (!Number.isFinite(since) || since <= 0) return `<p class="wallet-wait is-${kind}" role="status"><span class="spinner" aria-hidden="true"></span>${walletLogo(kind)}<span>${esc(text)}</span></p>`;
+  if (!Number.isFinite(since) || since <= 0) return `<p class="wallet-wait is-${kind}" role="status"><span class="spinner" aria-hidden="true"></span>${walletLogo(kind)}<span>${esc(text)}${relay}</span></p>`;
   const ttl = WALLET_REQUEST_MS[kind] || WALLET_REQUEST_MS.keychain;
-  return `<div class="wallet-wait is-${kind} has-clock" role="status"><span class="spinner" aria-hidden="true"></span>${walletLogo(kind)}<span class="wallet-wait-text"><span>${esc(text)} </span><small>${esc(WALLET_EXPIRY_TEXT)}</small></span><b class="wallet-wait-clock" data-wallet-clock data-since="${since}" data-ttl="${ttl}" aria-live="off">${esc(walletClockText(since, ttl))}</b></div>`;
+  return `<div class="wallet-wait is-${kind} has-clock" role="status"><span class="spinner" aria-hidden="true"></span>${walletLogo(kind)}<span class="wallet-wait-text"><span>${esc(text)} </span>${relay}<small>${esc(WALLET_EXPIRY_TEXT)}</small></span><b class="wallet-wait-clock" data-wallet-clock data-since="${since}" data-ttl="${ttl}" aria-live="off">${esc(walletClockText(since, ttl))}</b></div>`;
 }
 // Updates every running wallet clock under `root` in place (no re-render, so focus and buttons stay put).
 export function walletClockTick(root = typeof document !== 'undefined' ? document : null, now = Date.now()) {

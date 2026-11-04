@@ -566,8 +566,7 @@ for (const [value, want] of cases) { if (cbFormatPpPerCc(value) !== want) throw 
 
 def test_black_foils_draw_the_blk_art():
     # the official site names black foil art "<name>_blk.jpg" for black and black arcane alike; gold and gold arcane use "_gold".
-    js = (STATIC / "card-browser.js").read_text(encoding="utf-8")
-    art = js[js.index("function cardArtCandidates(card)"):js.index("function onArtError(event)")]
+    art = (STATIC / "card-browser-art.js").read_text(encoding="utf-8")
     assert "[1, 2].includes(card.foil) || (card.foil == null && card.gold) ? '_gold' : [3, 4].includes(card.foil) ? '_blk' : ''" in art
     editor = (STATIC / "editor.js").read_text(encoding="utf-8")
     assert "isGoldFoil(asset) ? '_gold' : isBlackFoil(asset) ? '_blk' : ''" in editor

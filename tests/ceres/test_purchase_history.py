@@ -376,6 +376,10 @@ def _route_upstream(**kw):
 def _app(monkeypatch, upstream):
     monkeypatch.setattr(routes, "load_details_by_id", lambda: DETAILS)
     monkeypatch.setattr(ph, "_default_get", upstream)
+    # The route calls ph.build without a clock; pin it to the fixture's NOW so the 30-day window
+    # does not drift with the real date (red from early November 2026, found on IN-0028 CI).
+    real_build = ph.build
+    monkeypatch.setattr(ph, "build", lambda *a, **k: real_build(*a, **{**k, "now": k.get("now") or NOW}))
     app = FastAPI()
     app.state.ceres_config = SimpleNamespace(player=ROUTE_PLAYER)
     app.include_router(routes.router)

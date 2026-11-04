@@ -11,6 +11,8 @@
 import { tipAttrs } from './tooltip.js';
 import { CB_FOIL_LABELS, CB_SET_LABELS, cbCopyStatus, cbUnavailableLabel } from './card-browser-model.js';
 import { countdownText } from './countdown.js';
+import { cardActionPress, loadCardActionsMenuCss, readCardActionEligibility, sharedCardActionsHtml } from './card-actions-menu.js';
+import { cardArtImageHtml } from './card-browser-art.js';
 import {
   cartAdd, cartApplyCheck, cartCheckFromPrint, cartClear, cartCountForPrint, cartGroups, cartHas, cartHasAll, cartLoad,
   cartMaxGroups, cartPrintId, cartPrintParts, cartRemove, cartRemoveGroup, cartStore, cartTotals, cmLevelBundles, cmMaxedPick,
@@ -237,7 +239,28 @@ function ensureOverlay(id, titleId, bodyId, footId) {
   overlay.addEventListener('click', (event) => {
     // a click beside the wallet that sits over this dialog closes the wallet only, never the dialog under it.
     if (event.target === overlay) { if (!document.getElementById('regional-dec-drawer')?.open) closeDialog(id); return; }
+    // the shared action bar of the owned-copy menu (card-actions-menu.js).
+    const actionButton = event.target.closest?.('[data-card-action]');
+    if (actionButton && cart.menu?.owned) {
+      const m = cart.menu;
+      const note = cardActionPress(actionButton, { copies: m.copies, selectedIndexes: m.selectedIndexes, eligibility: m.actionEligibility, player: m.player });
+      if (note === null || note === '') return; // an active Go to plot link follows its href
+      event.preventDefault();
+      m.actionNote = note;
+      renderMenu();
+      return;
+    }
     onDialogClick(event, id);
+  });
+  overlay.addEventListener('change', (event) => {
+    const input = event.target.closest?.('[data-copy-index]');
+    if (!input || !cart.menu?.owned) return;
+    const index = Number(input.dataset.copyIndex);
+    if (!Number.isInteger(index)) return;
+    if (input.checked) cart.menu.selectedIndexes.add(index);
+    else cart.menu.selectedIndexes.delete(index);
+    cart.menu.actionNote = '';
+    renderMenu();
   });
   overlay.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') { event.preventDefault(); closeDialog(id); return; }
@@ -327,14 +350,15 @@ function ownedCopyStatus(copy) {
   return cbUnavailableLabel(copy) || (status === 'idle' ? 'Idle' : cap(status));
 }
 
-function ownedCopiesHtml(copies, selected) {
+function ownedCopiesHtml(copies, selected, actionEligibility = new Map(), selectedIndexes = new Set(), actionNote = '') {
   const showVariant = copies.some((copy) => Number(copy.foil) !== Number(selected.foil) || Number(copy.edition) !== Number(selected.edition));
-  const head = `<div class="cm-copy cm-copy-head" role="row"><span class="cm-cell cm-c-lv" role="columnheader">Level</span><span class="cm-cell cm-c-cc" role="columnheader">CC</span><span class="cm-cell cm-c-pp" role="columnheader">Land PP</span><span class="cm-cell cm-c-tags" role="columnheader">Status${showVariant ? ' · print' : ''}</span></div>`;
-  const rows = copies.map((copy) => {
+  const head = `<div class="cm-copy cm-copy-head" role="row"><span class="cm-cell cm-c-select" role="columnheader" aria-label="Select"></span><span class="cm-cell cm-c-lv" role="columnheader">Level</span><span class="cm-cell cm-c-cc" role="columnheader">CC</span><span class="cm-cell cm-c-pp" role="columnheader">Land PP</span><span class="cm-cell cm-c-tags" role="columnheader">Status${showVariant ? ' · print' : ''}</span></div>`;
+  const rows = copies.map((copy, index) => {
     const variant = showVariant ? ` · ${CB_FOIL_LABELS[copy.foil] || 'Foil'} · ${CB_SET_LABELS[copy.card_set] || `Edition ${num(copy.edition)}`}` : '';
-    return `<div class="cm-copy cm-owned-copy" role="row"><span class="cm-cell cm-c-lv" role="cell">Lv ${esc(copy.level ?? '—')}</span><span class="cm-cell cm-c-cc" role="cell">${num(copy.bcx)}<small class="cm-phone-label"> CC</small></span><span class="cm-cell cm-c-pp" role="cell">${num(copy.soulbound ? 0 : copy.land_base_pp)}<small class="cm-phone-label"> PP</small></span><span class="cm-cell cm-c-tags" role="cell">${esc(ownedCopyStatus(copy) + variant)}</span></div>`;
+    const checked = selectedIndexes?.has(index) ? ' checked' : '';
+    return `<div class="cm-copy cm-owned-copy${checked ? ' is-selected' : ''}" role="row"><span class="cm-cell cm-c-select" role="cell"><input type="checkbox" data-copy-index="${index}" aria-label="Select copy ${index + 1}"${checked}></span><span class="cm-cell cm-c-lv" role="cell">Lv ${esc(copy.level ?? '—')}</span><span class="cm-cell cm-c-cc" role="cell">${num(copy.bcx)}<small class="cm-phone-label"> CC</small></span><span class="cm-cell cm-c-pp" role="cell">${num(copy.soulbound ? 0 : copy.land_base_pp)}<small class="cm-phone-label"> PP</small></span><span class="cm-cell cm-c-tags" role="cell"><span class="cm-owned-status">${esc(ownedCopyStatus(copy) + variant)}</span></span></div>`;
   }).join('');
-  return `<section class="cm-section" aria-label="Owned copies"><h4>Owned copies <small>${num(copies.length)}</small></h4><div class="cm-copy-table cm-owned-table" role="table">${head}${rows}</div></section>`;
+  return `<section class="cm-section" aria-label="Owned copies"><h4>Owned copies <small>${num(copies.length)}</small></h4>${sharedCardActionsHtml(copies, selectedIndexes || new Set(), actionEligibility, actionNote)}<div class="cm-copy-table cm-owned-table" role="table">${head}${rows}</div></section>`;
 }
 
 // one equal-size button per level
@@ -439,12 +463,12 @@ function renderMenu() {
   if (!m || !body) return;
   if (title) title.textContent = m.row?.name || m.data?.print?.name || 'Card';
   if (m.owned) {
-    const thumb = m.art ? `<img class="cm-menu-art" src="${esc(m.art)}" alt="" width="96" height="134">` : '';
+    const thumb = `<span class="cm-menu-art cm-owned-art" aria-label="${esc(m.row.name)} card art">${cardArtImageHtml(m.row)}</span>`;
     const group = m.group;
     const reason = m.error ? `<p class="cm-note" data-state="sold" role="status">${esc(m.error)}</p>` : '';
     const held = cart.ownedCombineHeld.has(m.pid);
     body.innerHTML = `<div class="cm-menu-head">${thumb}<div class="cm-menu-facts"><div class="cm-menu-print">${esc(m.row.name)}</div><div class="cm-menu-stats"><span>${num(m.copies.length)} owned ${m.copies.length === 1 ? 'copy' : 'copies'}</span></div></div></div>`
-      + ownedCopiesHtml(m.copies, m.row)
+      + ownedCopiesHtml(m.copies, m.row, m.actionEligibility, m.selectedIndexes, m.actionNote)
       + (m.loading ? '<div class="cb-loading" role="status"><span class="spinner" aria-hidden="true"></span><span>Checking Combine…</span></div>' : reason || (held ? '<p class="cm-note" data-state="warn" role="status">Combine sent; waiting for game confirmation.</p>' : group?.sets?.length ? '<section class="cm-section"><button type="button" class="ceres-btn ceres-btn--primary" data-control-density="compact" data-cm-action="combine-owned">Combine</button></section>' : '<p class="cm-empty">No two eligible owned copies can be combined now.</p>'));
     if (foot) { foot.innerHTML = ''; foot.hidden = true; }
     return;
@@ -458,11 +482,19 @@ function renderMenu() {
 // the My cards tile uses the same card-menu shell, with this print's owned-copy answer.
 // The existing combine dialog performs the eligibility, preview and signing guards.
 export async function cartOpenOwnedMenu(row, art = '', { player = null, copies = [], onConfirmed = null } = {}) {
+  loadCardActionsMenuCss();
   ensureOverlay('cm-menu-overlay', 'cm-menu-title', 'cm-menu-body', 'cm-menu-foot');
   const pid = cartPrintId(row);
-  cart.menu = { pid, row, art, owned: true, player, copies: copies.filter((copy) => cartPrintId(copy) === pid), onConfirmed, loading: true, group: null, error: '' };
+  const ownedCopies = copies.filter((copy) => cartPrintId(copy) === pid);
+  cart.menu = { pid, row, art, owned: true, player, copies: ownedCopies, actionEligibility: new Map(), selectedIndexes: new Set(), actionNote: '', onConfirmed, loading: true, group: null, error: '' };
   renderMenu();
   openDialog('cm-menu-overlay');
+  try {
+    const actionEligibility = await readCardActionEligibility(ownedCopies, player);
+    if (cart.menu?.owned && cart.menu.pid === pid) cart.menu.actionEligibility = actionEligibility;
+  } catch (_) {
+    // Fail closed: all per-copy actions remain disabled when the read cannot be verified.
+  }
   try {
     const params = new URLSearchParams({ print: pid });
     if (player) params.set('player', player);

@@ -29,7 +29,7 @@ def _info(tx, payload, effects):
             "result": json.dumps({"success": True, "result": {"success": True, "data": effects}})}
 
 
-def _funding_row(index, tx, memo, qty, to="player0016", author=PLAYER, timestamp="2026-10-14T08:04:48"):
+def _funding_row(index, tx, memo, qty, to="player0018", author=PLAYER, timestamp="2026-10-14T08:04:48"):
     payload = {"action": "token_transfer", "params": {"to": to, "qty": qty, "token": "SPS", "memo": memo, "n": "1" * 16}}
     return [index, {"trx_id": tx, "op_in_trx": 0, "timestamp": timestamp,
                     "op": ["custom_json", {"id": "sm_sps", "json": json.dumps(payload), "required_auths": [author], "required_posting_auths": []}]}]
@@ -40,7 +40,7 @@ def _funding_row(index, tx, memo, qty, to="player0016", author=PLAYER, timestamp
 def _deposit(monkeypatch, settle_result):
     expected = operations.add(PLAYER, "", "SPS", 2, 16)["payload"]
     tx = "c" * 40
-    effects = {"pending_deposit_id": 777, "pending_external_amount": 2, "external_transfer_account": "player0016", "resource": "SPS"}
+    effects = {"pending_deposit_id": 777, "pending_external_amount": 2, "external_transfer_account": "player0018", "resource": "SPS"}
     monkeypatch.setattr(lp_routes, "lookup_trx_info", lambda getter, trx: _info(tx, expected, effects))
     seen = []
     def settle(player, step, older=False):
@@ -106,7 +106,7 @@ def _sale(monkeypatch, rows, settle_result=None):
     expected = operations.sell(PLAYER, "", "SPS", "600.392", 1, 2.5)["payload"]
     tx = "a" * 40
     effects = {"external_swap_required": True, "pending_swap_id": 115303, "pending_external_amount": 600.392,
-               "external_transfer_account": "player0016", "external_swap_token": "SPS"}
+               "external_transfer_account": "player0018", "external_swap_token": "SPS"}
     monkeypatch.setattr(lp_routes, "lookup_trx_info", lambda getter, trx: _info(tx, expected, effects))
     monkeypatch.setattr(bridge, "_history", lambda account, start: rows)
     seen = []
@@ -130,7 +130,7 @@ def test_lost_funding_not_in_history_stays_settling_without_a_bridge_read(monkey
     rows = [_funding_row(5, "f" * 40, "lpsid:115304", 600.392),          # another swap
             _funding_row(6, "e" * 40, "lpsid:115303", 1),                # wrong amount
             _funding_row(7, "d" * 40, "lpsid:115303", 600.392, to="someone"),
-            _funding_row(8, "b" * 40, "lpsid:115303", 600.392, author="player0009")]
+            _funding_row(8, "b" * 40, "lpsid:115303", 600.392, author="player0010")]
     body, seen = _sale(monkeypatch, rows)
     with TestClient(_app(tmp_path)) as client:
         answer = client.post("/api/wallet/lp/settle", json=body).json()
@@ -177,13 +177,13 @@ if (prompts !== 1) throw Error('a second transfer was requested');
 
 def _swap_step():
     effects = {"external_swap_required": True, "pending_swap_id": 115303, "pending_external_amount": 2,
-               "external_transfer_account": "player0016", "external_swap_token": "SPS", "external_swap_player": PLAYER}
+               "external_transfer_account": "player0018", "external_swap_token": "SPS", "external_swap_player": PLAYER}
     return lp_routes.settlement_step("a" * 40, "swap_sell", "SPS", effects, True, None)
 
 
 def _bridge_row(index, tx, op_id, payload):
     return [index, {"trx_id": tx, "op_in_trx": 0, "timestamp": "2026-10-14T08:05:39",
-                    "op": ["custom_json", {"id": op_id, "json": json.dumps(payload), "required_auths": ["player0016"], "required_posting_auths": []}]}]
+                    "op": ["custom_json", {"id": op_id, "json": json.dumps(payload), "required_auths": ["player0018"], "required_posting_auths": []}]}]
 
 
 def _refund(qty):
@@ -199,7 +199,7 @@ def _game_says_incomplete(monkeypatch):
             pass
         def get_json(self, url):
             envelope = {"success": True, "result": {"success": True, "data": {"pending_swap_id": 115303, "external_swap_completed": False}}}
-            return type("R", (), {"data": {"trx_info": {"id": "d" * 40, "player": "player0016", "type": "land_operation", "data": json.dumps(_SWAP_OP),
+            return type("R", (), {"data": {"trx_info": {"id": "d" * 40, "player": "player0018", "type": "land_operation", "data": json.dumps(_SWAP_OP),
                                                         "success": True, "result": json.dumps(envelope)}}})()
     monkeypatch.setattr(bridge, "FixedGetTransport", Transport)
 

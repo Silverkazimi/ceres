@@ -26,6 +26,19 @@ def _loopback(address) -> bool:
 def main() -> None:
     if not os.environ.get("CERES_FIXTURE_UPSTREAM"):
         raise RuntimeError("The browser test server requires fixture upstream")
+    if os.environ.get("CERES_TEST_RELEASE_EQUAL_IDENTITY") == "1":
+        # The tooltip copy audit exercises release-equal player copy. Only this
+        # offline fixture process masks the local checkout's dev identity.
+        from ceres import routes_board
+
+        live_identity = routes_board.served_identity
+
+        def release_identity():
+            identity = live_identity()
+            return {**identity, "version": routes_board.base_version(identity["version"]),
+                    "local_changes": False, "local_hash": None}
+
+        routes_board.served_identity = release_identity
     getaddrinfo = socket.getaddrinfo
 
     def guarded_lookup(host, *args, **kwargs):

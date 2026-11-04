@@ -1,4 +1,4 @@
-""" (2026-09-14, found by the player0017 measurement): under the worker's RLIMIT_DATA cap
+""" (2026-09-14, found by the player0019 measurement): under the worker's RLIMIT_DATA cap
 (1100 MB) orjson could not allocate its parse buffer for a 98.7 MB snapshot and raised a
 JSONDecodeError("Not enough memory to allocate buffer for parsing"); `load_snapshot` called that
 "invalid Land snapshot", `_save_merged`'s  recovery treated the good board as absent and
@@ -126,10 +126,10 @@ def test_cap_default_is_2048(monkeypatch):
 
 def test_cap_grows_with_the_stored_board(monkeypatch):
     monkeypatch.delenv("CERES_CAPTURE_MEMORY_MB", raising=False)
-    player0017 = int(98.7 * 1024 * 1024)
-    cap = capture_mod.capture_memory_mb(player0017)
+    player0019 = int(98.7 * 1024 * 1024)
+    cap = capture_mod.capture_memory_mb(player0019)
     assert cap >= 1300
-    assert cap == 2048  # 98.7 MB * 14 + 256 = 1637 MB; the 2048 default already covers player0017
+    assert cap == 2048  # 98.7 MB * 14 + 256 = 1637 MB; the 2048 default already covers player0019
     assert capture_mod.capture_memory_mb(200 * 1024 * 1024) == 200 * 14 + 256  # 3056: sized up past the default
     assert capture_mod.capture_memory_mb(400 * 1024 * 1024) == capture_mod.CAPTURE_MEMORY_MB_MAX  # 3072 ceiling
 

@@ -21,4 +21,4 @@ def test_wrong_cc_or_consumed_copy_still_present_does_not_verify():
     assert check([{"uid": "C-B", "bcx": 7, "level": 2}])["status"] != "domain_verified"
     assert check([{"uid": "C-B", "bcx": 8, "level": 2}, {"uid": "C-A", "bcx": 5, "level": 2}])["status"] != "domain_verified"
     assert check([])["status"] != "domain_verified"
-    assert check([{"uid": "C-B", "bcx": 8, "level": 2, "owner": "player0009"}])["status"] != "domain_verified"
+    assert check([{"uid": "C-B", "bcx": 8, "level": 2, "owner": "player0010"}])["status"] != "domain_verified"

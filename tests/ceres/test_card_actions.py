@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from ceres import routes_cards
 from ceres import routes_combine
 from ceres.app import create_app
-from ceres.card_actions import ACTIONS, action_eligibility, copy_ref, resolve_ref
+from ceres.card_actions import ACTIONS, UNVERIFIED_REASONS, action_eligibility, copy_ref, resolve_ref
 from ceres.card_browser import build_card_rows
 from ceres.config import CeresConfig
 
@@ -74,8 +74,10 @@ def test_stake_reason_paths(fields, code):
 def test_unverified_actions_are_never_offered():
     actions = action_eligibility(card()["facts"], player="sampleowner", plots={}, now=NOW)
     assert actions["stake"]["available"] is True
-    for action in ("delegate", "undelegate_return", "transfer", "burn"):
-        assert actions[action] == {"available": False, "reason_code": "not_yet_supported", "reason": "Not yet supported"}
+    for action in ("delegate", "transfer", "burn"):
+        assert actions[action] == {"available": False, "reason_code": "unverified", "reason": UNVERIFIED_REASONS[action]}
+    assert actions["recall_delegation"]["reason_code"] == "not_delegated"
+    assert actions["return_card"]["reason_code"] == "not_borrowed"
     assert set(actions) == set(ACTIONS)
     assert actions["unstake"]["reason_code"] == "not_staked"
     assert actions["plot_link"]["reason_code"] == "not_staked"
@@ -93,8 +95,8 @@ def test_reserved_copy_blocks_every_action():
     actions = action_eligibility(card()["facts"], player="sampleowner", plots={}, now=NOW, reserved_plot="065-07-089")
     assert actions["stake"]["reason_code"] == "reserved"
     assert actions["unstake"]["reason_code"] == "reserved"
-    for action in ("delegate", "undelegate_return", "transfer", "burn"):
-        assert actions[action]["reason_code"] == "not_yet_supported"
+    for action in ("delegate", "recall_delegation", "return_card", "transfer", "burn"):
+        assert actions[action]["available"] is False
         assert actions[action]["reserved"] is True
     assert actions["plot_link"]["reason_code"] == "not_staked"
 
@@ -114,7 +116,7 @@ def test_endpoint_fresh_reservation_and_no_uid_in_response(tmp_path, monkeypatch
         "staged_plans": [{"key": "p1", "action": "stake", "asset_ref": "land-A", "plot": "65-7-89"}]})
     assert response.status_code == 200
     body = response.json()
-    assert body["copies"][0]["actions"]["transfer"]["reason_code"] == "not_yet_supported"
+    assert body["copies"][0]["actions"]["transfer"]["reason_code"] == "unverified"
     assert body["copies"][0]["actions"]["transfer"]["reserved"] is True
     assert body["copies"][1]["actions"]["stake"]["available"] is True
     assert body["copies"][2]["actions"]["stake"]["reason_code"] == "unknown"

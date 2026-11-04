@@ -7,13 +7,13 @@ from ceres import harvest_routing_bridge as bridge, routes_wallet_lp as lp_route
 
 def _step():
     effects = {"external_swap_required": True, "pending_swap_id": 115303, "pending_external_amount": 600.392,
-               "external_transfer_account": "player0016", "external_swap_token": "SPS", "external_swap_player": "player0005"}
+               "external_transfer_account": "player0018", "external_swap_token": "SPS", "external_swap_player": "player0005"}
     return lp_routes.settlement_step("a" * 40, "swap_sell", "SPS", effects, True, None)
 
 
 def _row(index, tx, op_id, payload):
     return [index, {"trx_id": tx, "op_in_trx": 0, "timestamp": "2026-10-14T08:05:39",
-                    "op": ["custom_json", {"id": op_id, "json": json.dumps(payload), "required_auths": ["player0016"], "required_posting_auths": []}]}]
+                    "op": ["custom_json", {"id": op_id, "json": json.dumps(payload), "required_auths": ["player0018"], "required_posting_auths": []}]}]
 
 
 def test_bridge_refund_transfer_ends_the_swap(monkeypatch):

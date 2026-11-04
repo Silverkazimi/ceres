@@ -60,7 +60,7 @@ def test_a_fresh_signature_for_this_deletion_erases_the_saved_space_and_its_vers
 
 def test_a_login_signature_another_scope_or_another_account_cannot_delete(tmp_path):
     alice, alice_pub = make_key(211)
-    player0009, _ = make_key(212)
+    player0010, _ = make_key(212)
     client = build(tmp_path, {"alice": {"posting": authority(1, [(alice_pub, 1)]), "delegates": {}}})
     token = login(client, "alice", alice)
     h = {"Authorization": "Bearer " + token}
@@ -69,7 +69,7 @@ def test_a_login_signature_another_scope_or_another_account_cannot_delete(tmp_pa
     assert client.post("/api/me/delete", json={**login_body, "scope": "space"}).status_code == 401           # a login text is not a deletion
     cache_body, _ = proof(client, "alice", alice, "delete-all", "cache")
     assert client.post("/api/me/delete", json={**cache_body, "scope": "space"}).status_code == 401           # signed for the cache, asked for the space
-    forged, _ = proof(client, "alice", player0009, "delete-all", "space")
+    forged, _ = proof(client, "alice", player0010, "delete-all", "space")
     assert client.post("/api/me/delete", json={**forged, "scope": "space"}).status_code == 401               # not alice's key
     assert client.post("/api/me/delete", json={"scope": "everything"}).status_code == 422
     assert client.post("/api/me/delete", headers=h, json={"scope": "space"}).status_code in (401, 422)       # a session alone is not enough

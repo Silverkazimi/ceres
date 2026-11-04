@@ -54,7 +54,7 @@ def _capture() -> LandCapture:
     strict=False,
 )
 def test_capture_quick_survives_a_null_data_bundle():
-    report = _capture().capture_quick("player0017")
+    report = _capture().capture_quick("player0019")
     # The contract established for the oversized case: a structured outcome the
     # caller can report, never an escaping exception that strands the stored snapshot.
     assert report["capture"]["status"] != "ok"
@@ -66,7 +66,7 @@ def test_capture_quick_survives_a_null_data_bundle():
     strict=False,
 )
 def test_full_capture_survives_a_null_data_bundle():
-    report = _capture().capture("player0017")
+    report = _capture().capture("player0019")
     assert report["capture"]["status"] != "ok"
     assert "status" in report
 
@@ -78,4 +78,4 @@ def test_the_gap_is_real_and_this_is_what_it_looks_like():
     to make strict. That is deliberate -- it means the fix cannot land silently.
     """
     with pytest.raises(SchemaError):
-        _capture().capture_quick("player0017")
+        _capture().capture_quick("player0019")

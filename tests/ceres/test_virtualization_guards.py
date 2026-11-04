@@ -1,7 +1,7 @@
 """Mutation guards for the virtualized plot table on offline synthetic boards.
 
 The large-board guards repeat the shared fixture's plots under distinct deed UIDs to
-at least 6,303 rows, matching the scale of the private player0017 account.
+at least 6,303 rows, matching the scale of the private player0019 account.
 """
 
 from __future__ import annotations
@@ -18,17 +18,17 @@ from .vm_context import read_entry_source
 
 
 ROOT = Path(__file__).parents[2]
-player0017_DEEDS = 6_303
+player0019_DEEDS = 6_303
 
 
 @pytest.fixture(scope="module")
-def player0017_browser() -> tuple[Browser, str]:
+def player0019_browser() -> tuple[Browser, str]:
     with spawn_live_ceres() as value:
         yield value
 
 
-def _player0017_repeats(base_url: str) -> int:
-    return -(-player0017_DEEDS // _fixture_plot_count(base_url))
+def _player0019_repeats(base_url: str) -> int:
+    return -(-player0019_DEEDS // _fixture_plot_count(base_url))
 
 
 def _page(
@@ -41,7 +41,7 @@ def _page(
 ) -> Page:
     return _synthetic_page(
         browser, base_url, mutation, wait_timeout=wait_timeout,
-        injection_seen=injection_seen, repeats=_player0017_repeats(base_url),
+        injection_seen=injection_seen, repeats=_player0019_repeats(base_url),
     )
 
 
@@ -67,13 +67,13 @@ def _in_window_mutations(page: Page) -> dict:
     )
 
 
-def test_small_in_window_scroll_has_zero_plot_tbody_mutations(player0017_browser: tuple[Browser, str]) -> None:
+def test_small_in_window_scroll_has_zero_plot_tbody_mutations(player0019_browser: tuple[Browser, str]) -> None:
     """Injection: replace the unchanged-window return with tbody.innerHTML = tbody.innerHTML; this went RED, then the unmodified source went GREEN.
     G1 (campaign plan revision 3, §2.3): anchor asserted present and unique before
     mutating; injection_seen asserted after, so a routing miss (e.g. the anchor
     moving to a post-split module this glob no longer covers) fails loudly instead
     of silently serving the real, unmutated file."""
-    browser, base_url = player0017_browser
+    browser, base_url = player0019_browser
     source = read_entry_source()
     anchor = "if (!force && start === MOUNTED_START && end === MOUNTED_END) return false;"
     assert source.count(anchor) == 1, "renderVirtualWindow()'s unchanged-window guard moved or is no longer unique"
@@ -100,11 +100,11 @@ def test_small_in_window_scroll_has_zero_plot_tbody_mutations(player0017_browser
     assert reverted["before"] == reverted["after"], reverted
 
 
-def test_player0017_mounted_window_is_bounded(player0017_browser: tuple[Browser, str]) -> None:
+def test_player0019_mounted_window_is_bounded(player0019_browser: tuple[Browser, str]) -> None:
     """Injection: replace tableWindow()'s range with [0, CURRENT_ROWS.length]; this went RED, then the unmodified source went GREEN.
     G1 (campaign plan revision 3, §2.3): anchor asserted present and unique before
     mutating; injection_seen asserted after."""
-    browser, base_url = player0017_browser
+    browser, base_url = player0019_browser
     source = read_entry_source()
     anchor = "if (!force && start === MOUNTED_START && end === MOUNTED_END) return false;"
     assert source.count(anchor) == 1, "renderVirtualWindow()'s unchanged-window guard moved or is no longer unique"
@@ -165,13 +165,13 @@ def _rewindow_count_over_scroll(page: Page, *, step_px: int = 29, steps: int = 6
     )
 
 
-def test_player0017_row_window_is_quantized_not_per_frame(player0017_browser: tuple[Browser, str]) -> None:
+def test_player0019_row_window_is_quantized_not_per_frame(player0019_browser: tuple[Browser, str]) -> None:
     """Injection: set VIRTUAL_WINDOW_BLOCK to 1 (the pre-fix behaviour, re-window on
     nearly every scroll frame); this went RED (many more re-windows over the same
     60-row scroll), then the unmodified source (VIRTUAL_WINDOW_BLOCK = 50) went GREEN.
     G1 (campaign plan revision 3, §2.3): anchor asserted present and unique before
     mutating (upgraded from a bare membership check); injection_seen asserted after."""
-    browser, base_url = player0017_browser
+    browser, base_url = player0019_browser
     source = read_entry_source()
     anchor = "const VIRTUAL_WINDOW_BLOCK = 50;"
     assert source.count(anchor) == 1, "VIRTUAL_WINDOW_BLOCK declaration moved or is no longer unique"
@@ -203,7 +203,7 @@ def test_player0017_row_window_is_quantized_not_per_frame(player0017_browser: tu
 
 # Recording-backed virtualization guards imported from the public suite, at the smaller
 # BOARD_REPEATS scale (three times the windowing threshold); the guards above run the same
-# checks at player0017's scale.
+# checks at player0019's scale.
 STATIC_DIR = ROOT / "ceres" / "static"
 BOARD_REPEATS = 30
 

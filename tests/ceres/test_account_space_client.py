@@ -52,7 +52,7 @@ if (mergeRouting(null, null).rules.length !== 0) throw Error('empty merge');
 def test_sign_in_signs_one_text_keeps_the_session_in_memory_only_and_a_401_ends_it():
     run_in_module_context("(async () => {\n" + STUBS + r"""
 if (hasSession('alice')) throw Error('a session before sign-in');
-const result = await player0014('alice');
+const result = await player0016('alice');
 if (!result.ok || !hasSession('alice')) throw Error('sign-in failed: ' + JSON.stringify(result));
 const verify = calls.find(c => c.path === '/api/auth/verify');
 if (verify.body.signatures.length !== 1 || !/^[0-9a-f]{64}$/.test(JSON.stringify(calls.find(c => c.path === '/api/auth/challenge').body.binding).slice(1, -1))) throw Error('wrong proof request');
@@ -62,14 +62,14 @@ if (doc.exists !== false) throw Error('expected an empty space');
 await signOut('alice');
 if (hasSession('alice')) throw Error('still signed in');
 window.hive_keychain.requestSignBuffer = (a, m, r, cb) => cb({ success: false });
-const declined = await player0014('alice');
+const declined = await player0016('alice');
 if (declined.ok || declined.reason !== 'declined' || hasSession('alice')) throw Error('a declined wallet must not sign in');
 })().catch(error => { console.error(error && error.stack || error); process.exit(1); });""", entry=STATIC / "account-space.js")
 
 
 def test_a_stale_save_never_overwrites_and_sync_retries_with_the_current_version():
     run_in_module_context("(async () => {\n" + STUBS + r"""
-await player0014('alice');
+await player0016('alice');
 server.doc = { revision: 1, payload: { rules: [{ id: 'remote' }] } }; server.etag = '"g:1"'; server.revision = 1;
 let local = { rules: [{ id: 'local' }] };
 const result = await syncRouting('alice', { read: () => local, write: root => { local = root; } });
@@ -95,7 +95,7 @@ window.removeEventListener = (type, fn) => { listeners[type] = (listeners[type] 
 window.dispatchEvent = (event) => { for (const fn of listeners[event.type] || []) fn(event); return true; };
 const setup = createRoutingSetup({ player: 'alice', scope: { kind: 'all' }, regions: [{ region_uid: 'PR-LOP-60' }], receipts: [], enabledKinds: ['lp_wallet'],
   signingEnabled: true, onRender: () => {}, isCurrent: () => true });
-if (setup.html().includes('data-r3="space-player0014"')) throw Error('the sign-in control belongs to the account menu now');
+if (setup.html().includes('data-r3="space-player0016"')) throw Error('the sign-in control belongs to the account menu now');
 const result = await connect('alice');                     // what the account menu does
 if (!result.ok) throw Error('connect failed ' + JSON.stringify(result));
 await new Promise(resolve => setTimeout(resolve, 30));
@@ -132,12 +132,12 @@ for (const receipts of [[], ['attempt-1']]) {
 def test_the_account_menu_has_one_sign_in_action_and_keeps_delete_controls_folded():
     run_in_module_context("(async () => {\n" + STUBS + r"""
 const html = accountMenuHtml('alice');
-if (!html.includes('data-account="player0014"') || html.includes('wallet-controls') || html.includes('data-account="signout"')) throw Error('the account menu must have one direct sign-in action');
+if (!html.includes('data-account="player0016"') || html.includes('wallet-controls') || html.includes('data-account="signout"')) throw Error('the account menu must have one direct sign-in action');
 if (!html.includes('ceres-btn--primary') || !html.includes('>Sign in</button>')) throw Error('the sign-in action is missing');
 if (!html.includes('no transaction, no cost.')) throw Error('the reassurance line is missing');
-await player0014('alice');
+await player0016('alice');
 const after = accountMenuHtml('alice');
-if (!after.includes('Signed in as alice') || !after.includes('data-account="signout"') || after.includes('data-account="player0014"')) throw Error('signed-in state: ' + after.slice(0, 300));
+if (!after.includes('Signed in as alice') || !after.includes('data-account="signout"') || after.includes('data-account="player0016"')) throw Error('signed-in state: ' + after.slice(0, 300));
 if (!after.includes('ceres-btn--secondary') || after.includes('wallet-controls') || !after.includes('Saved data options')) throw Error('signed-in controls');
 if (!accountMenuHtml('').includes('Enter a player name first')) throw Error('empty account');
 })().catch(error => { console.error(error && error.stack || error); process.exit(1); });""", entry=STATIC / "account-menu.js")
@@ -305,7 +305,7 @@ if (Object.keys(mergeStaged(null, null).plans).length) throw Error('empty merge'
 
 def test_staged_sync_saves_both_ways_and_only_writes_the_device_when_it_gained_something():
     run_in_module_context("(async () => {\n" + STUBS.replace("/api/me/routing", "/api/me/staged") + r"""
-await player0014('alice');
+await player0016('alice');
 let local = { plans: { 'a|w|0': { created_at: '2026-10-01T00:00:00Z' } }, worksites: {}, removed: {} };
 let writes = 0;
 const first = await syncStaged('alice', { read: () => local, write: m => { writes += 1; local = m; } });
@@ -321,7 +321,7 @@ if (!server.doc.payload.plans['a|w|0'] || !server.doc.payload.plans['z|w|1']) th
 
 def test_delete_saved_signs_the_servers_own_wording_and_ends_this_pages_session():
     run_in_module_context("(async () => {\n" + STUBS + r"""
-await player0014('alice');
+await player0016('alice');
 let signed = null;
 const base = globalThis.fetch;
 globalThis.fetch = async (url, init = {}) => {
