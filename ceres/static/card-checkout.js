@@ -638,6 +638,26 @@ async function sign() {
   co.stage = 'signing'; co.note = null; render();
   for (let i = 0; i < co.run.txs.length; i += 1) {
     const tx = co.run.txs[i];
+    if (i > 0) {
+      // A later transaction's prepared purchase record belongs to its first handoff only.
+      // Requote it now, then require another review if listings or price moved.
+      let rebuilt;
+      try {
+        rebuilt = await post('preview', { quote_id: co.quote.quote_id, currency: co.currency,
+          confirmed_total: currencyChoice(co.quote, co.currency).total });
+      } catch (error) {
+        co.note = { tone: 'warn', text: 'The remaining purchase needs a fresh review before signing.' };
+        markSkipped(i); writeRun(co.player, co.run); break;
+      }
+      const replacement = rebuilt.transactions?.find(candidate => JSON.stringify(candidate.lkeys) === JSON.stringify(tx.lkeys));
+      if (!replacement || replacement.price !== tx.price || replacement.currency !== tx.currency
+          || JSON.stringify(replacement.payload && { ...replacement.payload, n: null }) !== JSON.stringify(tx.payload && { ...tx.payload, n: null })) {
+        co.note = { tone: 'warn', text: 'The remaining purchase terms changed. Review the fresh quote before signing.' };
+        markSkipped(i); writeRun(co.player, co.run); break;
+      }
+      Object.assign(tx, { nonce: replacement.nonce, payload: replacement.payload, operations: replacement.operations });
+      if (!writeRun(co.player, co.run)) { markSkipped(i); break; }
+    }
     const signingPlayer = co.player;
     const signingRun = co.run;
     tx.state = 'asked'; tx.asked_at = new Date().toISOString();

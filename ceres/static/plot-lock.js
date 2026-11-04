@@ -275,7 +275,9 @@ export async function preparePlotLockReview(row) {
 export async function signPlotLockReview(row) {
   if (!walletCanSignTransaction(planAccount)) throw new Error('Locking needs Hive Keychain (Active key)');
   const entry = STAGED_PLOT_LOCKS.get(row?.deed_uid);
-  const review = reviews.get(row?.deed_uid) || await preparePlotLockReview(row);
+  // A review and its signed envelope are consumed as a pair. A retry gets a new UUID.
+  reviews.delete(row?.deed_uid);
+  const review = await preparePlotLockReview(row);
   if (!entry || !review || entry.txId || entry.blockedReason || review.account !== planAccount || review.action !== entry.action
     || review.lockDays !== entry.lockDays || review.baselineDays !== entry.baselineDays || review.baselineUnlockDate !== entry.baselineUnlockDate
     || JSON.stringify(review.prepared.transaction.operations) !== JSON.stringify(review.operations)) throw new Error('The prepared lock operation changed. Try signing again.');

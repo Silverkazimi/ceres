@@ -261,7 +261,7 @@ def test_r3_l2_03_only_the_owner_can_discard_an_unresolved_swap():
     assert "name === 'discard'" not in source and "NEVER_SENT_AFTER_MS = 3900 * 1000" in source
     # fix round 1 (F7): this age rule is kept only for a legacy intent without operations; a current one is
     # decided by the server's own-history proof through the shared confirmer.
-    assert "seen === 'not_found' && !st.receipt.ops && Date.now() - Date.parse(st.receipt.asked_at || st.receipt.signed_at || '') >= NEVER_SENT_AFTER_MS" in source
+    assert "if (seen === 'not_found' && !st.receipt.ops) return { state: 'pending', message: LEGACY_UNRESOLVED };" in source
     assert "INTENT_MAX_AGE_MS" not in source          # no time-based release
     assert "if (intentIsOpen(open)) { restoreIntent(ctx.player, symbol, st); return 'taken'; }" in source   # a swap click first looks at the shared record
 

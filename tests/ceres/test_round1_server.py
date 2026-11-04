@@ -24,6 +24,11 @@ def op(nonce, *, op_id="sm_land_operation", active=False, payload=None):
                             "required_posting_auths": [] if active else [PLAYER], "json": json.dumps(body)}]
 
 
+def other_op(nonce):
+    """A distinct economic operation, not merely the same action with another nonce."""
+    return op(nonce, payload={"op": "harvest_all", "n": nonce, "plot": "unrelated-plot"})
+
+
 def stamp(epoch):
     from datetime import datetime, timezone
     return datetime.fromtimestamp(epoch, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
@@ -134,9 +139,9 @@ def test_f6_two_tabs_share_one_budget(server):
 def history_log(begin, *, count=50, newest_after=None):
     """Fix round 2: an index-contiguous own history of `count` other operations, the oldest two hours before `begin`;
     with `newest_after`, one more own operation at that moment (the newest edge)."""
-    rows = [[i, {"trx_id": f"{i + 1:040x}", "op": op(f"Other{i:05d}"), "timestamp": stamp(begin - 7200 + i)}] for i in range(count)]
+    rows = [[i, {"trx_id": f"{i + 1:040x}", "op": other_op(f"Other{i:05d}"), "timestamp": stamp(begin - 7200 + i)}] for i in range(count)]
     if newest_after is not None:
-        rows.append([count, {"trx_id": "e" * 39 + "1", "op": op("Newer00001"), "timestamp": stamp(newest_after)}])
+        rows.append([count, {"trx_id": "e" * 39 + "1", "op": other_op("Newer00001"), "timestamp": stamp(newest_after)}])
     return rows
 
 
@@ -194,9 +199,9 @@ def test_medium4_uncovered_expiry_read_pages_back_over_own_history_and_finds_the
     ops = [op("Busy000001")]
     begin = server.clock.now
     tx = "9" * 40
-    log = [[i, {"trx_id": f"{i + 1:040x}", "op": op(f"Noise{i:05d}"), "timestamp": stamp(begin - 4000 + i)}] for i in range(0, 299)]
+    log = [[i, {"trx_id": f"{i + 1:040x}", "op": other_op(f"Noise{i:05d}"), "timestamp": stamp(begin - 4000 + i)}] for i in range(0, 299)]
     log.append([299, {"trx_id": tx, "op": ops[0], "timestamp": stamp(begin + 30)}])
-    log += [[i, {"trx_id": f"{i + 1:040x}", "op": op(f"Noise{i:05d}"), "timestamp": stamp(begin + 300 + i)}] for i in range(300, 501)]
+    log += [[i, {"trx_id": f"{i + 1:040x}", "op": other_op(f"Noise{i:05d}"), "timestamp": stamp(begin + 300 + i)}] for i in range(300, 501)]
     server.world["log"] = log
     _signing_session(server, ops)
     server.clock.now = begin + 3900 + 5
@@ -269,7 +274,7 @@ def test_medium3_the_proof_is_the_servers_expiry_read_bound_to_the_exact_operati
     assert server.call("find", find_body(ops, server.clock))["status"] == "absent"
     proof = confirm.ledger_absence(request, PLAYER, ATTEMPT, ops)
     assert proof == {"status": "absent", "digest": runs.absence_digest(PLAYER, ops)}
-    assert confirm.ledger_absence(request, PLAYER, ATTEMPT, [op("Route00002")]) is None   # other operations
+    assert confirm.ledger_absence(request, PLAYER, ATTEMPT, [other_op("Route00002")]) is None   # other operations
 
 
 # F1: the settle route no longer reads own history on every settlement read

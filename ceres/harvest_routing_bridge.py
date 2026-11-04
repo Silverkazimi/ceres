@@ -22,12 +22,14 @@ def _object(value):
     return value if isinstance(value, dict) else {}
 
 
-def _history(account: str, start: int) -> list:
+def _history(account: str, start: int, *, socket_timeout: float = 9) -> list:
     account = validate_player(account)
     if isinstance(start, bool) or not isinstance(start, int) or start < -1:
         raise routing.RoutingError("Invalid bridge history cursor")
     # fixture mode answers from recorded files; never a socket.
-    connection = fixture_upstream.connection("api.hive.blog") if fixture_upstream.enabled() else HTTPSConnection("api.hive.blog", timeout=15)
+    if not 0 < socket_timeout <= 15:
+        raise routing.RoutingError("Invalid bridge history timeout")
+    connection = fixture_upstream.connection("api.hive.blog") if fixture_upstream.enabled() else HTTPSConnection("api.hive.blog", timeout=socket_timeout)
     try:
         payload = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "condenser_api.get_account_history",
                               "params": [account, start, 100 if start < 0 else min(100, start)]})

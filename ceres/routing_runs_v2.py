@@ -14,6 +14,7 @@ import hmac
 import threading
 import json
 import logging
+import os
 from pathlib import Path
 import re
 import secrets
@@ -98,6 +99,16 @@ def read(folder: Handle, player: str, run_id: str) -> dict:
         record = _RUNS.get((player, run_id))
         record = copy.deepcopy(record) if record is not None else None
     if record is None:
+        path = _durable_claim_path(folder, player, run_id)
+        try:
+            candidate = json.loads(path.read_text(encoding="utf-8"))
+            if candidate.get("player") == player and candidate.get("run_id") == run_id:
+                record = candidate
+                with _MEM:
+                    _RUNS[(player, run_id)] = copy.deepcopy(record)
+        except (OSError, ValueError, AttributeError):
+            pass
+    if record is None:
         raise routing.RoutingError("Routing run not found")
     return record
 
@@ -126,6 +137,32 @@ def _root(folder: Handle) -> Path:
     return folder.root
 
 
+def _durable_claim_path(folder: Handle, player: str, run_id: str) -> Path:
+    """The new replay store is outside the legacy run-file directory purged on start."""
+    return Path(folder.root) / "routing_claims_r6" / validate_player(player) / f"{_check_id(run_id)}.json"
+
+
+def _has_durable_claim(record: dict) -> bool:
+    return any(status.get("r6_durable") for status in record.get("bundles", {}).values())
+
+
+def _persist_claim(folder: Handle, record: dict) -> None:
+    path = _durable_claim_path(folder, record["player"], record["run_id"])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(".tmp")
+    with temporary.open("w", encoding="utf-8") as stream:
+        json.dump({key: value for key, value in record.items() if key != "run_token"}, stream,
+                  separators=(",", ":"))
+        stream.flush()
+        os.fsync(stream.fileno())
+    os.replace(temporary, path)
+    directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+
+
 def _unresolved(record: dict) -> bool:
     return any(item.get("state") in _UNRESOLVED for item in record.get("bundles", {}).values())
 
@@ -136,11 +173,25 @@ def _delete(folder: Handle, record: dict) -> None:
         routing_safety.mark_routed(_root(folder), record["player"], record.get("harvest_attempt_ids") or [])
     with _MEM:
         _RUNS.pop((record["player"], record["run_id"]), None)
+    if _has_durable_claim(record):
+        # The final state is the exactly-once answer after a crash between the
+        # durable write and the HTTP response.
+        _persist_claim(folder, record)
+        return
+    try:
+        _durable_claim_path(folder, record["player"], record["run_id"]).unlink()
+    except FileNotFoundError:
+        pass
 
 
 def retire(folder: Handle, record: dict) -> None:
     """Delete a run NOW (page refresh, the idle lease, server start). Whatever may already have been sent is kept as a tiny safety record first."""
     routing_safety.sync_run(_root(folder), record["player"], record)
+    if _has_durable_claim(record) and _unresolved(record):
+        _persist_claim(folder, record)
+        with _MEM:
+            _RUNS.pop((record["player"], record["run_id"]), None)
+        return
     _delete(folder, record)
 
 
@@ -152,6 +203,8 @@ def write(folder: Handle, record: dict) -> None:
         _delete(folder, record)
         return
     stored = copy.deepcopy({key: item for key, item in record.items() if key != "run_token"})
+    if _has_durable_claim(record):
+        _persist_claim(folder, stored)
     with _MEM:
         _RUNS[(record["player"], record["run_id"])] = stored
 
@@ -187,6 +240,10 @@ def purge_all(root: Path, *, now: float | None = None, idle_only: bool = False) 
         stale = [(key, copy.deepcopy(record)) for key, record in _RUNS.items()
                  if not idle_only or now - float(record.get("updated") or record.get("created") or now) > IDLE_LEASE_SECONDS]
     for (player, _run_id), record in stale:
+        if not idle_only and _has_durable_claim(record) and _unresolved(record):
+            with _MEM:
+                _RUNS.pop((player, _run_id), None)
+            continue
         with locked(root, player) as folder:
             retire(folder, record)
         count += 1
@@ -530,7 +587,7 @@ def claim(folder: Path, record: dict, bundle_id: str, enabled: set[str], signing
     for op in bundle["operations"]:
         if op["id"] not in handoff["operation_ids"] and record["operations"][op["id"]]["state"] == "planned":
             record["operations"][op["id"]]["state"] = "skipped"
-    status.update(state="claimed", claim=handoff, payloads=payloads,
+    status.update(state="claimed", claim=handoff, payloads=payloads, r6_durable=True,
                   operation_ids=handoff["operation_ids"], claimed_at=time.time(), pre_claim=pre_claim)
     for op in selected:
         operation_state = record["operations"][op["id"]]
@@ -603,6 +660,41 @@ def mark_unsent(folder: Path, record: dict, bundle_id: str, absence_proof: dict 
     _refresh_state(record)
     write(folder, record)
     return record
+
+
+def replay_release(folder: Handle, record: dict, proof_lookup) -> dict:
+    """Replay the same predicate after restart and before any routing response."""
+    for bundle_id, status in list(record.get("bundles", {}).items()):
+        if status.get("state") != "claimed" or status.get("tx_id"):
+            continue
+        operations = (status.get("claim") or {}).get("operations")
+        if not operations:
+            continue
+        proof = proof_lookup(operations)
+        if proof and proof.get("status") == "absent":
+            mark_unsent(folder, record, bundle_id, proof)
+    return record
+
+
+def replay_account_claims(root: Path, player: str, proof_lookup) -> int:
+    """Finder-side replay: one account lock, durable claims included, no browser release path."""
+    released = 0
+    with locked(root, player) as folder:
+        with _MEM:
+            ids = {run_id for account, run_id in _RUNS if account == player}
+        directory = Path(root) / "routing_claims_r6" / validate_player(player)
+        if directory.is_dir():
+            ids.update(path.stem for path in directory.glob("*.json") if _RUN_ID.fullmatch(path.stem))
+        for run_id in ids:
+            try:
+                record = read(folder, player, run_id)
+            except routing.RoutingError:
+                continue
+            before = sum(status.get("state") == "claimed" for status in record.get("bundles", {}).values())
+            replay_release(folder, record, proof_lookup)
+            after = sum(status.get("state") == "claimed" for status in record.get("bundles", {}).values())
+            released += before - after
+    return released
 
 
 def release(folder: Path, record: dict, bundle_id: str) -> dict:

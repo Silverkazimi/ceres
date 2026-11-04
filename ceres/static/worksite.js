@@ -553,12 +553,29 @@ export async function prepareStagedWorksiteBuild(row, target, timeCrystals = 0) 
   return { row, account: preview.payload.account, chunk };
 }
 
+function worksiteEconomicVector(operations) {
+  return JSON.stringify(operations.map(([kind, body]) => {
+    const payload = JSON.parse(body.json);
+    delete payload.n;
+    return [kind, { ...body, json: payload }];
+  }));
+}
+
 export async function signStagedWorksiteBuild(row, target, timeCrystals = 0, prepared = null, envelope = null) {
   if (!keychainReady()) return { ok: false, reason: 'Wallet not connected.' };
   try {
-    const plan = prepared || await prepareStagedWorksiteBuild(row, target, timeCrystals);
+    // Caller plans and envelopes may have survived another handoff or a restored preview.
+    // Build the operation and its envelope together for this wallet invocation.
+    const plan = target == null ? await prepareWorksiteCompletion(row)
+      : await prepareStagedWorksiteBuild(row, target, timeCrystals);
     const { chunk } = plan;
-    const broadcast = await requestSignatureThroughGate(plan.account, chunk.operations, () => {}, 'Posting', envelope);
+    if (prepared && worksiteEconomicVector(prepared.chunk.operations) !== worksiteEconomicVector(chunk.operations)) {
+      return { ok: false, reason: 'The worksite terms changed. Review the fresh build before signing.' };
+    }
+    const freshEnvelope = (await prepareSigningBatch(plan.account, [chunk.operations], 'Posting', {
+      runId: `worksite-${row.deed_uid}-${Date.now()}`, runKind: 'plan',
+    }))?.[0] || null;
+    const broadcast = await requestSignatureThroughGate(plan.account, chunk.operations, () => {}, 'Posting', freshEnvelope);
     broadcast.submitted.then(result => {
       chunk.inclusionBlock = result.blockNum;
       return verifyWorksiteBroadcast(row.deed_uid, chunk, result.txId);
@@ -947,18 +964,39 @@ function worksiteWhatText(row, payload) {
 // The actual broadcast -- one op, one Keychain click, `requestBroadcast` only (never the
 // sign-only Keychain call). The modal closes the moment Keychain accepts; the pill reports
 // from there. Once a transaction id exists, retries only verify that transaction.
-export function confirmWorksiteBroadcast(row, broadcastBtn) {
-  const preview = S.WORKSITE_MODAL_PREVIEW;
+export async function confirmWorksiteBroadcast(row, broadcastBtn) {
+  let preview = S.WORKSITE_MODAL_PREVIEW;
   const overlay = document.getElementById('worksite-modal-overlay');
   const deedUid = row.deed_uid;
   if (!preview?.payload || !keychainReady()) {
     stageToast('Connect a wallet before signing.', true);
     return;
   }
+  if (broadcastBtn) broadcastBtn.disabled = true;
+  try {
+    const body = preview.payload.kind === 'worksite_completion' ? { action: 'complete' }
+      : preview.payload.kind === 'worksite_cancel' ? { action: 'cancel' }
+        : { target: preview.payload.target, time_crystals: preview.payload.time_crystals || 0 };
+    const freshPayload = await fetchWorksitePreview(deedUid, body);
+    if (!worksiteModalStillOpenFor(overlay, deedUid)) return;
+    if (worksiteEconomicVector(preview.payload.chunks[0].operations) !== worksiteEconomicVector(freshPayload.chunks[0].operations)) {
+      S.WORKSITE_MODAL_PREVIEW = { loading: false, error: null, payload: freshPayload };
+      renderWorksiteModalBody(row);
+      renderWorksiteVerdict(overlay, { tone: 'info', title: 'Review changed worksite terms', detail: 'The live worksite terms changed. Review them and sign again.' });
+      return;
+    }
+    S.WORKSITE_MODAL_PREVIEW = { loading: false, error: null, payload: freshPayload };
+    preview = S.WORKSITE_MODAL_PREVIEW;
+  } catch (error) {
+    if (worksiteModalStillOpenFor(overlay, deedUid)) {
+      renderWorksiteVerdict(overlay, { tone: 'danger', title: 'Fresh review unavailable', detail: String(error) });
+      if (broadcastBtn) broadcastBtn.disabled = false;
+    }
+    return;
+  }
   const chunk = preview.payload.chunks[0];
   chunk.cancelConstruction = preview.payload.kind === 'worksite_cancel';
   chunk.whatText = worksiteWhatText(row, preview.payload);
-  if (broadcastBtn) broadcastBtn.disabled = true;
   renderWorksiteVerdict(overlay, { tone: 'info', title: 'Waiting for wallet approval…', detail: '' });
   const closeIfOpen = () => { if (worksiteModalStillOpenFor(overlay, deedUid)) closeWorksiteModal(); };
   requestBroadcastThroughGate(preview.payload.account, chunk.operations, (response) => {

@@ -65,6 +65,8 @@ def _execute(request: Request, player: str, run_id: str, action):
     with runs.locked(_config(request).root, player) as folder:
         record = runs.read(folder, player, run_id)
         runs.verify_token(record, request.headers.get("x-run-token"))   # the run's own token; a name or a run id alone opens nothing
+        from .routes_confirm import ledger_routing_release
+        runs.replay_release(folder, record, lambda operations: ledger_routing_release(request, player, operations))
         return runs.public(action(folder, record))
 
 
@@ -151,14 +153,8 @@ async def mark_unsent(request: Request, player: str | None = None):
 
 @router.post("/api/harvest/routing/v2/release")
 async def release_unsigned(request: Request, player: str | None = None):
-    """Return a claimed bundle the wallet never signed to planned; zero outbound calls."""
-    body = await _body(request)
-    player = player_for_request(request, player)
-    try:
-        return await asyncio.to_thread(_execute, request, player, body.get("run_id"),
-            lambda folder, record: runs.release(folder, record, body.get("bundle_id")))
-    except routing.RoutingError as exc:
-        raise _refused(request, player, exc) from exc
+    """A browser cannot release a signed claim from its own wallet or queue report."""
+    raise HTTPException(409, "Routing claims require server-confirmed release")
 
 
 @router.post("/api/harvest/routing/v2/head")

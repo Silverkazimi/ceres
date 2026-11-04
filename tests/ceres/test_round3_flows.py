@@ -37,11 +37,8 @@ __mark({{ order, token: Boolean(confirmationState('alice', ops)?.beginToken) }})
     assert out["token"] and "find+token" in out["order"] and "find" not in out["order"], out
 
 
-def test_n1_a_begin_answer_after_the_bound_is_ignored_and_absence_stays_unprovable():
-    """The server's answer takes longer than BEGIN_BOUND_MS: the wallet opens at the bound, the late token is never
-    kept (the wallet may already have signed before the server recorded anything), so the finder presents none. The
-    action whose wallet then closes without an id and was never sent stays pending for good. Before: the beacon's
-    receipt time became the oldest edge and the action was declared never sent."""
+def test_n1_a_begin_answer_after_the_bound_stops_before_wallet():
+    """A late begin cannot authorize a wallet prompt; the attempt ends before signing."""
     out = run(f"""
 const ops = {OPS('late', 1)};
 let walletAt = null;
@@ -57,9 +54,9 @@ await __advance(3 * 3600 * 1000);
 const row = confirmationState('alice', ops);
 __mark({{ walletAt, token: row?.beginToken || null, state: row?.state, presented: tokens.filter(Boolean).length, finds: tokens.length }});
 """)
-    assert out["walletAt"] is not None and 2500 <= out["walletAt"] < 3500, out
-    assert out["token"] is None and out["presented"] == 0 and out["finds"] >= 1, out
-    assert out["state"] == "pending", out
+    assert out["walletAt"] is None, out
+    assert out["token"] is None and out["presented"] == 0, out
+    assert out["state"] == "never-sent", out
 
 
 def test_n1_control_a_begin_recorded_in_time_still_proves_a_closed_unsent_request():
@@ -207,7 +204,7 @@ window.hive_keychain.requestBroadcast = (account, operations, key, callback) => 
     __world.walletCalls += 1;
     if (__world.scenario.sentAnyway) __world.sent = __now();
     // HiveAuth's own request expiry, reported by the worker (reason 'expired'), as wallet.js passes it on.
-    setTimeout(() => callback({ success: false, ambiguousBroadcast: true, stillChecking: true, walletExpired: true, error: 'expired' }), 60000);
+    setTimeout(() => callback({ success: false, ambiguousBroadcast: true, stillChecking: true, walletExpired: true, relayConfirmed: true, error: 'expired' }), 60000);
     return;
   }
   return keychain(account, operations, key, callback);

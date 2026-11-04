@@ -384,6 +384,7 @@ function finishPending(message) {
       // request expired unsigned; `walletNoAnswer` = nothing came back at all (Ceres' watchdog fired). Neither is a wallet
       // answer that ended a signature: the shared confirmer decides what they mean.
       request.callback({ success: false, ambiguousBroadcast: true, stillChecking,
+        relayConfirmed: request.relayConfirmed === true,
         ...(message.reason === 'expired' ? { walletExpired: true } : {}), ...(message.reason === 'watchdog' ? { walletNoAnswer: true } : {}),
         error: stillChecking ? `Ceres is still checking whether the wallet sent this (${message.reason}${Number.isFinite(message.waited) ? `, ${message.waited} s${message.reached ? '' : ', request never confirmed'}` : ''})`
           : invalidSession ? 'The Keychain app no longer has this HiveAuth session. Connect HiveAuth again.'
@@ -436,6 +437,10 @@ function createHiveAuthWorker(account, expire = 0) {
       if (!pending || data.id !== pending.id) {
         const late = lateBroadcasts.get(data.id);
         if (!late) return;
+        if (data.type === 'sign-wait') {
+          late.relayConfirmed = true;
+          return;
+        }
         if (data.type === 'signed') {
           lateBroadcasts.delete(data.id);
           late.callback({ success: true, lateSigned: true, data: { key: late.authority || 'Posting' }, result: { id: data.txId } });
@@ -444,6 +449,7 @@ function createHiveAuthWorker(account, expire = 0) {
           // that asked (IN-0888); nothing is resent.
           lateBroadcasts.delete(data.id);
           late.callback({ success: false, late: true, ambiguousBroadcast: true, stillChecking: true, walletExpired: true,
+            relayConfirmed: late.relayConfirmed === true,
             error: 'Ceres is still checking whether the wallet sent this (expired)' });
         } else if (data.type === 'declined') {
           // A late refusal ends the request: the confirmer may then prove it was not sent (the server times the closure).

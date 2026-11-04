@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import json
+from contextvars import ContextVar
 from http.client import HTTPSConnection, HTTPException
 from typing import Any
 
 from . import fixture_upstream, outbound_meter
 
 MAX_RESPONSE_BYTES = 8_000_000
+BY_ID_ADMIT: ContextVar = ContextVar("ceres_by_id_admit", default=None)
 
 
 class ActivityReadError(RuntimeError):
@@ -73,6 +75,9 @@ def _rpc(method: str, params: dict) -> dict:
 def _answer_at(host: str, method: str, params) -> tuple[str, Any]:
     """One node's JSON-RPC answer: ("result", value) or ("error", rpc_error). Raises _NodeUnavailable when the node
     could not be read at all (transport, status, size, not JSON-RPC): the caller may then ask the next node."""
+    admit = BY_ID_ADMIT.get()
+    if admit is not None and not admit():
+        raise _NodeUnavailable("Hive by-id rolling-hour budget is exhausted")
     meter_call = outbound_meter.begin_call(host, method, None)
     connection = _connect(host)
     try:

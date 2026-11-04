@@ -110,18 +110,24 @@ export function confirmNoticeFor(row) {
   if (!row?.id) return null;
   // A detached watched attempt (round 4, is the same action: one key per action and attempt.
   const key = `${row.detachedFrom || row.id}#${row.attempt || 1}`;
-  const askedKey = `${key}~never-asked`;
+  const askedKey = `${key}~never-asked~${row.neverAskedGeneration || 1}`;
   const neverAsked = row.state === 'never-sent' && row.neverSentBy === 'wallet-expired';
-  const askedShown = shownKeys().includes(askedKey) || confirmNoticeLines.some(line => line.key === askedKey);
+  const askedShown = shownKeys().some(shown => shown.startsWith(`${key}~never-asked`))
+    || confirmNoticeLines.some(line => line.key.startsWith(`${key}~never-asked`));
   confirmNoticeSeen.set(key, row.state);
   const fresh = Date.now() - Date.parse(row.updatedAt || row.since || '') <= NOTICE_MAX_AGE_MS;
+  if (row.orphan && Date.parse(row.updatedAt || row.since || '') < baselineAt()) return null;
   if (neverAsked) {
-    if (askedShown || !fresh) return null;
+    if (shownKeys().includes(askedKey) || confirmNoticeLines.some(line => line.key === askedKey) || !fresh) return null;
     const text = confirmNoticeText(row);
     return text ? addLine({ key: askedKey, text, tone: 'warn' }) : null;
   }
   // the attempt reopened (a wallet answer or a chain hit) or reached a result: the "never asked" line is withdrawn.
-  if (askedShown && dropLine(askedKey)) drawConfirmNotices();
+  if (askedShown) {
+    const previous = confirmNoticeLines.filter(line => line.key.startsWith(`${key}~never-asked`));
+    if (previous.some(line => dropLine(line.key))) drawConfirmNotices();
+  }
+  if (row.state === 'pending' && dropLine(key)) drawConfirmNotices();
   if (!row.orphan && !askedShown) return null;
   if (row.state === 'pending' || shownKeys().includes(key) || confirmNoticeLines.some(line => line.key === key)) return null;
   if (!fresh) return null;

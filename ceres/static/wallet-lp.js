@@ -716,7 +716,10 @@ async function fund(ctx, st) {
   const intent = st.receipt;
   st.busy = true; st.fundError = ''; ctx.render();
   try {
-    if (!st.funding?.operations) {
+    // A funding operation is one handoff only. Rebuild its nonce from the same pool receipt
+    // on every later attempt, including a page restored with cached funding operations.
+    st.funding = null;
+    {
       const response = await post('sps-funding', ctx.player, { tx_id: intent.tx_id, nonce: intent.nonce, kind: intent.kind, expected_payload: intent.payload });
       if (response.status === 'failed') {  // the game refused the swap itself: back to the card, silently
         Object.assign(st, { stage: 'edit', receipt: null, funding: null, quote: null, quoted: '' });

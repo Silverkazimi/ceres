@@ -55,6 +55,7 @@
 const PREFIX = 'ceres:confirm:v2:';
 const INDEX_KEY = 'ceres:confirm:v2-index';
 const LEGACY_KEY = 'ceres:confirm:v1';
+const ACTION_MATCH_PREFIX = 'ceres:confirm:action-match:';
 // Game/by-id reads: the swap schedule (/, the maintainer's reference, IN-0708) for 70 s, then every 10 s to
 // 3 min, every 30 s to 10 min, every 60 s to Hive's longest lifetime, then every 5 min for as long as it takes.
 export const CONFIRM_FAST_MS = [0, 2000, 4000, 8000, 12000, 18000, 26000, 36000, 50000, 70000];
@@ -68,7 +69,7 @@ export const WALLET_NEVER_ASKED = 'Not sent: your wallet never asked you. Starti
 // PENDING OWNER QUESTION ( round 4): what a Keychain payment (SPS pool funding, market purchase) says when its
 // prompt stayed open for the transaction's whole lifetime. Until he answers it is the IN-0888 text; his answer is a
 // one-line change here.
-export const PAYMENT_PROMPT_OPEN_ENDING = WALLET_NEVER_ASKED;
+export const PAYMENT_PROMPT_OPEN_ENDING = 'Not sent: your wallet never asked you. Close any open Keychain window before starting again.';
 // Aletheia r4 3: an attempt whose claim only the server can release (routing v2) is never told "Starting again is safe".
 export const CLAIM_HELD_NEVER_ASKED = 'Your wallet never asked you. This step stays reserved because Ceres cannot prove it was not sent; nothing is sent again.';
 const HIVEAUTH_EXPIRY_MARGIN_MS = 5000;   // over the measured browser lead: skew read error and relay-vs-server clock
@@ -106,6 +107,7 @@ export function __setConfirmerClock(next) { Object.assign(clock, next); }
 
 // Persistence: one key per action, a memory copy that is authoritative when storage fails (F6).
 const mem = new Map();          // id -> row (the newest this page knows)
+const actionMatches = new Map();
 const dirty = new Set();        // ids whose last write failed; retried
 let retryArmed = false;
 const live = new Map();         // finder tasks by `${id}#${attempt}`
@@ -120,7 +122,7 @@ function learnSkew(serverNow) {
 }
 
 export function __resetConfirmer() {
-  mem.clear(); dirty.clear(); live.clear(); finderWakes.forEach(fn => fn()); finderWakes.clear();
+  mem.clear(); actionMatches.clear(); dirty.clear(); live.clear(); finderWakes.forEach(fn => fn()); finderWakes.clear();
   waiters.forEach(w => { w.stopped = true; w.wakeFn?.(); }); waiters.clear();
 }
 
@@ -135,6 +137,27 @@ function hashId(text) {
   return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
 }
 function keyFor(id) { return PREFIX + hashId(id); }
+function matchedAction(row) {
+  if (!row?.actionId) return false;
+  const key = `${row.account}:${row.actionId}`;
+  if (actionMatches.has(key)) return true;
+  try {
+    const value = confirmStorage()?.getItem(ACTION_MATCH_PREFIX + key);
+    if (value) { actionMatches.set(key, value); return true; }
+  } catch (_) {}
+  return false;
+}
+function retainActionMatch(row, txId) {
+  if (!row?.actionId || !/^[a-f0-9]{40}$/i.test(txId || '')) return;
+  const key = `${row.account}:${row.actionId}`;
+  actionMatches.set(key, txId.toLowerCase());
+  try { confirmStorage()?.setItem(ACTION_MATCH_PREFIX + key, txId.toLowerCase()); } catch (_) {}
+  // One action-level write dominates every local ending; views recompute from that fact.
+  for (const sibling of allRows()) if (sibling.actionId === row.actionId && sibling.account === row.account) {
+    publish(sibling);
+    try { channel?.postMessage({ id: sibling.id }); } catch (_) {}
+  }
+}
 function identity(account, operations) { return JSON.stringify([String(account).toLowerCase(), operations]); }
 const RANK = { pending: 0, 'never-sent': 1, refused: 2, confirmed: 2 };
 function mergePerOp(a, b) {
@@ -170,7 +193,9 @@ function loadRow(id) {
   const stored = merge(readStored(confirmStorage(), id), readStored(fallbackStorage(), id));
   const row = merge(stored, mem.get(id) || null);
   if (row) mem.set(id, row);
-  return row;
+  return row && matchedAction(row) && row.state === 'never-sent'
+    ? { ...row, state: 'pending', neverSentBy: null, error: '', message: 'On Hive; Ceres is checking the game result. Nothing is sent again.', actionMatch: true }
+    : row;
 }
 function writeIndex(ids) {
   const store = confirmStorage(); if (!store) return;
@@ -296,7 +321,9 @@ function freshAttempt(account, operations, previous, detail = {}) {
   return { id: identity(account, operations), account: String(account).toLowerCase(), operations,
     attempt: (previous?.attempt || 0) + 1, attemptId: randomId(), rev: previous?.rev || 0,
     since: new Date(clock.now()).toISOString(), state: 'pending', txId: null, answeredAt: null, neverSentBy: null,
-    error: '', message: '', perOp: operations.map((_, index) => ({ index, state: 'pending' })), ...detail };
+    error: '', message: '', actionId: detail.actionId || previous?.actionId || null,
+    actionRevision: detail.actionRevision || previous?.actionRevision || null,
+    perOp: operations.map((_, index) => ({ index, state: 'pending' })), ...detail };
 }
 
 export function confirmationState(account, operations) { return loadRow(identity(account, operations)); }
@@ -307,13 +334,15 @@ function detachedId(id, attempt) { return `${id}#a${attempt}`; }
 // Fix round 4 (astra-review-r4 : an attempt that ended "your wallet never asked you" and is still watched is kept as
 // its own row (`detachedFrom`): its finder, begin token and verdict reader go on, so if both attempts reach Hive both
 // are followed. `walletAsked` (persisted) is what the IN-0888 lifetime ending needs after a reload (aletheia r4 1).
-export function beginAttempt(account, operations, { expiration = null, holdsServerClaim = false } = {}) {
+export function beginAttempt(account, operations, { expiration = null, holdsServerClaim = false, actionId = null } = {}) {
   const current = confirmationState(account, operations);
+  if (current && matchedAction(current)) throw Error('This action has a transaction on Hive. Ceres is checking its result; nothing is sent again.');
   if (current && current.state === 'pending') {
     const patch = {};
     if (!current.walletAsked) patch.walletAsked = true;
     if (holdsServerClaim && !current.holdsServerClaim) patch.holdsServerClaim = true;
     if (expiration && !current.expiration) patch.expiration = expiration;
+    if (actionId && !current.actionId) patch.actionId = actionId;
     return Object.keys(patch).length ? saveRow({ ...current, ...patch }) : current;
   }
   let watched = null;
@@ -321,7 +350,7 @@ export function beginAttempt(account, operations, { expiration = null, holdsServ
     watched = detachedId(current.id, current.attempt || 1);
     if (!loadRow(watched)) saveRow({ ...current, id: watched, detachedFrom: current.id, orphan: true, rev: 0 });
   }
-  const next = saveRow(freshAttempt(account, operations, current, { walletAsked: true, ...(expiration ? { expiration } : {}),
+  const next = saveRow(freshAttempt(account, operations, current, { walletAsked: true, ...(actionId ? { actionId } : {}), ...(expiration ? { expiration } : {}),
     ...(holdsServerClaim ? { holdsServerClaim: true } : {}) }));
   if (watched) findRow(watched).catch(() => {});
   return next;
@@ -367,11 +396,14 @@ export function markAnswered(account, operations, { attempt = null, closed = fal
   const now = new Date(clock.now()).toISOString();
   if (row.state === 'never-sent' && (row.neverSentBy === 'history' || row.neverSentBy === 'wallet-expired')) {
     saveRow({ ...row, state: 'pending', neverSentBy: null, error: '', message: '', reanchor: true, reopens: (row.reopens || 0) + 1,
-      answeredAt: now, closedAt: closed ? now : null, perOp: row.operations.map((_, index) => ({ index, state: 'pending' })) });
+      hiveAuthExpiredAt: null, answeredAt: now, closedAt: closed ? now : null,
+      perOp: row.operations.map((_, index) => ({ index, state: 'pending' })) });
     findRow(row.id).catch(() => {});   // the finder carries `reanchor` to the server
     return;
   }
-  if (!row.answeredAt || (closed && !row.closedAt)) saveRow({ ...row, answeredAt: row.answeredAt || now, ...(closed && !row.closedAt ? { closedAt: now } : {}) });
+  if (!row.answeredAt || (closed && !row.closedAt) || row.hiveAuthExpiredAt)
+    saveRow({ ...row, hiveAuthExpiredAt: null, answeredAt: row.answeredAt || now,
+      ...(closed && !row.closedAt ? { closedAt: now } : {}) });
   if (closed && !row.closedAt) beacon(row, { event: 'answered', answered: true, closed: true, ...(row.beginToken ? { begin_token: row.beginToken } : {}) });   // the server times the closure
 }
 // The wallet has said nothing (P0-1): the finder starts, but the request stays OPEN -- it may still be approved later.
@@ -415,7 +447,8 @@ function endNeverAsked(id, cause) {
     return row.neverAskedAt ? row : saveRow({ ...row, neverAskedAt: new Date(clock.now()).toISOString(), message: CLAIM_HELD_NEVER_ASKED });
   }
   const text = walletNeverAskedText(row.operations, cause);
-  return markRow(id, 'never-sent', { by: 'wallet-expired', error: text, message: text, neverAskedCause: cause });
+  return markRow(id, 'never-sent', { by: 'wallet-expired', error: text, message: text, neverAskedCause: cause,
+    neverAskedGeneration: (row.neverAskedGeneration || 0) + 1 });
 }
 function stillLooking(row) {
   return row?.state === 'pending' || (row?.state === 'never-sent' && row.neverSentBy === 'wallet-expired' && !row.txId
@@ -435,7 +468,8 @@ export async function announceBegin(account, operations) {
   const controller = typeof AbortController === 'function' ? new AbortController() : null;
   const from = clock.now();
   const request = fetch(`/api/confirm/intent?player=${encodeURIComponent(row.account)}`, { method: 'POST',
-    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ operations: row.operations, attempt: attemptId, event: 'begin' }),
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ operations: row.operations, attempt: attemptId, event: 'begin',
+      ...(row.actionId ? { action_id: row.actionId } : {}) }),
     ...(controller ? { signal: controller.signal } : {}) })
     .then(response => (response?.ok ? response.json() : null)).catch(() => null);
   const bound = clock.sleep(BEGIN_BOUND_MS).then(() => (clock.now() - from >= BEGIN_BOUND_MS - 1 ? 'late'
@@ -447,7 +481,11 @@ export async function announceBegin(account, operations) {
   learnSkew(answer.server_now);
   const current = confirmationState(account, operations);
   if (!current || (current.attempt || 1) !== attempt || current.attemptId !== attemptId) return false;
-  saveRow({ ...current, beginToken: token, ...(Number.isFinite(answer.server_now) ? { beginServerAt: answer.server_now } : {}) });
+  saveRow({ ...current, beginToken: token,
+    ...(typeof answer.action_id === 'string' && /^[a-f0-9]{32}$/.test(answer.action_id) ? { actionId: answer.action_id } : {}),
+    ...(Number.isInteger(answer.revision) && answer.revision > 0 ? { actionRevision: answer.revision } : {}),
+    ...(answer.overflow === true ? { overflow: true, message: answer.status_line || 'Many actions at once: checking every 15 seconds' } : {}),
+    ...(Number.isFinite(answer.server_now) ? { beginServerAt: answer.server_now } : {}) });
   return true;
 }
 // Fix round 4 (aletheia-verdict-r4 6): the gate starts the begin while it still prepares the wallet request and awaits it
@@ -459,7 +497,8 @@ function beacon(row, fields) {
   try {
     const send = globalThis.navigator?.sendBeacon;
     if (typeof send !== 'function') return false;
-    const body = JSON.stringify({ operations: row.operations, attempt: row.attemptId, ...fields });
+    const body = JSON.stringify({ operations: row.operations, attempt: row.attemptId,
+      ...(row.actionId ? { action_id: row.actionId } : {}), ...fields });
     const payload = typeof Blob === 'function' ? new Blob([body], { type: 'application/json' }) : body;
     return send.call(globalThis.navigator, `/api/confirm/intent?player=${encodeURIComponent(row.account)}`, payload) === true;
   } catch (_) { return false; }
@@ -669,11 +708,19 @@ function rowWaiter(row, check, onUpdate) {
 }
 // A proven transaction id for the CURRENT attempt. Monotonic (F3): a final verdict keeps its id; an attempt inferred
 // "never sent" from history is reopened by a proven id; the first id of an attempt is kept.
-export function attachTransaction(account, operations, txId, { attempt = null } = {}) {
+function reportWalletCallback(row) {
+  if (!row?.walletCallbackTxId || !row.beginToken || !row.actionId) return;
+  boundedJson(`/api/confirm/intent?player=${encodeURIComponent(row.account)}`, {
+    operations: row.operations, attempt: row.attemptId, action_id: row.actionId,
+    event: 'answered', begin_token: row.beginToken, wallet_tx_id: row.walletCallbackTxId,
+  }).catch(() => {});
+}
+export function attachTransaction(account, operations, txId, { attempt = null, walletCallback = false } = {}) {
   if (!/^[a-f0-9]{40}$/i.test(txId || '')) throw Error('Invalid transaction id');
   const root = trackSigning(account, operations);
   const row = rowForAttempt(root, attempt);
   if (!row) return notePriorAttempt(root, attempt, { txId: txId.toLowerCase() });
+  if (walletCallback) reportWalletCallback(saveRow({ ...row, walletCallbackTxId: txId.toLowerCase() }));
   return attachRow(row.id, txId);
 }
 function attachRow(rowId, txId) {
@@ -770,6 +817,54 @@ async function finderSleep(key, ms) {
   await Promise.race([clock.sleep(Math.max(0, ms)), new Promise(resolve => finderWakes.set(key, resolve))]);
   finderWakes.delete(key);
 }
+function retainDuplicateVerdicts(row, transactions) {
+  for (const item of Array.isArray(transactions) ? transactions : []) {
+    const txId = typeof item === 'string' ? item : item?.tx_id;
+    if (!/^[a-f0-9]{40}$/i.test(txId) || txId.toLowerCase() === row.txId) continue;
+    const operations = Array.isArray(item?.operations) && item.operations.length >= 1 && item.operations.length <= 5
+      ? item.operations : null;
+    if (!operations) continue; // The game's verdict must use this transaction's actual signed nonce vector.
+    const id = `${row.id}#tx:${txId.toLowerCase()}`;
+    if (loadRow(id)) continue;
+    const duplicate = saveRow({ ...row, id, operations, txId: txId.toLowerCase(), state: 'pending',
+      orphan: true, watchDuplicates: false, message: '', error: '', rev: 0,
+      perOp: operations.map((_, index) => ({ index, state: 'pending' })) });
+    rowWaiter(duplicate);
+  }
+}
+function watchActionDuplicates(rowId) {
+  const initial = loadRow(rowId);
+  if (!initial?.watchDuplicates || !initial.actionId) return;
+  const key = `${rowId}#duplicates`;
+  if (live.has(key)) return;
+  const task = (async () => {
+    for (;;) {
+      const row = loadRow(rowId);
+      if (!row?.watchDuplicates || !row.actionId) return;
+      let answer = null;
+      try {
+        const response = await boundedJson(`/api/confirm/find?player=${encodeURIComponent(row.account)}`, {
+          operations: row.operations, attempt: row.attemptId, action_id: row.actionId,
+          since: serverIso(Date.parse(row.since)), answered: Boolean(row.answeredAt),
+          closed: Boolean(row.closedAt), ...(row.beginToken ? { begin_token: row.beginToken } : {}),
+        });
+        answer = response.ok ? response.body : null;
+      } catch (_) {}
+      const current = loadRow(rowId);
+      if (!current?.watchDuplicates) return;
+      if (answer?.status === 'found') {
+        retainDuplicateVerdicts(current, answer.matched_transactions || []);
+        if (answer.watch_duplicates !== true) {
+          saveRow({ ...current, watchDuplicates: false });
+          return;
+        }
+      }
+      const seconds = Number(answer?.next_in_s);
+      await finderSleep(key, Number.isFinite(seconds) && seconds > 0 ? Math.max(1000, seconds * 1000) : 15000);
+    }
+  })().finally(() => live.delete(key));
+  live.set(key, task);
+}
 export async function findSignedTransaction(account, operations) {
   return findRow(trackSigning(account, operations).id);
 }
@@ -792,6 +887,7 @@ async function findRow(rowId) {
         const exclude = otherAttemptTxIds(current);
         const response = await boundedJson(`/api/confirm/find?player=${encodeURIComponent(current.account)}`, {
           operations: current.operations, attempt: current.attemptId, since: serverIso(Date.parse(current.since)),
+          ...(current.actionId ? { action_id: current.actionId } : {}),
           answered: Boolean(current.answeredAt), closed: Boolean(current.closedAt),
           ...(current.beginToken ? { begin_token: current.beginToken } : {}),
           ...(current.reanchor ? { reanchor: true } : {}),
@@ -801,10 +897,20 @@ async function findRow(rowId) {
       } catch (_) { answer = null; }
       let now = loadRow(row.id);
       if (!now || (now.attempt || 1) !== attempt || !stillLooking(now)) return now?.txId || null;
+      if (typeof answer?.action_id === 'string' && /^[a-f0-9]{32}$/.test(answer.action_id) && now.actionId !== answer.action_id)
+        now = saveRow({ ...now, actionId: answer.action_id });
+      if (answer?.overflow === true && now.message !== 'Many actions at once: checking every 15 seconds')
+        now = saveRow({ ...now, overflow: true, message: 'Many actions at once: checking every 15 seconds' });
       // Whether the own-history read itself failed (: screens say so; a failed read is never evidence).
       if (Boolean(now.findUnavailable) !== !answer || (now.reanchor && answer)) now = saveRow({ ...now, findUnavailable: !answer, ...(answer ? { reanchor: false } : {}) });
       if (answer?.status === 'found' && /^[a-f0-9]{40}$/i.test(answer.tx_id || '')) {
+        retainActionMatch(now, answer.tx_id);
         const attached = attachRow(now.id, answer.tx_id);
+        retainDuplicateVerdicts(attached, answer.matched_transactions || []);
+        if (answer.watch_duplicates === true) {
+          saveRow({ ...attached, watchDuplicates: true });
+          watchActionDuplicates(attached.id);
+        }
         // F9: an orphan (left by a previous page) has no flow to read it: its verifier starts at once. An in-page flow
         // reads with its own check (confirmAction subscribed and started it when the id was attached).
         // IN-0888: so does an attempt reopened after "never asked" (its screen already finished with that ending).
@@ -821,7 +927,8 @@ async function findRow(rowId) {
       // IN-0888: no wallet answer at all for the transaction's whole lifetime (server clock), or HiveAuth's own expiry
       // once this browser's lead over the server clock has passed too: the request expired unsigned.
       const hiveAuthAt = now.state === 'pending' ? hiveAuthEndsAt(now) : null;
-      if (now.state === 'pending' && !now.neverAskedAt && (walletNeverAnswered(now, answer) || (hiveAuthAt != null && clock.now() >= hiveAuthAt))) {
+      if (now.state === 'pending' && !now.answeredAt && !now.neverAskedAt
+          && (walletNeverAnswered(now, answer) || (hiveAuthAt != null && clock.now() >= hiveAuthAt))) {
         endNeverAsked(now.id, walletNeverAnswered(now, answer) ? 'lifetime' : 'hiveauth');
         now = loadRow(now.id) || now;     // a held claim stays pending: never write an older copy over its line
         if (now.state !== 'pending') continue;
@@ -830,10 +937,13 @@ async function findRow(rowId) {
       // The line changes only when the wait is long (the expiry read) or the proof could not be completed yet.
       const message = answer?.status === 'unproven' ? (answer.reason === 'open' ? OPEN_REQUEST : answer.reason === 'newest-edge' ? NEWEST_EDGE : UNCOVERED)
         : answer?.status === 'wait' && delayS > WINDOW_MS / 1000 ? UNPROVEN : null;
-      if (message && now.state === 'pending' && !now.neverAskedAt && now.message !== message) saveRow({ ...now, message });
+      if (message && !now.overflow && now.state === 'pending' && !now.neverAskedAt && now.message !== message) saveRow({ ...now, message });
       let sleepMs = Number.isFinite(delayS) && delayS >= 0 ? delayS * 1000 : FINDER_RETRY_MS;
+      // A held routing claim can return an already-due read forever. Its browser watcher must yield to
+      // the server's next scheduled opportunity rather than spin at zero delay.
       // (Without any server answer yet the skew is unknown: the next answer measures it; no faster retry.)
       if (hiveAuthAt != null && now.state === 'pending') sleepMs = Math.min(sleepMs, Math.max(0, hiveAuthAt - clock.now()));
+      if (now.holdsServerClaim && now.neverAskedAt && sleepMs < 15000) sleepMs = 15000;
       await finderSleep(key, sleepMs);
     }
   })().finally(() => { live.delete(key); });
@@ -849,6 +959,8 @@ export function resumeConfirmations({ before = Infinity } = {}) {
   waiters.forEach(waiter => wakeWaiter(waiter));
   finderWakes.forEach(wake => wake());
   for (const row of allRows()) {
+    if (row.walletCallbackTxId) reportWalletCallback(row);
+    if (row.watchDuplicates) watchActionDuplicates(row.id);
     if (!stillLooking(row) || !(Date.parse(row.since) < before)) continue;
     const key = `${row.id}#${row.attempt || 1}`;
     if (before !== Infinity && !row.orphan && row.state === 'pending') saveRow({ ...row, orphan: true });

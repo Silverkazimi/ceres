@@ -97,7 +97,7 @@ def test_r2_the_gate_ends_the_attempt_on_a_late_hiveauth_expiry():
 const ops = {OPS('late', 1)};
 window.hive_keychain.requestBroadcast = (account, operations, key, callback) => {{
   __world.walletCalls += 1;
-  setTimeout(() => callback({{ success: false, late: true, ambiguousBroadcast: true, stillChecking: true, walletExpired: true, error: 'expired' }}), 130000);
+  setTimeout(() => callback({{ success: false, late: true, ambiguousBroadcast: true, stillChecking: true, walletExpired: true, relayConfirmed: true, error: 'expired' }}), 130000);
 }};
 __world.scenario = {{ neverSent: true }};
 BroadcastGate.broadcast('alice', ops).catch(() => {{}});
@@ -231,13 +231,13 @@ def test_aletheia3_routing_run_signs_with_the_held_claim_flag():
 # Pending maintainer question: one named source for the Keychain payment ending
 def test_payment_flows_take_their_ending_from_one_named_function():
     """SPS pool funding and market purchase: the lifetime ending text is walletNeverAskedText -> PAYMENT_PROMPT_OPEN_ENDING
-    (today the IN-0888 text); HiveAuth's expiry and other flows keep WALLET_NEVER_ASKED. Both flows render the
+    (now OR-1087's payment text); HiveAuth's expiry and other flows keep WALLET_NEVER_ASKED. Both flows render the
     confirmer's text, never a literal."""
     out = _module(r"""
 const purchase = [['custom_json', { id: 'sm_market_purchase', required_auths: ['alice'], required_posting_auths: [], json: JSON.stringify({ currency: 'DEC', items: ['a'], price: 1, app: 'ceres/1', n: 'ab'.repeat(8) }) }]];
 const funding = [['custom_json', { id: 'sm_sps', required_auths: ['alice'], required_posting_auths: [], json: JSON.stringify({ action: 'token_transfer', params: { token: 'SPS', qty: 1, to: 'x', memo: 'lpsid:1', n: 'ab'.repeat(8) } }) }]];
 const harvest = [['custom_json', { id: 'sm_land_operation', required_auths: [], required_posting_auths: ['alice'], json: JSON.stringify({ n: 'abcdefghij' }) }]];
-console.log('IR9545-RESULT ' + JSON.stringify({ same: PAYMENT_PROMPT_OPEN_ENDING === WALLET_NEVER_ASKED,
+console.log('IR9545-RESULT ' + JSON.stringify({ paymentText: PAYMENT_PROMPT_OPEN_ENDING === 'Not sent: your wallet never asked you. Close any open Keychain window before starting again.',
   purchase: walletNeverAskedText(purchase, 'lifetime') === PAYMENT_PROMPT_OPEN_ENDING,
   funding: walletNeverAskedText(funding, 'lifetime') === PAYMENT_PROMPT_OPEN_ENDING,
   hiveauth: walletNeverAskedText(purchase, 'hiveauth') === WALLET_NEVER_ASKED,

@@ -1174,6 +1174,8 @@ async function confirmHarvest() {
     if (M.routingRunId) {
       const saved = await postJson('/api/harvest/routing/harvest-plan', { run_id: M.routingRunId });
       pv = saved.preview; savedHarvestAttempts = saved.attempts;
+    } else if (mode === 'plot' && M.deedUids?.length) {
+      pv = await postJson('/api/harvest/preview', { scope: { kind: 'deeds', deed_uids: [...M.deedUids] } });
     } else if (mode === 'batch' && scopeKind === 'regions') {
       pv = await postJson('/api/harvest/preview', { scope: { kind: 'regions', region_uids: [...M.selectedRegions] } });
     } else if (mode === 'batch' && scopeKind === 'taxes') {
@@ -1186,6 +1188,7 @@ async function confirmHarvest() {
       return;
     }
     if (!pv) { M.error = 'Harvest review unavailable. Refresh the review.'; return; }
+    M.preview = pv;
     if (!pv.signing_enabled) { M.error = SIGNING_OFF_TEXT; return; }
     if (pv.blocked) { M.error = (pv.issues || []).join(' · ') || 'The fresh review is blocked. Resolve the listed issues before signing.'; return; }
     if (!pv.chunks?.length) { M.error = (pv.issues || []).join(' · ') || (scopeKind === 'taxes' ? 'Nothing to collect right now.' : 'Nothing to harvest right now.'); return; }

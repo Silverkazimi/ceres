@@ -181,6 +181,9 @@ def test_g1d_confirmer_is_the_only_owner_of_the_shared_schedule():
 
 
 def test_g1e_every_call_site_is_on_the_signing_options_page():
+    if not PAGE.exists():
+        import pytest
+        pytest.skip('Private library/ceres-signing-options.md is absent from this export')
     page = PAGE.read_text(encoding="utf-8")
     missing = [f"{name}#{index}" for name, count in facade_sites().items() for index in range(1, count + 1)
                if f"`{name}#{index}`" not in page]

@@ -64,28 +64,32 @@ def test_fides_land_and_combine_alphanumeric_nonces():
     assert find_exact_action(history(tx, expected), "player_owner", expected) == tx
 
 
-def test_endpoint_reads_only_the_requested_signers_last_100_ops(monkeypatch):
+def test_endpoint_reads_only_the_requested_signers_last_100_ops(monkeypatch, tmp_path):
     from ceres import routes_confirm as confirm, harvest_routing_bridge
-
-    class FrozenDate(datetime):
-        @classmethod
-        def now(cls, tz=None):
-            return cls(2026, 11, 3, 9, 0, tzinfo=timezone.utc)
 
     calls = []
     expected = [op("7" * 16, player="alice")]
-    monkeypatch.setattr(confirm, "datetime", FrozenDate)
+    now = datetime.now(timezone.utc).isoformat()
     monkeypatch.setattr(confirm, "_require_same_origin", lambda _: None)
     monkeypatch.setattr(confirm.client_limits, "limit", lambda *_: None)
-    monkeypatch.setattr(harvest_routing_bridge, "_history", lambda account, cursor: calls.append((account, cursor)) or history("e" * 40, expected))
+    recent = history("e" * 40, expected)
+    recent[0][1]["timestamp"] = now
+    monkeypatch.setattr(harvest_routing_bridge, "_history", lambda account, cursor: calls.append((account, cursor)) or recent)
 
     class Request:
-        app = SimpleNamespace(state=SimpleNamespace(ceres_config=SimpleNamespace(player="alice")))
+        app = SimpleNamespace(state=SimpleNamespace(ceres_config=SimpleNamespace(player="alice", root=tmp_path)))
+
+        body = {"operations": expected, "since": now, "attempt": "a1b2c3d4e5f60718", "answered": True}
 
         async def json(self):
-            return {"operations": expected, "since": "2026-11-03T08:59:59Z", "attempt": "a1b2c3d4e5f60718", "answered": True}
+            return self.body
 
-    answer = asyncio.run(confirm.find(Request()))
+    begin = Request()
+    begin.body = {"operations": expected, "attempt": "a1b2c3d4e5f60718", "event": "begin"}
+    recorded = asyncio.run(confirm.intent(begin))
+    find = Request()
+    find.body = {**Request.body, "action_id": recorded["action_id"], "begin_token": recorded["begin_token"]}
+    answer = asyncio.run(confirm.find(find))
     assert (answer["status"], answer["tx_id"]) == ("found", "e" * 40)
     assert calls == [("alice", -1)]
 
@@ -105,7 +109,7 @@ def test_game_verdict_is_per_op_and_keeps_the_refusal():
     assert game_op_verdict(refused, "someone_else", second, tx + "-1")["state"] == "pending"
 
 
-def test_verdict_endpoint_recovers_after_one_failed_lookup(monkeypatch):
+def test_verdict_endpoint_recovers_after_one_failed_lookup(monkeypatch, tmp_path):
     from ceres import routes_confirm as confirm
 
     tx = "d" * 40
@@ -129,13 +133,13 @@ def test_verdict_endpoint_recovers_after_one_failed_lookup(monkeypatch):
     monkeypatch.setattr(confirm, "lookup_trx_info", lookup)
 
     class Request:
-        app = SimpleNamespace(state=SimpleNamespace(ceres_config=SimpleNamespace(player="alice")))
+        app = SimpleNamespace(state=SimpleNamespace(ceres_config=SimpleNamespace(player="alice", root=tmp_path)))
 
         async def json(self):
             return {"tx_id": tx, "operations": operations}
 
-    first = asyncio.run(confirm.verdict(Request()))
+    first = asyncio.run(asyncio.wait_for(confirm.verdict(Request()), timeout=10))
     assert [row["state"] for row in first["operations"]] == ["pending", "refused"]
-    second = asyncio.run(confirm.verdict(Request()))
+    second = asyncio.run(asyncio.wait_for(confirm.verdict(Request()), timeout=10))
     assert [row["state"] for row in second["operations"]] == ["confirmed", "refused"]
     assert sorted(calls) == sorted([tx, tx + "-1", tx, tx + "-1"])

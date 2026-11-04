@@ -8,6 +8,24 @@ from tests.ceres.vm_context import run_in_module_context
 GATE = Path(os.environ["IR9545_GATE"]) if "IR9545_GATE" in os.environ else Path(__file__).parents[2] / "ceres" / "static" / "broadcast-gate.js"
 
 
+def test_missing_begin_token_stops_before_direct_wallet_request():
+    run_in_module_context(r"""
+(async () => {
+  const operations = [['custom_json', { id:'sm_claim_rewards', required_auths:[], required_posting_auths:['alice'], json:JSON.stringify({n:'a'.repeat(16)}) }]];
+  let walletCalls = 0;
+  window.hive_keychain = { requestBroadcast() { walletCalls++; } };
+  fetch = async (url) => {
+    if (String(url).includes('/api/confirm/intent')) return {ok:false, json:async () => ({})};
+    throw Error('unexpected read');
+  };
+  const error = await BroadcastGate.broadcast('alice', operations).then(() => null, error => error);
+  if (!error || error.broadcasted !== false || walletCalls !== 0) throw Error('failed begin opened the wallet');
+  const state = confirmationState('alice', operations);
+  if (state?.state !== 'never-sent' || state?.neverSentBy !== 'begin-failed') throw Error('failed begin did not stop the attempt');
+})().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
+""", entry=GATE, extra_context_js="context.navigator.locks = {request(_name, _options, callback) {return callback();}};")
+
+
 def test_lost_ack_recovers_by_exact_ops_then_delivers_id_to_flow():
     result = run_in_module_context(
         r"""

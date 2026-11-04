@@ -235,21 +235,8 @@ export function createRoutingRun({ player, onRender, isCurrent, api = request,
     } catch (error) {
       report(stage, error, { bundle_id: bundle.id, wallet_asked: walletAsked, operations: claimed?.operations?.[0]?.length,
         bytes: claimed ? JSON.stringify(claimed.operations).length : undefined });
-      const unsent = claimed && !bundleStatus(bundle).tx_id && (!walletAsked || error?.broadcasted === false);
-      if (unsent) {
-        // Nothing was signed: the bundle goes back to "Sign current bundle" and no error is shown.
-        try {
-          await navigator.locks.request(`ceres:routing-v2:${player}`, async () => {
-            // (: a browser whose storage is full cannot write the journal; no wallet was asked, so the server
-            // claim is still released (the journal is only needed to prove nothing was signed).
-            let free;
-            try { free = unreserveMembers(player, claimed.member_nonces); } catch (_) { free = !walletAsked; }
-            if (free) update(await call('release', { run_id: S.runId, bundle_id: bundle.id }));
-          });
-          S.pendingReview = null;
-          // Only the maintainer's own Cancel in the wallet needs no text; every other failure (before or after the wallet was asked) keeps its reason ().
-          S.error = error?.declined || error?.signingRejected ? '' : error.message || String(error);
-        } catch (releaseError) { S.error = releaseError.message || String(releaseError); }
+      if (claimed && !bundleStatus(bundle).tx_id && walletAsked && !error?.broadcasted && !error?.declined) {
+        S.error = 'Waiting for your Keychain answer; nothing is sent again';
       } else S.error = error.message || String(error);
     }
     finally { S.busy = false; notify(); }

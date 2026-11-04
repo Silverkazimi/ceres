@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import time
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -83,7 +84,7 @@ def test_confirmed_feed_rerenders_open_harvest_box_from_fresh_projection(live_br
     page = browser.new_page(viewport={"width": 1920, "height": 1080})
     page.add_init_script(
         "window.__ir8310KeychainCalls = 0; window.hive_keychain = {requestBroadcast(_account, _ops, _key, callback) "
-        "{ window.__ir8310KeychainCalls += 1; callback({success: true, result: {id: 'ir8310-mocked-tx'}, data: {key: 'Posting'}}); }};"
+        "{ window.__ir8310KeychainCalls += 1; callback({success: true, result: {id: '1cf340bb4ca737f9cac87aeb61e7f0752c51c395'}, data: {key: 'Posting'}}); }};"
     )
     selected: dict[str, dict] = {}
     updated: dict[str, dict] = {}
@@ -129,12 +130,12 @@ def test_confirmed_feed_rerenders_open_harvest_box_from_fresh_projection(live_br
         uid = selected["row"]["deed_uid"]
         operation = ["custom_json", {
             "id": "sm_land_operation",
-            "json": json.dumps({"op": "update_worksite", "deed_uid": uid}),
+            "json": json.dumps({"op": "update_worksite", "deed_uid": uid, "n": "8310831083108310"}),
             "required_auths": [],
-            "required_posting_auths": ["player0005"],
+            "required_posting_auths": ["sample01"],
         }]
         route.fulfill(status=200, content_type="application/json", body=json.dumps({
-            "account": "player0005", "chunks": [{"operations": [operation]}],
+            "account": "sample01", "chunks": [{"operations": [operation]}],
         }))
 
     def verify_route(route) -> None:
@@ -150,6 +151,7 @@ def test_confirmed_feed_rerenders_open_harvest_box_from_fresh_projection(live_br
     page.route("**/api/plots/**", plot_route)
     page.route("**/worksite-preview*", preview_route)
     page.route("**/api/op-inclusion*", inclusion_route)
+    page.route("**/api/confirm/intent*", lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"begin_token": "8310831083108310", "server_now": int(time.time() * 1000)})))
     page.route("**/api/op-verify*", verify_route)
     page.goto(f"{base_url}/?player=sample01", timeout=8_000)
 

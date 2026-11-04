@@ -153,10 +153,9 @@ export async function confirmCheckoutWithWorksites({ deedUid = null } = {}) {
         }
       }
     }
-    const envelopes = worksitePlans.length ? await prepareSigningBatch(worksitePlans[0].plan.account, worksitePlans.map(item => item.plan.chunk.operations), 'Posting', { runId: checkoutRunId(), runKind: 'plan' }) : null;
     for (const [index, { currentDeedUid, build, feed, fresh, plan }] of worksitePlans.entries()) {
       if (feed) {
-        const result = await signStagedWorksiteBuild(fresh, null, 0, plan, envelopes?.[index]);
+        const result = await signStagedWorksiteBuild(fresh, null, 0, plan);
         if (result.ok) {
           markFeedSent(currentDeedUid, result.txId);
           stageToast(`Feed the workers (${feed.toLabel}) was sent for signing.`);
@@ -169,7 +168,7 @@ export async function confirmCheckoutWithWorksites({ deedUid = null } = {}) {
       }
       build.pendingAccount = plan.account;
       build.pendingOperations = plan.chunk.operations;
-      const result = await signStagedWorksiteBuild(fresh, build.target, build.timeCrystals || 0, plan, envelopes?.[index]);
+      const result = await signStagedWorksiteBuild(fresh, build.target, build.timeCrystals || 0, plan);
       if (result.ok) {
         await unstageWorksiteBuild(currentDeedUid);
         stageToast(`${build.targetLabel || 'The worksite'} build was sent for signing.`);

@@ -10,7 +10,7 @@ import threading
 from contextlib import nullcontext
 from datetime import datetime, timezone
 from .transaction_diagnostics import record_verification
-from .hive_rpc import known_transaction_status
+from .hive_rpc import BY_ID_ADMIT, known_transaction_status
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -366,6 +366,9 @@ def op_inclusion(body: dict[str, Any], request: Request, player: str | None = No
         return JSONResponse(content=_request_identity_inclusion(account, body))
     if not isinstance(tx_id, str) or not tx_id:
         raise HTTPException(status_code=400, detail="tx_id is required")
+    from .routes_confirm import charge_account_read
+    if not charge_account_read(request, account, "V"):
+        return JSONResponse(content={"included": None, "block_num": None})
     transaction, reason_kind = get_transaction(tx_id)
     block_num = transaction.get("block_num") if transaction else None
     included = True if block_num is not None else False if reason_kind == "not_found" else None
@@ -388,15 +391,19 @@ def op_inclusion(body: dict[str, Any], request: Request, player: str | None = No
         begin_at = (facts or {}).get("begin_at")
         now = time.time()
         included = None
-        if now - anchor >= TX_ABSENCE_GRACE_SECONDS and begin_at is not None and now - begin_at <= KNOWN_ID_PROOF_DEPTH_S:
-            bound = datetime.fromtimestamp(anchor + TX_LIFETIME_SECONDS, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
-            status, chain_block = known_transaction_status(tx_id, bound)
-        elif reason_kind != "not_found":
-            status, chain_block = known_transaction_status(tx_id, None)     # inclusion only: never a proof of absence
-            status = "unknown" if status == "expired" else status
-        else:
-            status, chain_block = "unknown", None
-        if status == "expired":
+        admission = BY_ID_ADMIT.set(lambda: charge_account_read(request, account, "V"))
+        try:
+            if now - anchor >= TX_ABSENCE_GRACE_SECONDS and begin_at is not None and now - begin_at <= KNOWN_ID_PROOF_DEPTH_S:
+                bound = datetime.fromtimestamp(anchor + TX_LIFETIME_SECONDS, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+                status, chain_block = known_transaction_status(tx_id, bound)
+            elif reason_kind != "not_found":
+                status, chain_block = known_transaction_status(tx_id, None)     # inclusion only: never a proof of absence
+                status = "unknown" if status == "expired" else status
+            else:
+                status, chain_block = "unknown", None
+        finally:
+            BY_ID_ADMIT.reset(admission)
+        if status == "expired" and not (facts or {}).get("action_match"):
             included = False
         elif status == "included":
             included, block_num = True, chain_block

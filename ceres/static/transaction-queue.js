@@ -1,5 +1,5 @@
 import { requestWalletSignature, walletCanSignTransaction } from './wallet.js';
-import { waitThrough } from './shared-confirmer.js';
+import { announceBegin, beginAttempt, confirmationState, markAnswered, waitThrough } from './shared-confirmer.js';
 
 const QUEUE_PREFIX = 'ceres:signed-queue:v1:';
 // the Hive nodes Ceres reads from, in order; kept identical to ceres/hive_rpc.py HIVE_RPC_NODES (a test
@@ -247,6 +247,14 @@ export async function signQueuedTransaction(prepared) {
     await updateQueueRow(account, txId, { ...cloneQueueValue(prepared), state: 'signing', createdAt: new Date().toISOString() });
     let signed;
     try {
+      let attempt = confirmationState(account, prepared.transaction.operations);
+      if (!attempt?.beginToken) {
+        attempt = beginAttempt(account, prepared.transaction.operations, { expiration: prepared.transaction.expiration });
+        if (!await announceBegin(account, prepared.transaction.operations)) throw new Error('The signing attempt could not be recorded. Nothing was sent.');
+      }
+      const begun = confirmationState(account, prepared.transaction.operations);
+      await updateQueueRow(account, txId, { attemptId: attempt.attemptId, beginToken: begun?.beginToken || null,
+        actionId: begun?.actionId || null });
       signed = await new Promise((resolve, reject) => {
         let finished = false;
         const timer = setTimeout(() => { finished = true; reject(new Error('The signing request timed out. No transaction was broadcast; any late signature will be discarded.')); }, QUEUE_SIGN_TIMEOUT);
@@ -254,6 +262,7 @@ export async function signQueuedTransaction(prepared) {
           requestWalletSignature(account, cloneQueueValue(prepared.transaction), prepared.authority, response => {
             if (finished) return;
             finished = true; clearTimeout(timer);
+            try { markAnswered(account, prepared.transaction.operations, { attempt: attempt.attempt, closed: true }); } catch (_) {}
             if (response?.error || response?.success === false) { reject(new Error('The wallet did not approve this signature. Nothing was sent.')); return; }
             if (response?.data?.key && String(response.data.key).toLowerCase() !== prepared.authority.toLowerCase()) { reject(new Error('The wallet used a different signing authority. Nothing was sent.')); return; }
             resolve(response?.result);
@@ -357,7 +366,9 @@ function watchQueueInclusion(account, row) {
   if (INCLUSION_WATCH.has(row.txId)) return;
   INCLUSION_WATCH.add(row.txId);
   const handle = waitThrough({ key: `inclusion:${row.txId}`, schedule: 'inclusion', account, txId: row.txId,
-    since: row.createdAt, check: async () => {
+    since: row.createdAt, intent: row.attemptId || null,
+    beginToken: () => signedQueueRows(account).find(item => item.txId === row.txId)?.beginToken || null,
+    check: async () => {
       const current = signedQueueRows(account).find(item => item.txId === row.txId);
       if (!current || current.state === 'included') return { state: 'confirmed' };
       if (TERMINAL_QUEUE_STATES.has(current.state)) return { state: 'never-sent' };

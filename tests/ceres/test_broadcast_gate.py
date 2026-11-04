@@ -33,7 +33,7 @@ fetch = async (url, init) => {
   // wallet silence hands the request to the own-history finder; that is not an inclusion wait.
   if (String(url).startsWith('/api/confirm/find?player=alice')) return { ok: true, status: 200, json: async () => ({ status: 'not_found' }) };
   // fix round 3 (N1): the begin is recorded before the wallet opens; it is not an inclusion wait.
-  if (String(url).startsWith('/api/confirm/intent?player=alice')) return { ok: true, status: 200, json: async () => ({ ok: true }) };
+  if (String(url).startsWith('/api/confirm/intent?player=alice')) return { ok: true, status: 200, json: async () => ({ ok: true, begin_token: 'a'.repeat(32), action_id: 'b'.repeat(32), revision: 1 }) };
   inclusionCount += 1;
   if (!String(url).startsWith('/api/op-inclusion?player=alice')) throw new Error(`wrong inclusion URL: ${url}`);
   if (JSON.parse(init.body).tx_id !== 'late-tx') throw new Error('wrong inclusion transaction');
@@ -91,7 +91,7 @@ const rows = Array.from({ length: 5 }, (_, index) => {
 localStorage.setItem('ceres:broadcast-claims:v1:alice', JSON.stringify(rows.map(row => row.id)));
 localStorage.setItem('ceres:pending-custom-ops:v1:alice', JSON.stringify(rows));
 let probes = 0;
-fetch = async () => { probes += 1; return { ok: true, json: async () => ({ included: false, block_num: null }) }; };
+fetch = async (url) => { if (String(url).includes('/api/confirm/intent')) return { ok: true, status: 200, json: async () => ({ begin_token: 'a'.repeat(32), action_id: 'b'.repeat(32), revision: 1 }) }; probes += 1; return { ok: true, json: async () => ({ included: false, block_num: null }) }; };
 const recovered = await recoverPendingBroadcastRequests('alice', 1);
 if (recovered.blocked || recovered.released !== 5 || recovered.remaining !== 0 || probes !== 5) throw Error('five-row recovery did not clear the proven-absent requests');
 let walletCalls = 0;
@@ -130,7 +130,7 @@ const rows = Array.from({ length: 5 }, (_, index) => {
 });
 localStorage.setItem('ceres:broadcast-claims:v1:alice', JSON.stringify(rows.map(row => row.id)));
 localStorage.setItem('ceres:pending-custom-ops:v1:alice', JSON.stringify(rows));
-fetch = async () => ({ ok: true, json: async () => ({ included: null, block_num: null }) });
+fetch = async (url) => String(url).includes('/api/confirm/intent') ? { ok: true, status: 200, json: async () => ({ begin_token: 'a'.repeat(32), action_id: 'b'.repeat(32), revision: 1 }) } : ({ ok: true, json: async () => ({ included: null, block_num: null }) });
 let walletCalls = 0;
 window.hive_keychain = { requestBroadcast(_account, _operations, _key, callback) {
   walletCalls += 1;
@@ -332,7 +332,7 @@ def test_unjudgeable_old_request_stops_blocking_but_keeps_its_claim() -> None:
         r"""
 (async () => {
 const account = 'alice';
-globalThis.fetch = async () => ({ ok: true, json: async () => ({ included: null, block_num: null }) });
+globalThis.fetch = async (url) => String(url).includes('/api/confirm/intent') ? { ok: true, status: 200, json: async () => ({ begin_token: 'a'.repeat(32), action_id: 'b'.repeat(32), revision: 1 }) } : ({ ok: true, json: async () => ({ included: null, block_num: null }) });
 const stale = { id: 'stuck', claimIds: ['stuck'], count: 4, txId: null, instanceId: 'i-old',
   budgetActive: true, createdAt: new Date(Date.now() - 3600000).toISOString() };
 saveCustomOps(account, [stale]);

@@ -5,7 +5,7 @@ import { walletSignLabelHtml, walletReady } from './wallet.js';
 import { BOARD, CURRENT_PLAYER, adoptLatestCapture, NOTICE_CATALOG, catalogNotice, noticeMessage, playerQueryAppend, renderNotices } from './board.js';
 import { recoverPendingBroadcastRequests, requestBroadcastThroughGate, requestSignatureThroughGate, prepareSigningBatch } from './broadcast-gate.js';
 import { waitForQueuedSubmission, resumeSignedQueue } from './transaction-queue.js';
-import { CONFIRM_FAST_MS, waitThrough } from './shared-confirmer.js';
+import { CONFIRM_FAST_MS, confirmationState, waitThrough } from './shared-confirmer.js';
 import { normalizeEstimate } from './candidates.js';
 import { checkoutSignableEntries, renderCheckoutSurface } from './checkout.js';
 import { esc, formatPlotLabel, humanizeInstant } from './format.js';
@@ -1438,8 +1438,15 @@ export function scheduleOperationPoll(receipt, verify) {
   // The schedule runs from the wallet's answer (or, without one, the request), never from the moment an id was found
   // the maintainer's reference swap does the same (IN-0708 speed rule).
   const anchor = Number.isFinite(receipt.answeredAt) ? receipt.answeredAt : Number.isFinite(receipt.pollStartedAt) ? receipt.pollStartedAt : null;
+  const account = CURRENT_PLAYER || BOARD?.player;
+  const signedOperations = receipt.operations;
+  const signingAttempt = Array.isArray(signedOperations) ? confirmationState(account, signedOperations) : null;
   poll.handle = waitThrough({ key: `operation:${receipt.entryId}`, account: CURRENT_PLAYER || BOARD?.player, txId: receipt.txId,
-    startedAt: anchor,
+    startedAt: anchor, intent: signingAttempt?.attemptId || null,
+    beginToken: () => {
+      const current = Array.isArray(signedOperations) ? confirmationState(account, signedOperations) : null;
+      return current?.attemptId === signingAttempt?.attemptId ? current?.beginToken || null : null;
+    },
     since: new Date(receipt.pollStartedAt || Date.now()).toISOString(), check: async () => {
       if (poll.first) { poll.first = false; return { state: 'pending' }; }   // the caller has just read
       if (OPERATION_POLLERS.get(receipt.entryId) !== poll) return { state: 'confirmed', stopped: true };

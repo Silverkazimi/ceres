@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 
 import pytest
 from playwright.sync_api import Browser, TimeoutError as PlaywrightTimeoutError
@@ -29,7 +30,7 @@ def test_pending_worksite_verification_keeps_shared_pill_stable(live_browser: tu
         "detailBox: rect(pill.querySelector('.worksite-banner-detail'))}); } })"
         ".observe(document, {subtree: true, childList: true, characterData: true}); "
         "window.hive_keychain = {requestBroadcast(_account, _ops, _key, callback) { "
-        "window.__ir8322KeychainCalls += 1; callback({success: true, result: {id: 'ir8322-mocked-tx'}, data: {key: 'Posting'}}); }};"
+        "window.__ir8322KeychainCalls += 1; callback({success: true, result: {id: 'f854c74372c8cf5e52a91e56e4539bffadbb76c5'}, data: {key: 'Posting'}}); }};"
     )
     selected: dict[str, dict] = {}
     verify_calls: list[int] = []
@@ -76,10 +77,10 @@ def test_pending_worksite_verification_keeps_shared_pill_stable(live_browser: tu
 
     def preview_route(route) -> None:
         uid = selected["row"]["deed_uid"]
-        operation = ["custom_json", {"id": "sm_land_operation", "json": json.dumps({"op": "update_worksite", "deed_uid": uid}),
-                                      "required_auths": [], "required_posting_auths": ["player0005"]}]
+        operation = ["custom_json", {"id": "sm_land_operation", "json": json.dumps({"op": "update_worksite", "deed_uid": uid, "n": "8322832283228322"}),
+                                      "required_auths": [], "required_posting_auths": ["sample01"]}]
         route.fulfill(status=200, content_type="application/json", body=json.dumps({
-            "account": "player0005", "chunks": [{"operations": [operation]}],
+            "account": "sample01", "chunks": [{"operations": [operation]}],
         }))
 
     def verify_route(route) -> None:
@@ -92,6 +93,7 @@ def test_pending_worksite_verification_keeps_shared_pill_stable(live_browser: tu
     page.route("**/api/plots/**", plot_route)
     page.route("**/worksite-preview*", preview_route)
     page.route("**/api/op-inclusion*", lambda route: route.fulfill(status=200, content_type="application/json", body='{"included":true,"block_num":123}'))
+    page.route("**/api/confirm/intent*", lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"begin_token": "8322832283228322", "server_now": int(time.time() * 1000)})))
     page.route("**/api/op-verify*", verify_route)
     page.goto(f"{base_url}/?player=sample01", timeout=8_000)
     try:

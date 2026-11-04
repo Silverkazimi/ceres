@@ -11,17 +11,17 @@ import json
 import pytest
 
 from ceres import routes_confirm as confirm
-from tests.ceres.test_round1_server import ATTEMPT, PLAYER, _request, find_body, op, server, stamp  # noqa: F401
+from tests.ceres.test_round1_server import ATTEMPT, PLAYER, _request, find_body, op, other_op, server, stamp  # noqa: F401
 
 OTHER_ATTEMPT = "0f0e0d0c0b0a0908"
 
 
 def log_rows(begin, *, count=50, newest_after=None, extra=()):
-    rows = [[i, {"trx_id": f"{i + 1:040x}", "op": op(f"Other{i:05d}"), "timestamp": stamp(begin - 7200 + i)}] for i in range(count)]
+    rows = [[i, {"trx_id": f"{i + 1:040x}", "op": other_op(f"Other{i:05d}"), "timestamp": stamp(begin - 7200 + i)}] for i in range(count)]
     for row in extra:
         rows.append([len(rows), row])
     if newest_after is not None:
-        rows.append([len(rows), {"trx_id": "e" * 39 + "1", "op": op("Newer00001"), "timestamp": stamp(newest_after)}])
+        rows.append([len(rows), {"trx_id": "e" * 39 + "1", "op": other_op("Newer00001"), "timestamp": stamp(newest_after)}])
     return rows
 
 
@@ -93,7 +93,7 @@ def test_p0_2_an_empty_or_short_older_page_is_never_the_start_of_history(server)
     empty page counted as covered -> absent."""
     ops = [op("Short00001")]
     begin = server.clock.now
-    latest = [[i, {"trx_id": f"{i + 1:040x}", "op": op(f"Recent{i:04d}"), "timestamp": stamp(begin + 3700 + i)}] for i in range(400, 501)]
+    latest = [[i, {"trx_id": f"{i + 1:040x}", "op": other_op(f"Recent{i:04d}"), "timestamp": stamp(begin + 3700 + i)}] for i in range(400, 501)]
     server.world["pages"] = {-1: latest}                   # every older page: [] (stale node)
     begin_and_window(server, ops)
     server.clock.now = begin + 3900 + 700
@@ -105,8 +105,8 @@ def test_p0_2_a_page_with_a_gap_is_rejected(server, monkeypatch):
     """Index continuity: an older page missing rows (a pruned/filtered response) cannot complete the proof."""
     ops = [op("Gap0000001")]
     begin = server.clock.now
-    rows = [[i, {"trx_id": f"{i + 1:040x}", "op": op(f"Other{i:05d}"), "timestamp": stamp(begin - 600 + i * 8)}] for i in range(300)]
-    rows.append([300, {"trx_id": "e" * 39 + "1", "op": op("Newer00001"), "timestamp": stamp(begin + 3800)}])
+    rows = [[i, {"trx_id": f"{i + 1:040x}", "op": other_op(f"Other{i:05d}"), "timestamp": stamp(begin - 600 + i * 8)}] for i in range(300)]
+    rows.append([300, {"trx_id": "e" * 39 + "1", "op": other_op("Newer00001"), "timestamp": stamp(begin + 3800)}])
     full = {row[0]: row for row in rows}     # rows from index ~60 on are after the signing: older pages are needed
 
     def pages(start):
@@ -185,9 +185,9 @@ def test_p1_6_more_than_five_thousand_own_operations_continue_from_a_persisted_c
     ops = [op("Deep000001")]
     begin = server.clock.now
     tx = "7" * 40
-    rows = [[i, {"trx_id": f"{i + 1:040x}", "op": op(f"Old{i:07d}"), "timestamp": stamp(begin - 7200 + i)}] for i in range(100)]
+    rows = [[i, {"trx_id": f"{i + 1:040x}", "op": other_op(f"Old{i:07d}"), "timestamp": stamp(begin - 7200 + i)}] for i in range(100)]
     rows.append([100, {"trx_id": tx, "op": ops[0], "timestamp": stamp(begin + 20)}])
-    rows += [[i, {"trx_id": f"{i + 1:040x}", "op": op(f"New{i:07d}"), "timestamp": stamp(begin + 30 + i * 0.5)}] for i in range(101, 6601)]
+    rows += [[i, {"trx_id": f"{i + 1:040x}", "op": other_op(f"New{i:07d}"), "timestamp": stamp(begin + 30 + i * 0.5)}] for i in range(101, 6601)]
     server.world["log"] = rows
     begin_and_window(server, ops)
     server.clock.now = begin + 3900 + 700

@@ -496,7 +496,8 @@ async function requestBroadcastPromise(account, operations, onResponse, authorit
   const admissionInstanceId = newAdmissionInstanceId();
   let attemptRow;
   // Round 4 (aletheia-verdict-r4 3): routing's claim is released only by the server's own proof (`holdsServerClaim`).
-  try { attemptRow = beginAttempt(account, operations, { holdsServerClaim: metadata?.holdsServerClaim === true }); }
+  try { attemptRow = beginAttempt(account, operations, { holdsServerClaim: metadata?.holdsServerClaim === true,
+    actionId: metadata?.actionId || null }); }
   catch (error) { releaseBroadcastRequest(account, requestIdentities); throw error; }
   // Round 4 (aletheia-verdict-r4 6): the begin starts now, while the admission is written; it is awaited below, before
   // the wallet opens.
@@ -527,8 +528,14 @@ async function requestBroadcastPromise(account, operations, onResponse, authorit
   };
   // fix round 3 (astra-review-r3 N1): the server records this attempt's begin BEFORE the wallet is asked (bounded
   // by BEGIN_BOUND_MS); its begin token is the pre-sign oldest edge of any later proof that it was never sent. Without
-  // the token the attempt can never be proven absent (it stays pending); the wallet still opens.
-  try { await begun; } catch (_) { /* no token: absence stays unprovable for this attempt */ }
+  // without the token the wallet stays closed and this attempt ends before signing.
+  if (!(await begun)) {
+    releaseBroadcastRequest(account, requestIdentities);
+    markConfirmation(account, operations, 'never-sent', { by: 'begin-failed', error: 'Could not record the signing attempt. Nothing was sent.' });
+    const error = new Error('Could not record the signing attempt. Nothing was sent. Please try again.');
+    error.broadcasted = false;
+    throw error;
+  }
   return new Promise((resolve, reject) => {
     let timedOut = false;
     let finished = false;
@@ -542,15 +549,15 @@ async function requestBroadcastPromise(account, operations, onResponse, authorit
     });
     pendingBroadcast.catch(() => {});
     let deliveredId = null;     // the id already handed to onResponse (finder or wallet): never rendered twice (F3)
-    const acceptId = (txId, late = false) => {
+    const acceptId = (txId, late = false, fromWallet = false) => {
       if (finished) {
         // After the hand-off (ambiguous answer): the proof is attached and the admission follows it whoever found it
         // first -- the finder, a late wallet answer or another tab (F2: idempotent, never skipped).
         let updated = false;
         try { updated = updateAdmission(txId); } catch (_) { /* Keep the conservative budget. */ }
         const known = confirmationState(account, operations);
-        if (!known?.txId || (known.attempt || 1) !== attemptRow.attempt) {
-          try { attachTransaction(account, operations, txId, { attempt: attemptRow.attempt }); } catch (_) { /* an id the confirmer cannot read */ }
+        if (fromWallet || !known?.txId || (known.attempt || 1) !== attemptRow.attempt) {
+          try { attachTransaction(account, operations, txId, { attempt: attemptRow.attempt, walletCallback: fromWallet }); } catch (_) { /* an id the confirmer cannot read */ }
         }
         announceSigned(account, txId);
         if (updated) dispatchBroadcastRequestReleased(account, requestIdentities);
@@ -560,7 +567,7 @@ async function requestBroadcastPromise(account, operations, onResponse, authorit
       finished = true;
       let admissionUpdated = false;
       try { admissionUpdated = updateAdmission(txId); } catch (_) { /* Preserve the receipt if storage is unavailable. */ }
-      try { attachTransaction(account, operations, txId, { attempt: attemptRow.attempt }); } catch (_) { /* never undo a wallet broadcast over storage */ }
+      try { attachTransaction(account, operations, txId, { attempt: attemptRow.attempt, walletCallback: fromWallet }); } catch (_) { /* never undo a wallet broadcast over storage */ }
       announceSigned(account, txId);
       if (admissionUpdated && late) dispatchBroadcastRequestReleased(account, requestIdentities);
       if (timedOut) resolvePendingBroadcast({ txId, blockNum: null });
@@ -622,7 +629,7 @@ async function requestBroadcastPromise(account, operations, onResponse, authorit
           // LOW-7: once the own-history proof is running, a late wallet failure decides nothing: the claim and the budget
           // stay until the confirmer proves the outcome (the subscription above releases them on "never sent").
           if (recoveryStarted) {
-            if (response?.walletExpired) { try { markWalletNeverAsked(account, operations, { attempt: attemptRow.attempt }); } catch (_) {} }
+            if (response?.walletExpired && response?.relayConfirmed === true) { try { markWalletNeverAsked(account, operations, { attempt: attemptRow.attempt }); } catch (_) {} }
             return;
           }
           if (!error.ambiguousBroadcast) {
@@ -630,7 +637,7 @@ async function requestBroadcastPromise(account, operations, onResponse, authorit
           }
           if (error.ambiguousBroadcast) {
             recover({ message: error.message, stillChecking: error.stillChecking, keychainTimedOut: error.keychainTimedOut });
-            if (response?.walletExpired) { try { markWalletNeverAsked(account, operations, { attempt: attemptRow.attempt }); } catch (_) {} }
+            if (response?.walletExpired && response?.relayConfirmed === true) { try { markWalletNeverAsked(account, operations, { attempt: attemptRow.attempt }); } catch (_) {} }
             return;
           }
           markConfirmation(account, operations, 'never-sent', { error: error.message });
@@ -650,7 +657,7 @@ async function requestBroadcastPromise(account, operations, onResponse, authorit
           return;
         }
         walletIdSeen = true;
-        acceptId(txId, response.lateSigned === true);
+        acceptId(txId, response.lateSigned === true, true);
       }, authority);
     } catch (error) {
       cancelSilence();
@@ -740,17 +747,21 @@ export async function requestSignatureThroughGate(account, operations, onRespons
     // Round 4 (aletheia-verdict-r4 6): without a prepared envelope the attempt and its begin start BEFORE the envelope
     // is built (head read), so the begin round trip overlaps it; it is still awaited before the wallet is asked.
     let begun = null;
-    if (!prepared) { beginAttempt(account, operations, { holdsServerClaim }); begun = startBegin(account, operations); }
+    if (!prepared) { beginAttempt(account, operations, { holdsServerClaim, actionId: metadata?.actionId || null }); begun = startBegin(account, operations); }
     const envelope = prepared || (await prepareQueueBatch(account, [operations], authority, metadata))[0];
     if (envelope.account !== String(account).toLowerCase() || envelope.authority !== authority
       || JSON.stringify(envelope.transaction.operations) !== JSON.stringify(operations)) throw new Error('Prepared transaction does not match this review.');
     // A fresh attempt (F3), anchored to the signed envelope's own expiration (F7) when it is known.
-    beginAttempt(account, operations, { holdsServerClaim, expiration: envelope.transaction?.expiration ? `${String(envelope.transaction.expiration).replace(/Z?$/, 'Z')}` : null });
+    beginAttempt(account, operations, { holdsServerClaim, actionId: metadata?.actionId || null,
+      expiration: envelope.transaction?.expiration ? `${String(envelope.transaction.expiration).replace(/Z?$/, 'Z')}` : null });
     // Fix round 3 (N1): the server records the begin before the wallet signs (bounded; see requestBroadcastPromise).
-    try { await (begun || startBegin(account, operations)); } catch (_) { /* absence stays unprovable for this attempt */ }
+    if (!(await (begun || startBegin(account, operations)))) {
+      markConfirmation(account, operations, 'never-sent', { by: 'begin-failed', error: 'Could not record the signing attempt. Nothing was sent.' });
+      throw new Error('Could not record the signing attempt. Nothing was sent. Please try again.');
+    }
     const queued = await signQueuedTransaction(envelope);
     try { markAnswered(account, operations, { closed: true }); } catch (_) {}   // signed: the request is over
-    try { attachTransaction(account, operations, queued.txId); } catch (_) { /* the queue row keeps the id */ }
+    try { attachTransaction(account, operations, queued.txId, { walletCallback: true }); } catch (_) { /* the queue row keeps the id */ }
     queued.submitted.then(result => {
       try { onResponse?.({ success: true, result: { id: result.txId }, data: { key: authority } }); } catch (_) {}
       announceSigned(account, result.txId);
