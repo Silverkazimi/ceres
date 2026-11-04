@@ -119,7 +119,17 @@ def _open_lyanna(browser, captures, width, height):
         path = captures / f'diag-{width}.json'
         path.write_text(json.dumps(diagnostic, indent=2), encoding='utf-8')
         pytest.fail(f'Cards grid did not become ready at {width}px; {state["body_data"]}, grid HTML length {state["grid_inner_html_length"]}; see {path.name}')
-    page.locator('#cb-grid .cb-tile[aria-label*="Lyanna Natura"]').click()
+    # Two Lyanna Natura prints can be listed; open the one that holds the four synthetic copies.
+    tiles = page.locator('#cb-grid .cb-tile[aria-label*="Lyanna Natura"]')
+    copies = page.locator('#cm-menu-body [data-copy-index]')
+    for index in range(tiles.count()):
+        tiles.nth(index).click()
+        copies.first.wait_for(state='visible')
+        if copies.count() == 4:
+            break
+        page.keyboard.press('Escape')
+        copies.first.wait_for(state='detached')
+    assert copies.count() == 4, 'no Lyanna Natura tile opened the four synthetic copies'
     _art_ready(page)
     return page
 
