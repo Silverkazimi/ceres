@@ -80,13 +80,13 @@ export function boardPlanningSetups() {
 
 async function boardPlanningLivePlacements(account, restoreSerial) {
   const stamp = BOARD?.generated_at;
-  if (!stamp) throw new Error('The live board capture is unavailable. Reload the board first.');
+  if (!stamp) throw new Error("Some live cards are still loading, so this setup can't be copied yet. Nothing was changed; try again in a moment.");
   const response = await fetch(playerQueryAppend('/api/board-plans/from-live'), {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ capture_generated_at: stamp }),
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload?.detail?.message || 'The live board is incomplete or changed. Reload it and try again.');
+  if (!response.ok) throw new Error(payload?.detail?.message || "Some live cards are still loading, so this setup can't be copied yet. Nothing was changed; try again in a moment.");
   if (account !== boardPlanningAccountName().toLowerCase() || restoreSerial !== boardPlanningRestoreSerial
       || stamp !== BOARD?.generated_at || payload.account !== account || payload.generated_at !== stamp
       || !Array.isArray(payload.placements)) throw new Error('The board changed while copying live occupants. Nothing was saved.');
@@ -121,7 +121,7 @@ export async function boardPlanningSetupAction(action, value) {
     throw error;
   }
   if (account !== boardPlanningAccountName().toLowerCase() || restoreSerial !== boardPlanningRestoreSerial)
-    throw new Error('The account changed while saving. Reload the current account.');
+    throw new Error('The account changed while saving. Try again for the current account.');
   const after = store.snapshot();
   document.body.dataset.boardPlanName = after.plans.find((plan) => plan.id === after.selectedId)?.name || 'No setup';
   window.dispatchEvent(new Event(BOARD_PLANNING_EVENT));

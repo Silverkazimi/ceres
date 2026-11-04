@@ -40,6 +40,6 @@ def test_board_wires_setup_actions_to_store_and_notice_surface():
 
 def test_menu_panel_scrolling_is_planning_only():
     source = CSS.read_text(encoding='utf-8')
-    assert 'body[data-board-mode="planning"] .hdr-menu-panel { max-block-size: calc(100dvh - 6rem); overflow-y: auto; }' in source
+    assert 'html:not(.ceres-lw-le-1279) body[data-board-mode="planning"] .hdr-menu-panel { max-block-size: calc(100dvh - 6rem); overflow-y: auto; }' in source
     base = source.split('.hdr-menu-panel {', 1)[1].split('}', 1)[0]
     assert 'max-block-size' not in base and 'overflow-y' not in base

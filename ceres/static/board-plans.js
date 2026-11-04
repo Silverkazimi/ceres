@@ -43,12 +43,12 @@ export function boardPlanPlacementsFromLive(rows) {
     if (!row?.deed_uid) continue;
     const workerCount = Number(row.capacity?.worker_count);
     if (Number.isInteger(workerCount) && workerCount > (row.workers || []).length)
-      throw new Error('Live occupants are not fully loaded. Refresh the board before copying this setup.');
+      throw new Error("Some live cards are still loading, so this setup can't be copied yet. Nothing was changed; try again in a moment.");
     for (const worker of row.workers || []) {
       const slot = Number(worker.slot);
       const ref = worker.asset_ref || worker.uid || worker.card_uid;
       if (!ref || !Number.isInteger(slot) || slot < 0)
-        throw new Error('A live occupant has no known card identity. Refresh before copying this setup.');
+        throw new Error("Some live cards are still loading, so this setup can't be copied yet. Nothing was changed; try again in a moment.");
       placements.push(boardPlanCleanPlacement({ deed_uid: row.deed_uid,
         group_id: slot === 0 ? 'runi' : 'worker', slot_index: slot === 0 ? 0 : slot - 1,
         asset_ref: ref, asset: worker }));
@@ -57,7 +57,7 @@ export function boardPlanPlacementsFromLive(rows) {
     for (const group of ['power_core', 'totem', 'title']) {
       const asset = bonus[group];
       const ref = asset?.asset_ref || asset?.uid || asset?.card_uid;
-      if (asset && !ref) throw new Error('A live item has no known identity. Refresh before copying this setup.');
+      if (asset && !ref) throw new Error("Some live cards are still loading, so this item can't be copied into the setup yet. Nothing was changed; try again in a moment.");
       if (ref) placements.push(boardPlanCleanPlacement({ deed_uid: row.deed_uid, group_id: group,
         slot_index: 0, asset_ref: ref, asset }));
     }
@@ -184,7 +184,7 @@ export function createBoardPlanStore(storage, account, { onConflict = () => {}, 
   function refresh() {
     if (!state || dirty || readOnly) return snapshot();
     const raw = storage.getItem(key);
-    if (!raw) throw new Error('Saved setups disappeared. Reload before switching.');
+    if (!raw) throw new Error('Saved setups are no longer available. Nothing was changed.');
     const remote = decode(raw);
     if (remote.revision !== state.revision) { state = remote; base = boardPlanClone(remote); }
     return snapshot();

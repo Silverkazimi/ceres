@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -95,11 +96,23 @@ def test_start_from_live_and_zero_wallet_network_on_entry(tmp_path):
         _board_ready(page)
         before = page.locator('#plot-tbody').inner_html()
         deed = page.locator('#plot-tbody tr.plot-row').first.get_attribute('data-deed-uid')
-        requests = []
-        page.on('request', lambda request: requests.append((request.method, urlparse(request.url).path)))
+        all_requests = []
+        wallet_workers = []
+        relay_sockets = []
+        page.on('request', lambda request: all_requests.append((request.method.upper(), request.url)))
+        page.on('worker', lambda worker: wallet_workers.append(worker.url))
+        page.on('websocket', lambda socket: relay_sockets.append(socket.url))
         _entry(page, 'planning')
         page.wait_for_function("document.body.dataset.boardMode === 'planning'")
-        assert not [(method, path) for method, path in requests if path.startswith('/api/') or 'wallet' in path or 'broadcast' in path]
+        api_requests = [(method, urlparse(url).path) for method, url in all_requests if urlparse(url).path.startswith('/api/')]
+        assert api_requests == [], api_requests
+        assert not [(method, url) for method, url in all_requests if method == 'POST' and (
+            urlparse(url).path.startswith(('/api/wallet/', '/api/auth/'))
+            or re.search(r'(?:sign|broadcast)', urlparse(url).path, re.I)
+        )]
+        assert not [url for _, url in all_requests if 'hiveauth-worker' in url.lower() or 'hive-auth.arcange.eu' in url.lower()]
+        assert not [url for url in wallet_workers if 'hiveauth' in url.lower()], wallet_workers
+        assert not [url for url in relay_sockets if 'hiveauth' in url.lower() or 'hive-auth.arcange.eu' in url.lower()], relay_sockets
         assert page.evaluate('window.__walletCalls') == []
         def from_live(route):
             body = json.loads(route.request.post_data or '{}')
