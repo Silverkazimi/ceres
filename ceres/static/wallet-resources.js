@@ -5,8 +5,10 @@ import { esc, regionLabel } from './format.js';
 import { countdownText } from './countdown.js';
 import { tokenIcon, tokenLabel } from './harvest-state.js';
 import { territorySlug } from './icons.js';
+import { resourceOrder } from './resources.js';
 
-export const WALLET_TABS = ['DEC', 'SPS', 'VOUCHER', 'GRAIN', 'WOOD', 'STONE', 'IRON', 'RESEARCH', 'AURA'];
+// from the resource registry (resources.js, generated from ceres/resources.py); same tabs, same order.
+export const WALLET_TABS = resourceOrder('wallet_tabs');
 const territories = { PNW: 'Pristine Northwest', BRL: 'Broken Lands', LOP: 'Land of Prosperity', CEF: 'Central Fire', WNE: 'Wild Northeast', GLL: 'Great Lowlands', SHC: 'Shimmering Coasts' };
 const fmt = value => Number(value).toLocaleString(undefined, { maximumFractionDigits: 3 });
 const icon = (symbol, cls = 'wallet-token-icon') => tokenIcon(symbol) ? `<img src="${esc(tokenIcon(symbol))}" alt="" class="${cls}">` : '';

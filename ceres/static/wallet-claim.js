@@ -9,6 +9,7 @@ import { esc } from './format.js';
 import { tokenIcon } from './harvest-state.js';
 import { walletControlsHtml, walletReady, walletSignLabelHtml, walletWaitHtml } from './wallet.js';
 import { requestBroadcastThroughGate } from './broadcast-gate.js';
+import { confirmAction, waitThrough } from './shared-confirmer.js';
 
 const fmt = value => Number(value).toLocaleString(undefined, { maximumFractionDigits: 3 });
 const key = player => `ceres:wallet-claim:pending:${player}`;
@@ -30,7 +31,6 @@ function savePending(D, value) {
 async function api(D, path, body) {
   const response = await fetch(`/api/wallet/claim/${path}?player=${encodeURIComponent(D.player)}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}),
-    ...(path === 'verify' && typeof AbortSignal !== 'undefined' ? { signal: AbortSignal.timeout(8000) } : {}),
   });
   const result = await response.json();
   if (!response.ok) { const error = new Error(typeof result.detail === 'string' ? result.detail : 'Claim request failed. Please retry.'); error.status = response.status; throw error; }
@@ -56,10 +56,11 @@ export function claimHtml(D) {
       : failed ? esc(p.message || 'The game rejected this claim.')
       : phase === 'asked' ? walletWaitHtml(D.player, 'Posting', { since: p.asked_at || Date.now() })
       : phase === 'sent' ? 'Claim sent. Checking with the game now…'
-      : phase === 'retried' ? 'Still checking with the game. Ceres retries automatically; nothing is signed again.'
+      : phase === 'retried' ? 'Still checking with the game. Ceres keeps checking by itself; nothing is signed again.'
+      : phase === 'finding' ? 'Signed — Ceres is finding the transaction on Hive. Nothing is signed again.'
       : 'Checking with the game. This updates automatically.';
     return `<div class="wallet-claim-flow is-${phase}" role="status" aria-live="polite">
-      <h4>${confirmed ? 'SPS rewards claimed' : failed ? 'Claim rejected' : phase === 'asked' ? 'Check Keychain for approval' : phase === 'sent' ? 'Claim sent' : phase === 'retried' ? 'Checking again' : 'Confirming claim'}</h4>
+      <h4>${confirmed ? 'SPS rewards claimed' : failed ? 'Claim rejected' : phase === 'asked' ? 'Check Keychain for approval' : phase === 'sent' ? 'Claim sent' : phase === 'retried' || phase === 'finding' ? 'Confirming claim' : 'Confirming claim'}</h4>
       ${confirmed ? `<div class="dec-receipt-amount">${spsIcon()}<div><span>Claimed</span><strong>${fmt(p.total)} <small>SPS</small></strong></div></div><ul class="wallet-regions wallet-rewards">${(p.claimed || []).map(r => `<li><span class="wallet-reward-label">${esc(r.label)}</span><span></span><span class="wallet-figure">${fmt(r.balance)}${spsIcon()}</span></li>`).join('')}</ul>` : ''}
       ${phase === 'asked' ? message : `<p>${message}</p>`}
       ${confirmed ? `<div class="dec-receipt-actions">${button('done', 'Done', true, disabled)}</div>` : failed ? `<div class="dec-receipt-actions">${button('retry', 'Review claim again', true, disabled)}</div>` : ''}</div>`;
@@ -79,42 +80,38 @@ export function claimHtml(D) {
   return `<div class="dec-region-actions wallet-claim-actions">${button('review', waiting ? 'Claim SPS rewards (on cooldown)' : 'Claim SPS rewards', true, disabled || !rewards || total <= 0 || waiting)}</div>`;
 }
 
-async function check(D, render, account, reload) {
-  const generation = D.generation, player = D.player, intent = { ...D.claim.pending };
-  const current = () => generation === D.generation && player === D.player && account() === player && D.claim.pending?.nonce === intent.nonce && D.claim.pending?.tx_id === intent.tx_id;
-  if (D.claim.checking) return;
-  // The broadcast gate normally provides its deterministic id, including on timeout. When it cannot
-  // no by-id check is possible; re-read the live claim instead of asking for an id or signing again.
-  if (!intent.tx_id) {
-    savePending(D, { ...intent, phase: 'retried' }); render();
-    await new Promise(resolve => setTimeout(resolve, 2500));
-    if (current()) { await reload(); savePending(D, null); render(); }
-    return;
-  }
-  D.claim.checking = true; render();
+// one read for the shared confirmer (/api/wallet/claim/verify by tx id); a missing id is found by the
+// confirmer's own-history finder (). The former 2.5 s "reload and drop the intent" for a claim without an id is
+// gone: a claim is only ever cleared by the game's answer or the chain.
+async function check(D, render) {
+  const player = D.player, intent = { ...D.claim.pending };
+  const mine = () => player === D.player && D.claim.pending?.nonce === intent.nonce;
+  // A claim with a known id but no saved operations is still read by that id (never left unchecked).
+  if (D.claim.checking || (!intent.ops && !intent.tx_id)) return;
+  D.claim.checking = true;
+  if (!intent.tx_id && mine()) savePending(D, { ...D.claim.pending, phase: 'finding' });
+  render();
+  let reads = 0;
   try {
-    for (const delay of [0, 2000, 3000, 5000]) {
-      if (delay) await new Promise(resolve => setTimeout(resolve, delay));
-      if (!current()) return;
-      try {
-        const result = await api(D, 'verify', { tx_id: intent.tx_id, nonce: intent.nonce });
-        if (!current()) return;
-        if (result.status === 'confirmed' || result.status === 'failed') {
-          savePending(D, { ...intent, ...result, phase: result.status === 'confirmed' ? 'done' : 'failed' }); render();
-          if (result.status === 'confirmed') balancesChanged({ player: D.player, assets: ['SPS'], id: `claim:${intent.tx_id}` });
-          return;
-        }
-        // `not_found` / `pending`: the game has not answered yet -- keep waiting quietly.
-      } catch (error) {
-        if (!current()) return;
-        // A lookup error is transient here. Keep the known transaction and retry the same id.
-      }
-    }
-  } finally { if (generation === D.generation) D.claim.checking = false; }
-  if (current()) {
-    savePending(D, { ...D.claim.pending, phase: 'retried' }); render();
-    D.claim.retryTimer = setTimeout(() => { D.claim.retryTimer = null; if (current()) check(D, render, account, reload); }, 3000);
-  }
+    const onUpdate = () => { if (mine() && ++reads === 4) { savePending(D, { ...D.claim.pending, phase: 'retried' }); render(); } };
+    const read = async (txId) => {
+      if (mine() && D.claim.pending.tx_id !== txId) { savePending(D, { ...D.claim.pending, tx_id: txId, phase: 'checking' }); render(); }
+      const result = await api(D, 'verify', { tx_id: txId, nonce: intent.nonce });
+      if (result.status === 'confirmed') return { state: 'confirmed', result };
+      if (result.status === 'failed') return { state: 'refused', result };
+      return { state: 'pending' };   // `not_found` / `pending`: the game has not answered yet
+    };
+    const answer = intent.ops
+      ? await confirmAction({ account: player, operations: intent.ops, txId: intent.tx_id || null, onUpdate, check: read })
+      : { ...(await waitThrough({ key: `claim:${player}:${intent.nonce}`, account: player, txId: intent.tx_id,
+        since: new Date(Number(intent.asked_at) || Date.now()).toISOString(), check: () => read(intent.tx_id), onUpdate }).done), txId: intent.tx_id };
+    if (!mine()) return;
+    if (answer.state === 'confirmed' || answer.state === 'refused') {
+      savePending(D, { ...D.claim.pending, ...answer.result, tx_id: answer.txId || D.claim.pending.tx_id, phase: answer.state === 'confirmed' ? 'done' : 'failed' });
+      if (answer.state === 'confirmed') balancesChanged({ player: D.player, assets: ['SPS'], id: `claim:${answer.txId}` });
+    } else savePending(D, { ...D.claim.pending, status: 'failed', phase: 'failed', message: answer.error || 'The claim was not sent. Nothing changed.' });
+    render();
+  } finally { if (player === D.player) D.claim.checking = false; }
 }
 
 // Returns true when the action was a claim action (handled here).
@@ -129,13 +126,13 @@ export async function claimAction(D, name, render, account, reload) {
   claim.busy = true; render();
   try {
     if (name === 'review') { const preview = await api(D, 'preview'); if (generation === D.generation && account() === D.player) claim.review = preview; }
-    if (name === 'verify') await check(D, render, account, reload);  // internal resume only; no manual control
+    if (name === 'verify') check(D, render);  // internal resume only; no manual control
     if (name === 'sign') {
       const fresh = await api(D, 'preview');
       if (account() !== D.player) throw new Error('Player changed. Close and reopen the wallet.');
       if (!fresh.signing_enabled || !walletReady(D.player)) throw new Error('Connect a wallet before signing.');
       if (fresh.total !== claim.review.total) { claim.review = fresh; throw new Error('The claimable amount changed. Review it before signing.'); }
-      savePending(D, { nonce: fresh.nonce, total: fresh.total, status: 'pending', phase: 'asked', asked_at: Date.now() });
+      savePending(D, { nonce: fresh.nonce, total: fresh.total, status: 'pending', phase: 'asked', asked_at: Date.now(), ops: fresh.operations });
       claim.review = null; D.signing = true; render();
       try {
         const result = await requestBroadcastThroughGate(D.player, fresh.operations, response => {
@@ -144,15 +141,15 @@ export async function claimAction(D, name, render, account, reload) {
         });
         savePending(D, { ...D.claim.pending, tx_id: result.txId, phase: 'sent' }); render();
         D.signing = false;
-        await check(D, render, account, reload);
+        check(D, render);
       } catch (error) {
         if (typeof error.txId === 'string' && /^[a-f0-9]{40}$/i.test(error.txId) && D.claim.pending) {
           savePending(D, { ...D.claim.pending, tx_id: error.txId, phase: 'checking' });
-          D.signing = false; await check(D, render, account, reload);
+          D.signing = false; check(D, render);
         } else if (error.broadcasted === false || (error.retryable && !error.ambiguousBroadcast)) {
           savePending(D, null); claim.review = fresh;
         } else if (D.claim.pending) {
-          D.signing = false; await check(D, render, account, reload);
+          D.signing = false; check(D, render);   // sent, id unknown: the shared confirmer finds it
         }
       }
     }

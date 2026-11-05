@@ -31,7 +31,9 @@ prepareStagedWorksiteBuild=async row=>{events.push('prepare');return {row,accoun
 prepareSigningBatch=async()=>null;walletReady=()=>true;
 requestSignatureThroughGate=async()=>{events.push('sign');return {txId:'tx-'+events.length,queued:true,submitted:new Promise(()=>{})};};
 const result=await confirmCheckoutWithWorksites();
-if(!result.ok || events.join(',')!=='prepare,prepare,prepare,sign,sign,sign')throw Error(JSON.stringify({result,events}));
+// Revision 6 §3: every actual wallet invocation rebuilds its preview after the
+// three plans have been prepared, while all signatures still proceed in order.
+if(!result.ok || events.join(',')!=='prepare,prepare,prepare,prepare,sign,prepare,sign,prepare,sign')throw Error(JSON.stringify({result,events}));
 })().then(()=>process.exit(0),e=>{console.error(e);process.exit(1)});
 """,entry=ROOT/'ceres/static/checkout.js')
 

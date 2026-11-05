@@ -99,6 +99,11 @@
   transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 100ms ease;
 }
 
+/* Menu rows use the shared button control but align their icon and
+ text at the start of each column. Keep the control's text alignment here. */
+.hdr-menu-panel .hdr-menu-entry { justify-content: flex-start; text-align: start; }
+.hdr-menu-panel .hdr-menu-setup-action .hdr-ic { inline-size: 1.2rem; block-size: 1.2rem; color: inherit; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
 .ceres-btn-group[data-control-density="compact"] .ceres-btn {
   white-space: nowrap;
 }
@@ -604,6 +609,8 @@ details > summary:focus-visible { outline: 2px solid var(--accent); outline-offs
 :is(.ceres-btn--glass, header.board-header .ceres-btn) .hdr-ic .f { fill: currentColor; }
 :is(.ceres-btn--glass, header.board-header .ceres-btn) .hdr-ic .l { stroke: currentColor; }
 :is(.ceres-btn--glass, header.board-header .ceres-btn) .hdr-ic .d { stroke: color-mix(in srgb, var(--bg2) 72%, var(--primary)); }
+/* Stroke-only setup icons (pencil, bin) take the same light colour as the Menu icons' filled parts. */
+.hdr-menu-panel .hdr-menu-setup-action.ceres-btn .hdr-ic .d { stroke: currentColor; stroke-width: 2; }
 :is(.ceres-btn--glass, header.board-header .ceres-btn) .hdr-ic .a { fill: var(--gold); stroke: color-mix(in srgb, var(--bg2) 60%, var(--shadow)); }
 :is(.ceres-btn--glass, header.board-header .ceres-btn) .hdr-ic .a.h { fill: none; stroke: var(--gold); }
 :root:not([data-theme]) :is(.ceres-btn--glass, header.board-header .ceres-btn) .hdr-ic .a,

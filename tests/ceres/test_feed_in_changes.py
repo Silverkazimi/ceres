@@ -84,7 +84,7 @@ def test_constructions_wait_and_feed_signs_from_changes(live_browser: tuple[Brow
             return
         operation = ["custom_json", {
             "id": "sm_land_operation", "required_auths": [], "required_posting_auths": ["player0005"],
-            "json": json.dumps({"op": "update_worksite", "deed_uid": uid, "project_id": f"p-{uid}"}),
+            "json": json.dumps({"op": "update_worksite", "deed_uid": uid, "project_id": f"p-{uid}", "n": "0123456789abcdef"}),
         }]
         route.fulfill(status=200, content_type="application/json", body=json.dumps({
             "kind": "worksite_completion", "account": "player0005", "key_tier": "Posting", "deed_uid": uid,
@@ -93,8 +93,19 @@ def test_constructions_wait_and_feed_signs_from_changes(live_browser: tuple[Brow
 
     page.route("**/api/board*", board_route)
     page.route("**/worksite-preview*", preview_route)
+    # the review registration (POST /api/confirm/review) is part of every sign path now; served here like the begin below.
+    page.route("**/api/confirm/review*", lambda route: route.fulfill(
+        status=200, content_type="application/json", body=json.dumps({"action_id": "a" * 32, "revision": 1})))
+    page.route("**/api/confirm/intent*", lambda route: route.fulfill(
+        status=200, content_type="application/json", body=json.dumps({
+            "begin_token": "c" * 32, "action_id": "a" * 32, "revision": 1,
+            "server_now": int(datetime.now(timezone.utc).timestamp() * 1000)})))
     page.route("**/api/op-inclusion*", lambda route: route.fulfill(status=200, content_type="application/json", body='{"included":true,"block_num":123}'))
     page.route("**/api/op-verify*", lambda route: route.fulfill(status=200, content_type="application/json", body='{"state":"pending"}'))
+    page_log: list[str] = []   # what the page said, shown if the wallet is never called
+    page.on("console", lambda message: page_log.append(f"console.{message.type}: {message.text}"[:300]))
+    page.on("pageerror", lambda error: page_log.append(f"pageerror: {error}"[:300]))
+    page.on("requestfailed", lambda request: page_log.append(f"requestfailed: {request.url}"[:300]))
     page.goto(f"{base_url}/?player=sample01", timeout=8_000)
     try:
         page.wait_for_function("document.querySelector('#plot-tbody > tr.plot-row') !== null", timeout=15_000)
@@ -144,7 +155,11 @@ def test_constructions_wait_and_feed_signs_from_changes(live_browser: tuple[Brow
 
     sign = panel.page.locator('#changes-overlay [data-checkout-action="sign-worksites"]:not([disabled])')
     sign.click(timeout=8_000)
-    page.wait_for_function("window.__s16649Calls.length === 1", timeout=8_000)
+    try:
+        page.wait_for_function("window.__s16649Calls.length === 1", timeout=8_000)
+    except PlaywrightTimeoutError:
+        pytest.fail("the Keychain stub was never called after Sign; page said: " + " | ".join(page_log[-12:])
+                    + " | toast/panel: " + page.evaluate("document.querySelector('#checkout-panel')?.innerText?.slice(0, 600) || ''"), pytrace=False)
     settle(page)
     calls = page.evaluate("window.__s16649Calls")
     assert len(calls) == 1, "only the ready feed is signed; waiting rows never reach the wallet"

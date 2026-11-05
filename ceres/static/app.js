@@ -1,10 +1,13 @@
 import { initializeSignedQueue, syncQueueHarvestEvidence } from './transaction-queue.js';
+import { confirmNoticeFor } from './confirm-notices.js';
 import { initRegionalDec } from './regional-dec.js';
 import { mountAccountMenu } from './account-menu.js';
+import { mountHeaderMenu } from './header-menu.js';
 import { initBadgeOverlay } from './badge-overlay.js';
 import { initializeButtonIcons } from './button-icons.js';
 import { initializePlotLockHeaderIcon } from './plot-lock.js';
 import { mountThemePicker } from './theme.js';
+import { boardPlanningSetupAction, boardPlanningSetups, toggleBoardPlanning } from './board-planning.js';
 
 // pure comparison used by syncControlsDividers() below -- a divider counts as sitting at
 // a wrapped line's edge when its two neighbours' vertical midpoints differ by more than 6px (i.e.
@@ -31,7 +34,7 @@ import { ensureHazardOverlay } from './hazard.js';
 import { OPERATION_POLLERS, OPERATION_POLL_SCHEDULE_MS, confirmOperationBroadcast, inFlightRecordForEntry, inFlightStoreKey, requestOperationPreview } from './operations.js';
 import { handlePickerFilter, handlePickerKeydown, handleSlotEditorClick } from './picker-actions.js';
 import { EXPANDED_ROWS, alignCloseAll, closeAllPlots, closeMobilePlotPicker, closeMobilePlotSheet, loadPlotDetail, mobilePlotSheetIsOpen, openAllVisiblePlots, openMobilePlotSheet, syncCloseAll, updateMountedRow } from './rows.js';
-import { CERES_STAGE } from './staging.js';
+import { CERES_STAGE, stageToast } from './staging.js';
 import { initPulseSync } from './pulse-sync.js';
 import { initPlanner } from './planner.js';
 import { S } from './state.js';
@@ -832,6 +835,62 @@ if (new URLSearchParams(location.search).get('ir1882-guard') === '1') {
   });
 }
 
+// design 4 (maintainer go ): the desktop Menu. Every entry runs what today's control runs: the Cards places are the
+// Cards page with its ?mode= (card-browser.js / card-market.js / card-combinables.js read it), Harvest, Changes and Account
+// press their own header buttons, Refresh is the avatar's refresh. The Cards page sends Harvest, Changes and Account here as
+// ?open=, read once when the module loads and run once the board has loaded. Declared above the first ready() so no
+// callback reads them uninitialised.
+function boardCardsUrl(mode) {
+  const params = new URLSearchParams();
+  if (CURRENT_PLAYER) params.set('player', CURRENT_PLAYER);
+  params.set('mode', mode);
+  return `/cards?${params}`;
+}
+const BOARD_MENU_ACTIONS = {
+  plots: () => {},
+  myCards: () => { location.href = boardCardsUrl('cards'); },
+  market: () => { location.href = boardCardsUrl('market'); },
+  purchases: () => { location.href = boardCardsUrl('purchases'); },
+  combine: () => { location.href = boardCardsUrl('combine'); },
+  harvest: () => document.getElementById('harvest-btn')?.click(),
+  changes: () => document.getElementById('checkout-btn')?.click(),
+  refresh: () => refreshBoardFromAvatar(),
+  account: () => document.getElementById('account-menu-btn')?.click(),
+  // IN-0267 Q1: planning is a state of this board, toggled here; it changes no live stage.
+  planning: () => {
+    const picker = S.CERES_PICKER;
+    try { toggleBoardPlanning(); } catch (error) { stageToast(`Planning could not open: ${error.message}`, true); return; }
+    if (picker) { S.CERES_PICKER = null; updateMountedRow(picker.deedUid); }
+  },
+};
+async function boardMenuSetupAction(action, id, targetId) {
+  try {
+    if (action === 'rename') id = { id: targetId, name: id };
+    const operation = action === 'live' ? 'start-live' : action;
+    const result = await boardPlanningSetupAction(operation, id);
+    if (['select', 'new', 'live', 'duplicate'].includes(action) && !document.body.dataset.boardMode) BOARD_MENU_ACTIONS.planning();
+    if (action === 'delete') {
+      stageToast(`Deleted ${result.deleted.name}.`, false, { label: 'Undo', run: () => {
+        boardPlanningSetupAction('undo-delete', result.deleted).then(() => stageToast('Setup restored and saved.'))
+          .catch((error) => stageToast(`Setup could not be restored: ${error.message}`, true));
+      } });
+    } else stageToast('Setup saved on this device.');
+  } catch (error) { stageToast(`Setup could not be saved: ${error?.message || error}`, true); }
+}
+const BOARD_OPEN_TARGETS = new Set(['harvest', 'changes', 'account', 'planning']);
+let boardOpenRequest = (() => {
+  try { const key = new URLSearchParams(location.search).get('open'); return BOARD_OPEN_TARGETS.has(key) ? key : null; } catch (_) { return null; }
+})();
+export function runBoardOpenRequest() {
+  const key = boardOpenRequest;
+  boardOpenRequest = null;
+  try {
+    const url = new URL(location.href);
+    if (url.searchParams.has('open')) { url.searchParams.delete('open'); history.replaceState(history.state, '', url); }
+  } catch (_) { /* the address keeps it; nothing else reads it */ }
+  if (key && CURRENT_PLAYER) BOARD_MENU_ACTIONS[key]();
+}
+
 // the header's Cards button opens the read-only card browser for the player on screen.
 // it is now the switcher's Cards half (a link; header-icons.js sets its href from the address). The player on
 // screen wins over the address, which a player switch does not rewrite before the board has loaded.
@@ -861,6 +920,7 @@ ready(() => {
   // (filter option counts, the Clear-all button's visibility, etc.) has actually
   // landed.
   initDone.then(scheduleCenterThemePicker);
+  initDone.then(() => runBoardOpenRequest()); // Harvest / Changes / Account sent from the Cards page
   window.addEventListener('resize', scheduleCenterThemePicker);
   // Pre-landing review fix, round 3: notices/totals above the filter row ('s
   // `#edge-tabs` now depends on `.controls-row`'s measured position) change height on
@@ -873,6 +933,13 @@ ready(() => {
 
 ready(initRegionalDec);
 ready(mountAccountMenu);
+
+ready(() => mountHeaderMenu({ page: 'board', actions: BOARD_MENU_ACTIONS,
+  setups: () => boardPlanningSetups({ includeLive: true }),
+  setupAction: boardMenuSetupAction }));
+window.addEventListener('ceres:board-plan-conflict', () => setTimeout(() =>
+  stageToast('Both setup edits were saved. Your version is a conflict copy.', true), 0));
+window.addEventListener('ceres:board-plan-notice', (event) => stageToast(event.detail, true));
 ready(mountStagedSync);
 ready(initBadgeOverlay);
 

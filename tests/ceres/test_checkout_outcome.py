@@ -159,13 +159,15 @@ console.log(JSON.stringify({{
     assert "Not confirmed yet" in got["timeout"] and "do not buy these listings again" in got["timeout"]
     assert got["timeoutChip"] == "timeout"
     assert 'class="cm-section co-group" data-state="warn"' in got["combineTimeout"] and "Not confirmed yet" in got["combineTimeout"]
-    assert 'data-co-action="combine-check"' in got["combineTimeout"] and "Check again" in got["combineTimeout"]
+    # an older saved combine-timeout row is shown amber with no manual control (it resumes by itself).
+    assert 'combine-check' not in got["combineTimeout"] and "Check again" not in got["combineTimeout"]
     assert 'data-state="danger"' in got["combineFailed"] and "Cards are &lt;locked&gt;" in got["combineFailed"]
     assert 'data-state="warn"' in got["notReady"] and 'data-state="danger"' not in got["notReady"]
     assert got["open"] is False and got["skipped"] is False and got["partial"] is False
 
 
-def test_the_three_minute_mark_is_amber_check_again_not_red():
+def test_past_three_minutes_a_purchase_and_combine_keep_reading_amber_with_no_manual_control():
+    # replaces the 3-minute amber stop and its Check again: the shared confirmer keeps reading.
     got = _vm(r"""
 const realSetTimeout = globalThis.setTimeout;
 globalThis.setTimeout = (fn, ms, ...rest) => realSetTimeout(fn, 0, ...rest);
@@ -177,12 +179,13 @@ const tx = { state: 'sent', tx_id: 'a'.repeat(40), nonce: 'ab'.repeat(8), payloa
 _checkoutForTests.run = { token: 't', txs: [tx], groups: [g] };
 _checkoutForTests.stage = 'outcome';
 verifyCombine(g); verify(tx);
-for (let i = 0; i < 50 && (g.state !== 'combine-timeout' || tx.state !== 'timeout'); i++) await new Promise((r) => realSetTimeout(r, 5));
+for (let i = 0; i < 50 && reads < 4; i++) await new Promise((r) => realSetTimeout(r, 5));
 console.log(JSON.stringify({ g: g.state, tx: tx.state, reads, html: outcomeHtml(_checkoutForTests.run), foot: footHtml() }));
+process.exit(0);
 """)
-    assert got["g"] == "combine-timeout" and got["tx"] == "timeout" and got["reads"] == 3      # state check plus the retained transaction lookup, then amber
+    assert got["g"] == "combine-sent" and got["tx"] in ("sent", "unknown") and got["reads"] >= 4
     assert 'data-state="sold"' not in got["html"] and 'is-danger' not in got["html"]
-    assert got["html"].count("Not confirmed yet") >= 2 and 'data-co-action="check"' in got["foot"]
+    assert "Check again" not in got["html"] + got["foot"] and 'data-co-action="check"' not in got["foot"]
 
 
 def test_a_combine_confirmed_by_the_game_turns_green_through_combine_verify():
@@ -232,7 +235,8 @@ console.log(JSON.stringify({
     assert got["ms"] == {"keychain": 120000, "hiveauth": 110000}
     gate = (STATIC / "broadcast-gate.js").read_text(encoding="utf-8")
     wallet = (STATIC / "wallet.js").read_text(encoding="utf-8")
-    assert "KEYCHAIN_RESPONSE_TIMEOUT_MS = 120000" in gate and "reason: action === 'connect' ? 'expired' : 'watchdog' }), 110000)" in wallet
+    confirmer = (STATIC / "shared-confirmer.js").read_text(encoding="utf-8")
+    assert "KEYCHAIN_RESPONSE_TIMEOUT_MS = WALLET_SILENCE_MS" in gate and "WALLET_SILENCE_MS = 120000" in confirmer and "reason: action === 'connect' ? 'expired' : 'watchdog' }), 110000)" in wallet
 
 
 def test_pay_bar_on_top_and_credits_icon():

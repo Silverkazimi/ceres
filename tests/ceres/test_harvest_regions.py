@@ -228,6 +228,7 @@ def test_batch_source_keeps_fixed_slots_legible_and_uses_existing_endpoints() ->
     assert endpoints == {
         "/api/harvest/routing/stop", "/api/harvest/state", "/api/harvest/preview",
         "/api/harvest/attempt", "/api/harvest/verify",
-        "/api/harvest/routing/harvest-transaction", "/api/harvest/routing/harvest-plan",
+        # the paste-a-transaction-id recovery (/api/harvest/routing/harvest-transaction) is gone.
+        "/api/harvest/routing/harvest-plan",
         "/api/harvest/preflight", "/api/harvest/prepare",
     }

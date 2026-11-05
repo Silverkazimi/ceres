@@ -6,7 +6,7 @@
 // Flow: quote (the server re-reads every listing by id) -> currency -> "cannot be undone" confirm -> fresh server re-check and
 // the exact operation(s) -> the purchase intent on disk BEFORE the wallet is asked -> one Active wallet prompt per transaction
 // > the game's record per listing. An unknown outcome is never permission to buy again ( S3): its listings stay locked
-// and only "Check again" is offered. Waits follow (3 min confirm, 5 min never-sent, 65 min late-broadcast watch).
+// and the shared confirmer () decides it from the chain; never-sent only past Hive's expiry ().
 // No market id, uid or seller is ever shown; the operation the wallet signs carries the listing ids, as it must.
 import { balancesChanged, onBalancesChanged } from './balances-bus.js';
 import { tipAttrs } from './tooltip.js';
@@ -14,15 +14,13 @@ import { CB_FOIL_LABELS } from './card-browser-model.js';
 import { cartPriceHtml } from './card-cart.js';
 import { walletAccount, walletClockTick, walletControlsHtml, walletReady, walletSignLabelHtml, walletWaitHtml } from './wallet.js';
 import { requestBroadcastThroughGate } from './broadcast-gate.js';
+import { confirmAction, confirmationState, registerReview, waitForStep, waitThrough, walletNeverAskedText } from './shared-confirmer.js';
 
-export const VERIFY_SCHEDULE_MS = [0, 2000, 4000, 8000, 12000, 18000, 26000, 36000, 50000, 70000];
-export const RECHECK_MS = 10000;                 // 10 s cadence after the schedule
-export const CONFIRM_TTL_MS = 3 * 60 * 1000;     // the game confirms within 3 minutes, or the row turns red
+// the schedule, its bounds and resume live in shared-confirmer.js; no 3-minute red stop, no rounds cap.
 export const NEVER_SENT_AFTER_MS = 3900 * 1000; // Hive expiry plus the existing inclusion grace
 export const LATE_WATCH_MS = 65 * 60 * 1000;     // legacy constant; unresolved intents remain reserved until definitive evidence
 export const UNDO_TEXT = 'A market purchase cannot be undone. As soon as the game accepts it, the payment leaves your account and the cards are yours.';
 export const UNKNOWN_TEXT = 'Your wallet did not say whether this purchase was sent. Do not buy these listings again until Ceres has an answer.';
-const MAX_ROUNDS = 400;
 const DEC_ICON = '/static/assets/land/token-dec.png';
 // the site's own icon, downloaded once
 // (https://d36mxiodymuqjm.cloudfront.net/website/icons/icon_credits.png, manifest.json), shown after a Credits amount as DEC shows its.
@@ -44,6 +42,9 @@ const co = {
   busy: false,
   lastFocus: null,
 };
+function marketReviewKey(currency, index) {
+  return `market:${currency}:${co.items.map(item => item.lkey).sort().join(',')}:${index}`;
+}
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -86,8 +87,6 @@ export function runIsOpen(run) {
 // ONE transaction; once every listing of it is confirmed bought, Ceres builds the combine of exactly those cards and asks for a
 // second signature (Posting). Never automatic: the maintainer presses "Sign the combine".
 export const GROUP_OPEN = ['waiting', 'building', 'ready', 'review-changed', 'combine-asked', 'combine-sent', 'combine-unknown', 'combine-timeout'];
-export const COMBINE_RETRY_MS = 60000;       // the cards are not in the collection yet: asked again each minute
-export const COMBINE_BUILD_TTL_MS = 5 * 60 * 1000;
 export const TWO_SIGNATURES = '2 signatures: buy, then combine.';
 export function maxGroupsOf(items) {
   const groups = new Map();
@@ -138,9 +137,10 @@ export function checkoutLockedKeys(player) {
 }
 
 // ── server ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-async function post(path, body) {
+async function post(path, body, { signal = null } = {}) {
+  // fix round 3 (astra-review-r3 N4): a confirm read carries the shared scheduler's signal and is aborted with it.
   const response = await fetch(`/api/market/checkout/${path}?player=${encodeURIComponent(co.player)}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), cache: 'no-store',
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), cache: 'no-store', ...(signal ? { signal } : {}),
   });
   let result = null;
   try { result = await response.json(); } catch (_) { result = null; }
@@ -305,8 +305,8 @@ function confirmHtml(quote) {
 }
 
 // red only for a definite no -- the game's
-// record says success:false (its text, escaped), or a listing the game's success record did not include. A wait that ran out, a
-// record not found yet or one that differs is amber "Not confirmed yet" with Check again; it never permits signing again.
+// record says success:false (its text, escaped), or a listing the game's success record did not include. A record not found
+// yet or one that differs is amber "Not confirmed yet" while the shared confirmer keeps reading; it never permits signing again.
 const OUTCOME_CHIP = {
   bought: ['ok', 'Bought'],
   not_bought: ['danger', 'Not bought'],
@@ -318,8 +318,8 @@ const OUTCOME_CHIP = {
   skipped: ['danger', 'Not sent · nothing spent'],
   timeout: ['warn', 'Not confirmed yet'],
 };
-export const NOT_CONFIRMED_TEXT = 'Not confirmed yet: the game has no record of this purchase after 3 minutes. It may still arrive. Press Check again; do not buy these listings again.';
-export const COMBINE_NOT_CONFIRMED_TEXT = 'Not confirmed yet: the game has no record of the combine after 3 minutes. It may still arrive. Press Check again; do not sign it again.';
+export const NOT_CONFIRMED_TEXT = 'Not confirmed yet: the game has no record of this purchase yet. Ceres keeps checking; do not buy these listings again.';
+export const COMBINE_NOT_CONFIRMED_TEXT = 'Not confirmed yet: the game has no record of the combine yet. Ceres keeps checking; do not sign it again.';
 // Per listing: the tx's state, refined by the game's per-listing answer once confirmed.
 export function listingOutcome(tx, lkey) {
   if (tx.state === 'confirmed') return (tx.result?.items || []).find((r) => r.lkey === lkey)?.outcome || 'not_bought';
@@ -339,8 +339,9 @@ export function txLineHtml(tx) {
     return `<p class="cm-note co-result" data-state="${tone}" role="status">${esc(text)}</p>`;
   }
   if (tx.state === 'failed') return `<p class="cm-note co-result" data-state="sold" role="status">The game refused this purchase: ${esc(tx.message || 'no reason given')}. Nothing was bought.</p>`;
-  if (tx.state === 'unknown') return `<p class="cm-note co-result" data-state="warn" role="status">${esc(tx.message ? `Not confirmed yet: ${tx.message} Press Check again; do not buy these listings again.` : tx.historyUnreadable ? 'Ceres could not read your account history; it keeps trying. Do not buy these listings again until this clears.' : UNKNOWN_TEXT)}</p>`;
+  if (tx.state === 'unknown') return `<p class="cm-note co-result" data-state="warn" role="status">${esc(tx.message ? `Not confirmed yet: ${tx.message} Ceres keeps checking; do not buy these listings again.` : tx.historyUnreadable ? 'Ceres could not read your account history; it keeps trying. Do not buy these listings again until this clears.' : UNKNOWN_TEXT)}</p>`;
   if (tx.state === 'timeout') return `<p class="cm-note co-result" data-state="warn" role="status">${esc(NOT_CONFIRMED_TEXT)}</p>`;
+  if (tx.state === 'not_sent' && tx.neverAsked) return `<p class="cm-note co-result" data-state="sold" role="status">${esc(tx.neverAsked)}</p>`;
   if (tx.state === 'not_sent') return '<p class="cm-note co-result" data-state="sold" role="status">The wallet transaction expired without being included. Nothing was spent.</p>';
   if (tx.state === 'declined') return '<p class="cm-note co-result" data-state="sold" role="status">Declined in the wallet. Nothing was sent.</p>';
   if (tx.state === 'skipped') return '<p class="cm-note co-result" data-state="sold" role="status">Not sent: an earlier purchase of this checkout did not go through, so Ceres stopped. Nothing was spent on these.</p>';
@@ -389,9 +390,8 @@ const GROUP_LINE = {
   waiting: ['warn', 'Waiting for the purchase to be confirmed; then Ceres prepares the combine.'],
   building: ['warn', 'All copies are bought. Ceres is preparing the combine (the game can take a minute to hand the cards over)…'],
   ready: ['warn', 'All copies are bought. Sign the combine to make one max-level card (Posting key).'],
-  'combine-unknown': ['warn', 'Your wallet did not say whether the combine was sent. Do not combine these cards again until Ceres has an answer.'],
+  'combine-unknown': ['warn', 'The live combine could not be read before signing. Nothing was signed.'],
   'combine-timeout': ['warn', COMBINE_NOT_CONFIRMED_TEXT],
-  'not-ready': ['warn', 'Not ready yet: the game had not handed every card over within 5 minutes of the purchase.'],
   combined: ['ok', 'Combined: one max-level card.'],
   'combine-failed': ['danger', 'The game refused the combine.'],
   partial: ['warn', 'Not every copy was bought, so nothing is combined.'],
@@ -424,8 +424,7 @@ export function groupsHtml(run) {
     const buttons = g.state === 'ready'
       ? `<button type="button" class="ceres-btn ceres-btn--primary co-combine-btn" data-control-density="comfortable" data-co-action="combine-sign" data-co-group="${i}">${walletSignLabelHtml('Sign the combine with', co.player)}</button><button type="button" class="ceres-btn ceres-btn--secondary co-combine-btn" data-control-density="comfortable" data-co-action="combine-skip" data-co-group="${i}">Not now</button>`
       : g.state === 'review-changed' ? `<button type="button" class="ceres-btn ceres-btn--primary co-combine-btn" data-control-density="comfortable" data-co-action="combine-confirm" data-co-group="${i}">Review the updated combine and continue</button>`
-      : g.state === 'not-ready' ? `<button type="button" class="ceres-btn ceres-btn--secondary co-combine-btn" data-control-density="comfortable" data-co-action="combine-retry" data-co-group="${i}">Try again</button><button type="button" class="ceres-btn ceres-btn--secondary co-combine-btn" data-control-density="comfortable" data-co-action="combine-skip" data-co-group="${i}">Not now</button>`
-      : g.state === 'combine-timeout' || g.state === 'combine-unknown' ? `${g.combine_tx ? `<button type="button" class="ceres-btn ceres-btn--primary co-combine-btn" data-control-density="comfortable" data-co-action="combine-check" data-co-group="${i}">Check again</button>` : ''}<button type="button" class="ceres-btn ceres-btn--secondary co-combine-btn" data-control-density="comfortable" data-co-action="open-combinables">Find combinables</button><button type="button" class="ceres-btn ceres-btn--secondary co-combine-btn" data-control-density="comfortable" data-co-action="combine-skip" data-co-group="${i}">Stop tracking</button>`
+      : g.state === 'combine-unknown' ? `<button type="button" class="ceres-btn ceres-btn--secondary co-combine-btn" data-control-density="comfortable" data-co-action="open-combinables">Find combinables</button><button type="button" class="ceres-btn ceres-btn--secondary co-combine-btn" data-control-density="comfortable" data-co-action="combine-skip" data-co-group="${i}">Stop tracking</button>`
       : g.state === 'partial' ? '<button type="button" class="ceres-btn ceres-btn--secondary co-combine-btn" data-control-density="comfortable" data-co-action="open-combinables">Find combinables</button>' : '';
     const freshReview = g.state === 'review-changed' ? `<div class="cm-note co-group-line" data-state="warn" role="status"><p>The live combine changed. Fresh review:</p><ul>${(g.witness?.cards || []).map((card) => {
       const survivor = String(g.witness?.survivor) === String(card.uid);
@@ -438,21 +437,23 @@ export function groupsHtml(run) {
   }).join('');
 }
 
-// ask the server for the combine of the bought group, again each minute while the cards are not handed over yet.
+// the combine of the bought group is a genuine second step (the game hands the cards over after the
+// purchase); it waits through the shared scheduler until the server can build it -- no 5-minute stop, no "Try again".
 async function buildCombine(g) {
   if (g.building) return;
   g.building = true; g.state = 'building'; g.since = g.since || Date.now(); save();
   const tx = co.run.txs[g.tx];
+  const run = co.run;
   try {
-    while (co.run && g.state === 'building') {
-      let answer = null;
-      try { answer = await post('combine', { tx_id: tx.tx_id, nonce: tx.nonce, expected_payload: tx.payload, lkeys: g.lkeys }); } catch (_) { answer = null; }
-      if (answer?.status === 'ready' && Array.isArray(answer.operation)) { g.operation = answer.operation; g.resulting_bcx = answer.resulting_bcx ?? null; g.witness = answer.witness || null; g.state = 'ready'; break; }
-      if (answer?.status === 'partial') { g.state = 'partial'; g.missing = (answer.missing || []).length; break; }
-      if (answer?.status === 'failed') { g.state = 'none'; g.message = answer.message || ''; break; }  // the game refused the purchase
-      if (Date.now() - g.since > COMBINE_BUILD_TTL_MS) { g.state = 'not-ready'; g.message = answer?.message || ''; break; }
-      await new Promise((resolve) => setTimeout(resolve, COMBINE_RETRY_MS));
-    }
+    await waitForStep({ key: `combine-build:${co.player}:${tx.nonce}:${g.lkeys.join(',')}`, onUpdate: () => save(), check: async () => {
+      if (co.run !== run || g.state !== 'building') return { state: 'refused', gone: true };
+      const answer = await post('combine', { tx_id: tx.tx_id, nonce: tx.nonce, expected_payload: tx.payload, lkeys: g.lkeys });
+      if (answer?.status === 'ready' && Array.isArray(answer.operation)) { g.operation = answer.operation; g.action_id = (await registerReview(co.player, [g.operation], { actionId: g.action_id || null, reviewKey: `market-combine:${g.lkeys.join(',')}` })).actionId; g.resulting_bcx = answer.resulting_bcx ?? null; g.witness = answer.witness || null; g.state = 'ready'; return { state: 'confirmed' }; }
+      if (answer?.status === 'partial') { g.state = 'partial'; g.missing = (answer.missing || []).length; return { state: 'confirmed' }; }
+      if (answer?.status === 'failed') { g.state = 'none'; g.message = answer.message || ''; return { state: 'refused' }; }  // the game refused the purchase
+      g.message = answer?.message || '';
+      return { state: 'pending' };
+    } });
   } finally { g.building = false; save(); }
 }
 
@@ -463,12 +464,19 @@ async function signCombine(g) {
   const purchase = co.run.txs[g.tx];
   let fresh;
   try { fresh = await post('combine', { tx_id: purchase.tx_id, nonce: purchase.nonce, expected_payload: purchase.payload, lkeys: g.lkeys }); }
-  catch (_) { co.busy = false; g.state = 'combine-unknown'; g.message = 'The live combine could not be checked. Check again before signing.'; save(); return; }
-  if (fresh?.status !== 'ready' || !Array.isArray(fresh.operation)) { co.busy = false; g.state = fresh?.status === 'failed' ? 'combine-failed' : 'not-ready'; g.message = fresh?.message || ''; save(); return; }
+  catch (_) { co.busy = false; g.state = 'ready'; g.message = 'The live combine could not be read just now. Nothing was signed; sign again when ready.'; save(); return; }
+  if (fresh?.status !== 'ready' || !Array.isArray(fresh.operation)) {
+    co.busy = false; g.message = fresh?.message || '';
+    if (fresh?.status === 'failed') { g.state = 'combine-failed'; save(); return; }
+    g.state = 'waiting'; g.building = false; buildCombine(g); return;  // not handed over yet: the shared wait builds it again
+  }
+  const actionId = g.action_id || (g.operation
+    ? confirmationState(co.player, [g.operation])?.actionId || null : null);
   const oldWitness = JSON.stringify(g.witness || null);
   const newWitness = JSON.stringify(fresh.witness || null);
   g.operation = fresh.operation; g.resulting_bcx = fresh.resulting_bcx ?? null;
   if (!g.witness || oldWitness !== newWitness) {
+    g.action_id = (await registerReview(co.player, [g.operation], { actionId })).actionId;
     g.witness = fresh.witness || null; g.state = 'review-changed'; g.message = 'The live combine changed. Review it before signing.';
     co.busy = false; save(); return;
   }
@@ -481,43 +489,42 @@ async function signCombine(g) {
     const result = await requestBroadcastThroughGate(co.player, [g.operation], (response) => {
       const id = response?.result?.id || response?.result?.tx_id || response?.tx_id;
       if (typeof id === 'string' && /^[a-f0-9]{40}$/i.test(id)) g.combine_tx = id.toLowerCase();
-    }, 'Posting');
+    }, 'Posting', { actionId });
     if (typeof result?.txId === 'string' && /^[a-f0-9]{40}$/i.test(result.txId)) g.combine_tx = result.txId.toLowerCase();
   } catch (error) { failure = error; if (typeof error?.txId === 'string' && /^[a-f0-9]{40}$/i.test(error.txId)) g.combine_tx = error.txId.toLowerCase(); }
+  g.action_id = confirmationState(co.player, [g.operation])?.actionId || actionId || null;
   co.busy = false;
   if (failure && failure.broadcasted === false && !g.combine_tx) { g.state = 'ready'; save(); return; }  // declined: nothing sent, the button stays
-  g.state = g.combine_tx ? 'combine-sent' : 'combine-unknown';  // S3: no id -> unknown, never a second combine prompt
+  g.state = 'combine-sent';  // S3 / : with or without an id the shared confirmer decides; never a second prompt
   save();
-  if (g.combine_tx) verifyCombine(g);
+  verifyCombine(g);
 }
 
 // the combine's game outcome is the game's own record of the signed combine, by id (/api/market/checkout/combine-verify
-// success + the merged card), like the purchase's. It used /api/op-verify, whose live collection re-read also demands the
-// survivor's collection power equal the inputs' sum -- the game does not keep that, so the maintainer's finished combine
-// (e72cfe27, success, 115 CC) stayed "pending" until the 3-minute clock turned it red. Only the game's success:false is red
-// the 3-minute mark is amber "Not confirmed yet" with Check again ( clock), never a second combine.
-async function verifyCombine(g, resumed = false) {
-  if (g.checking || !g.combine_tx) return;
+// success + the merged card), not a collection-power equality the game does not keep. : the wait is the shared
+// confirmer's (no 3-minute amber stop, no Check again); a missing id is found by the confirmer's own-history finder.
+async function verifyCombine(g) {
+  if (g.checking || !g.operation) return;
   g.checking = true;
   if (!g.signed_at) g.signed_at = new Date().toISOString();
-  if (resumed) g.check_from = new Date().toISOString();
-  const start = () => Math.max(Date.parse(g.signed_at) || 0, Date.parse(g.check_from || '') || 0);
   try {
-    for (let i = 0; i < MAX_ROUNDS; i += 1) {
-      if (i > 0 && Date.now() - start() > CONFIRM_TTL_MS) { g.state = 'combine-timeout'; return; }
-      const wait = i < VERIFY_SCHEDULE_MS.length ? VERIFY_SCHEDULE_MS[i] - (VERIFY_SCHEDULE_MS[i - 1] || 0) : RECHECK_MS;
-      if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
-      let result = null;
-      try { result = await post('combine-verify', { tx_id: g.combine_tx, operation: g.operation }); } catch (_) { result = null; }
-      if (result?.status === 'confirmed') {
-        g.state = 'combined'; g.bcx = result.bcx; g.message = '';
-        balancesChanged({ player: co.player, assets: ['CARDS'], id: `combine:${g.combine_tx}` });
-        save(); co.deps?.onCombined?.(g); settle(); return;
-      }
-      if (result?.status === 'failed') { g.state = 'combine-failed'; g.message = String(result.message || ''); return; }
-      g.message = result?.status === 'mismatch' ? String(result.message || '') : '';  // shown with "Not confirmed yet"; still amber
+    const answer = await confirmAction({ account: co.player, operations: [g.operation], txId: g.combine_tx || null,
+      onUpdate: (update) => { if (update.txId && !g.combine_tx) { g.combine_tx = update.txId; save(); } },
+      check: async (txId) => {
+        g.combine_tx = txId;
+        const result = await post('combine-verify', { tx_id: txId, operation: g.operation });
+        if (result?.status === 'confirmed') return { state: 'confirmed', result };
+        if (result?.status === 'failed') return { state: 'refused', result };
+        g.message = result?.status === 'mismatch' ? String(result.message || '') : '';  // shown with "Not confirmed yet"; still amber
+        return { state: 'pending' };
+      } });
+    if (answer.state === 'confirmed') {
+      g.state = 'combined'; g.bcx = answer.result?.bcx ?? g.bcx ?? null; g.message = '';
+      balancesChanged({ player: co.player, assets: ['CARDS'], id: `combine:${g.combine_tx}` });
+      save(); co.deps?.onCombined?.(g); settle(); return;
     }
-    g.state = 'combine-timeout';
+    if (answer.state === 'never-sent') { g.state = 'ready'; g.combine_tx = null; g.message = answer.error || 'The combine was not sent. Nothing changed.'; return; }
+    g.state = 'combine-failed'; g.message = String(answer.result?.message || answer.error || '');
   } finally { g.checking = false; save(); }
 }
 
@@ -529,10 +536,9 @@ function footHtml() {
   if (co.stage === 'review' && q) return `${wallet}${close}`;  // total and the pay buttons are in the bar at the top
   if (co.stage === 'confirm' && q) return `${wallet}<button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-co-action="back">Back</button>`;
   if (co.stage === 'outcome' && co.run) {
-    const again = co.run.txs.some((tx) => ['timeout'].includes(tx.state) || (tx.stopped && OPEN_STATES.includes(tx.state)));
     const open = runIsOpen(co.run) || co.run.txs.some((tx) => tx.state === 'asked');
     const doneStyle = (co.run.groups || []).some((g) => GROUP_OPEN.includes(g.state)) ? 'secondary' : 'primary';
-    return `${again ? '<button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-co-action="check">Check again</button>' : ''}<button type="button" class="ceres-btn ceres-btn--${doneStyle}" data-control-density="comfortable" data-co-action="done">${open ? 'Close (keeps checking)' : 'Done'}</button>`;
+    return `<button type="button" class="ceres-btn ceres-btn--${doneStyle}" data-control-density="comfortable" data-co-action="done">${open ? 'Close (keeps checking)' : 'Done'}</button>`;
   }
   if (co.stage === 'error') return `${close}<button type="button" class="ceres-btn ceres-btn--primary" data-control-density="comfortable" data-co-action="retry">Try again</button>`;
   return close;
@@ -626,6 +632,13 @@ async function sign() {
     render(); return;
   }
   const txList = fresh.transactions.map((tx) => ({ nonce: tx.nonce, payload: tx.payload, operations: tx.operations, lkeys: tx.lkeys, price: tx.price, currency: tx.currency, copy_prices_dec: Object.fromEntries(tx.lkeys.map((k) => { const row = (co.quote.items || []).find((it) => it.lkey === k); return [k, row?.price_usd != null && co.quote.dec_price ? row.price_usd / co.quote.dec_price : null]; })), state: 'pending', tx_id: null }));
+  const reviewedByKey = new Map((co.reviewKeys || []).map((key, index) => [key, co.reviewActionIds?.[index] || null]));
+  for (const [index, tx] of txList.entries()) {
+    const key = marketReviewKey(tx.currency, index);
+    tx.action_id = (await registerReview(co.player, tx.operations, { actionId: reviewedByKey.get(key) || null, reviewKey: key })).actionId;
+  }
+  co.reviewActionIds = txList.map(tx => tx.action_id);
+  co.reviewKeys = txList.map((tx, index) => marketReviewKey(tx.currency, index));
   // a maxed-card group whose listings are all in one transaction of this purchase is combined after it.
   const groups = maxGroupsOf(co.items).map((g) => ({ ...g, tx: txList.findIndex((tx) => g.lkeys.every((k) => tx.lkeys.includes(k))) })).filter((g) => g.tx >= 0)
     .map((g) => ({ ...g, state: 'waiting' }));
@@ -639,6 +652,29 @@ async function sign() {
   co.stage = 'signing'; co.note = null; render();
   for (let i = 0; i < co.run.txs.length; i += 1) {
     const tx = co.run.txs[i];
+    const actionId = tx.action_id || (Array.isArray(tx.operations)
+      ? confirmationState(co.player, tx.operations)?.actionId || null : null);
+    if (i > 0) {
+      // A later transaction's prepared purchase record belongs to its first handoff only.
+      // Requote it now, then require another review if listings or price moved.
+      let rebuilt;
+      try {
+        rebuilt = await post('preview', { quote_id: co.quote.quote_id, currency: co.currency,
+          confirmed_total: currencyChoice(co.quote, co.currency).total });
+      } catch (error) {
+        co.note = { tone: 'warn', text: 'The remaining purchase needs a fresh review before signing.' };
+        markSkipped(i); writeRun(co.player, co.run); break;
+      }
+      const replacement = rebuilt.transactions?.find(candidate => JSON.stringify(candidate.lkeys) === JSON.stringify(tx.lkeys));
+      if (!replacement || replacement.price !== tx.price || replacement.currency !== tx.currency
+          || JSON.stringify(replacement.payload && { ...replacement.payload, n: null }) !== JSON.stringify(tx.payload && { ...tx.payload, n: null })) {
+        co.note = { tone: 'warn', text: 'The remaining purchase terms changed. Review the fresh quote before signing.' };
+        markSkipped(i); writeRun(co.player, co.run); break;
+      }
+      Object.assign(tx, { nonce: replacement.nonce, payload: replacement.payload, operations: replacement.operations });
+      tx.action_id = (await registerReview(co.player, tx.operations, { actionId })).actionId;
+      if (!writeRun(co.player, co.run)) { markSkipped(i); break; }
+    }
     const signingPlayer = co.player;
     const signingRun = co.run;
     tx.state = 'asked'; tx.asked_at = new Date().toISOString();
@@ -653,9 +689,10 @@ async function sign() {
           writeRun(signingPlayer, signingRun); // late wallet callbacks persist their transaction evidence
           if (co.player === signingPlayer && co.run === signingRun) render();
         }
-      }, 'Active', { direct: true });  // one "sign and send" prompt, Active, like the game
+      }, 'Active', { direct: true, actionId });  // one "sign and send" prompt, Active, like the game
       if (typeof result?.txId === 'string' && /^[a-f0-9]{40}$/i.test(result.txId)) tx.tx_id = result.txId.toLowerCase();
     } catch (error) { failure = error; if (typeof error?.txId === 'string' && /^[a-f0-9]{40}$/i.test(error.txId)) tx.tx_id = error.txId.toLowerCase(); }
+    tx.action_id = confirmationState(signingPlayer, tx.operations)?.actionId || actionId || null;
     tx.signed_at = new Date().toISOString();
     if (failure && failure.broadcasted === false && !tx.tx_id) {
       tx.state = 'declined'; markSkipped(i + 1); writeRun(co.player, co.run); break;
@@ -668,15 +705,39 @@ async function sign() {
   co.busy = false; co.stage = 'outcome'; render();
   settle();  // a purchase confirmed while later wallet prompts were still open
 }
+
+async function registerMarketQuoteReview() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const quoteId = co.quote.quote_id;
+    const currency = co.currency;
+    const response = await fetch(`/api/confirm/market-terms?player=${encodeURIComponent(co.player)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quote_id: quoteId, currency }), signal: controller.signal,
+    });
+    if (!response.ok) return;
+    const terms = await response.json();
+    if (co.quote?.quote_id !== quoteId || co.currency !== currency) return;
+    const prior = new Map((co.reviewKeys || []).map((key, index) => [key, co.reviewActionIds?.[index] || null]));
+    const keys = (terms.transactions || []).map((_, index) => marketReviewKey(currency, index));
+    co.reviewActionIds = await Promise.all((terms.transactions || []).map(async (tx, index) =>
+      (await registerReview(co.player, tx.operations, { actionId: prior.get(keys[index]) || null,
+        reviewKey: keys[index] })).actionId));
+    co.reviewKeys = keys;
+  } catch (_) { /* the sign-time preview still registers before wallet handoff */ }
+  finally { clearTimeout(timeout); }
+}
 function markSkipped(from) {
   for (let j = from; j < co.run.txs.length; j += 1) if (co.run.txs[j].state === 'pending') co.run.txs[j].state = 'skipped';
 }
 
 // the game's record by id; with no id, the player's own history by nonce. Released as "not sent"
 // only on positive evidence (a SUCCESSFUL covering history read, 3,900 seconds after the wallet was asked).
-async function lookupNonce(tx) {
+async function lookupNonce(tx, signal = null) {
   try {
-    const found = await post('find', { nonce: tx.nonce, ...(tx.asked_at ? { since: tx.asked_at } : {}) });
+    const found = await post('find', { nonce: tx.nonce, ...(tx.asked_at ? { since: tx.asked_at } : {}) }, { signal });
+    if (signal?.aborted) return 'unknown';
     if (found?.status === 'found') { tx.tx_id = found.tx_id; tx.historyUnreadable = false; return 'found'; }
     if (found?.status === 'not_found' && found.covered === true) { tx.historyUnreadable = false; return 'not_found'; }
   } catch (_) { /* unknown */ }
@@ -708,7 +769,10 @@ function ensureTick() {
     for (const el of overlay.querySelectorAll?.('[data-co-since]') || []) el.textContent = elapsedText(el.dataset.coSince);
   }, 1000);
 }
-function neverSent(tx) {
+function neverSent(tx, answer = null) {
+  // IN-0888: "your wallet never asked you" is the confirmer's own text (walletNeverAskedText: PAYMENT_PROMPT_OPEN_ENDING
+  // for a Keychain prompt left open past the lifetime, pending maintainer question).
+  tx.neverAsked = answer?.by === 'wallet-expired' ? (answer.error || walletNeverAskedText(tx.operations, 'lifetime')) : null;
   tx.state = 'not_sent'; tx.historyUnreadable = false; finish(tx);
 }
 function finish(tx) {
@@ -728,48 +792,58 @@ function finish(tx) {
   if (co.run && !runIsOpen(co.run)) co.deps?.onSettled?.();
   settle();
 }
-async function verify(tx, resumed = false) {
+// One purchase, confirmed by the shared confirmer (): the game's record by id; without an id the confirmer's own-history
+// finder (this page signed it) or, for an intent restored without its operations, the purchase finder by nonce. "Not sent" only
+// on positive evidence past Hive's expiry ( / / ).
+async function verify(tx) {
   if (tx.checking) return;
-  tx.checking = true; tx.stopped = false;
-  if (resumed) tx.checkFrom = new Date().toISOString();
-  const start = () => Math.max(Date.parse(tx.signed_at || tx.asked_at) || 0, Date.parse(tx.checkFrom || '') || 0);
-  const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-  try {
-    for (let i = 0; i < MAX_ROUNDS; i += 1) {
-      if (i > 0 && tx.tx_id && Date.now() - start() > CONFIRM_TTL_MS) { tx.state = 'timeout'; save(); return; }
-      const wait = i < VERIFY_SCHEDULE_MS.length ? VERIFY_SCHEDULE_MS[i] - (VERIFY_SCHEDULE_MS[i - 1] || 0) : RECHECK_MS;
-      if (wait) await pause(wait);
-      if (!tx.tx_id) {
-        const seen = await lookupNonce(tx);
-        if (seen === 'not_found' && Date.now() - Date.parse(tx.asked_at || '') >= NEVER_SENT_AFTER_MS) { neverSent(tx); return; }
-        if (seen !== 'found') { save(); continue; }
-        if (tx.state === 'unknown') tx.state = 'sent';
-        save();
-      }
-      let result;
-      try { result = await post('verify', { tx_id: tx.tx_id, nonce: tx.nonce, expected_payload: tx.payload }); } catch (_) { continue; }
-      if (result.status === 'confirmed') { tx.state = 'confirmed'; tx.result = result; finish(tx); return; }
-      if (result.status === 'failed') { tx.state = 'failed'; tx.message = result.message; finish(tx); return; }
-      if (result.status === 'mismatch') { tx.state = 'unknown'; tx.message = result.message; tx.stopped = true; save(); return; }  // the maintainer checks; Check again reads it anew
-      if (result.status === 'not_found') {
-        if (await expiredAndAbsent(tx)) { neverSent(tx); return; }
-        tx.state = 'unknown'; save(); continue;
-      }
+  tx.checking = true;
+  const check = async (txId, { signal } = {}) => {
+    if (txId && !tx.tx_id) { tx.tx_id = txId; if (tx.state === 'unknown') tx.state = 'sent'; save(); }
+    if (!tx.tx_id) {
+      const seen = await lookupNonce(tx, signal);
+      // fix round 2 (astra-r2 P1-7): no "not sent" from this browser's clock; a purchase without an id stays
+      // honestly unresolved until its id is found (a known id is aged by the server's own clock, /api/op-inclusion).
+      if (seen !== 'found') { save(); return { state: 'pending', message: 'Ceres cannot prove yet whether this purchase was sent. Nothing will be sent again; it keeps looking.' }; }
+      if (tx.state === 'unknown') tx.state = 'sent';
+      save();
     }
-    tx.stopped = true; save();
+    const result = await post('verify', { tx_id: tx.tx_id, nonce: tx.nonce, expected_payload: tx.payload }, { signal });
+    if (signal?.aborted) return { state: 'pending', stale: true };   // P1-6: an abandoned read decides nothing
+    if (result.status === 'confirmed') return { state: 'confirmed', result };
+    if (result.status === 'failed') return { state: 'refused', result };
+    if (result.status === 'mismatch') { tx.state = 'unknown'; tx.message = result.message; save(); return { state: 'pending' }; }
+    if (result.status === 'not_found') {
+      // With a confirmer record, absence by id is the shared scheduler's chain read on the server's clock (F7); only a
+      // legacy purchase (no operations saved) keeps its own expiry check.
+      if (!shared && await expiredAndAbsent(tx)) return { state: 'never-sent' };
+      tx.state = 'unknown'; save();
+    }
+    return { state: 'pending' };
+  };
+  const shared = tx.operations ? confirmationState(co.player, tx.operations) : null;
+  try {
+    const answer = shared
+      ? await confirmAction({ account: co.player, operations: tx.operations, txId: tx.tx_id, check })
+      : await waitThrough({ key: `checkout:${co.player}:${tx.nonce}`, account: co.player, check: (options) => check(tx.tx_id, options), since: tx.asked_at }).done;
+    if (answer.state === 'confirmed') { tx.state = 'confirmed'; tx.result = answer.result ?? tx.result ?? null; finish(tx); return; }
+    if (answer.state === 'refused') { tx.state = 'failed'; tx.message = answer.result?.message || answer.error; finish(tx); return; }
+    neverSent(tx, answer);
   } finally { tx.checking = false; }
 }
 function resumeGroups() {
   for (const g of co.run?.groups || []) {
     g.checking = false; g.building = false;
     if (g.state === 'building') buildCombine(g);
-    else if (g.state === 'combine-asked') g.state = 'combine-unknown';  // the page ended at the wallet prompt
-    if (g.state === 'combine-sent' || (g.state === 'combine-unknown' && g.combine_tx)) verifyCombine(g);
+    if (g.state === 'combine-asked' || g.state === 'combine-timeout') g.state = 'combine-sent';  // older saved runs too
+    if (g.state === 'not-ready') { g.state = 'waiting'; buildCombine(g); }
+    if (g.state === 'combine-sent') verifyCombine(g);
   }
 }
 function resumeAll() {
   resumeGroups();
   for (const tx of co.run?.txs || []) {
+    if (tx.state === 'timeout') tx.state = tx.tx_id ? 'sent' : 'unknown';  // a run saved before
     if (['sent', 'unknown', 'asked'].includes(tx.state)) {
       if (tx.state === 'asked') tx.state = 'unknown';  // the page ended while the wallet was asked: its outcome is unknown
       verify(tx);
@@ -807,7 +881,7 @@ async function onClick(event) {
   if (action === 'close' || action === 'done') { closeCheckout(); return; }
   if (action === 'wallet') { document.getElementById('regional-dec-button')?.click(); return; }  // the page's own wallet, over this dialog
   if (action === 'currency') { co.currency = button.dataset.coCurrency; co.note = null; render(); return; }
-  if (action === 'continue' && co.currency) { co.stage = 'confirm'; render(); return; }
+  if (action === 'continue' && co.currency) { await registerMarketQuoteReview(); co.stage = 'confirm'; render(); return; }
   if (action === 'back') { co.stage = 'review'; render(); return; }
   if (action === 'sign') { await sign(); return; }
   if (action === 'retry') { await loadQuote(co.items || []); return; }
@@ -816,16 +890,15 @@ async function onClick(event) {
   if (action === 'combine-sign' && group) { await signCombine(group); return; }
   if (action === 'combine-confirm' && group) { group.state = 'ready'; save(); await signCombine(group); return; }
   if (action === 'combine-skip' && group) { group.state = 'skipped'; save(); render(); return; }
-  if (action === 'combine-retry' && group) { group.state = 'building'; group.since = Date.now(); buildCombine(group); render(); return; }
-  if (action === 'combine-check' && group) { group.state = 'combine-sent'; verifyCombine(group, true); render(); return; }
   if (action === 'open-combinables') { closeCheckout(); document.getElementById('cb-mode-combine')?.click(); return; }
-  if (action === 'check') { for (const tx of co.run?.txs || []) if (tx.state === 'timeout' || tx.stopped) { tx.state = tx.tx_id ? 'sent' : 'unknown'; verify(tx, true); } render(); }
+
 }
 
 // Entry point: deps = { player, items (the cart's items), onBought(lkeys), onSettled(), onClose() }.
 export async function openCheckout(deps) {
   co.deps = deps;
   co.player = String(deps.player || '').toLowerCase();
+  co.reviewActionIds = null; co.reviewKeys = null;
   co.items = (deps.items || []).slice();
   co.names = new Map(co.items.map((it) => [it.lkey, it]));
   co.test = false; co.note = null; co.busy = false; co.buyMax = Boolean(deps.buyMax);

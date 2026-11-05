@@ -418,7 +418,7 @@ console.log(JSON.stringify({ html, out, undo: UNDO_TEXT }));
 def test_checkout_source_contracts():
     js = (STATIC / "card-checkout.js").read_text(encoding="utf-8")
     # Active, one sign-and-send prompt per transaction, through the shared gate
-    assert "requestBroadcastThroughGate(signingPlayer, tx.operations" in js and "'Active', { direct: true }" in js
+    assert "requestBroadcastThroughGate(signingPlayer, tx.operations" in js and "'Active', { direct: true, actionId }" in js
     sign = js[js.index("async function sign()"):js.index("function markSkipped")]
     # the intent is stored before the wallet is asked; an unknown or declined answer stops the rest of the checkout
     assert sign.index("writeRun(co.player, co.run))") < sign.index("requestBroadcastThroughGate")
@@ -426,8 +426,12 @@ def test_checkout_source_contracts():
     assert "if (runIsOpen(open)) return 'taken'" in sign and "await adoptLate()" in sign
     # clocks
     # An unknown wallet answer stays reserved through Hive expiry plus the inclusion grace.
-    assert "CONFIRM_TTL_MS = 3 * 60 * 1000" in js and "NEVER_SENT_AFTER_MS = 3900 * 1000" in js and "RECHECK_MS = 10000" in js
-    assert "Date.now() - Date.parse(tx.asked_at || '') >= NEVER_SENT_AFTER_MS" in js
+    # no 3-minute red stop and no own recheck cadence; the shared confirmer schedules every read.
+    assert "CONFIRM_TTL_MS" not in js and "RECHECK_MS" not in js and "NEVER_SENT_AFTER_MS = 3900 * 1000" in js and "confirmAction(" in js
+    assert "const shared = tx.operations ? confirmationState(co.player, tx.operations) : null" in js
+    assert "await confirmAction({ account: co.player, operations: tx.operations, txId: tx.tx_id, check })" in js
+    assert "if (answer.state === 'confirmed')" in js and "if (answer.state === 'refused')" in js
+    assert "neverSent(tx, answer)" in js  # server-backed proof; browser age alone cannot end it
     # The fresh combine witness uses copy UIDs internally; checkout UI must not expose market IDs or seller data.
     assert not re.search(r"market_id|seller", js.replace("// No market id, uid or seller is ever shown", ""))
     cart_js = (STATIC / "card-cart.js").read_text(encoding="utf-8")
@@ -524,6 +528,6 @@ console.log(JSON.stringify({ html, two: TWO_SIGNATURES }));
     assert "1 of 2 listings were not bought" in got["html"] and got["html"].count('data-co-action="combine-sign"') == 1
     js = (STATIC / "card-checkout.js").read_text(encoding="utf-8")
     sign = js[js.index("async function signCombine"):js.index("async function verifyCombine")]
-    assert "'Posting'" in sign and "g.state = g.combine_tx ? 'combine-sent' : 'combine-unknown'" in sign
+    assert "'Posting'" in sign and "g.state = 'combine-sent';" in sign   # with or without an id the confirmer decides
     build = js[js.index("async function buildCombine"):js.index("async function signCombine")]
     assert "requestBroadcastThroughGate" not in build                     # building never signs; the maintainer presses "Sign the combine"

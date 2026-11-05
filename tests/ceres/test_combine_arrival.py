@@ -29,6 +29,7 @@ NOT yet mutation-proven the way the retired file's `_mutation_is_red` twins were
 from __future__ import annotations
 
 import json
+import time
 import urllib.parse
 import urllib.request
 from typing import Any
@@ -137,7 +138,7 @@ def _mock_combine_build(page: Page, preview: dict) -> None:
     the page signs only when that preview still names the reviewed survivor, result and destroyed
     copies (`combineReviewMatches`, static/combine-dialog.js), so the reviewed preview is echoed."""
     body = json.dumps({"operation": ["custom_json", {
-        "id": "sm_combine_cards", "json": "{}", "required_auths": [], "required_posting_auths": ["player0005"],
+        "id": "sm_combine_cards", "json": json.dumps({"n": "c0b1c0b1c0b1c0b1"}), "required_auths": [], "required_posting_auths": ["player0005"],
     }], "preview": preview})
     page.route(
         "**/api/combine/build*",
@@ -145,7 +146,7 @@ def _mock_combine_build(page: Page, preview: dict) -> None:
     )
 
 
-def _install_keychain_stub(page: Page, tx_id: str = "FAKE-COMBINE-TX") -> None:
+def _install_keychain_stub(page: Page, tx_id: str = "3419a588c50c6d1487d772047386fa04ad31c781") -> None:
     page.add_init_script(
         f"""window.hive_keychain = {{requestBroadcast: (account, operations, key, callback) => {{
           setTimeout(() => callback({{success: true, result: {{id: '{tx_id}'}}}}), 10);
@@ -172,12 +173,29 @@ def _mock_op_verify(page: Page, responses: list[dict]) -> list:
 def _open_dialog(page: Page, base_url: str, row: dict, worker: dict) -> None:
     """Opens the real dialog for `worker`'s printing through the board's `?combine=` door
     (`row` names the plot the printing was found on; the dialog itself is not tied to it)."""
+    page.route("**/api/confirm/intent*", lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"begin_token": "c0b1c0b1c0b1c0b1", "server_now": int(time.time() * 1000)})))
     open_combine_by_print(page, base_url, worker)
     page.locator("#combine-dialog-body .combine-sign").wait_for(timeout=15_000)
 
 
 def _sign(page: Page) -> None:
     page.locator("#combine-dialog-body .combine-sign").click()
+
+
+def _install_confirmer_clock(page: Page) -> None:
+    page.evaluate("""async () => {
+      const {__setConfirmerClock} = await import('/static/shared-confirmer.js');
+      let now = Date.now();
+      let sleepers = [];
+      __setConfirmerClock({now: () => now, sleep: ms => new Promise(resolve => sleepers.push({due: now + ms, resolve}))});
+      window.__advanceConfirmer = async ms => {
+        now += ms;
+        const due = sleepers.filter(item => item.due <= now);
+        sleepers = sleepers.filter(item => item.due > now);
+        due.forEach(item => item.resolve());
+        for (let i = 0; i < 12; i += 1) await Promise.resolve();
+      };
+    }""")
 
 
 # Guard 1: domain-confirmed renders the arrival state -- headline, ledger
@@ -200,6 +218,7 @@ def test_confirmed_verdict_renders_arrival_state() -> None:
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-confirmed", "combine_refresh": None}])
             _open_dialog(page, base_url, row, worker)
+            _install_confirmer_clock(page)
 
             _sign(page)
             title = page.locator("#combine-dialog-title")
@@ -381,6 +400,7 @@ def test_pending_verdict_stays_optimistic_never_claims_confirmation() -> None:
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-pending", "notices": []}])
             _open_dialog(page, base_url, row, worker)
+            _install_confirmer_clock(page)
 
             _sign(page)
             title = page.locator("#combine-dialog-title")
@@ -394,7 +414,9 @@ def test_pending_verdict_stays_optimistic_never_claims_confirmation() -> None:
             assert "Combined — confirming in game" in text
             assert "not yet confirmed" in text
             assert "Not confirmed yet" in text
-            assert body.locator('[data-combine-action="verify"]').count() == 1
+            assert body.locator('[data-combine-action="verify"]').count() == 0
+            page.evaluate("window.__advanceConfirmer(2000)")
+            page.wait_for_function("() => performance.getEntriesByType('resource').filter(item => item.name.includes('/api/op-verify')).length >= 2", timeout=8_000)
         finally:
             page.close()
 
@@ -413,15 +435,13 @@ def test_pending_verdict_schedules_and_counts_polls() -> None:
         survivor, consumed = _survivor_and_consumed(worker)
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
-            # Shrinks OPERATION_POLL_SCHEDULE_MS (app.js module scope reads this
-            # override at load time) so the test doesn't wait a real 3s/8s/...
-            page.add_init_script("window.__ceresOperationPollSchedule = [300, 600, 900];")
             _install_idle_cards_mock(page, [survivor, consumed])
             preview = _mock_combine_preview(page, survivor["uid"], [consumed["uid"]])
             _mock_combine_build(page, preview)
             _install_keychain_stub(page)
             requests = _mock_op_verify(page, [{"state": "domain-pending", "notices": []}])
             _open_dialog(page, base_url, row, worker)
+            _install_confirmer_clock(page)
 
             _sign(page)
             page.wait_for_selector("#combine-dialog-body .combine-verdict.is-pending", timeout=30_000)
@@ -430,7 +450,10 @@ def test_pending_verdict_schedules_and_counts_polls() -> None:
             # wait resolves -- that race is not the thing under test.
             assert len(requests) >= 1  # the initial sign-time verify, at minimum
 
-            page.wait_for_timeout(1600)  # >= 300 + 600, well under the real 3000ms first tick, with jitter margin
+            page.evaluate("window.__advanceConfirmer(2000)")
+            page.wait_for_function("() => performance.getEntriesByType('resource').filter(item => item.name.includes('/api/op-verify')).length >= 2", timeout=8_000)
+            page.evaluate("window.__advanceConfirmer(2000)")
+            page.wait_for_function("() => performance.getEntriesByType('resource').filter(item => item.name.includes('/api/op-verify')).length >= 3", timeout=8_000)
             assert len(requests) >= 3, f"expected at least 2 scheduled polls beyond the initial verify, got {len(requests)}"
         finally:
             page.close()
