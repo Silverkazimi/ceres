@@ -1,4 +1,6 @@
 import { plannedPlacementReason } from './candidates.js';
+import { boardPlanningActive, boardPlanningPlan, boardPlanningStore } from './board-planning.js';
+import { pickerOnLandAtOpen } from './picker-defaults.js';
 import { chainReturn } from './combine-chain.js';
 import { chainPlans, pendingIncomingRefElsewhere } from './stage-plans.js';
 import { handleUpgradeAction, loadOccupantUpgrade } from './combine-chain-ui.js';
@@ -12,7 +14,7 @@ import { checkoutBlockedInFlightEntries, checkoutSignableEntries, confirmCheckou
 import { COMBINE_DIALOG, confirmCombineBroadcast, handleCombineAction, handleCombineStakePromptAction, openCombineGroupDialog, openPlotCombineChooser } from './combine-dialog.js';
 import { IDLE_COMBINE_GROUPS, candidateCombineInfo, combineGroupKey, idleCombineGroups, groupHasCombinableRow, plotCombineCandidates } from './combine.js';
 import { initCustomSelect, selectValues, setSelectValues, syncCustomSelect } from './customSelect.js';
-import { alternativePowerSourceLabel, editorGroups, editorOccupant, editorSlotLabel, editorVisibleColumnCounts, renderSlotEditor, syncPickerFocusRings } from './editor.js';
+import { alternativePowerSourceLabel, editorGroups, editorOccupant, editorSlotLabel, editorVisibleColumnCounts, planningEditorRow, renderSlotEditor, syncPickerFocusRings } from './editor.js';
 import { esc, formatPlotLabel, num, terrainAffinityProfile } from './format.js';
 import { closeHazard, isSoleSource, openHazard } from './hazard.js';
 import { CHEVRON_CLOSE_ICON, rarityGemHtml, splinterIconHtml } from './icons.js';
@@ -22,7 +24,7 @@ import { CERES_STAGE, hasStagedWorksiteBuilds, mutateEditorSlot, stageForSlot, s
 import { S } from './state.js';
 import { bindTerrainAffinityOverflow, terrainAffinityHtml } from './terrainAffinity.js';
 import { bindCountdowns, unbindCountdowns } from './countdown.js';
-import { STAGED_PLOT_LOCKS, dismissPlotLock, recheckPlotLock, togglePlotLock } from './plot-lock.js';
+import { STAGED_PLOT_LOCKS, dismissPlotLock, togglePlotLock } from './plot-lock.js';
 
 const RENDER_ERROR_LOGGED_DEEDS = new Set();
 
@@ -440,7 +442,7 @@ function openPicker(row, group, index, mode, filterOverrides, extraBloodlines = 
   const workerLike = group.id === 'worker' || group.id === 'runi';
   const itemLike = group.id === 'totem' || group.id === 'title';
   const remembered = readPickerMemory(group.id);
-  const filters = { show_upgrade: false, q: '', rarity: '', splinter: '', edition: '', ability: [], min_pp: '', max_pp: '', bucket: 'all', ready_now: false, include_on_land: false, include_terrain_penalised: false, bloodline_pairs: false, ...(remembered?.filters || {}), ...(filterOverrides || {}) };
+  const filters = { show_upgrade: false, q: '', rarity: '', splinter: '', edition: '', ability: [], min_pp: '', max_pp: '', bucket: 'all', ready_now: false, include_on_land: false, include_terrain_penalised: false, bloodline_pairs: false, ...(remembered?.filters || {}), include_on_land: pickerOnLandAtOpen(boardPlanningActive(), remembered?.filters?.include_on_land), ...(filterOverrides || {}) };
   const overrideKeys = new Set(Object.keys(filterOverrides || {}));
   // never open with both Land Cards and Bloodline pairs on; the one just asked for wins, else Bloodline pairs.
   if (filters.land_only && filters.bloodline_pairs) {
@@ -860,6 +862,7 @@ export async function handleSlotEditorClick(event) {
   if (!action && !checkoutAction && !pickerAction && !combineAction && !hazardAction && !opAction && !noticeAction && !worksiteAction && !combineStakeAction && !plotLockAction) return;
   event.preventDefault();
   event.stopPropagation();
+  if (plotLockAction && planningBoardActive()) { stageToast(PLANNING_REFUSAL, true); return; } // IN-0267: no live lock change while planning
   if (plotLockAction?.dataset.plotLockAction === 'toggle') {
     const row = BOARD?.plots.find(plot => plot.deed_uid === plotLockAction.dataset.deedUid);
     if (row && togglePlotLock(row)) { updateMountedRow(row.deed_uid); renderCheckoutSurface(); }
@@ -934,12 +937,7 @@ export async function handleSlotEditorClick(event) {
         const msg = 'This plot could not be found on the current board anymore. Close this dialog and reopen it before signing -- nothing was broadcast.';
         renderWorksiteVerdict(overlay, { tone: 'danger', title: 'Plot no longer on the board', detail: msg, retry: false });
       }
-    } else if (worksiteActionKind === 'verify-again') {
-      // Requirement 3 -- "not yet observable" gets its own re-check action
-      // rather than forcing a full page reload to find out whether the
-      // change has landed since the last check.
-      if (S.WORKSITE_MODAL_LAST_VERIFY) verifyWorksiteBroadcast(S.WORKSITE_MODAL_LAST_VERIFY.deedUid, S.WORKSITE_MODAL_LAST_VERIFY.chunk, S.WORKSITE_MODAL_LAST_VERIFY.txId);
-    }
+    }  // no "verify-again" re-check; the shared confirmer reads on by itself
     return;
   }
   if (opAction) {
@@ -964,25 +962,13 @@ export async function handleSlotEditorClick(event) {
     }
     return;
   }
-  // defect 3 -- checkout verification's own "Check again": the button lives
-  // inside the `.op-state` element verifyBroadcast() last wrote into, so that element's
-  // CHECKOUT_VERIFY_TARGETS entry is the same {chunk, review, txId} verifyBroadcast()
-  // needs to re-run the check -- never a fresh Keychain broadcast.
-  if (noticeAction?.dataset.noticeAction === 'retry-verification') {
-    const stateEl = noticeAction.closest('.op-state');
-    const target = stateEl ? CHECKOUT_VERIFY_TARGETS.get(stateEl) : null;
-    if (target?.txId) {
-      clearOperationPollTimer(target.entryId);
-      verifyBroadcast(target.chunk, stateEl, target.txId, target.review).catch(() => {});
-    }
-    return;
-  }
+  // there is no manual "retry-verification" action any more (the shared confirmer reads on by itself).
   if (checkoutAction) {
     const checkoutType = checkoutAction.dataset.checkoutAction;
-    // a signed deed lock the game has no record of is dismissed; one with no answer is checked again.
-    if (checkoutType === 'lock-dismiss' || checkoutType === 'lock-recheck') {
+    // a signed deed lock that was never sent is dismissed; there is no manual re-check.
+    if (checkoutType === 'lock-dismiss') {
       const uid = checkoutAction.dataset.deedUid;
-      if (checkoutType === 'lock-dismiss' ? dismissPlotLock(uid) : recheckPlotLock(uid)) { updateMountedRow(uid); renderCheckoutSurface(); }
+      if (dismissPlotLock(uid)) { updateMountedRow(uid); renderCheckoutSurface(); }
       return;
     }
     if (checkoutType === 'lock-undo') {
@@ -1177,9 +1163,10 @@ export async function handleSlotEditorClick(event) {
       const rarity = pickerAction.dataset.pickerRarity;
       const groupCandidate = rarity ? picker.rarityGroups?.[rarity]?.candidate : null;
       const sameTier = (item) => String(item?.rarity || item?.name?.split(' ')[0] || '').toLowerCase() === rarity;
-      const available = (item) => item?.asset_ref && !CERES_STAGE.some((entry) => entry.action !== 'unstake'
-        && String(entry.asset_ref) === String(item.asset_ref))
-        && (typeof pendingIncomingRefElsewhere !== 'function' || !pendingIncomingRefElsewhere(item.asset_ref, picker.deedUid, picker.groupId, picker.slotIndex));
+      const planningMode = planningBoardActive();
+      const available = (item) => item?.asset_ref && (planningMode || !CERES_STAGE.some((entry) => entry.action !== 'unstake'
+        && String(entry.asset_ref) === String(item.asset_ref)))
+        && (planningMode || typeof pendingIncomingRefElsewhere !== 'function' || !pendingIncomingRefElsewhere(item.asset_ref, picker.deedUid, picker.groupId, picker.slotIndex));
       let candidate = rarity
         ? [groupCandidate, ...(picker.candidates || [])].find((item) => sameTier(item) && available(item))
         : picker.candidates[Number(pickerAction.dataset.candidateIndex)];
@@ -1205,6 +1192,17 @@ export async function handleSlotEditorClick(event) {
       const delta = candidateDelta(candidate, picker);
       const incoming = editorOccupant(candidate, group?.id || picker.groupId);
       if (group) {
+        if (planningMode) {
+          // IN-0267: the choice goes into the saved plan only -- never CERES_STAGE, never a wallet.
+          try {
+            await boardPlanningStore().setPlacement({ deed_uid: row.deed_uid, group_id: group.id, slot_index: picker.slotIndex,
+              asset_ref: incoming.asset_ref, name: incoming.name, asset: incoming });
+            stageToast(`${incoming.name} planned in ${editorSlotLabel(group, picker.slotIndex)}. Live changes were left alone.`);
+          } catch (error) { stageToast(`Not planned: ${error?.message || error}`, true); }
+          releaseFillRunHeight(); unbindCountdowns(); abortWorkerUpgradeOptions(row.deed_uid); S.CERES_PICKER = null;
+          updateMountedRow(row.deed_uid);
+          return;
+        }
         if (['totem', 'title'].includes(group.id) && !available(candidate)) { updateMountedRow(picker.deedUid); return; }
         const elsewhere = CERES_STAGE.find((entry) => entry.action !== 'unstake' && String(entry.asset_ref) === String(incoming.asset_ref)
           && (entry.deed_uid !== row.deed_uid || entry.group_id !== group.id || String(entry.slot_index) !== String(picker.slotIndex)));
@@ -1240,6 +1238,10 @@ export async function handleSlotEditorClick(event) {
   const deedUid = action.dataset.deedUid;
   const row = BOARD?.plots.find((plot) => plot.deed_uid === deedUid);
   if (!row) return;
+  if (planningBoardActive() && ['cancel-construction', 'open-worksite-modal', 'combine-plot', 'combine-tile'].includes(action.dataset.slotAction)) {
+    stageToast(PLANNING_REFUSAL, true); // IN-0267: building and combining are live actions
+    return;
+  }
   if (action.dataset.slotAction === 'cancel-construction') { openWorksiteCancelDialog(row); return; }
   if (action.dataset.slotAction === 'open-worksite-modal') { openWorksiteModal(row); return; }
   if (action.dataset.slotAction === 'mobile-details-close') {
@@ -1254,6 +1256,7 @@ export async function handleSlotEditorClick(event) {
   const group = editorGroups(row).find((item) => item.id === action.dataset.groupId);
   const index = Number(action.dataset.slotIndex);
   if (!group) return;
+  if (planningBoardActive() && await handlePlanningSlotAction(action, row, group, index)) return;
   if (action.dataset.slotAction === 'mobile-details') {
     S.MOBILE_SLOT_DETAIL = { deedUid, groupId: group.id, slotIndex: index };
     const pending = CERES_STAGE.find((entry) => entry.deed_uid === deedUid && entry.group_id === group.id && entry.slot_index === index);
@@ -1395,6 +1398,41 @@ export async function handleSlotEditorClick(event) {
     else if (undoEntries.length) stageToast(`Undid ${undoEntries.length} staged change${undoEntries.length === 1 ? '' : 's'}; nothing left to clear.`);
     return;
   }
+}
+
+// IN-0267: in planning, a slot action edits the saved plan or does nothing. Choosing opens the existing picker
+// removing takes the planned card out of the plan. Every action that would stage, sign, combine or build on
+// the live board is refused here, so the live stage and Changes stay exactly as they were.
+// Tolerant of sliced-source test contexts that load handleSlotEditorClick without the planning module.
+function planningBoardActive() { return typeof boardPlanningActive === 'function' && boardPlanningActive(); }
+const PLANNING_PICK_ACTIONS = new Set(['add', 'replace', 'add-runi', 'add-power-core', 'fill', 'mobile-details']);
+const PLANNING_REFUSAL = 'Not available while planning. Switch back to Live in the Menu to change the live board.';
+async function handlePlanningSlotAction(action, row, liveGroup, index) {
+  const kind = action.dataset.slotAction;
+  if (kind === 'mobile-details-close' || kind === 'retry-detail') return false;
+  const plan = boardPlanningPlan();
+  // The plan's own sheet decides which slot is empty or holds a planned card, not the live roster.
+  const planGroups = plan ? editorGroups(planningEditorRow(row, plan)) : editorGroups(row);
+  if (PLANNING_PICK_ACTIONS.has(kind)) {
+    const wanted = kind === 'add-runi' ? 'runi' : liveGroup.id;
+    const target = planGroups.find((item) => item.id === wanted) || liveGroup;
+    let slot = kind === 'add-runi' ? 0 : index;
+    if (kind === 'fill') slot = Math.max(0, target.slots.findIndex((occupant) => !occupant));
+    const open = S.CERES_PICKER;
+    if (open && open.deedUid === row.deed_uid && open.groupId === target.id && open.slotIndex === slot) { closePickerRestoringScroll(row, open); return true; }
+    openPicker(row, target, slot, target.slots?.[slot] ? 'replace' : 'stake');
+    return true;
+  }
+  if (kind === 'remove' || kind === 'restore' || kind === 'undo-move') {
+    try {
+      const removed = await boardPlanningStore().removePlacement({ deed_uid: row.deed_uid, group_id: liveGroup.id, slot_index: index });
+      if (removed) stageToast('Removed from the plan. Live changes were left alone.');
+    } catch (error) { stageToast(`The plan could not be saved: ${error?.message || error}`, true); }
+    updateMountedRow(row.deed_uid);
+    return true;
+  }
+  stageToast(PLANNING_REFUSAL, true);
+  return true;
 }
 
 export function handlePickerFilter(event) {

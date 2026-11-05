@@ -34,6 +34,8 @@ CONNECT_SRC = (
     "'self'",
     "https://api.splinterlands.com",
     "https://api.hive.blog",
+    "https://api.openhive.network",   # read failover nodes (transaction-queue.js HIVE_RPC_NODES)
+    "https://api.deathwing.me",
     "wss://hive-auth.arcange.eu",
 )
 

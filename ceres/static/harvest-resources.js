@@ -1,8 +1,9 @@
 import { esc } from './format.js';
 import { fmt2, tokenIcon, tokenLabel } from './harvest-state.js';
 import { netAfterCosts } from './harvest-net.js';
+import { resourceOrder } from './resources.js';
 
-export const RESOURCE_ORDER = ['GRAIN', 'WOOD', 'STONE', 'IRON', 'AURA', 'SPS', 'RESEARCH'];
+export const RESOURCE_ORDER = resourceOrder('harvest'); // registry: GRAIN WOOD STONE IRON AURA SPS RESEARCH
 export function resourceKeys(values) {
   const rank = key => RESOURCE_ORDER.includes(key) ? RESOURCE_ORDER.indexOf(key) : RESOURCE_ORDER.length;
   return Object.keys(values || {}).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));

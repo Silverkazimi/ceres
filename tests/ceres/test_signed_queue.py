@@ -20,6 +20,11 @@ context.navigator.locks = { request(name, options, callback) {
 PRELUDE = r"""
 CURRENT_PLAYER='alice';BOARD={player:'alice',plots:[]};
 const assert = (value, message) => { if (!value) throw Error(message); };
+// A confirmed pre-sign begin is required before the queue may ask Keychain.
+fetch = async url => {
+ if (String(url).includes('/api/confirm/intent')) return {ok:true,json:async()=>({begin_token:'c'.repeat(32),action_id:'a'.repeat(32),revision:1,server_now:Date.now()})};
+ throw Error('unexpected fetch '+url);
+};
 const op = n => ['custom_json',{id:'sm_land_operation',required_auths:[],required_posting_auths:['alice'],json:JSON.stringify({op:'tax_collection',deed_uids:['I-1-aaaaaaaa'],n})}];
 let signatures=0, broadcasts=0, head=100;
 const sent = new Map();
@@ -162,8 +167,9 @@ const row=(await prepareQueueBatch('alice',[[op('reload')]]))[0];
 sent.set(row.txId,{...row.transaction,signatures:['ab'.repeat(65)]});
 localStorage.setItem('ceres:signed-queue:v1:alice',JSON.stringify([{...row,state:'submitting',signedTransaction:sent.get(row.txId)}]));
 await resumeSignedQueue('alice');
+// inclusion is read by the shared confirmer right after the pump hands the row over.
+await settle(()=>signedQueueRows('alice')[0].state==='included');
 assert(broadcasts===0 && signatures===0,'recovery sent or signed again');
-assert(signedQueueRows('alice')[0].state==='included','recovery lost submitted transaction');
 """)
 
 
@@ -242,7 +248,8 @@ const row=(await prepareQueueBatch('alice',[[op('saved')]]))[0];
 localStorage.setItem('ceres:signed-queue:v1:alice',JSON.stringify([{...row,state:'queued',signedTransaction:{...row.transaction,signatures:['ab'.repeat(65)]}}]));
 window.hive_keychain=null;
 await resumeSignedQueue('alice');
-assert(signatures===0 && broadcasts===1 && signedQueueRows('alice')[0].state==='included','saved signed request was not recovered exactly once');
+await settle(()=>signedQueueRows('alice')[0].state==='included');  // shared confirmer reads inclusion
+assert(signatures===0 && broadcasts===1,'saved signed request was not recovered exactly once');
 """)
 
 

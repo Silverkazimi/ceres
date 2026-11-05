@@ -31,7 +31,10 @@ def _clean(value, limit=300) -> str:
 
 
 def _refused(request: Request, player: str, exc: Exception) -> HTTPException:
-    """: a 409 used to log only its status; keep the reason (a plain RoutingError text, never a payload)."""
+    """: a 409 used to log only its status; keep the reason (a plain RoutingError text, never a payload).
+    : a paced confirmation read is a 429 with Retry-After -- "read later", never a refusal."""
+    if isinstance(exc, runs.RoutingRateLimited):
+        return HTTPException(429, str(exc), headers={"Retry-After": str(max(1, round(exc.retry_after)))})
     _log.warning("refused path=%s player=%s reason=%s", request.url.path.rsplit("/", 1)[-1], _clean(player, 40), _clean(exc))
     return HTTPException(409, str(exc))
 
@@ -62,6 +65,8 @@ def _execute(request: Request, player: str, run_id: str, action):
     with runs.locked(_config(request).root, player) as folder:
         record = runs.read(folder, player, run_id)
         runs.verify_token(record, request.headers.get("x-run-token"))   # the run's own token; a name or a run id alone opens nothing
+        from .routes_confirm import ledger_routing_release
+        runs.replay_release(folder, record, lambda operations: ledger_routing_release(request, player, operations))
         return runs.public(action(folder, record))
 
 
@@ -125,28 +130,29 @@ async def attach_transaction(request: Request, player: str | None = None):
         raise _refused(request, player, exc) from exc
 
 
-@router.post("/api/harvest/routing/v2/find")
-async def find_signed(request: Request, player: str | None = None):
-    """Owner-pressed: find a transaction the wallet signed but never reported (one metered account-history read), then attach it."""
+@router.post("/api/harvest/routing/v2/unsent")
+async def mark_unsent(request: Request, player: str | None = None):
+    """Release an id-less claim only on the server's durable sign-only envelope and own-history proof."""
     body = await _body(request)
     player = player_for_request(request, player)
+    from .routes_confirm import ledger_routing_release
+
+    def act(folder, record):
+        # fix round 1 (MEDIUM-3): the server's own proof, never the browser's claim.
+        status = record.get("bundles", {}).get(body.get("bundle_id")) or {}
+        operations = (status.get("claim") or {}).get("operations")
+        proof = ledger_routing_release(request, player, operations) if operations else None
+        return runs.mark_unsent(folder, record, body.get("bundle_id"), absence_proof=proof)
     try:
-        return await asyncio.to_thread(_execute, request, player, body.get("run_id"),
-            lambda folder, record: runs.find_signed(folder, record, body.get("bundle_id")))
+        return await asyncio.to_thread(_execute, request, player, body.get("run_id"), act)
     except routing.RoutingError as exc:
         raise _refused(request, player, exc) from exc
 
 
 @router.post("/api/harvest/routing/v2/release")
 async def release_unsigned(request: Request, player: str | None = None):
-    """Return a claimed bundle the wallet never signed to planned; zero outbound calls."""
-    body = await _body(request)
-    player = player_for_request(request, player)
-    try:
-        return await asyncio.to_thread(_execute, request, player, body.get("run_id"),
-            lambda folder, record: runs.release(folder, record, body.get("bundle_id")))
-    except routing.RoutingError as exc:
-        raise _refused(request, player, exc) from exc
+    """A browser cannot release a signed claim from its own wallet or queue report."""
+    raise HTTPException(409, "Routing claims require server-confirmed release")
 
 
 @router.post("/api/harvest/routing/v2/head")
@@ -161,15 +167,27 @@ async def counted_hive_head(request: Request, player: str | None = None):
         raise _refused(request, player, exc) from exc
 
 
+@router.post("/api/harvest/routing/v2/envelope")
+async def bind_sign_only_envelope(request: Request, player: str | None = None):
+    """Persist a server-checked expiry before the sign-only wallet prompt opens."""
+    body = await _body(request)
+    player = player_for_request(request, player)
+    try:
+        return await asyncio.to_thread(_execute, request, player, body.get("run_id"),
+            lambda folder, record: runs.bind_envelope(folder, record, body.get("bundle_id"), body.get("transaction")))
+    except routing.RoutingError as exc:
+        raise _refused(request, player, exc) from exc
+
+
 @router.post("/api/harvest/routing/v2/reconcile")
 async def reconcile_transaction(request: Request, player: str | None = None):
-    """Meter at most one physical probe or verdict lookup per explicit request."""
+    """At most one counted probe or verdict lookup per request (the shared confirmer schedules them; )."""
     body = await _body(request)
     player = player_for_request(request, player)
     try:
         return await asyncio.to_thread(_execute, request, player, body.get("run_id"),
             lambda folder, record: runs.reconcile(folder, record, body.get("bundle_id"),
-                body.get("mode"), body.get("operation_index"), manual=body.get("manual") is True))
+                body.get("mode"), body.get("operation_index")))
     except routing.RoutingError as exc:
         raise _refused(request, player, exc) from exc
 

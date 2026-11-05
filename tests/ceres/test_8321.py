@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import time
 from pathlib import Path
 
 import pytest
@@ -106,6 +107,10 @@ def _open_plot(page, base_url: str, *, construction: bool = False) -> tuple[str,
 
     page.route("**/api/board*", board_route)
     page.route("**/api/plots/**", plot_route)
+    page.route("**/api/confirm/intent*", lambda route: route.fulfill(
+        status=200, content_type="application/json", body=json.dumps({
+            "begin_token": "c" * 32, "action_id": "a" * 32, "revision": 1,
+            "server_now": int(time.time() * 1000)})))
     page.goto(f"{base_url}/?player=sample01", timeout=15_000)
     page.wait_for_function("document.querySelector('#plot-tbody > tr.plot-row') !== null", timeout=15_000)
     deed = selected["row"]["deed_uid"]

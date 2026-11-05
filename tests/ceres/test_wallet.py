@@ -249,7 +249,7 @@ def test_claim_pending_checks_automatically_and_keeps_queue_tx_id():
     from pathlib import Path
     js = (Path(__file__).parents[2] / "ceres" / "static" / "wallet-claim.js").read_text()
     assert "Discard this claim" not in js and "Change transaction ID" not in js
-    assert "claim.retryTimer = setTimeout" in js
+    assert "retryTimer" not in js and "confirmAction({" in js   # the shared confirmer retries, no own timer
     assert "error.txId" in js and "tx_id: error.txId" in js
     dec = (Path(__file__).parents[2] / "ceres" / "static" / "regional-dec.js").read_text()
     assert dec.index("if (D.busy || D.closing) return;") < dec.index("if (action.startsWith('claim:'))")
@@ -263,7 +263,7 @@ def test_tab_guard_allows_dec_and_sps_while_only_pending_blocks():
     js = (Path(__file__).parents[2] / "ceres" / "static" / "regional-dec.js").read_text()
     assert "export function tabSwitchAllowed(D, tab) {" in js
     assert "if (!WALLET_TABS.includes(tab) || D.review || D.claim.review || D.busy) return false;" in js
-    assert "if ((D.pending || D.claim.pending) && !['DEC', 'SPS'].includes(tab)) return false;" in js
+    assert "if (((D.pending && !decUnprovable(D.pending)) || D.claim.pending) && !['DEC', 'SPS'].includes(tab)) return false;" in js
     assert "if (!tabSwitchAllowed(D, tab) || swapLocked(D.player)) return;" in js  # a swap in flight keeps its tab
 
 

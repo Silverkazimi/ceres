@@ -266,7 +266,9 @@ const document = {
   // classList: board.js's render()/mobile-sheet toggles call
   // document.body.classList.{add,remove,toggle} unconditionally (no optional chaining).
   body: { appendChild() {}, removeChild() {}, classList: { add() {}, remove() {}, toggle() {} } },
-  documentElement: { style: {}, setAttribute() {}, getAttribute() { return null; } },
+  // classList: board.js hideStartPage() and the plot-first toggle call
+  // document.documentElement.classList.{remove,toggle,contains} unconditionally.
+  documentElement: { style: {}, setAttribute() {}, getAttribute() { return null; }, classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } } },
   // fonts.ready stub for the document.fonts.ready-gated mobile tile text-fit.
   fonts: { ready: Promise.resolve() },
 };

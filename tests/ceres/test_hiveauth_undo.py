@@ -142,7 +142,7 @@ def test_four_operation_clear_releases_one_stale_two_op_txid_row_after_definitiv
   localStorage.setItem('ceres:broadcast-claims:v1:alice', JSON.stringify(claimIds));
   localStorage.setItem('ceres:pending-custom-ops:v1:alice', JSON.stringify([stale]));
   let probes = 0;
-  fetch = async () => { probes += 1; return { ok: true, json: async () => ({ included: false, block_num: null }) }; };
+  fetch = async (url) => { if (String(url).startsWith('/api/confirm/intent')) return { ok: true, status: 200, json: async () => ({ ok: true, begin_token: 'a'.repeat(32), action_id: 'b'.repeat(32), revision: 1 }) };   /* A successful pre-sign begin lets this test exercise the subsequent recovery path. */ probes += 1; return { ok: true, json: async () => ({ included: false, block_num: null }) }; };
   let walletCalls = 0;
   window.hive_keychain = { requestBroadcast(_account, _operations, _key, callback) {
     walletCalls += 1;
@@ -170,6 +170,7 @@ def test_inconclusive_uncertain_request_blocks_and_same_envelope_never_rebroadca
     walletCalls += 1;
     callback({ success: false, ambiguousBroadcast: true, error: 'The wallet did not return a verified transaction id.' });
   } };
+  fetch = async (url) => String(url).includes('/api/confirm/intent') ? { ok: true, status: 200, json: async () => ({ begin_token: 'a'.repeat(32), action_id: 'b'.repeat(32), revision: 1 }) } : { ok: true, json: async () => ({ included: null, block_num: null }) };
   const uncertain = [op('uncertain-a'), op('uncertain-b')];
   const first = await BroadcastGate.broadcast('alice', uncertain).catch(error => error);
   if (!first.ambiguousBroadcast || walletCalls !== 1) throw Error('request was not classified uncertain');
@@ -194,7 +195,7 @@ def test_one_stale_operation_plus_four_operation_clear_does_not_block() -> None:
   localStorage.setItem('ceres:broadcast-claims:v1:alice', JSON.stringify([id]));
   localStorage.setItem('ceres:pending-custom-ops:v1:alice', JSON.stringify([{ id, claimIds: [id], count: 1, txId: 'a'.repeat(40), createdAt: new Date().toISOString() }]));
   let probes = 0;
-  fetch = async () => { probes += 1; return { ok: true, json: async () => ({ included: null, block_num: null }) }; };
+  fetch = async (url) => { if (String(url).startsWith('/api/confirm/intent')) return { ok: true, status: 200, json: async () => ({ ok: true, begin_token: 'a'.repeat(32), action_id: 'b'.repeat(32), revision: 1 }) };   /* A successful pre-sign begin lets this test exercise the subsequent recovery path. */ probes += 1; return { ok: true, json: async () => ({ included: null, block_num: null }) }; };
   let walletCalls = 0;
   window.hive_keychain = { requestBroadcast(_account, _operations, _key, callback) {
     walletCalls += 1;
@@ -220,7 +221,7 @@ def test_txid_lookup_failure_stays_blocked_in_plain_words() -> None:
   localStorage.setItem('ceres:broadcast-claims:v1:alice', JSON.stringify(claimIds));
   localStorage.setItem('ceres:pending-custom-ops:v1:alice', JSON.stringify([{ id: claimIds[0], claimIds, count: 2, txId: 'a'.repeat(40), createdAt: new Date().toISOString() }]));
   let probes = 0;
-  fetch = async () => { probes += 1; return { ok: true, json: async () => ({ included: null, block_num: null }) }; };
+  fetch = async (url) => { if (String(url).startsWith('/api/confirm/intent')) return { ok: true, status: 200, json: async () => ({ ok: true, begin_token: 'a'.repeat(32), action_id: 'b'.repeat(32), revision: 1 }) };   /* A successful pre-sign begin lets this test exercise the subsequent recovery path. */ probes += 1; return { ok: true, json: async () => ({ included: null, block_num: null }) }; };
   let walletCalls = 0;
   window.hive_keychain = { requestBroadcast() { walletCalls += 1; } };
   const blocked = await BroadcastGate.broadcast('alice', [op('clear-power'), op('clear-workers'), op('clear-totem'), op('clear-build')]).catch(error => error);
@@ -252,7 +253,7 @@ def test_migrated_rows_without_timestamp_require_not_included_probe_for_release(
     || Date.parse(row.createdAt) > Date.now() - 599000)) throw Error('timestamp-less rows were not migrated to their probe-eligible time');
   if (JSON.parse(localStorage.getItem('ceres:broadcast-claims:v1:alice')).length !== 3) throw Error('timestamp-less migration released claims by the clock alone');
   let probes = 0;
-  fetch = async () => { probes += 1; return { ok: true, json: async () => ({ included: false, block_num: null }) }; };
+  fetch = async (url) => { if (String(url).startsWith('/api/confirm/intent')) return { ok: true, status: 200, json: async () => ({ ok: true, begin_token: 'a'.repeat(32), action_id: 'b'.repeat(32), revision: 1 }) };   /* A successful pre-sign begin lets this test exercise the subsequent recovery path. */ probes += 1; return { ok: true, json: async () => ({ included: false, block_num: null }) }; };
   let walletCalls = 0;
   window.hive_keychain = { requestBroadcast(_account, _operations, _key, callback) {
     walletCalls += 1;
@@ -321,7 +322,18 @@ def test_tx_id_probe_preserves_lookup_failure_as_inconclusive(monkeypatch) -> No
     assert json.loads(routes_op_preview.op_inclusion({"tx_id": "missing"}, object()).body) == {"included": None, "block_num": None}
     assert json.loads(routes_op_preview.op_inclusion({"tx_id": "missing", "created_at": young}, object()).body) == {"included": None, "block_num": None}
     assert json.loads(routes_op_preview.op_inclusion({"tx_id": "missing", "created_at": "garbage"}, object()).body) == {"included": None, "block_num": None}
-    assert json.loads(routes_op_preview.op_inclusion({"tx_id": "missing", "created_at": old}, object()).body) == {"included": False, "block_num": None}
+    # fix round 2 (aletheia-r2 LOW-2, astra-r2 P1-7): a browser-supplied created_at never ages a transaction
+    # only the server's own first sight of the id does (an id exists only after signing).
+    assert json.loads(routes_op_preview.op_inclusion({"tx_id": "missing", "created_at": old}, object()).body) == {"included": None, "block_num": None}
+    import time as real_time
+    seen = real_time.time()
+    monkeypatch.setattr(routes_op_preview.time, "time", lambda: seen + routes_op_preview.TX_ABSENCE_GRACE_SECONDS + 5)
+    from ceres import routes_confirm
+    monkeypatch.setattr(routes_confirm.time, "time", lambda: seen + routes_op_preview.TX_ABSENCE_GRACE_SECONDS + 5)
+    # fix round 3 (astra-r3 N3): past the lifetime, one node's "not found" is still not proof; without an attempt
+    # whose pre-sign begin the server recorded and Hive's expired_irreversible status it stays unknown
+    # (tests/ceres/test_round3_server.py::test_n3_*).
+    assert json.loads(routes_op_preview.op_inclusion({"tx_id": "missing"}, object()).body) == {"included": None, "block_num": None}
     assert json.loads(routes_op_preview.op_inclusion({"tx_id": "failed"}, object()).body) == {
         "included": None, "block_num": None,
     }

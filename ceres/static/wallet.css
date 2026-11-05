@@ -68,6 +68,7 @@ html.ceres-lw-le-1279 [data-wallet-open-keychain] { display: inline-flex; }
 .wallet-claim-flow h4, .wallet-claim-flow p { margin: 0; }
 .wallet-claim-flow h4 { font-size: 1.05rem; }
 .wallet-claim-flow .wallet-wait { margin: 0; }
+.wallet-wait .wallet-relay-confirmed { display: block; color: var(--ok); font-size: .8rem; font-weight: 600; }   /* the relay holds the request (green = confirmed) */
 .wallet-claim-flow .dec-receipt-amount { margin-block: .2rem; }
 .dec-drawer-content .wallet-card:has(> .wallet-claim-flow:is(.is-review, .is-asked, .is-sent, .is-checking, .is-retried)) { border-color: var(--warn); border-block-start-color: var(--warn); background: linear-gradient(135deg, color-mix(in srgb, var(--warn) 16%, transparent), transparent 70%), var(--wallet-glass); }
 .dec-drawer-content .wallet-card:has(> .wallet-claim-flow:is(.is-review, .is-asked, .is-sent, .is-checking, .is-retried)) :is(h3, h4) { color: var(--warn); }

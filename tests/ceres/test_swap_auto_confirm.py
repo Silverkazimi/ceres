@@ -52,20 +52,23 @@ if (calls.some(path => path.includes('/verify') && false)) throw Error('unreacha
 """)
 
 
-def test_stop_ends_the_automatic_check_and_shows_resume():
+def test_no_stop_control_the_automatic_check_keeps_reading():
+    """ (IN-0706) replaces the  Stop/Resume pair: the only state is the automatic line."""
     _run(r"""
+let finds = 0;
 globalThis.fetch = async (url) => {
   const path = String(url);
-  if (path.includes('/find')) { st.stopped || swapAction(ctx, 'stop', target); return { ok: true, status: 200, json: async () => ({ status: 'not_found', covered: true }) }; }
+  if (path.includes('/find')) { finds += 1; return { ok: true, status: 200, json: async () => ({ status: 'not_found', covered: true }) }; }
   return { ok: true, status: 200, json: async () => ({ operations: [['custom_json', { id: 'x', json: '{}' }]], nonce: 'ab'.repeat(8), payload: {}, quote: { input: 10, output: 5 } }) };
 };
 globalThis.__gate = async () => { const e = new Error('no answer'); e.broadcasted = undefined; throw e; };
 await swapAction(ctx, 'swap', target);
-for (let i = 0; i < 200 && (st.checking || st.stopped !== true); i++) await new Promise(r => realSetTimeout(r, 2));
-if (st.stage !== 'confirming' || st.checking || st.stopped !== true) throw Error('stop did not end the check: ' + st.stage + ' ' + st.checking);
+for (let i = 0; i < 200 && finds < 3; i++) await new Promise(r => realSetTimeout(r, 2));
+if (st.stage !== 'confirming' || !st.checking || finds < 3) throw Error('the automatic check did not keep reading: ' + st.stage + ' ' + finds);
 const html = swapHtml(symbol, wallet, 'alice');
-if (!html.includes('Resume checking') || html.includes('Check again') || html.includes('transaction id')) throw Error('stopped card: ' + html);
-if (!html.includes('is-waiting')) throw Error('the open swap box must carry the warning colour');
+if (/Resume checking|Stop checking|Check again|lp:stop|lp:verify/.test(html) || html.includes('transaction id')) throw Error('manual control shown: ' + html);
+if (!html.includes('is-waiting') || !html.includes('Ceres keeps checking by itself')) throw Error('automatic line missing: ' + html);
+console.log('IR9545-OK');
 """)
 
 
@@ -113,7 +116,7 @@ const stored = JSON.parse(localStorage.getItem('ceres:wallet-lp-intent:v1:alice:
 if (stored?.stage !== 'confirming' || stored.receipt?.nonce !== 'ab'.repeat(8)) throw Error('the pending intent was not durably retained');
 // A second click cannot start while this stored intent is unresolved; the background check adopts the late broadcast.
 await swapAction(ctx, 'swap', target);
-await swapAction(ctx, 'verify', target);  // resume if the zero-delay VM reached the defensive round cap
+resumeConfirmations(); resumeSwapChecks(ctx);  // a page resume wakes the shared wait (the zero-delay VM parks it)
 for (let i = 0; i < 200 && st.stage !== 'done'; i++) await new Promise(r => realSetTimeout(r, 2));
 if (gates !== 1) throw Error('a second swap was requested from the wallet: ' + gates);
 if (st.stage !== 'done' || st.receipt.tx_id !== 'e'.repeat(40)) throw Error('the late broadcast was not adopted: ' + st.stage);
@@ -141,7 +144,8 @@ globalThis.fetch = async (url) => {
   const path = String(url);
   if (path.includes('/find')) { finds += 1; throw new Error('network down'); }
   if (path.includes('/verify')) throw Error('verify without an id');
-  previews += 1; return { ok: true, status: 200, json: async () => previewJson };
+  if (path.includes('/lp/preview')) previews += 1;  // api/confirm/review registers the attempt; it is not a second swap build
+  return { ok: true, status: 200, json: async () => previewJson };
 };
 globalThis.__gate = async () => { gates += 1; const e = new Error('no answer'); e.broadcasted = undefined; throw e; };
 await swapAction(ctx, 'swap', target);
@@ -233,8 +237,8 @@ Date.now = realNow;
 """)
 
 
-def test_expired_confirmation_does_not_loop_and_resume_reads_the_game():
-    # audit finding 2: a restored confirming swap past 3 minutes reads once, turns red, and rendering never restarts it; Resume reads again
+def test_restored_confirmation_past_three_minutes_keeps_reading_without_a_render_loop():
+    # replaces 's red 3-minute stop: a restored confirming swap keeps reading; one render per read, no loop.
     _run(PREVIEW + r"""
 let verifies = 0; let renders = 0;
 globalThis.fetch = async (url) => {
@@ -246,15 +250,11 @@ const old = new Date(realNow() - 4 * 60000).toISOString();
 Object.assign(st, { stage: 'confirming', receipt: { kind: 'swap_sell', pay: 'WOOD', receive: 'DEC', input: 10, output: 5, nonce: 'ab'.repeat(8), payload: {}, tx_id: 'd'.repeat(40), signed_at: old } });
 ctx.render = () => { renders += 1; if (renders < 500) Promise.resolve().then(() => resumeSwapChecks(ctx)); };
 resumeSwapChecks(ctx);
-for (let i = 0; i < 100 && st.failed !== 'confirm'; i++) await tick();
+for (let i = 0; i < 100 && verifies < 3; i++) await tick();
 for (let i = 0; i < 20; i++) await tick();
-if (st.failed !== 'confirm' || st.checking) throw Error('expected a red, stopped confirmation: ' + st.failed);
-if (verifies !== 1) throw Error('expected exactly one read before the limit, got ' + verifies);
-if (renders > 20) throw Error('render loop: ' + renders + ' renders');
-const resume = swapAction(ctx, 'verify', target);
-for (let i = 0; i < 5 && verifies < 2; i++) await tick();
-if (verifies < 2) throw Error('Resume did not read the game');
-if (st.receipt.signed_at !== old) throw Error('Resume changed the original signing time');
-st.stopped = true; st.wake?.(); await resume;
-Date.now = realNow; process.exit(0);
+if (verifies < 3 || st.failed || st.stage !== 'confirming') throw Error('expected the check to keep reading, got ' + verifies + ' ' + st.failed);
+if (renders > verifies + 5) throw Error('render loop: ' + renders + ' renders for ' + verifies + ' reads');
+if (st.receipt.signed_at !== old) throw Error('the original signing time changed');
+if (/Still pending|Resume checking/.test(swapHtml(symbol, {}, 'alice'))) throw Error('red/stopped state shown');
+Date.now = realNow; console.log('IR9545-OK'); process.exit(0);
 """)

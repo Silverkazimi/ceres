@@ -10,28 +10,30 @@ def test_no_id_intents_wait_for_hive_expiry_grace():
 
     assert "NEVER_SENT_AFTER_MS = 3900 * 1000" in lp
     assert "NEVER_SENT_AFTER_MS = 3900 * 1000" in checkout
-    assert "seen === 'not_found' && Date.now() - Date.parse(st.receipt.asked_at || st.receipt.signed_at || '') >= NEVER_SENT_AFTER_MS" in lp
-    assert "seen === 'not_found' && Date.now() - Date.parse(tx.asked_at || '') >= NEVER_SENT_AFTER_MS" in checkout
-    assert "This wallet request expired without being sent. Nothing was spent." in lp
-    assert "The wallet transaction expired without being included. Nothing was spent." in checkout
+    # fix round 1 (F7): legacy intents only (no saved operations); current ones use the server's proof.
+    assert "if (seen === 'not_found' && !st.receipt.ops) return { state: 'pending', message: LEGACY_UNRESOLVED };" in lp
+    assert "if (seen === 'not_found') { unknown = true; continue; }" in checkout
+    assert "Nothing will be sent again; it keeps looking for it." in lp
+    assert "before Hive expiry, absence does not prove the wallet request is cancelled" in checkout
     assert "if (found.status === 'found' && current())" in lp
     assert "found?.status === 'found'" in checkout
     assert "asked_at: new Date().toISOString()" in lp
     assert "tx.state = 'asked'; tx.asked_at = new Date().toISOString();" in checkout
     assert "late wallet callbacks persist their transaction evidence" in checkout
     assert "syncStoredIntent(ctx.player, symbol, st); ctx.render();" in lp
-    assert "result?.included === false" in lp
+    # fix round 1 (F7): a known id is judged absent by the shared confirmer's chain read on the server's clock
+    # the swap card hands it its id and attempt instead of asking /api/op-inclusion with the browser's own time.
+    assert "txId: st.receipt.tx_id || null, intent: shared?.attemptId || null" in lp and "result?.included === false" not in lp
     assert "async function expiredAndAbsent(tx)" in checkout
     assert "(await response.json())?.included === false" in checkout
 
-    # The guard is a strict threshold from the wallet-request timestamp: a
-    # covering miss at 3,899 seconds keeps waiting; at 3,900 it releases.
+    # The browser age threshold only prunes a local watch entry. It never proves absence.
     threshold = 3900 * 1000
     assert not (3899 * 1000 >= threshold)
     assert 3900 * 1000 >= threshold
     # A positive nonce match is adopted before the absence branch in each flow.
-    assert lp.index("if (found.status === 'found' && current())") < lp.index("seen === 'not_found' && Date.now()")
-    assert checkout.index("if (found?.status === 'found')") < checkout.index("seen === 'not_found' && Date.now()")
+    assert lp.index("if (found.status === 'found' && current())") < lp.index("if (seen === 'not_found' && !st.receipt.ops)")
+    assert checkout.index("if (found?.status === 'found')") < checkout.index("if (seen === 'not_found') { unknown = true; continue; }")
 
 
 def test_watch_entries_expire_without_blocking_and_keep_fresh_misses_blocked():
