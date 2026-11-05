@@ -4,7 +4,8 @@ import { BOARD, CURRENT_PLAYER, catalogNotice, noticeMessage, playerQueryAppend 
 import { IDLE_COMBINE_GROUPS, applyCombineConfirmedUpdate, combineApplyQuantity, combineApplySelection, combineAvailableCopies, combineCopyRowsHtml, combineDefaultQuantity, combineLedgerData, combineObservedAt, combineGroupKey, combinePresetQuantities, combineReason, combineToMaxCopies, idleCombineGroups, prefetchIdleCardsCache, settleCombineRefresh } from './combine.js';
 import { editorCardImage, editorCardImageHtml, editorGroups, editorOccupant, editorSlotLabel } from './editor.js';
 import { esc, formatPlotLabel, num } from './format.js';
-import { OPERATION_RECEIPTS, beginSharedOperation, clearOperationPollTimer, publishOperationReceipt, scheduleOperationPoll, stopOperationPoll } from './operations.js';
+import { OPERATION_POLLERS, OPERATION_RECEIPTS, beginSharedOperation, clearOperationPollTimer, publishOperationReceipt, scheduleOperationPoll, stopOperationPoll } from './operations.js';
+import { confirmationState } from './shared-confirmer.js';
 import { handleSlotEditorClick } from './picker-actions.js';
 import { updateMountedRow } from './rows.js';
 import { CERES_STAGE, mutateEditorSlot, stageForSlot, stageToast } from './staging.js';
@@ -167,10 +168,15 @@ function combineVerdictHtml() {
 function combineVerificationNextPollHtml() {
   const arrival = typeof COMBINE_ARRIVAL === 'undefined' ? null : COMBINE_ARRIVAL;
   const receipts = typeof OPERATION_RECEIPTS === 'undefined' ? null : OPERATION_RECEIPTS;
-  const entryId = arrival?.operationReceipt?.entryId;
+  const entryId = arrival?.operationReceipt?.entryId || COMBINE_VERIFY?.operationReceipt?.entryId;
   const receipt = entryId && receipts ? receipts.get(entryId) : null;
   const nextAt = receipt?.nextPollAt;
-  if (!nextAt) return '';
+  // r6 §4: the shared confirmer schedules the next check itself and publishes no
+  // timestamp. Say so only while a scheduled check really exists for this receipt.
+  if (!nextAt) {
+    return entryId && OPERATION_POLLERS.has(entryId)
+      ? '<p class="combine-verdict-next">Checking again automatically.</p>' : '';
+  }
   const seconds = Math.max(1, Math.ceil((nextAt - Date.now()) / 1000));
   return `<p class="combine-verdict-next">Checking again in ${seconds}s.</p>`;
 }
@@ -179,10 +185,8 @@ function combineVerificationNextPollHtml() {
 // RETRY_VERIFICATION_ACTION) -- not the pending notice's own message, which is
 // what this used to render ("Not confirmed yet…" as a button label, a known
 // copy defect: even the escape hatch didn't read like one).
-function combineRetryButtonHtml(result) {
-  const label = result?.notices?.find((item) => item?.action?.id === 'retry_verification')?.action?.label || 'Check again';
-  return `<button type="button" class="picker-chip ceres-btn ceres-btn--secondary" data-control-density="compact" data-combine-action="verify">${esc(label)}</button>`;
-}
+// (IN-0706): no manual re-check; the shared confirmer reads the combine again by itself.
+function combineRetryButtonHtml() { return ''; }
 
 function combineVerificationHtml() {
   if (COMBINE_SIGN_STEP) return combineProgressStepsHtml(COMBINE_SIGN_STEP.step, { txId: COMBINE_SIGN_STEP.txId });
@@ -799,9 +803,7 @@ async function verifyCombineBroadcast(operation, txId, operationReceipt = null) 
           lastState: result.state,
           result,
         });
-        if (scheduleOperationPoll(updatedReceipt, updatedReceipt.pollVerify || ((receipt) => verifyCombineBroadcast(operation, receipt.txId, receipt))) === false) {
-          COMBINE_VERIFY.error = 'Not confirmed yet. Automatic checks have paused. Check again to read the result without sending another transaction.';
-        }
+        scheduleOperationPoll(updatedReceipt, updatedReceipt.pollVerify || ((receipt) => verifyCombineBroadcast(operation, receipt.txId, receipt)));
       }
       renderCombineDialog();
     }
@@ -814,9 +816,7 @@ async function verifyCombineBroadcast(operation, txId, operationReceipt = null) 
     if (COMBINE_ARRIVAL) COMBINE_ARRIVAL.verdict = { state: 'client-error', error: String(error) };
     if (operationReceipt) {
       const updatedReceipt = publishOperationReceipt({ ...operationReceipt, phase: 'unknown', attempt, lastState: 'verification-error', failureDetail: String(error) });
-      if (scheduleOperationPoll(updatedReceipt, updatedReceipt.pollVerify || ((receipt) => verifyCombineBroadcast(operation, receipt.txId, receipt))) === false) {
-          COMBINE_VERIFY.error = 'Not confirmed yet. Automatic checks have paused. Check again to read the result without sending another transaction.';
-        }
+      scheduleOperationPoll(updatedReceipt, updatedReceipt.pollVerify || ((receipt) => verifyCombineBroadcast(operation, receipt.txId, receipt)));
     }
     renderCombineDialog();
   }
@@ -847,6 +847,14 @@ export async function confirmCombineBroadcast() {
   const preview = COMBINE_PREVIEW?.payload;
   if (!preview?.buildable || COMBINE_SELECTION.size < 2) return;
   const uids = [...COMBINE_SELECTION.keys()];
+  const previous = [...OPERATION_RECEIPTS.values()].reverse().find(receipt => {
+    if (receipt.family !== 'combine' || receipt.phase !== 'failed' || receipt.txId
+        || receipt.context !== `Combine ${COMBINE_DIALOG?.name || 'cards'}`) return false;
+    try { return JSON.stringify(JSON.parse(receipt.operations[0][1].json).cards?.slice().sort()) === JSON.stringify(uids.slice().sort()); }
+    catch (_) { return false; }
+  });
+  const actionId = previous?.operations
+    ? confirmationState(preview.account || CURRENT_PLAYER, previous.operations)?.actionId || null : null;
   const signButton = document.querySelector('#combine-dialog-body .combine-sign');
   if (signButton) signButton.disabled = true;
   // State 05 (Sign) step 1: waiting on Keychain -- rendered by combineProgressHtml()
@@ -856,8 +864,9 @@ export async function confirmCombineBroadcast() {
   COMBINE_VERIFY = null;
   COMBINE_SIGN_STEP = { step: 'keychain', txId: null };
   renderCombineDialog();
+  let body = null;
   try {
-    const body = await rebuildCombineForSigning(uids);
+    body = await rebuildCombineForSigning(uids);
     if (!combineReviewMatches(preview, body.preview)) {
       if (body.preview) COMBINE_PREVIEW.payload = body.preview;
       throw new Error('The selected cards changed. Review the updated combine result before signing. Nothing was sent.');
@@ -867,6 +876,7 @@ export async function confirmCombineBroadcast() {
       operations: [body.operation],
       family: 'combine',
       context: `Combine ${COMBINE_DIALOG?.name || 'cards'}`,
+      actionId,
       onResponse: (response) => {
         const callbackTxId = response?.result?.id || response?.result?.tx_id || response?.tx_id;
         if (response?.success && callbackTxId) {
@@ -875,7 +885,47 @@ export async function confirmCombineBroadcast() {
         }
       },
     });
-    const txId = operationReceipt.txId;
+    await continueCombineOnChain(preview, body, operationReceipt, operationReceipt.txId);
+  } catch (error) {
+    COMBINE_SIGN_STEP = null;
+    if (signButton) signButton.disabled = !error?.inclusionUnobserved && !error?.ambiguousBroadcast ? false : true;
+    // ACTIVE-vs-Posting hard refusal (the internal rules: sm_combine_cards is Posting
+    // 294/294 observed) -- requestBroadcastPromise() rejects with `tierMismatch`
+    // when Keychain's response echoes a signing key other than Posting; this
+    // renders its own distinct, non-server-refusal copy rather than falling
+    // through to the generic combine_refusal template.
+    const message = error?.tierMismatch
+      ? combineNoticeText('combine_key_tier_refused', { key: error.keyTier || 'Active' })
+      : String(error);
+    COMBINE_PREVIEW = {
+      ...COMBINE_PREVIEW,
+      error: String(error),
+      detail: { message: error?.inclusionUnobserved || error?.ambiguousBroadcast ? error.message : message },
+      tierMismatch: !!error?.tierMismatch,
+      broadcastStalled: !!(error?.inclusionUnobserved || error?.ambiguousBroadcast),
+    };
+    renderCombineDialog();
+    // fix round 1 (HIGH-1): an ambiguous answer was handed to the shared confirmer. Its proof reaches this dialog
+    // a found id continues exactly like a wallet answer (on chain, then the game's verdict); a proven "never sent" ends the
+    // stall and offers Sign again. No state stays disabled for ever.
+    if (error?.pendingBroadcast && body) {
+      const stalled = COMBINE_PREVIEW;
+      error.pendingBroadcast.then(async (late) => {
+        if (COMBINE_PREVIEW !== stalled) return;
+        COMBINE_PREVIEW = { ...COMBINE_PREVIEW, error: null, detail: null, broadcastStalled: false };
+        const receipt = { ...(error.operationReceipt || {}), txId: late.txId };
+        await continueCombineOnChain(preview, body, receipt, late.txId);
+      }, (proof) => {
+        if (COMBINE_PREVIEW !== stalled || !proof?.neverSent) return;
+        COMBINE_PREVIEW = { ...COMBINE_PREVIEW, error: proof.message, detail: { message: proof.message }, broadcastStalled: false, notSent: true };
+        renderCombineDialog();
+      }).catch(() => {});
+    }
+  }
+}
+
+// Step 2 onward, for a wallet answer or for an id the shared confirmer found after an ambiguous answer.
+async function continueCombineOnChain(preview, body, operationReceipt, txId) {
     operationReceipt.pollVerify = (receipt) => verifyCombineBroadcast(body.operation, receipt.txId, receipt);
     // Step 2: On chain -- the tx id is now known, rendered before the domain
     // check (verifyCombineBroadcast's own loading state) even starts.
@@ -903,26 +953,6 @@ export async function confirmCombineBroadcast() {
     };
     renderCombineDialog();
     await verifyCombineBroadcast(body.operation, txId, operationReceipt);
-  } catch (error) {
-    COMBINE_SIGN_STEP = null;
-    if (signButton) signButton.disabled = !error?.inclusionUnobserved && !error?.ambiguousBroadcast ? false : true;
-    // ACTIVE-vs-Posting hard refusal (the internal rules: sm_combine_cards is Posting
-    // 294/294 observed) -- requestBroadcastPromise() rejects with `tierMismatch`
-    // when Keychain's response echoes a signing key other than Posting; this
-    // renders its own distinct, non-server-refusal copy rather than falling
-    // through to the generic combine_refusal template.
-    const message = error?.tierMismatch
-      ? combineNoticeText('combine_key_tier_refused', { key: error.keyTier || 'Active' })
-      : String(error);
-    COMBINE_PREVIEW = {
-      ...COMBINE_PREVIEW,
-      error: String(error),
-      detail: { message: error?.inclusionUnobserved || error?.ambiguousBroadcast ? error.message : message },
-      tierMismatch: !!error?.tierMismatch,
-      broadcastStalled: !!(error?.inclusionUnobserved || error?.ambiguousBroadcast),
-    };
-    renderCombineDialog();
-  }
 }
 
 export async function handleCombineAction(action) {
@@ -966,11 +996,6 @@ export async function handleCombineAction(action) {
   if (kind === 'close-dialog') { closeCombineDialog(); return; }
   if (kind === 'sign') { confirmCombineBroadcast(); return; }
   if (kind === 'confirm') { confirmCombineBroadcast(); return; }
-  if (kind === 'verify' && COMBINE_VERIFY?.operation && COMBINE_VERIFY?.txId) {
-    const operationReceipt = COMBINE_ARRIVAL?.operationReceipt || null;
-    const currentReceipt = operationReceipt?.entryId ? OPERATION_RECEIPTS.get(operationReceipt.entryId) || operationReceipt : operationReceipt;
-    verifyCombineBroadcast(COMBINE_VERIFY.operation, COMBINE_VERIFY.txId, currentReceipt);
-  }
 }
 
 // the idle editor and signing flow keep their existing behavior.

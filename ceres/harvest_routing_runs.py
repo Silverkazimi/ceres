@@ -14,6 +14,7 @@ from typing import Any
 
 from .harvest_evidence import _atomic_write
 from .harvest_routing import RoutingError
+from . import resources as _res
 from .security import resolve_under, validate_player
 
 _ID = re.compile(r"[a-f0-9]{32}")
@@ -21,7 +22,7 @@ TERMINAL = {"complete", "cancelled", "failed", "stopped"}
 # A step whose transaction may already be on chain; such a run is never closed until it is reconciled.
 IN_FLIGHT = {"awaiting_wallet", "pending", "submitted", "settling"}
 _LOG = logging.getLogger(__name__)
-_CHAINABLE_SALE_SYMBOLS = {"GRAIN", "WOOD", "STONE", "IRON", "RESEARCH", "AURA"}
+_CHAINABLE_SALE_SYMBOLS = set(_res.symbols("regional"))  # registry view: GRAIN WOOD STONE IRON RESEARCH AURA
 _IN_FLIGHT_STEP_STATES = {"submitted", "pending", "settling"}
 
 
@@ -325,7 +326,7 @@ def _update_signature_totals(record: dict) -> None:
         first = after_steps[index]
         quote = first.get("quote", first)
         eligible = (first.get("kind") == "sell" and quote.get("destination_symbol") == "DEC"
-                    and quote.get("source_symbol") in {"GRAIN", "WOOD", "STONE", "IRON", "RESEARCH", "AURA"}
+                    and quote.get("source_symbol") in _CHAINABLE_SALE_SYMBOLS
                     and not quote.get("external") and not first.get("two_step") and not first.get("depends_on_step_id"))
         group = [first]
         if eligible:
@@ -334,7 +335,7 @@ def _update_signature_totals(record: dict) -> None:
                 candidate_quote = candidate.get("quote", candidate)
                 symbol = candidate_quote.get("source_symbol")
                 candidate_eligible = (candidate.get("kind") == "sell" and candidate_quote.get("destination_symbol") == "DEC"
-                                      and symbol in {"GRAIN", "WOOD", "STONE", "IRON", "RESEARCH", "AURA"}
+                                      and symbol in _CHAINABLE_SALE_SYMBOLS
                                       and not candidate_quote.get("external") and not candidate.get("two_step")
                                       and not candidate.get("depends_on_step_id") and symbol not in symbols)
                 if not candidate_eligible or len(group) >= DEFAULT_MAX_OPS_PER_TX:

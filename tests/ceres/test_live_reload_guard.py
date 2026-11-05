@@ -270,7 +270,7 @@ def test_g6_restored_poll_resumes_and_clears_confirmed_marker(live_browser: tupl
 
 
 def test_g6b_restored_poll_is_bounded(live_browser: tuple[Browser, str]) -> None:
-    """G6b. Mutation evidence: drop chunk entry-id threading in the scheduler; expected red: restored verification never exhausts."""
+    """Revision 6 §4: restored verification uses one shared waiter and does not rebroadcast."""
     page = _open(live_browser, schedule=True)
     _stage_first_available(page)
     _sign(page)
@@ -279,16 +279,19 @@ def test_g6b_restored_poll_is_bounded(live_browser: tuple[Browser, str]) -> None
     page.on("request", lambda request: requests.append(request) if "/api/op-verify" in request.url else None)
     page.reload()
     wait_for_board(page)
-    # the restored poller runs its (shrunk) schedule to the end and stops
-    page.wait_for_function("""() => { const poller = [...OPERATION_POLLERS.values()][0];
- return !!poller && poller.timer === null && poller.index === OPERATION_POLL_SCHEDULE_MS.length; }""", timeout=30_000)
+    page.wait_for_function("OPERATION_POLLERS.size === 1", timeout=30_000)
+    page.wait_for_function("OPERATION_POLLERS.values().next().value?.handle?.done != null", timeout=30_000)
+    page.wait_for_function("OPERATION_POLL_SCHEDULE_MS.length === 10", timeout=30_000)
+    page.wait_for_event("request", predicate=lambda request: "/api/op-verify" in request.url,
+                        timeout=30_000)
     settle(page)
-    assert len(requests) == 4
+    assert 1 <= len(requests) <= 3
     poller = page.evaluate("""() => {
       const values = [...OPERATION_POLLERS.values()];
-      return {size: OPERATION_POLLERS.size, timer: values[0]?.timer, index: values[0]?.index ?? -1, length: OPERATION_POLL_SCHEDULE_MS.length};
+      return {size: OPERATION_POLLERS.size, hasHandle: !!values[0]?.handle, length: OPERATION_POLL_SCHEDULE_MS.length,
+        broadcasts: Number(sessionStorage.getItem('__ir1882BroadcastCount') || '0')};
     }""")
-    assert poller == {"size": 1, "timer": None, "index": 3, "length": 3}
+    assert poller == {"size": 1, "hasHandle": True, "length": 10, "broadcasts": 1}
     page.close()
 
 

@@ -84,16 +84,23 @@ def test_gate_opens_next_wallet_without_inclusion_requests():
 const handlers = [];
 let reads = 0;
 window.hive_keychain = { requestBroadcast(account, operations, key, callback) { handlers.push(callback); } };
-fetch = async () => { reads++; return new Promise(() => {}); };
+fetch = async (url) => {
+  if (String(url).includes('/api/confirm/intent')) return {ok:true, json:async () => ({begin_token:'a'.repeat(32), server_now:Date.now()})};
+  reads++; return new Promise(() => {});
+};
+const walletCount = async (n) => {
+  for (let i = 0; i < 20 && handlers.length < n; i++) await new Promise(resolve => setTimeout(resolve, 0));
+  if (handlers.length !== n) throw Error(`wallet ${n} missing`);
+};
 const ops = (n) => [['custom_json', {id:'sm_land_operation', json:JSON.stringify({n})}]];
 const first = BroadcastGate.broadcast('alice', ops('one'));
-await Promise.resolve();
+await walletCount(1);
 if (handlers.length !== 1) throw Error('first wallet missing');
 handlers[0]({success:true, result:{id:'tx-one'}});
 const accepted = await first;
 if (accepted.blockNum !== null) throw Error('unobserved inclusion was asserted');
 const second = BroadcastGate.broadcast('alice', ops('two'));
-await Promise.resolve();
+await walletCount(2);
 if (handlers.length !== 2 || reads !== 0) throw Error('validation delayed next wallet');
 handlers[1]({success:true, result:{id:'tx-two'}});
 await second;

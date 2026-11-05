@@ -113,7 +113,7 @@ NOTICE_REGISTRY.update({
     # path ever did: verifyBroadcast() set the notice and returned, and the checkout
     # surface had no retry affordance at all. The message now states only what is
     # actually true; the real re-check action is the `action` a caller attaches
-    # (`verification_notice()` below always adds `retry_verification` here).
+    # (: `verification_notice()` no longer attaches a manual retry action).
     "verification_pending": {"code": "verification_pending", "kind": "verification", "severity": "info", "blocking": "repeat", "message": "Not confirmed yet — the game may still be catching up.", "surfaces": ["verification"], "required_context": [], "aria": "polite", "phase": "pending"},
     # defect 2 -- distinct from verification_pending: this fires once
     # `pending_metadata.requires_escalation` is true (fides_land/verify.py's
@@ -272,7 +272,9 @@ def notice_catalog() -> dict[str, dict[str, Any]]:
     return {code: {key: deepcopy(value) for key, value in spec.items() if key != "code"} for code, spec in NOTICE_REGISTRY.items()}
 
 
-RETRY_VERIFICATION_ACTION = {"id": "retry_verification", "label": "Check again"}
+# (IN-0706): verification notices carry no manual "Check again" action; the shared confirmer
+# (ceres/static/shared-confirmer.js) reads again by itself. Kept as None so callers stay unchanged.
+RETRY_VERIFICATION_ACTION = None
 
 
 def verification_notice(state: str, *, chain: dict[str, Any] | None = None, domain: dict[str, Any] | None = None, game: dict[str, Any] | None = None) -> dict[str, Any]:

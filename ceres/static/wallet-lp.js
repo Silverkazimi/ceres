@@ -24,26 +24,16 @@ import { tokenIcon, tokenLabel } from './harvest-state.js';
 import { plaque } from './wallet-resources.js';
 import { walletControlsHtml, walletMethodHtml, walletReady, walletSignLabelHtml, walletWaitHtml } from './wallet.js';
 import { requestBroadcastThroughGate } from './broadcast-gate.js';
+import { walletNeverAskedText, confirmationState, findSignedTransaction, registerReview, subscribeConfirmation, waitForStep, waitThrough } from './shared-confirmer.js';
 import { initCustomSelect } from './customSelect.js';
+import { resourceSymbolsWhere } from './resources.js';
 
 export const QUOTE_IDLE_MS = 700;
-export const VERIFY_SCHEDULE_MS = [0, 2000, 4000, 8000, 12000, 18000, 26000, 36000, 50000, 70000];  // the game can take ~30 s to index
-// after the schedule Ceres keeps checking on its own every 15 s.
-// a swap that is in neither the game
-// nor the account's own history 5 min after the wallet was asked was not sent, and the card says so. A wallet can still broadcast
-// a signed request up to an hour after it was built (Hive's expiry; today's HiveAuth approval came 8 min late), so the intent is
-// retained as a pending intent while a wallet response can still be delayed; absence by history alone does not release it.
-export const RECHECK_MS = 15000;
+// the confirmation schedule, its bounds and every resume live in shared-confirmer.js (this flow is the maintainer's
+// reference, IN-0708: its 0-70 s schedule became the shared one). still applies: a wallet can broadcast a signed
+// request up to an hour after it was built, so absence is final only past Hive's expiry plus grace.
 export const NEVER_SENT_AFTER_MS = 3900 * 1000; // Hive expiry plus the existing inclusion grace
 export const LATE_WATCH_MS = 65 * 60 * 1000;
-// with 's clock: the game confirms a
-// transaction in seconds (: up to ~30 s to index), the pool answered today's swap in 51 s. Three minutes for the game
-// five for the pool; past that the card turns red and says so. Checking can always be resumed by hand.
-export const CONFIRM_TTL_MS = 3 * 60 * 1000;
-export const SETTLE_TTL_MS = 5 * 60 * 1000;
-export const SETTLE_SCHEDULE_MS = [10000];  // every 10 s
-// A hard cap on rounds, well past both limits in real time; it only ends a loop whose clock never moves (a page without timers).
-const MAX_ROUNDS = 400;
 // The game's own fee wording (Trade Hub pool swap): 10 % on the swap value, half to shareholders, half burnt.
 export const FEE_LABEL = '10% fee on swap value (5% to shareholders, 5% burnt)';
 const states = new Map();  // `${player}:${symbol}` -> swap state; page memory only ()
@@ -267,26 +257,21 @@ function waitingHtml(st) {
   if (st.stage !== 'confirming') return '';
   const r = st.receipt || {};
   const since = r.signed_at ? new Date(r.signed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-  if (st.failed === 'confirm') return `<p class="wallet-swap-note is-warn" role="status">Still pending: the game has not confirmed this ${isPoolKind(r.kind) ? 'change' : 'swap'} yet. Nothing was signed again. Resume checking asks the game once more.</p>`;
-  if (st.stopped) return `<p class="wallet-swap-note is-warn" role="status">Checking is stopped. This ${isPoolKind(r.kind) ? 'change' : 'swap'} stays open until the game confirms it — do not send it again.</p>`;
   if (!r.tx_id && st.historyUnreadable) {  // a failed read never releases the swap; the card says so and keeps trying
     const late = r.signed_at && Date.now() - Date.parse(r.signed_at) > NEVER_SENT_AFTER_MS;
     return `<p class="wallet-swap-note ${late ? 'is-danger' : 'is-warn'}" role="${late ? 'alert' : 'status'}">${HISTORY_UNREADABLE_NOTE}</p>`;
   }
-  const what = r.tx_id ? 'The game has not confirmed it yet.' : 'Your wallet did not return the transaction. Ceres is looking for it in your account history.';
-  return st.checking ? `<p class="wallet-swap-note is-warn" role="status">${what} Ceres keeps checking by itself${since ? ` (sent ${esc(since)})` : ''}.</p>` : '';
+  const what = r.tx_id ? 'The game has not confirmed it yet.' : 'Your wallet did not return the transaction. Ceres is finding it on Hive.';
+  return st.checking ? `<p class="wallet-swap-note is-warn" role="status">${what} Ceres keeps checking by itself; nothing is sent again${since ? ` (sent ${esc(since)})` : ''}.</p>` : '';
 }
-function confirmActions(st) {
-  if (st.stage !== 'confirming') return '';
-  return st.stopped || st.failed === 'confirm' ? btn('verify', 'Resume checking', 'primary', 'touch') : st.checking ? btn('stop', 'Stop checking', 'secondary', 'touch') : '';
-}
+// (IN-0706): no Stop/Resume/Check again; the automatic line above is the only state.
+function confirmActions() { return ''; }
 // an open confirmation (also one restored after a reload) is checked without a click, unless the maintainer stopped it.
 export function resumeSwapChecks(ctx) {
   for (const [id, st] of states) {
     const [player, symbol] = [id.slice(0, id.indexOf(':')), id.slice(id.indexOf(':') + 1)];
-    // a failed confirmation is terminal for the automatic check (rendering never restarts it); only Resume does.
-    if (player === ctx.player && st.stage === 'confirming' && st.receipt && !st.checking && !st.stopped && !st.failed) verify(ctx, symbol, st);
-    else if (player === ctx.player && st.stage === 'settling' && st.receipt && !st.settleLooping && !st.settleStopped && !st.failed) settleLoop(ctx, st);
+    if (player === ctx.player && st.stage === 'confirming' && st.receipt && !st.checking) verify(ctx, symbol, st);
+    else if (player === ctx.player && st.stage === 'settling' && st.receipt && !st.settleLooping) settleLoop(ctx, st);
     else if (player === ctx.player && st.stage === 'edit' && !st.busy && !st.watchLooking && readWatch(ctx.player, symbol).length) {
       st.watchLooking = true;
       adoptLateBroadcast(ctx, symbol, st).then(outcome => { st.watchLooking = false; if (outcome === 'adopted' || noteWatchResult(st, outcome)) ctx.render(); }, () => { st.watchLooking = false; });
@@ -297,8 +282,19 @@ export function resumeSwapChecks(ctx) {
   }
 }
 
+// fix round 2 (astra-r2 shape 6): the game refused a swap or pool change -- shown, with its reason, never erased.
+function refusedReceiptHtml(symbol, st) {
+  const r = st.receipt;
+  const pool = isPoolKind(r.kind);
+  return `<section class="wallet-card wallet-swap${pool ? ' wallet-pool' : ''} dec-review dec-receipt is-failed" data-lp-symbol="${esc(symbol)}" data-lp-stage="refused" data-lp-kind="${esc(r.kind || '')}"${pool ? ' data-lp-active' : ''} aria-live="polite">
+    <header><h3>${pool ? 'The game refused this pool change' : 'The game refused this swap'}</h3>${r.region ? plaque(r.region) : ''}</header>
+    <p class="wallet-swap-note is-danger" role="alert">${esc(st.refusal || 'The game gave no reason.')}</p><p class="wallet-swap-note">Nothing was spent.</p>
+    <div class="dec-receipt-actions">${r.tx_id ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(r.tx_id)}" target="_blank" rel="noopener noreferrer">View transaction ↗</a>` : ''}${btn('done', 'Close', 'primary', 'touch')}</div></section>`;
+}
+
 function receiptHtml(symbol, st, player) {
   const r = st.receipt;
+  if (st.stage === 'refused' && r.kind !== 'transfer') return refusedReceiptHtml(symbol, st);
   if (isPoolKind(r.kind)) return poolReceiptHtml(symbol, st, player);
   if (r.kind === 'transfer') return transferReceiptHtml(symbol, st, player);
   // (stuck states): a swap whose value moves outside the game (an SPS withdrawal, or an SPS sale's pool swap)
@@ -311,39 +307,31 @@ function receiptHtml(symbol, st, player) {
   const status = st.checking ? 'Confirming with the game…' : sending ? 'Sending SPS to the pool…' : '';
   const retryBtn = retry ? `<span class="wallet-sign-pair">${walletControlsHtml(player)}${btn('fund', 'Send SPS to the pool', 'primary', 'touch', !walletReady(player))}</span>` : '';
   return `<section class="wallet-card wallet-swap dec-review dec-receipt${done ? ' is-confirmed' : ' is-waiting'}" data-lp-symbol="${esc(symbol)}" data-lp-stage="${st.stage}" aria-live="polite">
-    <header><h3>${done ? 'Swap confirmed' : st.failed === 'confirm' ? 'Still pending' : 'Swapping'}</h3>${r.region ? plaque(r.region) : ''}</header>
+    <header><h3>${done ? 'Swap confirmed' : 'Swapping'}</h3>${r.region ? plaque(r.region) : ''}</header>
     <div class="dec-receipt-amount">${art(r.pay)}<div><span>${verb}</span><strong>${fixed(r.input)} <small>${esc(label(r.pay))}</small> → ${r.output == null ? '—' : fixed(r.output)} <small>${esc(label(r.receive))}</small></strong></div>${art(r.receive)}</div>
     ${done && r.output == null ? '<p class="wallet-swap-note">The game did not report the amount received; your wallet balance shows it.</p>' : ''}
     ${st.stage === 'funding-signing' ? walletWaitHtml(player, 'Active') + `<div class="wallet-fund-controls">${walletControlsHtml(player, null, { compactRequest: true })}</div>` : status ? `<p class="dec-status" role="status"><span class="spinner" aria-hidden="true"></span>${status}</p>` : ''}
     ${st.stage === 'funding' && !st.busy ? `<p class="wallet-swap-note is-warn" role="status">${esc(st.fundError || `The game accepted the swap and is waiting for your ${label(r.kind === 'add' ? r.symbol : r.pay)}. Send it to the pool to finish (Active key).`)}</p>` : ''}
     ${waitingHtml(st)}
     ${done && r.bridge_tx ? `<p class="wallet-swap-note">Settled by the pool · <a href="https://hivehub.dev/tx/${encodeURIComponent(r.bridge_tx)}" target="_blank" rel="noopener noreferrer">settlement ↗</a></p>` : ''}
-    <div class="dec-receipt-actions">${r.tx_id ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(r.tx_id)}" target="_blank" rel="noopener noreferrer">View transaction ↗</a>` : ''}${r.funding_tx ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(r.funding_tx)}" target="_blank" rel="noopener noreferrer">SPS transfer ↗</a>` : ''}${done ? btn('done', 'Done', 'primary', 'touch') : retryBtn || confirmActions(st)}</div></section>`;
+    <div class="dec-receipt-actions">${r.tx_id ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(r.tx_id)}" target="_blank" rel="noopener noreferrer">View transaction ↗</a>` : ''}${r.funding_tx ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(r.funding_tx)}" target="_blank" rel="noopener noreferrer">SPS transfer ↗</a>` : ''}${done ? btn('done', 'Done', 'primary', 'touch') : retryBtn || confirmActions()}</div></section>`;
 }
 
 function settlingHtml(symbol, st, player) {
   const r = st.receipt;
   const sell = r.kind !== 'swap_buy';
   const note = st.settleNote ? `<p class="wallet-swap-note" role="status">${esc(st.settleNote)}</p>` : '';
-  const failed = st.failed === 'settle';
-  return `<section class="wallet-card wallet-swap dec-review dec-receipt ${failed ? 'is-failed' : 'is-waiting'}" data-lp-symbol="${esc(symbol)}" data-lp-stage="settling" aria-live="polite">
-    <header><h3>${failed ? 'Not settled within 5 minutes' : 'Waiting for the pool to settle'}</h3>${r.region ? plaque(r.region) : ''}</header>
+  return `<section class="wallet-card wallet-swap dec-review dec-receipt is-waiting" data-lp-symbol="${esc(symbol)}" data-lp-stage="settling" aria-live="polite">
+    <header><h3>Waiting for the pool to settle</h3>${r.region ? plaque(r.region) : ''}</header>
     <div class="dec-receipt-amount">${art(r.pay)}<div><span>${sell ? 'Selling' : 'Buying'}</span><strong>${fixed(r.input)} <small>${esc(label(r.pay))}</small> → — <small>${esc(label(r.receive))}</small></strong></div>${art(r.receive)}</div>
     <p>The game accepted the swap${sell && r.funding_tx ? ' and your SPS went to the pool' : ''}. Amount confirmed when the pool settles; nothing is signed again.</p>
-    ${settleStatusHtml(st)}
+    ${settleStatusHtml()}
     ${note}
-    ${r.fundingUnknown && !r.funding_tx ? btn('funding-not-sent', 'I checked my wallet: the SPS transfer was not sent', 'secondary', 'compact') : ''}
-    <div class="dec-receipt-actions">${r.tx_id ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(r.tx_id)}" target="_blank" rel="noopener noreferrer">View transaction ↗</a>` : ''}${r.funding_tx ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(r.funding_tx)}" target="_blank" rel="noopener noreferrer">SPS transfer ↗</a>` : ''}${settleActions(st)}${st.settleCursor != null ? btn('settle-older', 'Look further back', 'secondary', 'touch', !!st.busy) : ''}${btn('done', 'Close', 'secondary', 'touch', !!st.busy)}</div></section>`;
+    <div class="dec-receipt-actions">${r.tx_id ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(r.tx_id)}" target="_blank" rel="noopener noreferrer">View transaction ↗</a>` : ''}${r.funding_tx ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(r.funding_tx)}" target="_blank" rel="noopener noreferrer">SPS transfer ↗</a>` : ''}${btn('done', 'Close', 'secondary', 'touch', !!st.busy)}</div></section>`;
 }
-// what the settlement loop is doing, and the buttons that fit it.
-function settleStatusHtml(st) {
-  if (st.failed === 'settle') return `<p class="wallet-swap-note is-danger" role="alert">The pool has not paid this swap within 5 minutes. Ceres stopped checking; nothing was signed again. Check again reads the pool once more, or look in the game.</p>`;
-  if (st.settleStopped) return `<p class="wallet-swap-note is-warn" role="status">Checking is stopped. The swap stays open until the pool has paid it.</p>`;
-  return `<p class="wallet-swap-note is-warn" role="status"><span class="spinner" aria-hidden="true"></span> Ceres reads the pool by itself until it has paid this swap.</p>`;
-}
-function settleActions(st) {
-  if (st.failed === 'settle' || st.settleStopped) return btn('settle', st.busy ? 'Checking…' : st.failed ? 'Check again' : 'Resume checking', 'primary', 'touch', !!st.busy);
-  return btn('settle-stop', 'Stop checking', 'secondary', 'touch', !!st.busy);
+// what the shared settlement wait is doing. No buttons: it reads the pool by itself until paid.
+function settleStatusHtml() {
+  return `<p class="wallet-swap-note is-warn" role="status"><span class="spinner" aria-hidden="true"></span> Ceres reads the pool by itself until it has paid this swap; nothing is signed again.</p>`;
 }
 
 // Pure over (symbol, wallet, player) plus this module's page-memory state.
@@ -369,22 +357,15 @@ export function enhanceSwap(root) {
   }));
 }
 
-async function post(path, player, body) {
+const LEGACY_UNRESOLVED = 'This request was saved by an older Ceres without its operations, so Ceres cannot prove whether it was sent. Nothing will be sent again; it keeps looking for it.';
+async function post(path, player, body, { signal = null } = {}) {
   const base = path.startsWith('/') ? path : `/api/wallet/lp/${path}`;  // the transfer routes live under /api/wallet/transfer
-  const response = await fetch(`${base}?player=${encodeURIComponent(player)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  // fix round 2 (P1-6): a confirm read the shared scheduler abandoned is aborted, so its late answer changes nothing.
+  const response = await fetch(`${base}?player=${encodeURIComponent(player)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), ...(signal ? { signal } : {}) });
   let result = null;
   try { result = await response.json(); } catch (_) { result = null; }
   if (!response.ok || !result) { const failure = new Error('wallet-lp'); failure.status = response.status; throw failure; }
   return result;
-}
-
-// The server returns included:false only after its 3,900-second known-id absence grace.
-async function expiredAndAbsent(player, txId, askedAt) {
-  if (!txId || !askedAt) return false;
-  try {
-    const result = await post('/api/op-inclusion', player, { tx_id: txId, created_at: askedAt });
-    return result?.included === false;
-  } catch (_) { return false; }
 }
 
 // Re-render only this card, keeping the caret where the user is typing.
@@ -482,23 +463,40 @@ export function previewBody(symbol, direction, region, amount) {
     ? { kind: 'swap_buy', resource_symbol: symbol, region_uid: region, dec_amount: amount }
     : { kind: 'swap_sell', resource_symbol: symbol, region_uid: region, resource_amount: amount };
 }
-async function verify(ctx, symbol, st, resumed = false) {
+async function verify(ctx, symbol, st) {
   if (st.checking || !st.receipt) return;
   const nonce = st.receipt.nonce;
-  const current = () => st.stage === 'confirming' && st.receipt?.nonce === nonce && !st.stopped;
+  const current = () => st.stage === 'confirming' && st.receipt?.nonce === nonce;
   if (!st.receipt.signed_at) st.receipt.signed_at = new Date().toISOString();
-  // Resume gives the game a fresh 3-minute window from the press; signed_at (the 5-minute never-sent clock) is kept as it was.
-  if (resumed) st.receipt.checkFrom = new Date().toISOString();
-  const confirmStart = () => Math.max(Date.parse(st.receipt.signed_at) || 0, Date.parse(st.receipt.checkFrom || '') || 0);
-  st.checking = true; st.stopped = false; st.failed = null; ctx.render();
-  const pause = ms => new Promise(resolve => { const timer = setTimeout(resolve, ms); st.wake = () => { clearTimeout(timer); resolve(); }; });
-  // no transaction id from the wallet -> the account's own recent history finds it by the intent nonce.
+  st.checking = true; ctx.render();
+  // no transaction id from the wallet -> the shared confirmer's own-history finder () learns it when this
+  // page signed the request; an intent restored without its operations uses the swap finder by its nonce.
   // 'found' | 'not_found' (the read SUCCEEDED and the nonce is not there) | 'unknown' (the read failed: proves nothing).
   const lookup = async () => {
     if (!nonce) return 'not_found';  // the nonce is stored before the wallet is asked: without one the wallet never saw this swap
+    // fix round 1 (F7): an intent with its operations is found ONLY by the shared finder (server schedule and
+    // budget, ); "never sent" is the server's proof, never this card's own age rule.
+    if (st.receipt.ops) {
+      const shared = confirmationState(ctx.player, st.receipt.ops);
+      if (shared?.txId) {
+        st.receipt = { ...st.receipt, tx_id: shared.txId, unknownOutcome: false };
+        syncStoredIntent(ctx.player, symbol, st); ctx.render();
+        waitThrough({ key: waitKey, check, txId: shared.txId, intent: shared.attemptId, beginToken: beginTokenOf(ctx.player, st.receipt.ops, shared.attemptId) });   // the running wait now also asks Hive by id
+        return 'found';
+      }
+      if (shared?.state === 'never-sent') return 'absent';
+      findSignedTransaction(ctx.player, st.receipt.ops).catch(() => {});
+      // the history could not be read just now -> the pending line says so (a failed read proves nothing).
+      const unreadable = Boolean(confirmationState(ctx.player, st.receipt.ops)?.findUnavailable);
+      if (current() && st.historyUnreadable !== unreadable) { st.historyUnreadable = unreadable; ctx.render(); }
+      return 'unknown';
+    }
+    // An intent restored without its operations (saved before ): one nonce lookup per page load ().
+    if (st.legacyFound) return 'unknown';
+    st.legacyFound = true;
     let found;
     try { found = await post('find', ctx.player, findBody(st.receipt)); }
-    catch (_) { if (current() && !st.historyUnreadable) { st.historyUnreadable = true; ctx.render(); } return 'unknown'; }  // read again on the next round
+    catch (_) { if (current() && !st.historyUnreadable) { st.historyUnreadable = true; ctx.render(); } return 'unknown'; }
     // a not_found whose window does not reach back to the request is 'unknown', never evidence of "not sent"
     if (found?.status !== 'found' && !(found?.status === 'not_found' && found.covered === true)) { if (current() && !st.historyUnreadable) { st.historyUnreadable = true; ctx.render(); } return 'unknown'; }
     if (st.historyUnreadable) { st.historyUnreadable = false; ctx.render(); }
@@ -509,107 +507,160 @@ async function verify(ctx, symbol, st, resumed = false) {
     }
     return found.status === 'found' ? 'found' : 'not_found';
   };
-  try {
-    for (let i = 0; ; i++) {
-      if (i >= MAX_ROUNDS) { st.stopped = true; return; }
-      // every run (a reload, a Resume) reads the game at least once before the 3-minute limit can end it
-      if (i > 0 && st.receipt.tx_id && Date.now() - confirmStart() > CONFIRM_TTL_MS) { st.failed = 'confirm'; return; }
-      const wait = i < VERIFY_SCHEDULE_MS.length ? VERIFY_SCHEDULE_MS[i] - (VERIFY_SCHEDULE_MS[i - 1] || 0) : RECHECK_MS;
-      if (wait) await pause(wait);
-      if (!current()) return;
-      // A no-ID intent is released only after the Hive expiry grace and a successful covering history miss.
-      if (!st.receipt.tx_id) {
-        const seen = await lookup();
-        if (seen === 'not_found' && Date.now() - Date.parse(st.receipt.asked_at || st.receipt.signed_at || '') >= NEVER_SENT_AFTER_MS && current()) {
-          Object.assign(st, { stage: 'edit', receipt: null, quote: null, quoted: '', lpNoteTone: 'warn',
-            lpNote: 'This wallet request expired without being sent. Nothing was spent.' });
-          syncStoredIntent(ctx.player, symbol, st); await ctx.reload(); return;
-        }
-        if (seen !== 'found') continue;
-      }
-      if (!current()) return;
-      const intent = { ...st.receipt };
-      let result;
-      try { result = await post('verify', ctx.player, { tx_id: intent.tx_id, nonce: intent.nonce, kind: intent.kind, expected_payload: intent.payload }); }
-      catch (_) { continue; }
-      if (!current()) return;
-      if (result.status === 'not_found') {
-        if (await expiredAndAbsent(ctx.player, intent.tx_id, st.receipt.asked_at || st.receipt.signed_at) && current()) {
-          Object.assign(st, { stage: 'edit', receipt: null, quote: null, quoted: '', lpNoteTone: 'warn',
-            lpNote: 'This wallet transaction expired without being included. Nothing was spent.' });
-          await ctx.reload(); return;
-        }
-        continue;
-      }
-      const deposit = intent.kind === 'add' && !!result.game_result?.pending_deposit_id;  // an SPS deposit is paid by a second transfer
-      if (result.status === 'confirmed' && (intent.twoStep || deposit)) {
-        balancesChanged({ player: ctx.player, assets: [intent.symbol, intent.pay, intent.receive].filter(Boolean), regions: [intent.region].filter(Boolean), id: `wallet-game:${intent.tx_id}` });  // SPS sale: the Active transfer follows by itself
-        st.stage = 'funding'; st.checking = false;
-        await fund(ctx, st);
-        return;
-      }
-      if (result.status === 'confirmed' && isPoolKind(intent.kind)) {
-        balancesChanged({ player: ctx.player, assets: [intent.symbol, 'DEC'].filter(Boolean), regions: [intent.region].filter(Boolean), id: `wallet-game:${intent.tx_id}` });
-        const effects = result.game_result || {};
-        const got = key => { const value = Number(effects[key]); return Number.isFinite(value) && value > 0 ? value : null; };
-        // the SPS part comes through the pool bridge; : the DEC the game paid is kept as reported evidence
-        if (effects.external_withdrawal_required === true) { st.receipt = { ...st.receipt, gameDec: got('dec_amount') }; st.stage = 'settling'; return; }
-        st.receipt = { ...st.receipt, resource: got('resource_amount'), dec: got('dec_amount'), reported: true };  // the game's figures, never the estimate
-        st.stage = 'done';
-        return;
-      }
-      if (result.status === 'confirmed') {
-        balancesChanged({ player: ctx.player, assets: [intent.symbol, intent.pay, intent.receive].filter(Boolean), regions: [intent.region, intent.destination_region].filter(Boolean), id: `wallet-game:${intent.tx_id}` });
-        const effects = result.game_result || {};
-        // an external withdrawal / swap is paid outside the game -- wait for the pool, show no amount yet.
-        if (effects.external_withdrawal_required === true || effects.external_swap_required === true) {
-          st.receipt = { ...st.receipt, output: null }; st.stage = 'settling';
-          return;
-        }
-        const paid = Number(intent.kind === 'swap_buy' || intent.kind === 'transfer' ? effects.resource_amount : effects.dec_amount);  // what the recipient got
-        st.receipt = { ...st.receipt, output: Number.isFinite(paid) && paid > 0 ? paid : null };  // never the quote
-        st.stage = 'done';
-        return;
-      }
-      if (result.status === 'failed' && intent.kind === 'transfer') {  // a refused transfer is red and gives the game's reason verbatim
-        Object.assign(st, { stage: 'refused', refusal: String(result.message || '') });
-        return;
-      }
-      if (result.status === 'failed') {  // game refusal: back to the card with live balances, silently
-        Object.assign(st, { stage: 'edit', receipt: null, quote: null, quoted: '' });
-        await ctx.reload();
-        return;
-      }
+  // One read for the shared confirmer (): its schedule, no 3-minute red stop, no rounds cap, no Stop/Resume.
+  const waitKey = `swap:${ctx.player}:${nonce || st.token}`;
+  const check = async ({ signal } = {}) => {
+    if (!current()) return { state: 'refused', gone: true };
+    if (!st.receipt.tx_id) {
+      const seen = await lookup();
+      if (seen === 'absent') return { state: 'never-sent', why: 'expired' };
+      // fix round 2 (astra-r2 P1-7): a legacy intent (no operations, saved before ) is never called "not
+      // sent" from this browser's clock; it stays honestly unresolved and keeps being looked for.
+      if (seen === 'not_found' && !st.receipt.ops) return { state: 'pending', message: LEGACY_UNRESOLVED };
+      if (seen !== 'found') return { state: 'pending' };
     }
-  } finally { st.checking = false; st.wake = null; syncStoredIntent(ctx.player, symbol, st); ctx.render(); if (st.stage === 'settling') settleLoop(ctx, st); }  // the confirmed event refreshes wallet balances
+    const intent = { ...st.receipt };
+    const result = await post('verify', ctx.player, { tx_id: intent.tx_id, nonce: intent.nonce, kind: intent.kind, expected_payload: intent.payload }, { signal });
+    if (signal?.aborted) return { state: 'pending', stale: true };
+    if (result.status === 'not_found') return { state: 'pending' };   // absence by id: the shared scheduler's chain read (server clock)
+    if (result.status === 'confirmed') return { state: 'confirmed', result, intent };
+    if (result.status === 'failed') return { state: 'refused', result, intent };
+    return { state: 'pending' };
+  };
+  try {
+    const shared = st.receipt.ops ? confirmationState(ctx.player, st.receipt.ops) : null;
+    const answer = await waitThrough({ key: waitKey, check, account: ctx.player, txId: st.receipt.tx_id || null, intent: shared?.attemptId || null,
+      beginToken: shared ? beginTokenOf(ctx.player, st.receipt.ops, shared.attemptId) : null,
+      since: st.receipt.signed_at, onUpdate: () => { if (current()) ctx.render(); } }).done;
+    if (answer.gone || !current()) return;
+    if (answer.state === 'never-sent') {
+      Object.assign(st, { stage: 'edit', receipt: null, quote: null, quoted: '', lpNoteTone: 'warn',
+        lpNote: answer.why === 'absent' ? 'This wallet transaction expired without being included. Nothing was spent.' : 'This wallet request expired without being sent. Nothing was spent.' });
+      syncStoredIntent(ctx.player, symbol, st); await ctx.reload(); return;
+    }
+    const { result, intent } = answer;
+    const deposit = intent.kind === 'add' && !!result.game_result?.pending_deposit_id;  // an SPS deposit is paid by a second transfer
+    if (result.status === 'confirmed' && (intent.twoStep || deposit)) {
+      balancesChanged({ player: ctx.player, assets: [intent.symbol, intent.pay, intent.receive].filter(Boolean), regions: [intent.region].filter(Boolean), id: `wallet-game:${intent.tx_id}` });  // SPS sale: the Active transfer follows by itself
+      st.stage = 'funding'; st.checking = false;
+      await fund(ctx, st);
+      return;
+    }
+    if (result.status === 'confirmed' && isPoolKind(intent.kind)) {
+      balancesChanged({ player: ctx.player, assets: [intent.symbol, 'DEC'].filter(Boolean), regions: [intent.region].filter(Boolean), id: `wallet-game:${intent.tx_id}` });
+      const effects = result.game_result || {};
+      const got = key => { const value = Number(effects[key]); return Number.isFinite(value) && value > 0 ? value : null; };
+      // the SPS part comes through the pool bridge; : the DEC the game paid is kept as reported evidence
+      if (effects.external_withdrawal_required === true) { st.receipt = { ...st.receipt, gameDec: got('dec_amount') }; st.stage = 'settling'; return; }
+      st.receipt = { ...st.receipt, resource: got('resource_amount'), dec: got('dec_amount'), reported: true };  // the game's figures, never the estimate
+      st.stage = 'done';
+      return;
+    }
+    if (result.status === 'confirmed') {
+      balancesChanged({ player: ctx.player, assets: [intent.symbol, intent.pay, intent.receive].filter(Boolean), regions: [intent.region, intent.destination_region].filter(Boolean), id: `wallet-game:${intent.tx_id}` });
+      const effects = result.game_result || {};
+      // an external withdrawal / swap is paid outside the game -- wait for the pool, show no amount yet.
+      if (effects.external_withdrawal_required === true || effects.external_swap_required === true) {
+        st.receipt = { ...st.receipt, output: null }; st.stage = 'settling';
+        return;
+      }
+      const paid = Number(intent.kind === 'swap_buy' || intent.kind === 'transfer' ? effects.resource_amount : effects.dec_amount);  // what the recipient got
+      st.receipt = { ...st.receipt, output: Number.isFinite(paid) && paid > 0 ? paid : null };  // never the quote
+      st.stage = 'done';
+      return;
+    }
+    if (result.status === 'failed' && intent.kind === 'transfer') {  // a refused transfer is red and gives the game's reason verbatim
+      Object.assign(st, { stage: 'refused', refusal: String(result.message || '') });
+      return;
+    }
+    if (result.status === 'failed') {  // fix round 2 (astra-r2 shape 6): a refusal is SHOWN with the game's reason
+      Object.assign(st, { stage: 'refused', refusal: String(result.message || result.error || '') });
+      await ctx.reload();
+    }
+  } finally { st.checking = false; syncStoredIntent(ctx.player, symbol, st); ctx.render(); if (st.stage === 'settling') settleLoop(ctx, st); }  // the confirmed event refreshes wallet balances
 }
 
-// the settlement is read by itself (the pool's public history, by the swap's own id), on a schedule, until the pool has
-// paid or an hour has passed; then the card is red. A press of Check again still reads at once.
+// the pool settlement is a genuine second step; it waits through the shared scheduler (no 5-minute red
+// stop, no Stop/Check again/Look further back). Each read takes the pool's latest history; once the swap is older than five
+// minutes a read also follows one older page (at most five pages deep), so a late page load still finds an older payout.
+// An SPS transfer whose wallet answer was lost is found by the settle read () or, past Hive's expiry, offered again.
 async function settleLoop(ctx, st) {
   if (st.settleLooping || st.stage !== 'settling' || !st.receipt) return;
-  const intent = st.receipt;
-  const startedAt = Date.parse(intent.funding_at || intent.signed_at || '') || Date.now();
-  st.settleLooping = true; st.failed = null; st.settleStopped = false;
-  const pause = ms => new Promise(resolve => { const timer = setTimeout(resolve, ms); st.settleWake = () => { clearTimeout(timer); resolve(); }; });
+  const nonce = st.receipt.nonce;
+  const startedAt = Date.parse(st.receipt.funding_at || st.receipt.signed_at || '') || Date.now();
+  const mine = () => st.stage === 'settling' && st.receipt?.nonce === nonce;
+  st.settleLooping = true;
+  let depth = 0;
+  let olderCursor = null;   // F10: the bounded sweep of older pool pages keeps its own cursor (the newest read resets st.settleCursor)
+  const stopFunding = watchFundingProof(ctx, st);
   try {
-    for (let i = 0; st.stage === 'settling' && st.receipt === intent && !st.settleStopped; i++) {
-      if (i >= MAX_ROUNDS) { st.settleStopped = true; return; }
-      if (Date.now() - startedAt > SETTLE_TTL_MS) { st.failed = 'settle'; return; }
-      if (!st.busy) await settleCheck(ctx, st, false);
-      if (st.stage !== 'settling' || st.receipt !== intent || st.settleStopped) return;
-      await pause(SETTLE_SCHEDULE_MS[Math.min(i, SETTLE_SCHEDULE_MS.length - 1)]);
+    // fix round 3 (astra-review-r3 N4): every settlement read carries the scheduler's signal. A read the
+    // scheduler abandons is aborted, frees `busy` at once (so the next scheduled or resumed read really reads) and its
+    // late answer changes nothing.
+    await waitForStep({ key: `settle:${ctx.player}:${nonce || st.receipt.tx_id}`, onUpdate: () => ctx.render(), check: async ({ signal } = {}) => {
+      if (!mine()) return { state: 'confirmed', gone: true };
+      if (st.busy) return { state: 'pending' };
+      await settleCheck(ctx, st, false, null, signal);
+      if (signal?.aborted) return { state: 'pending', stale: true };
+      if (olderCursor == null && depth === 0) olderCursor = st.settleCursor;
+      if (mine() && olderCursor != null && depth < 5 && Date.now() - startedAt > 5 * 60000) {
+        depth += 1;
+        const next = await settleCheck(ctx, st, true, olderCursor, signal);
+        if (signal?.aborted) return { state: 'pending', stale: true };
+        olderCursor = Number.isInteger(next) ? next : null;
+      }
+      return mine() ? { state: 'pending' } : { state: 'confirmed' };
+    } });
+  } finally { stopFunding?.(); st.settleLooping = false; ctx.render(); }
+}
+
+// Aletheia r4 4: the begin token of the attempt the wait names, so the server can judge a known id of that attempt.
+function beginTokenOf(player, ops, attemptId) {
+  return () => { const row = confirmationState(player, ops); return row && row.attemptId === attemptId ? row.beginToken || null : null; };
+}
+
+// F1 ( fix round 1): an SPS transfer whose wallet answer was lost is resolved ONLY by the shared confirmer for that
+// exact persisted funding action: a found id is attached; "never sent" is the server's complete proof (its own-history read
+// at the transfer's expiry, back to the signing moment, with the node's head past the expiry). Only then is "Send SPS to
+// the pool" offered again. Without the persisted operations (a receipt from before ) it is never offered again.
+function watchFundingProof(ctx, st) {
+  const ops = st.receipt?.funding_ops;
+  if (!st.receipt?.fundingUnknown || st.receipt.funding_tx || !Array.isArray(ops) || !ops.length) return null;
+  const nonce = st.receipt.nonce;
+  const stop = subscribeConfirmation(ctx.player, ops, row => {
+    if (st.receipt?.nonce !== nonce || st.receipt.funding_tx || !st.receipt.fundingUnknown) return;
+    if (row?.txId) {
+      const { fundingUnknown, ...rest } = st.receipt;
+      st.receipt = { ...rest, funding_tx: row.txId, funding_at: rest.funding_at || new Date().toISOString() };
+      syncStoredIntent(ctx.player, intentSymbol(st.receipt), st); ctx.render();
+    } else if (row?.state === 'never-sent') {
+      const { fundingUnknown, funding_ops, ...rest } = st.receipt;
+      Object.assign(st, { stage: 'funding', receipt: rest, funding: null, settleNote: '',
+        // IN-0888 word for word; a Keychain prompt open past the lifetime: PAYMENT_PROMPT_OPEN_ENDING (pending maintainer question)
+        fundError: row.neverSentBy === 'wallet-expired' ? (row.error || walletNeverAskedText(ops, row.neverAskedCause))
+          : 'Your SPS transfer was not sent (Hive has no record of it and it has expired). Send it when you are ready.' });
+      syncStoredIntent(ctx.player, intentSymbol(rest), st); ctx.render();
     }
-  } finally { st.settleLooping = false; st.settleWake = null; ctx.render(); }
+  });
+  findSignedTransaction(ctx.player, ops).catch(() => {});
+  return stop;
 }
 
 // one settlement read. Settled -> done with the amount the pool paid; otherwise it stays waiting.
-async function settleCheck(ctx, st, older) {
+async function settleCheck(ctx, st, older, cursor = null, signal = null) {
   const intent = st.receipt;
-  st.busy = true; st.settleNote = ''; ctx.render();
+  const busy = {};   // this read's own token: an aborted read clears it at once; a late finally never clears a newer one
+  const release = () => { if (st.busy === busy) st.busy = false; };
+  st.busy = busy; st.settleNote = ''; ctx.render();
+  signal?.addEventListener?.('abort', release);
   try {
+    // A legacy receipt (lost transfer, no persisted operations) may ask the server's memo search once per page load.
+    const findFunding = !older && intent.fundingUnknown && !intent.funding_tx && !intent.funding_ops && !st.fundingMemoAsked;
+    if (findFunding) st.fundingMemoAsked = true;
     const result = await post('settle', ctx.player, { tx_id: intent.tx_id, nonce: intent.nonce, kind: intent.kind, expected_payload: intent.payload,
-      funding_tx: intent.funding_tx || null, cursor: older ? st.settleCursor : null });
+      funding_tx: intent.funding_tx || null, cursor: older ? cursor : null, ...(findFunding ? { find_funding: true } : {}) }, { signal });
+    if (signal?.aborted) return null;   // abandoned by the scheduler: a late answer changes nothing
+    if (older) { await settleCheckResult(ctx, st, st.receipt, result, older); return Number.isInteger(result.next_cursor) ? result.next_cursor : null; }
     if (st.receipt !== intent) return;
     // (audit #4): the SPS transfer whose wallet answer was lost was found in the account's own history -- attach it to the intent.
     if (typeof result.funding_tx === 'string' && /^[a-f0-9]{40}$/i.test(result.funding_tx) && !intent.funding_tx) {
@@ -619,10 +670,11 @@ async function settleCheck(ctx, st, older) {
     }
     return await settleCheckResult(ctx, st, intent, result, older);
   } catch (_) {
-    st.settleNote = 'The pool history could not be read right now. Check again later — nothing was signed.';
-  } finally { st.busy = false; syncStoredIntent(ctx.player, intentSymbol(intent), st); ctx.render(); }  // the confirmed event refreshes wallet balances
+    if (!signal?.aborted) st.settleNote = 'The pool history could not be read just now. Ceres keeps reading; nothing was signed.';
+  } finally { signal?.removeEventListener?.('abort', release); release(); syncStoredIntent(ctx.player, intentSymbol(intent), st); ctx.render(); }  // the confirmed event refreshes wallet balances
 }
 async function settleCheckResult(ctx, st, intent, result, older) {
+  st.lastSettle = result;
   if (result.status === 'settled' && isPoolKind(intent.kind)) {
     balancesChanged({ player: ctx.player, assets: [intent.symbol, 'DEC'].filter(Boolean), regions: [intent.region].filter(Boolean), id: `wallet-settled:${intent.tx_id}` });
     // (audit #3): only figures the settlement reported; a quote is never shown as a reported amount.
@@ -653,7 +705,7 @@ async function settleCheckResult(ctx, st, intent, result, older) {
   st.settleCursor = Number.isInteger(result.next_cursor) ? result.next_cursor : null;
   st.settleNote = result.funding === 'not_found' ? 'Your SPS transfer to the pool is not in your account history yet. Ceres keeps looking; nothing is signed again.'
     : result.refund_pending ? 'The pool did not execute this swap; its refund has not arrived yet. Ceres keeps checking.'
-    : older ? 'Not found further back either.' : 'Not settled yet — the pool has not paid this swap in its latest history.';
+    : 'Not settled yet — the pool has not paid this swap yet. Ceres keeps reading.';
 }
 
 // the SPS sale's second half, requested right after the swap confirms, from the same wallet, no click.
@@ -662,9 +714,14 @@ async function settleCheckResult(ctx, st, intent, result, older) {
 // only, ); nothing is shown as an error.
 async function fund(ctx, st) {
   const intent = st.receipt;
+  let actionId = Array.isArray(intent?.funding_ops)
+    ? confirmationState(ctx.player, intent.funding_ops)?.actionId || null : null;
   st.busy = true; st.fundError = ''; ctx.render();
   try {
-    if (!st.funding?.operations) {
+    // A funding operation is one handoff only. Rebuild its nonce from the same pool receipt
+    // on every later attempt, including a page restored with cached funding operations.
+    st.funding = null;
+    {
       const response = await post('sps-funding', ctx.player, { tx_id: intent.tx_id, nonce: intent.nonce, kind: intent.kind, expected_payload: intent.payload });
       if (response.status === 'failed') {  // the game refused the swap itself: back to the card, silently
         Object.assign(st, { stage: 'edit', receipt: null, funding: null, quote: null, quoted: '' });
@@ -673,6 +730,8 @@ async function fund(ctx, st) {
       }
       if (response.status !== 'ready' || !Array.isArray(response.operations)) return;
       st.funding = response;
+      actionId = (await registerReview(ctx.player, response.operations, { actionId,
+        reviewKey: `sps-funding:${intent.tx_id}` })).actionId;
     }
     if (!walletReady(ctx.player)) return;
     if (ctx.account() !== ctx.player) { st.stage = 'funding'; return; }  // S10 / L4: another account is selected now; no prompt for the old one (the button waits)
@@ -689,6 +748,8 @@ async function fund(ctx, st) {
         st.funding = null; return 'taken';
       }
       st.stage = 'funding-signing';
+      // F1: the exact funding operations are on disk before the prompt, so its own proof can be read after any loss.
+      st.receipt = { ...st.receipt, funding_ops: st.funding.operations, funding_asked_at: new Date().toISOString() };
       if (!syncStoredIntent(ctx.player, symbol, st)) { st.stage = 'funding'; return 'unwritable'; }
       return 'ok';
     });
@@ -709,7 +770,7 @@ async function fund(ctx, st) {
       const result = await requestBroadcastThroughGate(ctx.player, st.funding.operations, response => {
         const id = response?.result?.id || response?.result?.tx_id || response?.tx_id;
         if (typeof id === 'string' && /^[a-f0-9]{40}$/i.test(id)) { tx = id; lateAnswer(id); }
-      }, 'Active', { direct: true });  // one Keychain "sign and send" prompt, like the game
+      }, 'Active', { direct: true, actionId });  // one Keychain "sign and send" prompt, like the game
       tx = result.txId || tx;
     } catch (failure) {
       if (typeof failure?.txId === 'string' && /^[a-f0-9]{40}$/i.test(failure.txId) && failure?.broadcasted !== false) tx = failure.txId;
@@ -717,7 +778,7 @@ async function fund(ctx, st) {
       fundFailure = failure?.declined ? 'The transfer was declined in the wallet. Send it when you are ready.' : 'The wallet did not send the transfer. Send it again when you are ready.';
     } finally { ctx.setSigning(false); answered = true; }
     if (tx) { st.receipt = { ...st.receipt, funding_tx: tx, funding_at: new Date().toISOString(), output: null }; st.stage = 'settling'; st.funding = null; }
-    else if (ambiguous) { st.receipt = { ...st.receipt, fundingUnknown: true, output: null }; st.stage = 'settling'; st.funding = null; st.settleNote = 'Your wallet did not say whether the SPS transfer was sent. Check the pool settlement before sending anything again.'; }
+    else if (ambiguous) { st.receipt = { ...st.receipt, fundingUnknown: true, output: null }; st.stage = 'settling'; st.funding = null; st.settleNote = 'Your wallet did not say whether the SPS transfer was sent. Ceres is finding it on Hive; nothing is sent again.'; }
     else { st.stage = 'funding'; st.fundError = fundFailure; }
   } catch (error) { st.stage = 'funding'; st.fundError = 'The pool transfer could not be prepared. Try again in a moment.'; /* keep the retry button */ }
   finally { st.busy = false; syncStoredIntent(ctx.player, intentSymbol(intent), st); ctx.render(); if (st.stage === 'settling') settleLoop(ctx, st); }
@@ -739,6 +800,11 @@ export async function swapAction(ctx, name, target) {
   if (name === 'done' && st.stage === 'settling') {  // S10 round 2 / L4-03: an unsettled swap is never discarded by a Close
     st.settleNote = 'This swap is still waiting for the pool. It stays here until it has settled.'; ctx.render(); return;
   }
+  if (name === 'done' && st.stage === 'refused' && st.receipt?.kind !== 'transfer') {  // a refused swap or pool change: back to its card
+    Object.assign(st, { stage: 'edit', receipt: null, refusal: '', quote: null, quoted: '' });
+    syncStoredIntent(ctx.player, symbol, st);
+    await ctx.reload(); return;
+  }
   if (name === 'done' && (st.stage === 'refused' || (st.stage === 'done' && st.receipt?.kind === 'transfer'))) {  // back to the Transfer tab
     Object.assign(st, { stage: 'edit', receipt: null, refusal: '', tab: 'transfer', xfer: { ...blankTransfer(), to: st.xfer.to, recipient: st.xfer.recipient, toRegion: st.xfer.toRegion, fromRegion: st.xfer.fromRegion } });
     syncStoredIntent(ctx.player, symbol, st);
@@ -757,18 +823,7 @@ export async function swapAction(ctx, name, target) {
     if (pool) ctx.render('pool');  // Done after a pool add/withdraw leaves the refreshed pool box in view
     return;
   }
-  // the pool settlement is read only when the maintainer presses Check again (it reads the pool's public history).
-  if (name === 'settle-stop' && st.stage === 'settling') { st.settleStopped = true; st.settleWake?.(); ctx.render(); return; }
-  if ((name === 'settle' || name === 'settle-older') && st.stage === 'settling') { if (name === 'settle') { st.failed = null; st.settleStopped = false; } await settleCheck(ctx, st, name === 'settle-older'); if (name === 'settle' && !st.settleLooping && st.stage === 'settling') settleLoop(ctx, st); return; }
-  if (name === 'stop' && st.stage === 'confirming') { st.stopped = true; st.wake?.(); ctx.render(); return; }  // the maintainer can stop the automatic check
-  if (name === 'funding-not-sent' && st.stage === 'settling' && st.receipt?.fundingUnknown && !st.receipt?.funding_tx) {
-    const sure = typeof confirm === 'function' ? confirm('Only continue if your wallet history shows the SPS transfer to the pool was NOT sent. Send it now?') : true;
-    if (!sure) return;
-    const { fundingUnknown, ...rest } = st.receipt;
-    Object.assign(st, { stage: 'funding', receipt: rest, funding: null, settleNote: '' });
-    syncStoredIntent(ctx.player, symbol, st); ctx.render(); return;
-  }
-  if (name === 'verify' && st.stage === 'confirming') { st.stopped = false; st.failed = null; await verify(ctx, symbol, st, true); return; }  // Resume checking (: reads at once)
+  // no settle/stop/resume/check-again/look-further-back/"was not sent" controls; the shared confirmer decides.
   if (name === 'fund' && st.stage === 'funding') { await fund(ctx, st); return; }
   if (name.startsWith('pool-')) { await poolAction(ctx, name.slice(5), symbol, st); return; }
   const c = context(symbol, ctx.wallet(), ctx.player);
@@ -800,6 +855,8 @@ export async function swapAction(ctx, name, target) {
 // One wallet handoff for a swap or a pool add/withdraw (): reserve the intent across tabs, one fresh server build of
 // exactly what the card shows, the intent on disk BEFORE the wallet is asked, then the game's confirmation.
 async function signIntent(ctx, symbol, st, base, body, fromFresh, onRefused, previewPath = 'preview') {
+  let actionId = Array.isArray(st.receipt?.ops) && st.stage === 'edit'
+    ? confirmationState(ctx.player, st.receipt.ops)?.actionId || null : null;
   // the earlier swap was sent late -> adopted, no second one. : a new swap starts only after a SUCCESSFUL read of every
   // watched nonce says not_found; a failed read refuses here and the wallet is never opened on an unknown.
   if (readWatch(ctx.player, symbol).length) {
@@ -816,8 +873,7 @@ async function signIntent(ctx, symbol, st, base, body, fromFresh, onRefused, pre
     const open = readStored(ctx.player, symbol);
     if (intentIsOpen(open)) { restoreIntent(ctx.player, symbol, st); return 'taken'; }
     st.token = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-    st.stage = 'signing'; st.busy = true; st.lpNote = ''; st.lpNoteTone = ''; st.historyUnreadable = false; st.stopped = false; st.failed = null; st.settleStopped = false;
-    st.receipt = { ...base, reserved: true, unknownOutcome: true };
+    st.stage = 'signing'; st.busy = true; st.lpNote = ''; st.lpNoteTone = ''; st.historyUnreadable = false;     st.receipt = { ...base, reserved: true, unknownOutcome: true };
     if (!syncStoredIntent(ctx.player, symbol, st)) return 'unwritable';
     if (readStored(ctx.player, symbol)?.token !== st.token) { restoreIntent(ctx.player, symbol, st); return 'taken'; }
     return 'ok';
@@ -839,7 +895,9 @@ async function signIntent(ctx, symbol, st, base, body, fromFresh, onRefused, pre
     onRefused();
     ctx.render(); return;
   }
-  st.receipt = { ...base, ...fromFresh(fresh), nonce: fresh.nonce, payload: fresh.payload, tx_id: null, asked_at: new Date().toISOString() };
+  st.receipt = { ...base, ...fromFresh(fresh), nonce: fresh.nonce, payload: fresh.payload, ops: fresh.operations, tx_id: null, asked_at: new Date().toISOString() };
+  actionId = (await registerReview(ctx.player, fresh.operations, { actionId,
+    reviewKey: `lp:${symbol}:${base.kind}:${base.region || ''}` })).actionId;
   if (!syncStoredIntent(ctx.player, symbol, st)) {  // S10 round 2 / L2-02, / A-02: the intent is on disk BEFORE the wallet is asked, or no prompt
     Object.assign(st, { stage: 'edit', receipt: null, busy: false, token: null, storageBlocked: true }); ctx.setSigning(false); syncStoredIntent(ctx.player, symbol, st); ctx.render(); return;
   }
@@ -849,7 +907,7 @@ async function signIntent(ctx, symbol, st, base, body, fromFresh, onRefused, pre
       if (typeof tx === 'string' && /^[a-f0-9]{40}$/i.test(tx)) {
         st.receipt.tx_id = tx; syncStoredIntent(ctx.player, symbol, st); ctx.render();
       }
-    }, 'Posting');
+    }, 'Posting', { actionId });
     st.receipt.tx_id = result.txId || st.receipt.tx_id;
   } catch (failure) {
     if (typeof failure?.txId === 'string' && /^[a-f0-9]{40}$/i.test(failure.txId)) st.receipt.tx_id = failure.txId;
@@ -857,7 +915,7 @@ async function signIntent(ctx, symbol, st, base, body, fromFresh, onRefused, pre
       st.receipt = null; st.stage = 'edit'; st.busy = false; ctx.setSigning(false); syncStoredIntent(ctx.player, symbol, st); ctx.render(); return;
     }
     // S3 / L2-01: no transaction id AND not provably unsent (timeout, late or empty wallet answer) is an UNKNOWN outcome. The
-    // swap button must not come back: the card stays on its receipt and only "Check again" is offered, so a second swap is never one click away.
+    // swap button must not come back: the card stays on its receipt while the shared confirmer finds it ().
     if (!st.receipt.tx_id) st.receipt.unknownOutcome = true;
   }
   st.stage = 'confirming'; st.busy = false; ctx.setSigning(false);
@@ -969,30 +1027,30 @@ export function positionHtml(symbol, wallet, player) {
 
 function poolReceiptHtml(symbol, st, player) {
   const r = st.receipt;
+  if (st.stage === 'refused') return refusedReceiptHtml(symbol, st);
   const add = r.kind === 'add';
   const done = st.stage === 'done';
   const settling = st.stage === 'settling';
   const sending = st.stage === 'funding-signing' || (st.stage === 'funding' && st.busy);
   const retry = st.stage === 'funding' && !st.busy;
-  const title = st.failed === 'settle' ? 'Not settled within 5 minutes' : st.failed === 'confirm' ? 'Still pending' : add ? (done ? 'Liquidity added' : settling ? 'Waiting for the pool to settle' : 'Adding liquidity') : (done ? 'Liquidity withdrawn' : settling ? 'Waiting for the pool to pay the SPS' : 'Withdrawing liquidity');
+  const title = add ? (done ? 'Liquidity added' : settling ? 'Waiting for the pool to settle' : 'Adding liquidity') : (done ? 'Liquidity withdrawn' : settling ? 'Waiting for the pool to pay the SPS' : 'Withdrawing liquidity');
   const approx = r.reported ? '' : '≈ ';
   const figure = (value, token) => `${value == null ? '—' : approx + fixed(value)} <small>${esc(label(token))}</small>`;
   const amounts = `${figure(r.resource, r.symbol)} + ${figure(r.dec, 'DEC')}`;
   const status = st.checking ? 'Confirming with the game…' : sending ? `Sending ${esc(label(r.symbol))} to the pool…` : '';
   const retryBtn = retry ? `<span class="wallet-sign-pair">${walletControlsHtml(player)}${btn('fund', `Send ${esc(label(r.symbol))} to the pool`, 'primary', 'touch', !walletReady(player))}</span>` : '';
   const note = st.settleNote ? `<p class="wallet-swap-note" role="status">${esc(st.settleNote)}</p>` : '';
-  const settleText = settling ? `<p>${add ? `The game accepted the deposit${r.funding_tx ? ` and your ${esc(label(r.symbol))} went to the pool` : ''}. Your shares are added when the pool settles.` : 'The game accepted the withdrawal. The DEC is in your wallet; the SPS is paid by the pool bridge.'} Nothing is signed again.</p>${settleStatusHtml(st)}${note}` : '';
+  const settleText = settling ? `<p>${add ? `The game accepted the deposit${r.funding_tx ? ` and your ${esc(label(r.symbol))} went to the pool` : ''}. Your shares are added when the pool settles.` : 'The game accepted the withdrawal. The DEC is in your wallet; the SPS is paid by the pool bridge.'} Nothing is signed again.</p>${settleStatusHtml()}${note}` : '';
   const actions = done ? btn('done', 'Done', 'primary', 'touch')
-    : settling ? `${settleActions(st)}${st.settleCursor != null ? btn('settle-older', 'Look further back', 'secondary', 'touch', !!st.busy) : ''}${add ? '' : btn('done', 'Close', 'secondary', 'touch', !!st.busy)}`
-    : retryBtn || confirmActions(st);
-  return `<section class="wallet-card wallet-swap wallet-pool dec-review dec-receipt${done ? ' is-confirmed' : st.failed === 'settle' ? ' is-failed' : ' is-waiting'}" data-lp-symbol="${esc(symbol)}" data-lp-stage="${st.stage}" data-lp-kind="${r.kind}" data-lp-active aria-live="polite">
+    : settling ? `${add ? '' : btn('done', 'Close', 'secondary', 'touch', !!st.busy)}`
+    : retryBtn || confirmActions();
+  return `<section class="wallet-card wallet-swap wallet-pool dec-review dec-receipt${done ? ' is-confirmed' : ' is-waiting'}" data-lp-symbol="${esc(symbol)}" data-lp-stage="${st.stage}" data-lp-kind="${r.kind}" data-lp-active aria-live="polite">
     <header><h3>${title}</h3>${r.region ? plaque(r.region) : ''}</header>
     <div class="dec-receipt-amount">${art(r.symbol)}<div><span>${add ? (done ? 'Added' : 'Adding') : `${done ? 'Withdrew' : 'Withdrawing'} ${esc(String(r.pct))}%`}</span><strong>${amounts}</strong></div>${art('DEC')}</div>
     ${done && (r.resource == null || r.dec == null) ? '<p class="wallet-swap-note">The game did not report every amount; your wallet balance shows it.</p>' : ''}
     ${st.stage === 'funding-signing' ? walletWaitHtml(player, 'Active') + `<div class="wallet-fund-controls">${walletControlsHtml(player, null, { compactRequest: true })}</div>` : status ? `<p class="dec-status" role="status"><span class="spinner" aria-hidden="true"></span>${status}</p>` : ''}
     ${st.stage === 'funding' && !st.busy ? `<p class="wallet-swap-note is-warn" role="status">${esc(st.fundError || `The game accepted the swap and is waiting for your ${label(r.kind === 'add' ? r.symbol : r.pay)}. Send it to the pool to finish (Active key).`)}</p>` : ''}
     ${settleText}
-    ${r.fundingUnknown && settling && !r.funding_tx ? btn('funding-not-sent', `I checked my wallet: the ${esc(label(r.symbol))} transfer was not sent`, 'secondary', 'compact') : ''}
     ${waitingHtml(st)}
     ${done && r.bridge_tx ? `<p class="wallet-swap-note">Settled by the pool · <a href="https://hivehub.dev/tx/${encodeURIComponent(r.bridge_tx)}" target="_blank" rel="noopener noreferrer">settlement ↗</a></p>` : ''}
     <div class="dec-receipt-actions">${r.tx_id ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(r.tx_id)}" target="_blank" rel="noopener noreferrer">View transaction ↗</a>` : ''}${r.funding_tx ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(r.funding_tx)}" target="_blank" rel="noopener noreferrer">${esc(label(r.symbol))} transfer ↗</a>` : ''}${actions}</div></section>`;
@@ -1103,7 +1161,7 @@ async function poolAction(ctx, name, symbol, st) {
 // account (Hive, Splinterlands, their land regions: 3 calls), a settled amount one pools read, Review 3 fresh reads. Review then
 // Sign; signing, the stored intent and the confirmation are the swap's own (signIntent, verify), so an unknown outcome never
 // offers a second signature ( S3) and the clock applies.
-export const TRANSFER_SYMBOLS = ['GRAIN', 'WOOD', 'STONE', 'IRON'];
+export const TRANSFER_SYMBOLS = resourceSymbolsWhere('transferable'); // registry: GRAIN WOOD STONE IRON
 const ACCOUNT_NAME = /^[a-z][a-z0-9.-]{2,15}$/;
 const cleanName = text => String(text ?? '').trim().replace(/^@/, '').toLowerCase();
 function transferContext(symbol, wallet, player) {
@@ -1186,9 +1244,9 @@ function transferReviewHtml(symbol, c, player) {
 }
 function transferReceiptHtml(symbol, st, player) {
   const r = st.receipt;
-  const done = st.stage === 'done', refused = st.stage === 'refused', failed = st.failed === 'confirm';
+  const done = st.stage === 'done', refused = st.stage === 'refused';
   const tone = done ? ' is-confirmed' : refused ? ' is-failed' : ' is-waiting';
-  const title = done ? 'Transfer confirmed' : refused ? 'The game refused this transfer' : failed ? 'Still pending' : 'Sending';
+  const title = done ? 'Transfer confirmed' : refused ? 'The game refused this transfer' : 'Sending';
   const got = done ? (r.output == null ? '—' : fixed(r.output)) : `≈ ${fixed(r.estimate ?? r.output ?? 0)}`;
   return `<section class="wallet-card wallet-swap wallet-transfer dec-review dec-receipt${tone}" data-lp-symbol="${esc(symbol)}" data-lp-stage="${st.stage}" data-lp-kind="transfer" aria-live="polite">
     <header><h3>${title}</h3>${r.region ? plaque(r.region) : ''}</header>
@@ -1197,7 +1255,7 @@ function transferReceiptHtml(symbol, st, player) {
     ${done && r.output == null ? '<p class="wallet-swap-note">The game did not report the amount received.</p>' : ''}
     ${st.checking ? '<p class="dec-status" role="status"><span class="spinner" aria-hidden="true"></span>Confirming with the game…</p>' : ''}
     ${waitingHtml(st)}
-    <div class="dec-receipt-actions">${r.tx_id ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(r.tx_id)}" target="_blank" rel="noopener noreferrer">View transaction ↗</a>` : ''}${done || refused ? btn('done', done ? 'Done' : 'Close', 'primary', 'touch') : confirmActions(st)}</div></section>`;
+    <div class="dec-receipt-actions">${r.tx_id ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(r.tx_id)}" target="_blank" rel="noopener noreferrer">View transaction ↗</a>` : ''}${done || refused ? btn('done', done ? 'Done' : 'Close', 'primary', 'touch') : confirmActions()}</div></section>`;
 }
 // Typing in the recipient or amount field (bound in regional-dec.js).
 export function transferInput(ctx, input) {
@@ -1257,6 +1315,8 @@ async function runTransferReview(ctx, symbol, c, note = '') {
   try {
     x.review = await post('/api/wallet/transfer/preview', ctx.player, { resource_symbol: symbol, from_region_uid: x.fromRegion, to_player: x.recipient.account,
       to_region_uid: x.toRegion, in_amount: q.input, sign: false });
+    if (x.review?.operations) x.review.actionId = (await registerReview(ctx.player, x.review.operations,
+      { actionId: x.review?.actionId || null, reviewKey: `transfer:${symbol}:${x.fromRegion}:${x.recipient.account}:${x.toRegion}` })).actionId;
     x.note = note; x.noteTone = note ? 'warn' : '';
   } catch (_) {
     x.review = null; x.note = 'The figures could not be read again. Nothing was signed; try Review again.'; x.noteTone = 'warn';

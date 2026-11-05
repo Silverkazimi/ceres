@@ -227,6 +227,9 @@ def test_compact_review_keeps_signing_facts_visible(live_browser: tuple[Browser,
     panel = page.locator("#checkout-panel")
     review = panel.locator(".op-preview-review")
     review.wait_for(timeout=30_000)
+    # the section also exists as the "Building the current preview" shell, which now lasts through the review
+    # registration round trip; wait for the rows themselves before counting them.
+    review.locator("ol.op-c-ops > li").first.wait_for(state="attached", timeout=30_000)
 
     # The compact review lists one row per operation, each tagged with its transaction
     # ("Tx 1" / "Tx 2") and its signing authority; the rows sit in a folded details.
@@ -280,6 +283,7 @@ def test_compact_review_keeps_refusal_reason_visible(live_browser: tuple[Browser
     panel = page.locator("#checkout-panel")
     review = panel.locator(".op-preview-review")
     review.wait_for(timeout=30_000)
+    panel.locator(".op-preview-review", has_text="Cannot sign yet").wait_for(timeout=30_000)  # not the loading shell
     assert "Cannot sign yet" in review.inner_text()
     assert "card is still in its 72-hour unstake cooldown" in review.inner_text()
     page.close()
@@ -500,6 +504,11 @@ def test_in_flight_marker_blocks_a_second_signature(live_browser: tuple[Browser,
     page.wait_for_function("window.__ceresBroadcastCount === 1", timeout=30_000)
     settle(page)
     if not panel.is_visible():
+        # design 4: the confirmation notice overlaps Changes on desktop (maintainer: accepted); close it with its X first.
+        dismiss = page.locator("#ceres-confirmation-banner .worksite-banner-dismiss")
+        if dismiss.is_visible():
+            dismiss.click()
+            page.locator("#ceres-confirmation-banner").wait_for(state="hidden", timeout=30_000)
         page.locator("#checkout-btn").click()
     marker = panel.locator(".ch-slot.is-in-flight")
     marker.wait_for(timeout=30_000)

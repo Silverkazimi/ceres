@@ -12,6 +12,11 @@ context.crypto = require('node:crypto').webcrypto;
 context.TextEncoder = TextEncoder;
 context.AbortController = AbortController;
 context.navigator.locks = { request(_name, _options, callback) { return callback(); } };
+context.fetch = context.window.fetch = async url => {
+  if (String(url).includes('/api/confirm/intent')) return {ok:true,json:async()=>({begin_token:'c'.repeat(32),action_id:'a'.repeat(32),revision:1,server_now:Date.now()})};
+  if (String(url).includes('/api/op-inclusion')) return {ok:true,json:async()=>({included:true,block_num:100})};
+  throw Error('unexpected fetch '+url);
+};
 document.getElementById = id => id === 'board-version' ? { textContent: 'v0.9.835' } : null;
 window.hive_keychain = {
   requestSignTx() {},

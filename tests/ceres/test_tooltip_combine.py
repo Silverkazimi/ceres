@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import re
+import os
 from contextlib import contextmanager
 from typing import Iterator
+from unittest.mock import patch
 from urllib.parse import urlsplit
 
 from playwright.sync_api import Page
@@ -15,12 +17,15 @@ from . import board_basic_recording as recording
 
 
 @contextmanager
-def _live_page() -> Iterator[Page]:
-    with spawn_live_ceres() as (browser, base_url):
+def _live_page(*, release_equal_identity: bool = False) -> Iterator[Page]:
+    fixture_env = {"CERES_TEST_RELEASE_EQUAL_IDENTITY": "1", "CERES_TEST_ISOLATED_SERVER": "1"} if release_equal_identity else {}
+    with patch.dict(os.environ, fixture_env), spawn_live_ceres() as (browser, base_url):
         page = browser.new_page(viewport={"width": 1600, "height": 1000})
         try:
             page.goto(f"{base_url}/?player={LIVE_PLAYER}", wait_until="domcontentloaded")
             page.wait_for_selector("#plot-tbody > tr.plot-row", timeout=30_000)
+            if release_equal_identity:
+                assert page.locator("#ceres-local-marker").count() == 0
             yield page
         finally:
             page.close()
@@ -76,7 +81,7 @@ def test_plot_wide_tooltip_body_has_scope_sentence() -> None:
 
 # INJECTION: leaking the tool name or API vocabulary into player-facing labels.
 def test_rendered_labels_are_player_facing() -> None:
-    with _live_page() as page:
+    with _live_page(release_equal_identity=True) as page:
         _expand_until_ability_tooltip(page)
         # The header logo link (added with the start page) is the product's own brand mark
         # its visible content is the "Ceres" logo, so its accessible name must contain the

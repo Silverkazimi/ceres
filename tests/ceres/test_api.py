@@ -147,10 +147,10 @@ def test_capture_estimate_reports_deed_count_and_cost(client, monkeypatch):
         capture_mod, "estimate_capture",
         lambda player: {"player": player, "deeds": 6303, "requests_estimated": 6970, "estimated_seconds": 2091.0, "estimated_minutes": 34.9},
     )
-    resp = client.get("/api/capture/estimate", params={"player": "player0017"})
+    resp = client.get("/api/capture/estimate", params={"player": "player0018"})
     assert resp.status_code == 200
     body = resp.json()
-    assert body["player"] == "player0017"
+    assert body["player"] == "player0018"
     assert body["deeds"] == 6303
     assert body["estimated_minutes"] == 34.9
 
@@ -160,7 +160,7 @@ def test_capture_estimate_502_when_preflight_fails(client, monkeypatch):
         raise RuntimeError("upstream down")
 
     monkeypatch.setattr(capture_mod, "estimate_capture", boom)
-    resp = client.get("/api/capture/estimate", params={"player": "player0017"})
+    resp = client.get("/api/capture/estimate", params={"player": "player0018"})
     assert resp.status_code == 502
 
 
