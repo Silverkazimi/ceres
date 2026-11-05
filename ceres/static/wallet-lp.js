@@ -24,7 +24,7 @@ import { tokenIcon, tokenLabel } from './harvest-state.js';
 import { plaque } from './wallet-resources.js';
 import { walletControlsHtml, walletMethodHtml, walletReady, walletSignLabelHtml, walletWaitHtml } from './wallet.js';
 import { requestBroadcastThroughGate } from './broadcast-gate.js';
-import { walletNeverAskedText, confirmationState, findSignedTransaction, subscribeConfirmation, waitForStep, waitThrough } from './shared-confirmer.js';
+import { walletNeverAskedText, confirmationState, findSignedTransaction, registerReview, subscribeConfirmation, waitForStep, waitThrough } from './shared-confirmer.js';
 import { initCustomSelect } from './customSelect.js';
 import { resourceSymbolsWhere } from './resources.js';
 
@@ -714,7 +714,7 @@ async function settleCheckResult(ctx, st, intent, result, older) {
 // only, ); nothing is shown as an error.
 async function fund(ctx, st) {
   const intent = st.receipt;
-  const actionId = Array.isArray(intent?.funding_ops)
+  let actionId = Array.isArray(intent?.funding_ops)
     ? confirmationState(ctx.player, intent.funding_ops)?.actionId || null : null;
   st.busy = true; st.fundError = ''; ctx.render();
   try {
@@ -730,6 +730,8 @@ async function fund(ctx, st) {
       }
       if (response.status !== 'ready' || !Array.isArray(response.operations)) return;
       st.funding = response;
+      actionId = (await registerReview(ctx.player, response.operations, { actionId,
+        reviewKey: `sps-funding:${intent.tx_id}` })).actionId;
     }
     if (!walletReady(ctx.player)) return;
     if (ctx.account() !== ctx.player) { st.stage = 'funding'; return; }  // S10 / L4: another account is selected now; no prompt for the old one (the button waits)
@@ -853,7 +855,7 @@ export async function swapAction(ctx, name, target) {
 // One wallet handoff for a swap or a pool add/withdraw (): reserve the intent across tabs, one fresh server build of
 // exactly what the card shows, the intent on disk BEFORE the wallet is asked, then the game's confirmation.
 async function signIntent(ctx, symbol, st, base, body, fromFresh, onRefused, previewPath = 'preview') {
-  const actionId = Array.isArray(st.receipt?.ops) && st.stage === 'edit'
+  let actionId = Array.isArray(st.receipt?.ops) && st.stage === 'edit'
     ? confirmationState(ctx.player, st.receipt.ops)?.actionId || null : null;
   // the earlier swap was sent late -> adopted, no second one. : a new swap starts only after a SUCCESSFUL read of every
   // watched nonce says not_found; a failed read refuses here and the wallet is never opened on an unknown.
@@ -894,6 +896,8 @@ async function signIntent(ctx, symbol, st, base, body, fromFresh, onRefused, pre
     ctx.render(); return;
   }
   st.receipt = { ...base, ...fromFresh(fresh), nonce: fresh.nonce, payload: fresh.payload, ops: fresh.operations, tx_id: null, asked_at: new Date().toISOString() };
+  actionId = (await registerReview(ctx.player, fresh.operations, { actionId,
+    reviewKey: `lp:${symbol}:${base.kind}:${base.region || ''}` })).actionId;
   if (!syncStoredIntent(ctx.player, symbol, st)) {  // S10 round 2 / L2-02, / A-02: the intent is on disk BEFORE the wallet is asked, or no prompt
     Object.assign(st, { stage: 'edit', receipt: null, busy: false, token: null, storageBlocked: true }); ctx.setSigning(false); syncStoredIntent(ctx.player, symbol, st); ctx.render(); return;
   }
@@ -1311,6 +1315,8 @@ async function runTransferReview(ctx, symbol, c, note = '') {
   try {
     x.review = await post('/api/wallet/transfer/preview', ctx.player, { resource_symbol: symbol, from_region_uid: x.fromRegion, to_player: x.recipient.account,
       to_region_uid: x.toRegion, in_amount: q.input, sign: false });
+    if (x.review?.operations) x.review.actionId = (await registerReview(ctx.player, x.review.operations,
+      { actionId: x.review?.actionId || null, reviewKey: `transfer:${symbol}:${x.fromRegion}:${x.recipient.account}:${x.toRegion}` })).actionId;
     x.note = note; x.noteTone = note ? 'warn' : '';
   } catch (_) {
     x.review = null; x.note = 'The figures could not be read again. Nothing was signed; try Review again.'; x.noteTone = 'warn';

@@ -1,4 +1,5 @@
 import { readyPlanCombines, preparePlanCombineRun, signPlanCombine } from './combine-chain-sign.js';
+import { registerReview } from './shared-confirmer.js';
 import { chainReturn, chainPlacementReady, chainStageBackSource } from './combine-chain.js';
 import { chainPlans } from './stage-plans.js';
 import { plannedReturnChip } from './editor.js';
@@ -70,6 +71,10 @@ export async function confirmCheckoutWithWorksites({ deedUid = null } = {}) {
   CERES_WORKSITE_SIGNING = true;
   try {
     const combineRun = deedUid ? { choice: 'without', reviews: [] } : await preparePlanCombineRun();
+    for (const review of combineRun.reviews) if (review.build?.operation) {
+      review.actionId = (await registerReview(review.build.preview?.account || BOARD?.player,
+        [review.build.operation], { actionId: review.actionId || null, reviewKey: `plan-combine:${review.id}` })).actionId;
+    }
     if (combineRun.choice === 'cancel') return { ok: false, reason: 'Signing cancelled.' };
     const previewKey = deedUid || CERES_PORTFOLIO_KEY;
     const plotRow = deedUid ? BOARD?.plots?.find((plot) => plot.deed_uid === deedUid) : null;

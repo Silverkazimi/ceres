@@ -18,7 +18,7 @@ import { walletReady, walletKind, walletControlsHtml, walletSigningStatus, clear
 import { ART_REV } from './art.js';
 import { requestSignatureThroughGate, prepareSigningBatch } from './broadcast-gate.js';
 import { createLagMonitor } from './chain-lag.js';
-import { confirmAction, confirmationState, waitThrough } from './shared-confirmer.js';
+import { confirmAction, confirmationState, registerReview, waitThrough } from './shared-confirmer.js';
 import { resumeSignedQueue } from './transaction-queue.js';
 import { BOARD, CURRENT_PLAYER, playerQueryAppend } from './board.js';
 import { esc, formatPlotLabel } from './format.js';
@@ -251,10 +251,14 @@ function currentScope() {
   return { kind: 'all' };
 }
 
+const chunkIntentKey = chunk => JSON.stringify((chunk?.members || []).map(member =>
+  [member.op, member.region_uid, member.deed_uid, member.deed_uids]).sort());
+
 async function loadPreview() {
   const scope = currentScope();
   M.gen += 1;
   const gen = M.gen;
+  const priorPreview = M.preview;
   M.preview = null;
   M.error = null;
   M.loading = !!scope;
@@ -268,6 +272,9 @@ async function loadPreview() {
     if (gen !== M.gen) return;
     if (!resp.ok) throw new Error(data.detail || `HTTP ${resp.status}`);
     noteServerNow(data.server_now);
+    data.actionIds = await Promise.all((data.chunks || []).map(async (chunk, index) =>
+      (await registerReview(M.player, chunk.operations, { actionId: priorPreview?.actionIds?.[index] || null,
+        reviewKey: `harvest:${JSON.stringify(scope)}:${index}` })).actionId));
     M.preview = data;
   } catch (error) {
     if (gen === M.gen) M.error = `Fresh harvest review unavailable: ${error.message || error}`;
@@ -1159,14 +1166,14 @@ async function confirmHarvest() {
   const scopeKind = M.scopeKind;
   const selection = () => JSON.stringify(scopeKind === 'taxes' ? chosenTaxDeeds().sort() : [...M.selectedRegions].sort());
   const selectionKey = selection();
+  const reviewScopeKey = JSON.stringify(currentScope());
   const taxDeeds = mode === 'batch' && scopeKind === 'taxes' ? chosenTaxDeeds() : [];
   const current = () => M.open && M.openId === openId && M.player === account && (CURRENT_PLAYER || BOARD?.player || null) === account;
   const token = {};
   let pv = M.preview;
-  const chunkIntentKey = chunk => JSON.stringify((chunk?.members || []).map(member =>
-    [member.op, member.region_uid, member.deed_uid, member.deed_uids]).sort());
-  const actionByIntent = new Map((pv?.chunks || []).map(chunk => [chunkIntentKey(chunk),
-    confirmationState(account, chunk.operations)?.actionId || null]));
+  const priorActionIds = pv?.actionIds || [];
+  const actionByIntent = new Map((pv?.chunks || []).map((chunk, index) => [chunkIntentKey(chunk),
+    pv?.actionIds?.[index] || confirmationState(account, chunk.operations)?.actionId || null]));
   let savedHarvestAttempts = [];
   M.reviewing = token;
   M.error = null;
@@ -1193,6 +1200,13 @@ async function confirmHarvest() {
     }
     if (!pv) { M.error = 'Harvest review unavailable. Refresh the review.'; return; }
     M.preview = pv;
+    pv.actionIds = await Promise.all((pv.chunks || []).map(async (chunk, index) => {
+      const key = chunkIntentKey(chunk);
+      const registered = await registerReview(account, chunk.operations, { actionId: actionByIntent.get(key) || priorActionIds[index] || null,
+        reviewKey: `harvest:${reviewScopeKey}:${index}` });
+      actionByIntent.set(key, registered.actionId);
+      return registered.actionId;
+    }));
     if (!pv.signing_enabled) { M.error = SIGNING_OFF_TEXT; return; }
     if (pv.blocked) { M.error = (pv.issues || []).join(' · ') || 'The fresh review is blocked. Resolve the listed issues before signing.'; return; }
     if (!pv.chunks?.length) { M.error = (pv.issues || []).join(' · ') || (scopeKind === 'taxes' ? 'Nothing to collect right now.' : 'Nothing to harvest right now.'); return; }

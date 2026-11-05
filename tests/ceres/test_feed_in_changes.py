@@ -84,7 +84,7 @@ def test_constructions_wait_and_feed_signs_from_changes(live_browser: tuple[Brow
             return
         operation = ["custom_json", {
             "id": "sm_land_operation", "required_auths": [], "required_posting_auths": ["player0005"],
-            "json": json.dumps({"op": "update_worksite", "deed_uid": uid, "project_id": f"p-{uid}"}),
+            "json": json.dumps({"op": "update_worksite", "deed_uid": uid, "project_id": f"p-{uid}", "n": "0123456789abcdef"}),
         }]
         route.fulfill(status=200, content_type="application/json", body=json.dumps({
             "kind": "worksite_completion", "account": "player0005", "key_tier": "Posting", "deed_uid": uid,

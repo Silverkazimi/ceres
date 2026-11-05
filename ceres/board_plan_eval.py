@@ -38,6 +38,70 @@ _GROUP_BY_STAKE_TYPE = {stake_type: group for group, stake_type in GROUP_STAKE_T
 _INCOMPLETE_FETCH = {"not_requested", "failed", "dropped_stale"}
 
 
+def live_placements_from_capture(report: dict[str, Any]) -> list[dict[str, Any]]:
+    """An exact named-setup seed from the existing capture, with no live reads.
+
+    Refuse a partial capture instead of silently creating an empty slot where an
+    occupant is known to exist. The browser's lean board intentionally omits
+    worker identities, so this uses the capture's worker and bonus asset rows.
+    """
+    plots = {str(plot.get("deed_uid")): plot for plot in report.get("plots", [])}
+    if not plots:
+        raise ValueError("The board capture has no plots.")
+    placements: list[dict[str, Any]] = []
+    known_workers: dict[str, int] = {deed: 0 for deed in plots}
+    known_bonus: dict[str, set[str]] = {deed: set() for deed in plots}
+    seen_assets: set[str] = set()
+    seen_slots: set[tuple[str, str, int]] = set()
+    for group, rows in (("worker", report.get("workers", [])), ("item", report.get("bonus_assets", []))):
+        if not isinstance(rows, list):
+            raise ValueError("The captured asset roster is incomplete.")
+        for asset in rows:
+            deed = str(asset.get("stake_ref_uid") or "")
+            if deed not in plots:
+                continue
+            stake_type = str(asset.get("stake_type_uid") or "")
+            if group == "worker":
+                if stake_type not in {GROUP_STAKE_TYPES["worker"], GROUP_STAKE_TYPES["runi"]}:
+                    raise ValueError("A live card has an unknown slot type.")
+                kind = "runi" if stake_type == GROUP_STAKE_TYPES["runi"] else "worker"
+                slot = 0 if kind == "runi" else asset.get("slot")
+                if kind == "worker" and (isinstance(slot, bool) or not isinstance(slot, int) or slot < 1):
+                    raise ValueError("A live worker has no known slot.")
+                slot_index = 0 if kind == "runi" else slot - 1
+                known_workers[deed] += 1
+            else:
+                kind = _GROUP_BY_STAKE_TYPE.get(stake_type)
+                if kind not in {"power_core", "totem", "title"}:
+                    raise ValueError("A live item has an unknown slot type.")
+                slot_index = 0
+                known_bonus[deed].add(kind)
+            ref = asset.get("asset_ref") or asset.get("uid")
+            if not ref or not asset.get("name"):
+                raise ValueError("A live occupant has no known identity or name.")
+            key = (deed, kind, slot_index)
+            if str(ref) in seen_assets or key in seen_slots:
+                raise ValueError("The live capture has duplicate assets or slots.")
+            seen_assets.add(str(ref)); seen_slots.add(key)
+            placements.append({"deed_uid": deed, "group_id": kind, "slot_index": slot_index,
+                               "asset_ref": str(ref), "name": str(asset["name"]),
+                               "asset": {field: asset[field] for field in ("asset_ref", "name", "card_detail_id", "edition", "foil", "level", "bcx", "boost", "item_detail_id")
+                                         if asset.get(field) is not None}})
+    for deed, plot in plots.items():
+        facts = plot.get("staking_facts") or {}
+        count = facts.get("worker_count")
+        if isinstance(count, (int, float)) and count > known_workers[deed]:
+            raise ValueError("Some live workers were not loaded in the board capture.")
+        bonus = known_bonus[deed]
+        if (facts.get("totem_boost") or 0) > 0 and "totem" not in bonus:
+            raise ValueError("A live Totem has no known identity in the board capture.")
+        if (facts.get("title_boost") or 0) > 0 and "title" not in bonus:
+            raise ValueError("A live Title has no known identity in the board capture.")
+        if facts.get("is_power_core_staked") and "power_core" not in bonus:
+            raise ValueError("A live Power Core has no known identity in the board capture.")
+    return placements
+
+
 def _num(value: Any, default: float | None = 0.0) -> float | None:
     try:
         return float(value)

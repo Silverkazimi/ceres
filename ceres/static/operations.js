@@ -5,7 +5,7 @@ import { walletSignLabelHtml, walletReady } from './wallet.js';
 import { BOARD, CURRENT_PLAYER, adoptLatestCapture, NOTICE_CATALOG, catalogNotice, noticeMessage, playerQueryAppend, renderNotices } from './board.js';
 import { recoverPendingBroadcastRequests, requestBroadcastThroughGate, requestSignatureThroughGate, prepareSigningBatch } from './broadcast-gate.js';
 import { waitForQueuedSubmission, resumeSignedQueue } from './transaction-queue.js';
-import { CONFIRM_FAST_MS, confirmationState, waitThrough } from './shared-confirmer.js';
+import { CONFIRM_FAST_MS, confirmationState, registerReview, waitThrough } from './shared-confirmer.js';
 import { normalizeEstimate } from './candidates.js';
 import { checkoutSignableEntries, renderCheckoutSurface } from './checkout.js';
 import { esc, formatPlotLabel, humanizeInstant } from './format.js';
@@ -564,11 +564,12 @@ function previewStillShown(portfolio, row) {
   return !!document.querySelector(`[data-deed-uid="${CSS.escape(String(row?.deed_uid || ''))}"]`);
 }
 
-export async function requestOperationPreview(target) {
+export async function requestOperationPreview(target, actionIds = null) {
   const portfolio = target?.scope === 'portfolio';
   const key = previewKey(target);
   const row = portfolio ? null : target;
   const priorPayload = CERES_PREVIEWS.get(key)?.payload || null;
+  const priorActionIds = actionIds || CERES_PREVIEWS.get(key)?.actionIds || null;
   const state = { loading: true, error: null, payload: null };
   CERES_PREVIEWS.set(key, state);
   if (portfolio) renderCheckoutSurface();
@@ -667,6 +668,9 @@ export async function requestOperationPreview(target) {
     }
     state.loading = false;
     state.payload = payload;
+    state.actionIds = await Promise.all((payload.chunks || []).map(async (chunk, index) =>
+      (await registerReview(payload.account, chunk.operations, { actionId: priorActionIds?.[index] || null,
+        reviewKey: `operations:${key}:${index}` })).actionId));
     state.refreshedNotice = refreshed && !!priorPayload && previewSignature(priorPayload) !== previewSignature(payload);
   } catch (error) {
     state.loading = false;
@@ -1483,6 +1487,7 @@ export function clearOperationPollTimer(entryId) {
 
 
 export async function beginSharedOperation({ account, operations, family, context, onResponse, actionId = null }) {
+  actionId = (await registerReview(account, operations, { actionId })).actionId;
   let receipt = publishOperationReceipt({
     entryId: operationEntryId(), family, context, operations, phase: 'working', txId: null, attempt: 0, pollStartedAt: Date.now(),
   });
@@ -1538,7 +1543,7 @@ async function freshReviewForSigning(target, review) {
     || (latest && review.captureStamp && Date.parse(latest) > Date.parse(review.captureStamp));
   const before = previewSignature(review.payload);
   if (stale) await adoptLatestCapture();
-  await requestOperationPreview(target);
+  await requestOperationPreview(target, review.actionIds || null);
   const next = CERES_PREVIEWS.get(previewKey(target));
   if (!next?.payload) return null;
   // This is the same review's rebuild. Pass the action lineage explicitly; an unrelated

@@ -33,7 +33,6 @@ from .routes_board import _require_same_origin
 from .routes_wallet_lp import history_covers
 from .security import player_for_request
 from .game_lookup import lookup_trx_info
-from .harvest_routing_bridge import _history as _PRODUCTION_HISTORY
 from praetoria.transport import FixedGetTransport
 
 router = APIRouter()
@@ -227,6 +226,14 @@ TOKENLESS_DEPTH_S = EXPIRY_AFTER_S
 TOKENLESS_MAX_DEPTH_S = LEDGER_KEEP_S
 
 
+async def _off_loop(fn, *args):
+    """Own-history reads (latest page and coverage) run on the bounded history pool under the whole-job
+    deadline (spec r6 §4 "Deadlines and fences"). Production and tests share this path; the tests inject
+    only the transport and the clock."""
+    return await asyncio.wait_for(asyncio.get_running_loop().run_in_executor(_HISTORY_POOL, fn, *args),
+                                  timeout=CALL_WALL_S)
+
+
 def normal_offset(index: int) -> float:
     """The offset (s) of the index-th normal read: the swap's ten offsets, then every RECHECK_S (fix round 4, ."""
     if index < len(NORMAL_OFFSETS_S):
@@ -318,6 +325,56 @@ def _semantic(operation: list, account: str) -> str | None:
                       sort_keys=True, separators=(",", ":"))
 
 
+def _review_terms(operations: list, account: str) -> list:
+    """Validate a review without requiring or retaining an attempt nonce."""
+    if not isinstance(operations, list) or not 1 <= len(operations) <= 5:
+        raise ValueError("Expected one to five reviewed operations")
+    result = []
+    for operation in operations:
+        if not isinstance(operation, list) or len(operation) != 2 or operation[0] != "custom_json" or not isinstance(operation[1], dict):
+            raise ValueError("Invalid reviewed operation")
+        body = operation[1]
+        payload = json.loads(body.get("json")) if isinstance(body.get("json"), str) else body.get("json")
+        if not isinstance(payload, dict):
+            raise ValueError("Invalid reviewed payload")
+        payload = dict(payload)
+        nested = body.get("id") == "sm_sps" and payload.get("action") == "token_transfer"
+        if nested:
+            if not isinstance(payload.get("params"), dict):
+                raise ValueError("Invalid reviewed transfer")
+            payload["params"] = dict(payload["params"])
+            if "n" in payload["params"]:
+                raise ValueError("Review includes a nonce")
+            payload["params"]["n"] = "0000000000"
+        else:
+            if "n" in payload:
+                raise ValueError("Review includes a nonce")
+            payload["n"] = "0000000000"
+        signed = ["custom_json", {**body, "json": json.dumps(payload, sort_keys=True)}]
+        if _canonical(signed, account) is None:
+            raise ValueError("Invalid reviewed authority or payload")
+        if nested:
+            payload["params"].pop("n")
+        else:
+            payload.pop("n")
+        result.append(["custom_json", {**body, "json": json.dumps(payload, sort_keys=True, separators=(",", ":"))}])
+    return result
+
+
+def _signed_review_terms(operations: list, account: str) -> list:
+    find_exact_action([], account, operations)
+    stripped = []
+    for kind, body in operations:
+        payload = json.loads(body["json"]) if isinstance(body["json"], str) else dict(body["json"])
+        if body["id"] == "sm_sps" and payload.get("action") == "token_transfer":
+            payload["params"] = dict(payload["params"])
+            payload["params"].pop("n", None)
+        else:
+            payload.pop("n", None)
+        stripped.append([kind, {**body, "json": json.dumps(payload)}])
+    return _review_terms(stripped, account)
+
+
 def _migrate_actions(data: dict) -> None:
     """Convert digest rows without merging unrelated rows; unsafe finder ownership remains disputed."""
     migrated = {}
@@ -382,11 +439,25 @@ def _action_row(data: dict, account: str, operations: list, action_id: str | Non
     if row is not None and attempt in _attempts(row) and _attempts(row)[attempt].get("operations"):
         if _digest(account, _attempts(row)[attempt]["operations"]) != digest:
             raise HTTPException(409, "A signing attempt cannot change its reviewed operations")
-    if row is not None and create and all(rev.get("digest") != digest for rev in row.get("revisions", [])):
-        row["revision"] = row.get("revision", 0) + 1
-        row.setdefault("revisions", []).append({"revision": row["revision"], "digest": digest,
-                                                 "operations": operations})
-        row["digest"] = digest
+    if row is not None and create:
+        registered = [rev for rev in row.get("revisions", []) if rev.get("review_digest")]
+        terms_digest = _digest(account, _signed_review_terms(operations, account)) if registered else None
+        reviewed = next((rev for rev in reversed(registered) if rev["review_digest"] == terms_digest), None)
+        if reviewed is not None:
+            payloads = reviewed.setdefault("payloads", [])
+            if all(_digest(account, item) != digest for item in payloads):
+                payloads.append(operations)
+            reviewed["operations"] = operations
+            reviewed["digest"] = digest
+            row["intent_revision"] = reviewed["revision"]
+            row["digest"] = digest
+        elif all(rev.get("digest") != digest for rev in row.get("revisions", [])):
+            row["revision"] = row.get("revision", 0) + 1
+            row["intent_revision"] = row["revision"]
+            row.setdefault("revisions", []).append({"revision": row["revision"], "digest": digest,
+                                                     "operations": operations,
+                                                     "payloads": [operations]})
+            row["digest"] = digest
     return key, row
 
 
@@ -707,8 +778,11 @@ def _find_row(request: Request, account: str, predicate):
         return next((row for key, row in data.items() if key.startswith(f"{account}:") and isinstance(row, dict) and predicate(row)), None)
 
 
-def _history_candidates(rows: list, account: str, revisions: list[dict], first_begin: float) -> list[dict]:
-    """Keep every covered candidate and its index, time, and comparison provenance."""
+def _history_candidates(rows: list, account: str, revisions: list[dict], first_begin: float,
+                        floor: float | None = None) -> list[dict]:
+    """Keep every covered candidate and its index, time, and comparison provenance. `floor` lowers the
+    eligibility boundary below `first_begin - CLOCK_MARGIN_S` (never raises it)."""
+    boundary = first_begin - CLOCK_MARGIN_S if floor is None else min(first_begin - CLOCK_MARGIN_S, floor)
     grouped: dict[str, dict] = {}
     for index, entry in rows if isinstance(rows, list) else []:
         if not isinstance(entry, dict) or not isinstance(index, int):
@@ -728,16 +802,16 @@ def _history_candidates(rows: list, account: str, revisions: list[dict], first_b
         item["signed_operations"] = ops
         item["operation_fingerprints"] = [_canonical(op, account) for op in ops]
         for rev in revisions:
-            expected = rev.get("operations")
-            if not expected or len(expected) != len(ops):
-                continue
-            exact = [_canonical(op, account) for op in ops] == [_canonical(op, account) for op in expected]
-            semantic = [_semantic(op, account) for op in ops] == [_semantic(op, account) for op in expected]
-            if exact:
-                item["exact"].append(rev["revision"])
-            if semantic:
-                item["semantic"].append(rev["revision"])
-        item["eligible"] = item["time"] >= first_begin - CLOCK_MARGIN_S
+            for expected in rev.get("payloads") or ([rev["operations"]] if rev.get("operations") else []):
+                if len(expected) != len(ops):
+                    continue
+                exact = [_canonical(op, account) for op in ops] == [_canonical(op, account) for op in expected]
+                semantic = [_semantic(op, account) for op in ops] == [_semantic(op, account) for op in expected]
+                if exact and rev["revision"] not in item["exact"]:
+                    item["exact"].append(rev["revision"])
+                if semantic and rev["revision"] not in item["semantic"]:
+                    item["semantic"].append(rev["revision"])
+        item["eligible"] = item["time"] >= boundary
     return [item for item in grouped.values() if item["exact"] or item["semantic"]]
 
 
@@ -755,8 +829,10 @@ def _final_other_owner(request: Request, account: str, action_id: str, tx_id: st
 
 
 def retain_candidates(request: Request, account: str, operations: list, attempt: str,
-                      rows: list, *, action_id: str | None = None, fence: tuple | None = None) -> dict:
-    """Atomically retain candidate provenance and one conclusive tx maintainer per account."""
+                      rows: list, *, action_id: str | None = None, fence: tuple | None = None,
+                      floor: float | None = None) -> dict:
+    """Atomically retain candidate provenance and one conclusive tx maintainer per account. `floor` is the
+    expiry scan's discovery floor for an attempt without a confirmed pre-sign begin (see find)."""
     path = _ledger_path(request)
     with _LOCK:
         data = _load(path)
@@ -772,7 +848,7 @@ def retain_candidates(request: Request, account: str, operations: list, attempt:
                 return {"matches": [], "action_id": row["action_id"], "stale": True}
         first_begin = min((r.get("begin_at", r.get("first_at", row["first_seen"]))
                            for r in _attempts(row).values()), default=row["first_seen"])
-        candidates = _history_candidates(rows, account, row.get("revisions", []), first_begin)
+        candidates = _history_candidates(rows, account, row.get("revisions", []), first_begin, floor)
         owners = data.setdefault("__tx_owners__", {})
         matches = row.setdefault("matches", {})
         for candidate in candidates:
@@ -821,9 +897,6 @@ def retain_candidates(request: Request, account: str, operations: list, attempt:
         if active_match:
             row["final"] = False
             row["found"] = active_match
-            account_budget = data.get("__accounts__", {}).get(account, {})
-            for known_attempt in _attempts(row):
-                account_budget.get("fast_remaining", {}).pop(f"{row['action_id']}:{known_attempt}", None)
             for rec in _attempts(row).values():
                 if (rec.get("expiry") or {}).get("status") == "absent":
                     rec["expiry"] = {"status": "retracted", "reason": "retained-match"}
@@ -993,9 +1066,10 @@ def _apply_event(row: dict, body: dict, now: float, event: str, attempt: str) ->
     timed by the server and touch only this attempt (N2/L1). Browser durations, expirations and `since` never narrow
     a proof (LOW-2). Returns {begin_token} for a recorded begin."""
     record, new = _attempt(row, attempt, now, begin=event == "begin")
-    out: dict = {"action_id": row["action_id"], "revision": row.get("revision", 1)}
+    bound_revision = row.get("intent_revision", row.get("revision", 1))
+    out: dict = {"action_id": row["action_id"], "revision": bound_revision}
     if event == "begin" and new:
-        record["revision"] = row.get("revision", 1)
+        record["revision"] = bound_revision
         record["digest"] = _digest(body.get("account", ""), body["operations"]) if body.get("account") else row["digest"]
         record["operations"] = body["operations"]
     if event == "begin" and new:
@@ -1019,6 +1093,74 @@ def _apply_event(row: dict, body: dict, now: float, event: str, attempt: str) ->
     if body.get("closed") is True and record.get("closed_at") is None:
         record["closed_at"] = now
     return out
+
+
+@router.post("/api/confirm/review")
+async def register_review(request: Request, player: str | None = None):
+    """Mint or revise immutable review lineage before a wallet attempt; no chain reads or scan admission."""
+    _require_same_origin(request)
+    account = player_for_request(request, player)
+    client_limits.limit(request, "verify")
+    try:
+        body = await request.json()
+        operations = _review_terms(body["operations"], account)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(422, "Invalid confirmation review") from exc
+    action_id = body.get("action_id")
+    if action_id is not None and (not isinstance(action_id, str) or not re.fullmatch(r"[a-f0-9]{32}", action_id)):
+        raise HTTPException(422, "Invalid action id")
+    repeat = body.get("repeat", False)
+    if not isinstance(repeat, bool) or (repeat and action_id is not None):
+        raise HTTPException(422, "Invalid repeat review")
+    review_key = body.get("review_key")
+    if review_key is not None and (not isinstance(review_key, str) or not re.fullmatch(r"[a-f0-9]{16}", review_key)):
+        raise HTTPException(422, "Invalid review key")
+    path = _ledger_path(request)
+    with _LOCK:
+        data = _load(path)
+        _migrate_actions(data)
+        scoped_key = f"{account}:{review_key}" if review_key else None
+        if action_id is None and scoped_key and not repeat:
+            remembered = data.get("__review_keys__", {}).get(scoped_key)
+            remembered_row = data.get(f"{account}:action:{remembered}") if remembered else None
+            if (remembered_row and not (remembered_row.get("final") is True and
+                    time.time() - remembered_row.get("last_seen", remembered_row.get("first_seen", time.time())) > LEDGER_KEEP_S)):
+                action_id = remembered
+        key = f"{account}:action:{action_id or secrets.token_hex(16)}"
+        if action_id is not None and key not in data:
+            raise HTTPException(409, "Unknown confirmation action")
+        row = data.get(key)
+        if row is None:
+            row = data[key] = {"action_id": key.rsplit(":", 1)[1], "digest": None,
+                               "first_seen": time.time(), "revision": 0, "revisions": [],
+                               "reads": 0, "windows": 0, "attempt_ids": [], "attempts": {}, "matches": {}}
+        row["revision"] += 1
+        row["revisions"].append({"revision": row["revision"], "review_digest": _digest(account, operations),
+                                 "review_operations": operations, "operations": None, "payloads": []})
+        row["last_seen"] = time.time()
+        if scoped_key:
+            data.setdefault("__review_keys__", {})[scoped_key] = row["action_id"]
+        _store(path, data)
+        return {"action_id": row["action_id"], "revision": row["revision"]}
+
+
+@router.post("/api/confirm/market-terms")
+async def market_review_terms(request: Request, player: str | None = None):
+    """Return the cached quote's nonce-free payment vectors for first review; no upstream or chain read."""
+    from . import market_purchase as market
+    _require_same_origin(request)
+    account = player_for_request(request, player)
+    client_limits.limit(request, "verify")
+    try:
+        body = await request.json()
+        quote = market.QUOTES.get(body.get("quote_id"), account)
+        if quote is None:
+            raise HTTPException(410, "The purchase quote expired")
+        transactions = market.build_transactions(account, quote, body.get("currency"))
+        return {"transactions": [{"lkeys": tx["lkeys"], "operations": _signed_review_terms(tx["operations"], account)}
+                                 for tx in transactions]}
+    except (AttributeError, TypeError, ValueError, market.PurchaseError) as exc:
+        raise HTTPException(422, "Invalid purchase review") from exc
 
 
 @router.post("/api/confirm/intent")
@@ -1269,6 +1411,13 @@ async def find(request: Request, player: str | None = None):
     def reserve(row, budget):
         event_result = _apply_event(row, body, now, "answered" if body.get("answered") is True else "find", attempt)
         record = row["attempts"][attempt]
+        if record.get("begin_at") is None and len(row["attempts"]) > 1:
+            # Spec r6 §2/§4: an attempt is registered by its pre-wallet begin. A second attempt id
+            # without one is not a signing epoch and buys no reads (its begin may still arrive and
+            # reserve its own fast window then). The action's registered attempts and the shared
+            # tail reader keep the action's duplicate discovery going meanwhile.
+            return {"wait": RECHECK_S, "action_id": row["action_id"], "read_mode": "unregistered",
+                    "overflow": False}
         if (verified_expiry is not None and record.get("begin_at") is not None
                 and verified_expiry > record["begin_at"]):
             record["verified_envelope_expiry"] = verified_expiry
@@ -1289,31 +1438,36 @@ async def find(request: Request, player: str | None = None):
         common = {"action_id": row["action_id"], "overflow": record.get("read_mode") == "overflow",
                   "read_mode": record.get("read_mode", "overflow"), **silent}
         excluded, proof_excluded = _excluded(row, attempt, body)
+        cached_match = None
         if row.get("matches"):
             matched_ids = [tx for tx, item in row["matches"].items()
                            if item.get("eligible") and not item.get("excluded_final_owner")]
             retained = next((tx for tx, item in row["matches"].items() if item.get("eligible")
                              and not item.get("excluded_final_owner")), None)
             if retained and now < _expiry_at(record):
-                return {"cached": {"status": "found", "tx_id": retained,
+                cached_match = {"status": "found", "tx_id": retained,
                                     "matched_tx_ids": matched_ids,
                                     "matched_transactions": [{"tx_id": tx, "operations": row["matches"][tx].get("signed_operations")}
                                                              for tx in matched_ids],
-                                    "watch_duplicates": True, "next_in_s": RECHECK_S}, **common}
+                                    "watch_duplicates": True, "next_in_s": RECHECK_S}
         own = _found_ids(row).get(attempt)
-        if own and now < _expiry_at(record):
-            return {"cached": {"status": "found", "tx_id": own,
-                                "watch_duplicates": True, "next_in_s": RECHECK_S}, **common}
-        if row.get("found") and row["found"] not in excluded and now < _expiry_at(record):
-            return {"cached": {"status": "found", "tx_id": row["found"],
-                                "watch_duplicates": True, "next_in_s": RECHECK_S}, **common}
+        if cached_match is None and own and now < _expiry_at(record):
+            cached_match = {"status": "found", "tx_id": own,
+                            "watch_duplicates": True, "next_in_s": RECHECK_S}
+        if cached_match is None and row.get("found") and row["found"] not in excluded and now < _expiry_at(record):
+            cached_match = {"status": "found", "tx_id": row["found"],
+                            "watch_duplicates": True, "next_in_s": RECHECK_S}
         expiry = record.get("expiry") or {}
         if expiry.get("status") == "absent" or (expiry.get("status") == "found" and expiry.get("covered")
                                                  and expiry.get("tx_id") not in excluded):
             return {"cached": expiry, **common}
         expiry_at = _expiry_at(record)
         if now < expiry_at:
-            return {**_account_read_plan(row, budget, attempt, now), "excluded": sorted(excluded), **common}
+            next_read = _account_read_plan(row, budget, attempt, now)
+            if cached_match and "wait" in next_read:
+                cached_match["next_in_s"] = round(max(0.0, next_read["wait"]), 3)
+                return {"cached": cached_match, **common}
+            return {**next_read, "excluded": sorted(excluded), **common}
         if expiry.get("status") == "running" and now - expiry.get("at", 0) < LEASE_S:
             return {"wait": 10, **common}
         if expiry.get("retry_at") and now < expiry["retry_at"]:
@@ -1359,13 +1513,7 @@ async def find(request: Request, player: str | None = None):
     excluded = set(plan.get("excluded") or [])
     if plan["read"] in ("fast", "tail"):
         try:
-            # The injected offline transport used by the virtual-clock suite is
-            # synchronous and bounded; the real socket read uses the fenced pool.
-            if _history is _PRODUCTION_HISTORY:
-                rows = await asyncio.wait_for(asyncio.get_running_loop().run_in_executor(
-                    _HISTORY_POOL, _history, account, -1), timeout=CALL_WALL_S)
-            else:
-                rows = _history(account, -1)
+            rows = await _off_loop(_history, account, -1)
         except Exception as exc:
             _finish_account_read(request, account, plan["token"])
             raise HTTPException(502, "Own account history unavailable") from exc
@@ -1397,25 +1545,33 @@ async def find(request: Request, player: str | None = None):
                                              for rec in _attempts(row).values()), default=row["first_seen"])},
             create=False, action_id=action_id, attempt=attempt)
         staged_pages = []
+        # Spec r6 §4 (tokenless discovery, round-4 : without a confirmed pre-sign begin the server's
+        # first record does not bound when the transaction was signed, so this expiry scan treats every
+        # row down to its widened discovery depth as eligible. A tokenless scan can never prove absence
+        # this only makes a real match findable. Confirmed begins keep the §2 first-begin boundary, and
+        # latest-page reads keep it in every case.
+        discovery_floor = None if plan.get("begin_ok", True) else plan["earliest"]
         def stage(page):
             staged_pages.append(page)
-            candidates = _history_candidates(page, account, snapshot["revisions"], snapshot["first_begin"])
+            candidates = _history_candidates(page, account, snapshot["revisions"], snapshot["first_begin"],
+                                             discovery_floor)
             return {"found": next((item["tx_id"] for item in candidates if item["eligible"]
                                     and not _final_other_owner(request, account, snapshot["action_id"],
                                                                item["tx_id"])), None)}
-        proof = await asyncio.wait_for(asyncio.get_running_loop().run_in_executor(
-            _HISTORY_POOL, lambda: prove_own_action(
+        def run_coverage():
+            return prove_own_action(
                 account, operations, earliest=plan["earliest"], until=plan["until"],
                 history=lambda a, start: _coverage_history(request, a, plan["run"], now + CALL_WALL_S, start),
                 scan=plan.get("scan"), closed=plan["closed"], max_pages=2,
                 exclude=excluded, absence_exclude=set(plan.get("proof_excluded") or []),
-                on_page=stage)), timeout=CALL_WALL_S)
+                on_page=stage)
+        proof = await _off_loop(run_coverage)
         if time.time() >= now + CALL_WALL_S:
             raise TimeoutError("Coverage publication deadline")
         covered_rows = {entry[0]: entry for page in staged_pages for entry in page}
         published = retain_candidates(request, account, operations, attempt,
                                       [covered_rows[index] for index in sorted(covered_rows)],
-                                      action_id=action_id,
+                                      action_id=action_id, floor=discovery_floor,
                                       fence=(plan["run"], plan["gen"], now + CALL_WALL_S))
         if published.get("action_id") is None or published.get("stale"):
             raise TimeoutError("Coverage publication lost its action")

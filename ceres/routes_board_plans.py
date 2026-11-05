@@ -15,11 +15,30 @@ from fastapi.responses import JSONResponse
 
 from . import capture as capture_mod
 from . import capture_freshness
-from .board_plan_eval import GROUPS, MAX_PLACEMENTS_PER_ROW, MAX_ROWS, evaluate_targets
+from .board_plan_eval import GROUPS, MAX_PLACEMENTS_PER_ROW, MAX_ROWS, evaluate_targets, live_placements_from_capture
 from .routes_board import _config, _read_snapshot_or_503, _require_same_origin
 from .security import player_for_request
 
 router = APIRouter()
+
+
+@router.post("/api/board-plans/from-live")
+async def board_plan_from_live(request: Request, player: str | None = None):
+    """Copy only the already saved, capture-pinned roster; no game or chain reads."""
+    _require_same_origin(request)
+    account = player_for_request(request, player)
+    body = await request.json()
+    if not isinstance(body, dict) or not isinstance(body.get("capture_generated_at"), str):
+        raise HTTPException(status_code=422, detail="the board capture stamp is required")
+    report, _ref = await asyncio.to_thread(_read_snapshot_or_503, capture_mod, _config(request), account)
+    stamp = report.get("generated_at") if isinstance(report, dict) else None
+    if body["capture_generated_at"] != stamp:
+        raise HTTPException(status_code=409, detail={"code": "capture_superseded", "snapshot_generated_at": stamp})
+    try:
+        placements = await asyncio.to_thread(live_placements_from_capture, report)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={"code": "live_roster_incomplete", "message": str(exc)}) from exc
+    return JSONResponse(content={"account": account, "generated_at": stamp, "placements": placements})
 
 
 def _short(value: Any, field: str) -> str:

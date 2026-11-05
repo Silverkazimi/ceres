@@ -108,9 +108,11 @@ def test_n2_a_delayed_closure_of_an_old_attempt_never_closes_the_new_one():
     closed by A's late beacon (closed_at set, expiry reset) although B's wallet prompt was still open."""
     row = {"action_id": "a" * 32, "digest": "d", "first_seen": 1700000000,
            "reads": 0, "windows": 0, "attempt_ids": [], "attempts": {}, "revisions": []}
-    confirm._apply_event(row, {"event": "begin"}, 1700000000, "begin", ATTEMPT)
+    old_ops = [op("DelayedOld")]
+    new_ops = [op("DelayedNew")]
+    confirm._apply_event(row, {"event": "begin", "operations": old_ops}, 1700000000, "begin", ATTEMPT)
     confirm._apply_event(row, {"closed": True, "answered": True}, 1700000001, "answered", ATTEMPT)
-    confirm._apply_event(row, {"event": "begin"}, 1700000002, "begin", ATTEMPT_B)
+    confirm._apply_event(row, {"event": "begin", "operations": new_ops}, 1700000002, "begin", ATTEMPT_B)
     confirm._apply_event(row, {"closed": True, "answered": True}, 1700000003, "answered", ATTEMPT)
     b = row["attempts"][ATTEMPT_B]
     assert b.get("closed_at") is None and b.get("answered_at") is None, b

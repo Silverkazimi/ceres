@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  boardPlanAssetStatus, boardPlanEmptyRow, boardPlanRowSignature, boardPlanStoreKey, boardPlanTotals, createBoardPlanEvaluator,
+  boardPlanAssetStatus, boardPlanEmptyRow, boardPlanPlacementsFromLive, boardPlanRowSignature, boardPlanStoreKey, boardPlanTotals, boardPlanV2Key, createBoardPlanEvaluator,
   createBoardPlanStore, projectBoardRow, readSelectedBoardPlan,
 } from '../../ceres/static/board-plans.js';
 
@@ -25,6 +25,210 @@ function fakeTimers() {
 
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
+test('v1 migration keeps placement bytes and the old key', () => {
+  const storage = memoryStorage();
+  const old = { version: 1, account: 'player0012', revision: 9, selected_id: 'legacy-id', plans: [
+    { id: 'legacy-id', name: 'Plan 1', account: 'player0012', revision: 3, placements: [
+      { deed_uid: 'plot-a', group_id: 'worker', slot_index: 0, asset_ref: 'card-a', name: 'Named Card' }] }] };
+  const raw = JSON.stringify(old);
+  storage.setItem(boardPlanStoreKey('player0012'), raw);
+  const snapshot = createBoardPlanStore(storage, 'player0012').load();
+  assert.equal(snapshot.selectedId, 'legacy-id');
+  assert.deepEqual(snapshot.plans[0].placements, old.plans[0].placements);
+  assert.equal(storage.getItem(boardPlanStoreKey('player0012')), raw);
+  assert.equal(JSON.parse(storage.getItem(boardPlanV2Key('player0012'))).schema_version, 2);
+});
+
+test('named setup CRUD, tombstone, undo, and duplicate without run state', async () => {
+  const storage = memoryStorage();
+  const store = createBoardPlanStore(storage, 'player0012'); store.load();
+  const original = store.snapshot().selectedId;
+  await store.create('Grain');
+  const grain = store.snapshot().selectedId;
+  await store.rename(grain, 'Grain farm');
+  await store.setPlacement({ deed_uid: 'plot-a', group_id: 'worker', slot_index: 0, asset_ref: 'card-a', name: 'Card A' });
+  await store.duplicate(grain);
+  const copy = store.snapshot().selectedId;
+  assert.notEqual(copy, grain);
+  assert.equal(store.selected().name, 'Grain farm copy');
+  assert.equal(store.selected().run_state, undefined);
+  assert.equal(store.selected().placements.length, 1);
+  await store.select(original);
+  const deleted = await store.delete(grain);
+  assert.ok(store.snapshot().tombstones[grain]);
+  await store.undoDelete(deleted.deleted);
+  assert.equal(store.snapshot().selectedId, grain);
+  assert.equal(store.snapshot().tombstones[grain], undefined);
+});
+
+test('different setup edits merge by stable id across tabs', async () => {
+  const storage = memoryStorage();
+  const setup = createBoardPlanStore(storage, 'player0012'); setup.load();
+  const original = setup.snapshot().selectedId;
+  await setup.create('Other'); const other = setup.snapshot().selectedId;
+  const a = createBoardPlanStore(storage, 'player0012'); a.load();
+  const b = createBoardPlanStore(storage, 'player0012'); b.load();
+  await a.rename(original, 'Original renamed');
+  await b.rename(other, 'Other renamed');
+  const saved = createBoardPlanStore(storage, 'player0012').load();
+  assert.equal(saved.plans.length, 2);
+  assert.equal(saved.plans.find((plan) => plan.id === original).name, 'Original renamed');
+  assert.equal(saved.plans.find((plan) => plan.id === other).name, 'Other renamed');
+});
+
+test('account keys stay isolated and commits enter the account lock', async () => {
+  const storage = memoryStorage();
+  let lockCalls = 0;
+  const owner = createBoardPlanStore(storage, 'player0012', { lock: (task) => { lockCalls++; return task(); } });
+  const other = createBoardPlanStore(storage, 'other01');
+  owner.load(); other.load();
+  await owner.create('My setup');
+  assert.equal(lockCalls, 1);
+  assert.equal(other.snapshot().plans.length, 1);
+  assert.equal(other.snapshot().plans[0].name, 'Plan 1');
+  assert.notEqual(boardPlanV2Key('player0012'), boardPlanV2Key('other01'));
+});
+
+test('concurrent delete and edit retain the edited setup as a conflict copy', async () => {
+  const storage = memoryStorage();
+  const seed = createBoardPlanStore(storage, 'player0012'); seed.load();
+  await seed.create('Other');
+  const id = seed.snapshot().selectedId;
+  const deleting = createBoardPlanStore(storage, 'player0012'); deleting.load();
+  const editing = createBoardPlanStore(storage, 'player0012'); editing.load();
+  await editing.rename(id, 'Edited in other tab');
+  await deleting.delete(id);
+  const saved = createBoardPlanStore(storage, 'player0012').load();
+  assert.ok(saved.tombstones[id]);
+  assert.equal(saved.plans.some((plan) => plan.id === id), false);
+  assert.equal(saved.plans.filter((plan) => plan.name.includes('conflict copy')).length, 0,
+    'the delete refreshes first and removes the current durable version');
+});
+
+test('undo deletion survives an unrelated tab save', async () => {
+  const storage = memoryStorage();
+  const initial = createBoardPlanStore(storage, 'player0012'); initial.load();
+  const first = initial.snapshot().selectedId;
+  await initial.create('Other');
+  const other = initial.snapshot().selectedId;
+  const deleting = createBoardPlanStore(storage, 'player0012'); deleting.load();
+  const deleted = await deleting.delete(other);
+  const elsewhere = createBoardPlanStore(storage, 'player0012'); elsewhere.load();
+  await elsewhere.rename(first, 'Renamed elsewhere');
+  await deleting.undoDelete(deleted.deleted);
+  const saved = createBoardPlanStore(storage, 'player0012').load();
+  assert.equal(saved.tombstones[other], undefined);
+  assert.equal(saved.plans.find((plan) => plan.id === other).name, 'Other');
+  assert.equal(saved.plans.find((plan) => plan.id === first).name, 'Renamed elsewhere');
+});
+
+test('quota failure leaves durable revision, holds unsaved edit, and permits retry', async () => {
+  const storage = memoryStorage();
+  const store = createBoardPlanStore(storage, 'player0012'); store.load();
+  const saved = storage.getItem(boardPlanV2Key('player0012'));
+  const set = storage.setItem;
+  let fail = true;
+  storage.setItem = (key, value) => { if (fail && key === boardPlanV2Key('player0012')) throw new Error('quota'); set(key, value); };
+  await assert.rejects(store.rename(store.snapshot().selectedId, 'Unsaved'), /quota/);
+  assert.equal(storage.getItem(boardPlanV2Key('player0012')), saved);
+  assert.equal(store.snapshot().dirty, true);
+  assert.throws(() => store.create('Cannot switch'), /unsaved changes/);
+  fail = false;
+  await store.persist();
+  assert.equal(readSelectedBoardPlan(storage, 'player0012').name, 'Unsaved');
+});
+
+test('stale second store places into the latest selected setup', async () => {
+  const storage = memoryStorage();
+  const a = createBoardPlanStore(storage, 'player0012'); a.load();
+  const x = a.snapshot().selectedId;
+  await a.create('Y'); const y = a.snapshot().selectedId;
+  await a.select(x);
+  const b = createBoardPlanStore(storage, 'player0012'); b.load();
+  await b.select(y);
+  await a.setPlacement({ deed_uid: 'plot-y', group_id: 'worker', slot_index: 0, asset_ref: 'asset-y' });
+  assert.equal(a.snapshot().selectedId, y);
+  assert.equal(a.selected().placements[0].asset_ref, 'asset-y');
+  assert.equal(createBoardPlanStore(storage, 'player0012').load().plans.find((plan) => plan.id === x).placements.length, 0);
+});
+
+test('corrupt primary can restore the verified backup; newer schema cannot', async () => {
+  const storage = memoryStorage();
+  const seed = createBoardPlanStore(storage, 'player0012'); seed.load();
+  const saved = createBoardPlanStore(storage, 'player0012'); saved.load();
+  await saved.rename(saved.snapshot().selectedId, 'Last saved');
+  storage.setItem(`${boardPlanV2Key('player0012')}:backup`, storage.getItem(boardPlanV2Key('player0012')));
+  storage.setItem(boardPlanV2Key('player0012'), '{broken');
+  const recover = createBoardPlanStore(storage, 'player0012');
+  assert.equal(recover.load().readOnly, true);
+  assert.equal(recover.restoreBackup().readOnly, false);
+  assert.equal(recover.selected().name, 'Last saved');
+  storage.setItem(boardPlanV2Key('player0012'), JSON.stringify({ schema_version: 3, account: 'player0012' }));
+  const future = createBoardPlanStore(storage, 'player0012');
+  assert.equal(future.load().readOnly, true);
+  assert.throws(() => future.restoreBackup(), /No recoverable backup/);
+});
+
+test('verified main write fits alongside the previous one-envelope backup', async () => {
+  const storage = memoryStorage();
+  const baseSet = storage.setItem;
+  const limit = 2;
+  storage.setItem = (key, value) => {
+    const next = new Map(storage.data); next.set(key, String(value));
+    const envelopes = [...next].filter(([k]) => k.startsWith(boardPlanV2Key('player0012'))).length;
+    if (envelopes > limit) throw new Error('quota');
+    baseSet(key, value);
+  };
+  const store = createBoardPlanStore(storage, 'player0012'); store.load();
+  await store.rename(store.snapshot().selectedId, 'Fits');
+  assert.equal(store.selected().name, 'Fits');
+  assert.ok(storage.getItem(`${boardPlanV2Key('player0012')}:backup`));
+});
+
+test('undo of deleting the last setup removes only its unchanged empty replacement; writes prune old tombstones', async () => {
+  const storage = memoryStorage();
+  const store = createBoardPlanStore(storage, 'player0012'); store.load();
+  const deleted = await store.delete(store.snapshot().selectedId);
+  await store.undoDelete(deleted.deleted);
+  assert.equal(store.snapshot().plans.length, 1);
+  assert.equal(store.snapshot().plans[0].name, 'Plan 1');
+  const envelope = JSON.parse(storage.getItem(boardPlanV2Key('player0012')));
+  envelope.tombstones['old-plan'] = new Date(Date.now() - 31 * 86400000).toISOString();
+  envelope.revision += 1;
+  storage.setItem(boardPlanV2Key('player0012'), JSON.stringify(envelope));
+  store.refresh();
+  await store.rename(store.snapshot().selectedId, 'Prune');
+  assert.equal(store.snapshot().tombstones['old-plan'], undefined);
+});
+
+test('unsupported v2 refuses mutation and corrupt primary retains previous good revision', async () => {
+  const storage = memoryStorage();
+  storage.setItem(boardPlanV2Key('player0012'), JSON.stringify({ schema_version: 3, account: 'player0012' }));
+  const future = createBoardPlanStore(storage, 'player0012');
+  assert.match(future.load().readOnlyReason, /newer version.*read-only/);
+  assert.throws(() => future.create('No'), /read-only/);
+  storage.data.clear();
+  const store = createBoardPlanStore(storage, 'player0012'); store.load();
+  await store.rename(store.snapshot().selectedId, 'Good');
+  storage.setItem(boardPlanV2Key('player0012'), '{broken');
+  const recovered = createBoardPlanStore(storage, 'player0012');
+  const snapshot = recovered.load();
+  assert.equal(snapshot.readOnly, true);
+  assert.equal(snapshot.plans[0].name, 'Plan 1');
+  assert.throws(() => recovered.rename(snapshot.selectedId, 'No'), /read-only/);
+});
+
+test('Start from live copies loaded occupants with names and no live mutation', () => {
+  const live = [{ deed_uid: 'plot-a', workers: [
+    { slot: 1, asset_ref: 'card-a', name: 'Named Worker' }, { slot: 0, asset_ref: 'runi-a', name: 'Runi' }],
+    bonus: { totem: { asset_ref: 'totem-a', name: 'Totem' }, title: null, power_core: null } }];
+  const before = JSON.stringify(live);
+  const placements = boardPlanPlacementsFromLive(live);
+  assert.deepEqual(placements.map((p) => [p.group_id, p.slot_index, p.asset.name]),
+    [['worker', 0, 'Named Worker'], ['runi', 0, 'Runi'], ['totem', 0, 'Totem']]);
+  assert.equal(JSON.stringify(live), before);
+});
+
 test('creates one clean autosaved Plan 1 per account, separate from the live stage store', async () => {
   const storage = memoryStorage();
   storage.setItem('ceres:stage-plan:v1:player0012', '{"live":true}');
@@ -34,7 +238,7 @@ test('creates one clean autosaved Plan 1 per account, separate from the live sta
   assert.equal(created.plans[0].name, 'Plan 1');
   assert.deepEqual(created.plans[0].placements, []);
   assert.equal(boardPlanStoreKey('player0012'), 'ceres:board-plans:v1:player0012');
-  assert.ok(storage.data.has('ceres:board-plans:v1:player0012'));
+  assert.ok(storage.data.has('ceres:board-plans:v2:player0012'));
   await store.setPlacement({ deed_uid: 'plot-a', group_id: 'worker', slot_index: 0, asset_ref: 'asset-a',
     asset: { name: 'Card A', image: 'a.png', cooldown: { state: 'ready', ready: true }, total_harvest_pp: 99 } });
   const reloaded = createBoardPlanStore(storage, 'player0012').load();
@@ -47,21 +251,24 @@ test('creates one clean autosaved Plan 1 per account, separate from the live sta
   assert.equal(readSelectedBoardPlan(storage, 'player0012').placements.length, 1);
 });
 
-test('one asset per plan, one asset per slot, replace and remove, revision conflict keeps the other tab', async () => {
+test('one asset per plan, one asset per slot, replace and remove, concurrent edits make a copy', async () => {
   const storage = memoryStorage();
   createBoardPlanStore(storage, 'player0012').load();
   const writerA = createBoardPlanStore(storage, 'player0012'); writerA.load();
   const writerB = createBoardPlanStore(storage, 'player0012'); writerB.load();
+  const originalId = writerA.snapshot().selectedId;
   await writerA.setPlacement({ deed_uid: 'plot-a', group_id: 'worker', slot_index: 0, asset_ref: 'asset-a' });
-  await assert.rejects(writerB.setPlacement({ deed_uid: 'plot-b', group_id: 'worker', slot_index: 0, asset_ref: 'asset-b' }), /revision conflict/);
+  await writerB.setPlacement({ deed_uid: 'plot-b', group_id: 'worker', slot_index: 0, asset_ref: 'asset-b' });
+  assert.equal(createBoardPlanStore(storage, 'player0012').load().plans.length, 1, 'both tabs target the stored selected setup');
   const current = createBoardPlanStore(storage, 'player0012'); current.load();
+  await current.select(originalId);
   await assert.rejects(current.setPlacement({ deed_uid: 'plot-b', group_id: 'worker', slot_index: 1, asset_ref: 'asset-a' }), /already planned/);
   await current.setPlacement({ deed_uid: 'plot-a', group_id: 'worker', slot_index: 0, asset_ref: 'asset-c' });
   let plan = readSelectedBoardPlan(storage, 'player0012');
-  assert.deepEqual(plan.placements.map((p) => p.asset_ref), ['asset-c'], 'choosing for a planned slot replaces it');
+  assert.deepEqual(plan.placements.map((p) => p.asset_ref).sort(), ['asset-b', 'asset-c'], 'choosing for a planned slot replaces it in the selected setup');
   assert.equal(await current.removePlacement({ deed_uid: 'plot-a', group_id: 'worker', slot_index: 0 }), true);
   plan = readSelectedBoardPlan(storage, 'player0012');
-  assert.deepEqual(plan.placements, []);
+  assert.deepEqual(plan.placements.map((p) => p.asset_ref), ['asset-b']);
   await assert.rejects(current.setPlacement({ deed_uid: 'plot-a', group_id: 'nonsense', slot_index: 0, asset_ref: 'x' }), /Invalid placement/);
 });
 
@@ -280,4 +487,38 @@ test('evaluator: a superseded capture adopts the newer board once and asks again
   assert.equal(adopted, 1, 'the same stale stamp is adopted only once');
   assert.equal(evaluator.result('a', 'sig-old').reason, 'capture_superseded');
   assert.equal(calls, 2);
+});
+
+test('submenu row actions rename and delete a nonselected setup by id', async () => {
+  const storage = memoryStorage();
+  const store = createBoardPlanStore(storage, 'player0012'); store.load();
+  const first = store.snapshot().selectedId;
+  await store.create('Second');
+  const selected = store.snapshot().selectedId;
+  await store.rename(first, 'First renamed');
+  assert.equal(store.snapshot().plans.find((plan) => plan.id === first).name, 'First renamed');
+  assert.equal(store.snapshot().selectedId, selected);
+  const deleted = await store.delete(first);
+  assert.equal(deleted.deleted.id, first);
+  assert.equal(store.snapshot().selectedId, selected);
+  await store.undoDelete(deleted.deleted);
+  assert.equal(store.snapshot().plans.length, 2);
+});
+
+test('Planning submenu renders setup rows with inline controls', async () => {
+  const prior = globalThis.document;
+  globalThis.document = { body: { dataset: {} }, querySelector: () => null };
+  try {
+    const { hdrMenuPanelHtml } = await import('../../ceres/static/header-menu.js');
+    const setups = { selectedId: 'plan-one', plans: [{ id: 'plan-one', name: 'Northern grain' }] };
+    document.body.dataset = { boardMode: 'planning', boardPlanName: 'Northern grain' };
+    const nested = hdrMenuPanelHtml('plots', setups);
+    assert.match(nested, /data-menu-submenu hidden/);
+    assert.match(nested, /class="hdr-menu-planning-label">Planning · Northern grain<\/span><span class="hdr-menu-chevron">›<\/span>/);
+    assert.match(nested, /Back to live/);
+    assert.doesNotMatch(nested, /hdr-menu-setups/);
+    assert.match(nested, /data-setup-rename="plan-one"/);
+    assert.match(nested, /data-setup-delete="plan-one"/);
+    assert.match(nested, /class="hdr-menu-chevron"/);
+  } finally { globalThis.document = prior; }
 });

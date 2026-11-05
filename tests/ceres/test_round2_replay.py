@@ -105,8 +105,8 @@ __world.gameFetch = async (path, body) => {
   return null;
 };
 const op = nonce => ['custom_json', { id: 'sm_land_operation', required_auths: [], required_posting_auths: ['alice'],
-  json: JSON.stringify({ op: 'start_worksite', n: nonce }) }];
-const preview = nonce => ({ account: 'alice', kind: 'worksite', target: 'grain', chunks: [{ operations: [op(nonce)] }] });
+  json: JSON.stringify({ op: 'start_worksite', target: nonce.endsWith('b2') ? 'wood' : 'grain', n: nonce }) }];
+const preview = nonce => ({ account: 'alice', kind: 'worksite', target: nonce.endsWith('b2') ? 'wood' : 'grain', chunks: [{ operations: [op(nonce)] }] });
 S.WORKSITE_MODAL_PREVIEW = { payload: preview('worksitea1') };
 confirmWorksiteBroadcast({ deed_uid: '', plot: '1-1-1' }, null);
 for (let i = 0; i < 10 && __world.walletCalls < 1; i++) await __advance(2000);

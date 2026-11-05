@@ -14,6 +14,24 @@ export const BOARD_PLANNING_CHANGED_EVENT = 'ceres:board-plan-changed';
 
 function boardPlanningAccountName() { return CURRENT_PLAYER || BOARD?.player || ''; }
 function boardPlanningStorage() { try { return window.localStorage; } catch (_) { return null; } }
+let boardPlanningStoreAccount = null;
+const boardPlanningStores = new Map();
+let boardPlanningRestoreSerial = 0;
+if (typeof window !== 'undefined') window.addEventListener('ceres:player-changed', () => { boardPlanningRestoreSerial += 1; });
+if (typeof window !== 'undefined') window.addEventListener('storage', (event) => {
+  const account = boardPlanningAccountName().toLowerCase();
+  if (!account || event.key !== `ceres:board-plans:v2:${account}`) return;
+  const store = boardPlanningStores.get(account);
+  if (!store || store.snapshot().dirty || store.snapshot().readOnly) return;
+  try {
+    const snapshot = store.refresh();
+    if (boardPlanningActive()) {
+      document.body.dataset.boardPlanName = snapshot.plans.find((plan) => plan.id === snapshot.selectedId)?.name || 'No setup';
+      window.dispatchEvent(new Event(BOARD_PLANNING_EVENT));
+      window.dispatchEvent(new CustomEvent(BOARD_PLANNING_CHANGED_EVENT, { detail: { deeds: [] } }));
+    }
+  } catch (_) { /* a storage event cannot make the current board unusable */ }
+});
 
 export function boardPlanningActive() {
   return typeof document !== 'undefined' && document.body?.dataset?.boardMode === 'planning';
@@ -21,27 +39,93 @@ export function boardPlanningActive() {
 
 export function boardPlanningPlan() {
   if (!boardPlanningActive()) return null;
+  const account = boardPlanningAccountName().toLowerCase();
+  const store = boardPlanningStores.get(account);
+  if (store && (store.snapshot().dirty || store.snapshot().readOnly)) return store.selected();
   return readSelectedBoardPlan(boardPlanningStorage(), boardPlanningAccountName());
 }
 
 export function boardPlanningStore() {
-  const store = createBoardPlanStore(boardPlanningStorage(), boardPlanningAccountName());
+  const account = boardPlanningAccountName().toLowerCase();
+  if (boardPlanningStores.has(account)) return boardPlanningStores.get(account);
+  if (boardPlanningStoreAccount !== account) boardPlanningRestoreSerial += 1;
+  const store = createBoardPlanStore(boardPlanningStorage(), account, { onConflict: ({ id, copyId }) =>
+    window.dispatchEvent(new CustomEvent('ceres:board-plan-conflict', { detail: { id, copyId } })) });
   store.load();
+  boardPlanningStoreAccount = account;
   // IN-0315: every saved edit tells the board, so the plan totals follow the row that changed.
   const announce = (deedUid) => (result) => {
     window.dispatchEvent(new CustomEvent(BOARD_PLANNING_CHANGED_EVENT, { detail: { deeds: [String(deedUid)] } }));
     return result;
   };
-  return { ...store,
-    setPlacement: (placement) => store.setPlacement(placement).then(announce(placement.deed_uid)),
-    removePlacement: (target) => store.removePlacement(target).then(announce(target.deed_uid)),
+  const announceFailure = (deedUid) => (error) => { announce(deedUid)(); throw error; };
+  const wrapped = { ...store,
+    setPlacement: (placement) => store.setPlacement(placement).then(announce(placement.deed_uid), announceFailure(placement.deed_uid)),
+    removePlacement: (target) => store.removePlacement(target).then(announce(target.deed_uid), announceFailure(target.deed_uid)),
     clear: () => {
       const deeds = [...new Set((store.selected()?.placements || []).map((placement) => String(placement.deed_uid)))];
       return store.clear().then((result) => {
         window.dispatchEvent(new CustomEvent(BOARD_PLANNING_CHANGED_EVENT, { detail: { deeds } }));
         return result;
-      });
+      }, (error) => { window.dispatchEvent(new CustomEvent(BOARD_PLANNING_CHANGED_EVENT, { detail: { deeds } })); throw error; });
     } };
+  boardPlanningStores.set(account, wrapped);
+  return wrapped;
+}
+
+export function boardPlanningSetups({ includeLive = false } = {}) {
+  if (!includeLive && !boardPlanningActive()) return null;
+  try { return boardPlanningStore().refresh(); } catch (_) { return null; }
+}
+
+async function boardPlanningLivePlacements(account, restoreSerial) {
+  const stamp = BOARD?.generated_at;
+  if (!stamp) throw new Error("Some live cards are still loading, so this setup can't be copied yet. Nothing was changed; try again in a moment.");
+  const response = await fetch(playerQueryAppend('/api/board-plans/from-live'), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ capture_generated_at: stamp }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.detail?.message || "Some live cards are still loading, so this setup can't be copied yet. Nothing was changed; try again in a moment.");
+  if (account !== boardPlanningAccountName().toLowerCase() || restoreSerial !== boardPlanningRestoreSerial
+      || stamp !== BOARD?.generated_at || payload.account !== account || payload.generated_at !== stamp
+      || !Array.isArray(payload.placements)) throw new Error('The board changed while copying live occupants. Nothing was saved.');
+  return { placements: payload.placements, stamp };
+}
+
+export async function boardPlanningSetupAction(action, value) {
+  const account = boardPlanningAccountName().toLowerCase();
+  const store = boardPlanningStore();
+  store.refresh();
+  const restoreSerial = boardPlanningRestoreSerial;
+  const before = store.snapshot();
+  let result;
+  try {
+    if (action === 'new') result = await store.create(value || 'New setup');
+    else if (action === 'retry') result = await store.persist();
+    else if (action === 'restore') result = store.restoreBackup();
+    else if (action === 'start-live') {
+      const live = await boardPlanningLivePlacements(account, restoreSerial);
+      result = await store.create(value || 'From live', live.placements, { base_capture_generated_at: live.stamp });
+    } else if (action === 'rename') result = await store.rename(value.id || before.selectedId, value.name || value);
+    else if (action === 'duplicate') result = await store.duplicate(before.selectedId);
+    else if (action === 'delete') result = await store.delete(value || before.selectedId);
+    else if (action === 'undo-delete') result = await store.undoDelete(value);
+    else if (action === 'select') result = await store.select(value);
+    else throw new Error('Unknown setup action.');
+  } catch (error) {
+    if (store.snapshot().dirty && account === boardPlanningAccountName().toLowerCase()) {
+      document.body.dataset.boardPlanName = store.selected()?.name || 'Unsaved setup';
+      window.dispatchEvent(new Event(BOARD_PLANNING_EVENT));
+    }
+    throw error;
+  }
+  if (account !== boardPlanningAccountName().toLowerCase() || restoreSerial !== boardPlanningRestoreSerial)
+    throw new Error('The account changed while saving. Try again for the current account.');
+  const after = store.snapshot();
+  document.body.dataset.boardPlanName = after.plans.find((plan) => plan.id === after.selectedId)?.name || 'No setup';
+  window.dispatchEvent(new Event(BOARD_PLANNING_EVENT));
+  return result;
 }
 
 async function boardPlanningRequest(body) {
@@ -131,7 +215,9 @@ export function toggleBoardPlanning() {
     const store = boardPlanningStore();
     const snapshot = store.snapshot();
     document.body.dataset.boardMode = 'planning';
-    document.body.dataset.boardPlanName = snapshot.plans.find((plan) => plan.id === snapshot.selectedId)?.name || 'Plan 1';
+    document.body.dataset.boardPlanName = snapshot.plans.find((plan) => plan.id === snapshot.selectedId)?.name
+      || (snapshot.readOnly ? 'Read-only setups' : 'Plan 1');
+    if (snapshot.readOnlyReason) window.dispatchEvent(new CustomEvent('ceres:board-plan-notice', { detail: snapshot.readOnlyReason }));
   }
   window.dispatchEvent(new Event(BOARD_PLANNING_EVENT));
 }

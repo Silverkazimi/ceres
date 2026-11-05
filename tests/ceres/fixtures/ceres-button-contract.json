@@ -830,6 +830,18 @@
       "approval": "A8"
     },
     {
+      "id": "setup-delete-undo",
+      "selector": ".stage-toast-undo",
+      "action": "undo-setup-delete",
+      "renderer": "staging.js",
+      "surface": "confirmation-toast",
+      "group": "confirmation-actions",
+      "treatment": "S",
+      "density": "compact",
+      "status": "approved",
+      "approval": ": reuse the existing notice surface for setup deletion undo"
+    },
+    {
       "id": "table-sort",
       "selector": "#plot-table th[data-sort]",
       "action": "sort",
@@ -1937,6 +1949,19 @@
       "density": "comfortable",
       "status": "approved",
       "approval": " design 4 (maintainer go ): desktop header Menu, one list in three columns; header buttons are glass ( /  D-2)",
+      "variant": "glass"
+    },
+    {
+      "id": "header-menu-setup-actions",
+      "selector": ".hdr-menu-setup-action",
+      "action": "data-setup-rename|data-setup-delete",
+      "renderer": "header-menu.js",
+      "surface": "header-menu",
+      "group": "setup-row-actions",
+      "treatment": "S",
+      "density": "compact",
+      "status": "approved",
+      "approval": " maintainer submenu pilot: compact inline setup actions",
       "variant": "glass"
     },
     {

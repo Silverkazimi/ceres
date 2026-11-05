@@ -27,7 +27,7 @@ playwright = pytest.importorskip("playwright.sync_api")
 pytestmark = pytest.mark.browser
 ROOT = Path(__file__).resolve().parents[2]
 
-PLAN_KEY = f"ceres:board-plans:v1:{SAMPLE}"
+PLAN_KEY = f"ceres:board-plans:v2:{SAMPLE}"
 STAGE_KEY = f"ceres:stage-plan:v1:{SAMPLE}"
 PLANNED_PP = 4321
 
@@ -67,7 +67,15 @@ OVERFLOW = """() => {
 
 def _toggle_planning(page):
     page.click("#hdr-menu-btn")
-    page.locator('#hdr-menu [data-menu-entry="planning"]').click()
+    trigger = page.locator('#hdr-menu [data-menu-entry="planning"]')
+    if page.locator('body').get_attribute('data-board-mode') == 'planning':
+        trigger.click()
+        page.locator('[data-menu-submenu]').wait_for(state='visible')
+        page.locator('[data-menu-submenu] [data-menu-entry="setup-back"]').click()
+        page.wait_for_function("document.body.dataset.boardMode !== 'planning'")
+    else:
+        trigger.click()
+        page.wait_for_function("document.body.dataset.boardMode === 'planning'")
 
 
 def _no_overflow(page):
@@ -131,7 +139,7 @@ def test_planning_entry_is_local_one_changed_row_and_live_round_trip_is_unchange
         page.wait_for_function("document.body.dataset.boardMode === 'planning'")
         assert page.locator("#hdr-place").inner_text() == "Planning · Plan 1"
         saved = page.evaluate(f"() => JSON.parse(localStorage.getItem('{PLAN_KEY}'))")
-        assert len(saved["plans"]) == 1 and saved["plans"][0]["name"] == "Plan 1" and saved["plans"][0]["placements"] == []
+        assert len(saved["plans"]) == 1 and saved["plans"][saved["selected_plan_id"]]["name"] == "Plan 1" and saved["plans"][saved["selected_plan_id"]]["placements"] == []
         page.wait_for_timeout(600)  # longer than the evaluator debounce
         assert [u for _, u in requests if urlparse(u).path.startswith("/api/")] == []
         assert len(aborted) == aborted_before, "no upstream or chain host was contacted"
@@ -152,7 +160,7 @@ def test_planning_entry_is_local_one_changed_row_and_live_round_trip_is_unchange
         changed_uid = live_rows[0]["uid"]
         page.evaluate("""([key, uid]) => {
           const saved = JSON.parse(localStorage.getItem(key));
-          saved.plans[0].placements = [{ deed_uid: uid, group_id: 'totem', slot_index: 0, asset_ref: 'pilot-totem',
+          saved.plans[saved.selected_plan_id].placements = [{ deed_uid: uid, group_id: 'totem', slot_index: 0, asset_ref: 'pilot-totem',
             name: 'Legendary Totem', asset: { asset_ref: 'pilot-totem', name: 'Legendary Totem', rarity: 'legendary', boost: 1 } }];
           saved.revision += 1;
           localStorage.setItem(key, JSON.stringify(saved));
@@ -187,7 +195,7 @@ def test_planning_entry_is_local_one_changed_row_and_live_round_trip_is_unchange
         answer["mode"] = "fail"
         page.evaluate("""([key]) => {
           const saved = JSON.parse(localStorage.getItem(key));
-          saved.plans[0].placements[0].asset_ref = 'pilot-totem-2';
+          saved.plans[saved.selected_plan_id].placements[0].asset_ref = 'pilot-totem-2';
           saved.revision += 1;
           localStorage.setItem(key, JSON.stringify(saved));
         }""", [PLAN_KEY])

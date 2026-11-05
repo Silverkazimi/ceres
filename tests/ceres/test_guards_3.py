@@ -74,6 +74,7 @@ ALLOWED_TIMERS = {
     ("operations.js", "setTimeout(resolve, 5000); });"): "admission: an earlier wallet request blocks a new send ()",
     ("card-checkout.js", "closeTimer = setTimeout(() => {"): "UI: auto-close after an all-green outcome",
     ("card-checkout.js", "tickTimer = setInterval(() => {"): "UI: elapsed-time clock in place",
+    ("card-checkout.js", "const timeout = setTimeout(() => controller.abort(), 5000);"): "pre-sign: bound the fresh checkout review request",
     ("combine-dialog.js", "setTimeout(resolve, 250); });"): "pre-sign: idle cards cache for the combine review",
     ("regional-dec.js", "window.setTimeout(finish, WALLET_SLIDE_DURATION + 80);"): "UI: drawer slide animation",
     ("regional-dec.js", "if (previewPacingTimer == null) previewPacingTimer = setTimeout(() => {"): "pre-sign: stake preview request pacing",

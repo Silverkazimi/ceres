@@ -1,7 +1,7 @@
 import { esc, formatPlotLabel } from './format.js';
 import { tipAttrs } from './tooltip.js';
 import { prepareSigningBatch, requestSignatureThroughGate } from './broadcast-gate.js';
-import { confirmAction, confirmationState, waitThrough } from './shared-confirmer.js';
+import { confirmAction, confirmationState, registerReview, waitThrough } from './shared-confirmer.js';
 import { walletCanSignTransaction } from './wallet.js';
 import { currentCeresAppIdentity } from './transaction-queue.js';
 import { playerQueryAppend } from './board.js';
@@ -269,6 +269,8 @@ export async function preparePlotLockReview(row) {
   const review = { account: planAccount, uid: row.deed_uid, plot: formatPlotLabel(row.plot), action: entry.action,
     lockDays: entry.lockDays, baselineDays: entry.baselineDays, baselineUnlockDate: entry.baselineUnlockDate,
     operations, prepared, witness };
+  review.actionId = (await registerReview(planAccount, operations, { actionId: entry.actionId || null,
+    reviewKey: `deed-lock:${row.deed_uid}:${entry.action}` })).actionId;
   reviews.set(row.deed_uid, review);
   return review;
 }
@@ -277,7 +279,7 @@ export async function signPlotLockReview(row) {
   if (!walletCanSignTransaction(planAccount)) throw new Error('Locking needs Hive Keychain (Active key)');
   const entry = STAGED_PLOT_LOCKS.get(row?.deed_uid);
   const previous = reviews.get(row?.deed_uid);
-  const actionId = entry?.actionId || (previous?.action === entry?.action && previous?.baselineDays === entry?.baselineDays
+  const actionId = entry?.actionId || previous?.actionId || (previous?.action === entry?.action && previous?.baselineDays === entry?.baselineDays
     ? confirmationState(planAccount, previous.operations)?.actionId || null : null);
   // A review and its signed envelope are consumed as a pair. A retry gets a new UUID.
   reviews.delete(row?.deed_uid);
@@ -291,7 +293,7 @@ export async function signPlotLockReview(row) {
   let result;
   try {
     result = await requestSignatureThroughGate(planAccount, review.operations, null, 'Active', review.prepared,
-      { reviewedActiveLock: review.witness, actionId });
+      { reviewedActiveLock: review.witness, actionId: review.actionId || actionId });
   } catch (error) {
     entry.actionId = confirmationState(planAccount, review.operations)?.actionId || actionId || null;
     savePlans();

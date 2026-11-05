@@ -4,7 +4,7 @@ import { BOARD, CURRENT_PLAYER, catalogNotice, noticeMessage, playerQueryAppend 
 import { IDLE_COMBINE_GROUPS, applyCombineConfirmedUpdate, combineApplyQuantity, combineApplySelection, combineAvailableCopies, combineCopyRowsHtml, combineDefaultQuantity, combineLedgerData, combineObservedAt, combineGroupKey, combinePresetQuantities, combineReason, combineToMaxCopies, idleCombineGroups, prefetchIdleCardsCache, settleCombineRefresh } from './combine.js';
 import { editorCardImage, editorCardImageHtml, editorGroups, editorOccupant, editorSlotLabel } from './editor.js';
 import { esc, formatPlotLabel, num } from './format.js';
-import { OPERATION_RECEIPTS, beginSharedOperation, clearOperationPollTimer, publishOperationReceipt, scheduleOperationPoll, stopOperationPoll } from './operations.js';
+import { OPERATION_POLLERS, OPERATION_RECEIPTS, beginSharedOperation, clearOperationPollTimer, publishOperationReceipt, scheduleOperationPoll, stopOperationPoll } from './operations.js';
 import { confirmationState } from './shared-confirmer.js';
 import { handleSlotEditorClick } from './picker-actions.js';
 import { updateMountedRow } from './rows.js';
@@ -168,10 +168,15 @@ function combineVerdictHtml() {
 function combineVerificationNextPollHtml() {
   const arrival = typeof COMBINE_ARRIVAL === 'undefined' ? null : COMBINE_ARRIVAL;
   const receipts = typeof OPERATION_RECEIPTS === 'undefined' ? null : OPERATION_RECEIPTS;
-  const entryId = arrival?.operationReceipt?.entryId;
+  const entryId = arrival?.operationReceipt?.entryId || COMBINE_VERIFY?.operationReceipt?.entryId;
   const receipt = entryId && receipts ? receipts.get(entryId) : null;
   const nextAt = receipt?.nextPollAt;
-  if (!nextAt) return '';
+  // r6 §4: the shared confirmer schedules the next check itself and publishes no
+  // timestamp. Say so only while a scheduled check really exists for this receipt.
+  if (!nextAt) {
+    return entryId && OPERATION_POLLERS.has(entryId)
+      ? '<p class="combine-verdict-next">Checking again automatically.</p>' : '';
+  }
   const seconds = Math.max(1, Math.ceil((nextAt - Date.now()) / 1000));
   return `<p class="combine-verdict-next">Checking again in ${seconds}s.</p>`;
 }

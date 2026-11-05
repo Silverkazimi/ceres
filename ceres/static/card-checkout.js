@@ -14,7 +14,7 @@ import { CB_FOIL_LABELS } from './card-browser-model.js';
 import { cartPriceHtml } from './card-cart.js';
 import { walletAccount, walletClockTick, walletControlsHtml, walletReady, walletSignLabelHtml, walletWaitHtml } from './wallet.js';
 import { requestBroadcastThroughGate } from './broadcast-gate.js';
-import { confirmAction, confirmationState, waitForStep, waitThrough, walletNeverAskedText } from './shared-confirmer.js';
+import { confirmAction, confirmationState, registerReview, waitForStep, waitThrough, walletNeverAskedText } from './shared-confirmer.js';
 
 // the schedule, its bounds and resume live in shared-confirmer.js; no 3-minute red stop, no rounds cap.
 export const NEVER_SENT_AFTER_MS = 3900 * 1000; // Hive expiry plus the existing inclusion grace
@@ -42,6 +42,9 @@ const co = {
   busy: false,
   lastFocus: null,
 };
+function marketReviewKey(currency, index) {
+  return `market:${currency}:${co.items.map(item => item.lkey).sort().join(',')}:${index}`;
+}
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -445,7 +448,7 @@ async function buildCombine(g) {
     await waitForStep({ key: `combine-build:${co.player}:${tx.nonce}:${g.lkeys.join(',')}`, onUpdate: () => save(), check: async () => {
       if (co.run !== run || g.state !== 'building') return { state: 'refused', gone: true };
       const answer = await post('combine', { tx_id: tx.tx_id, nonce: tx.nonce, expected_payload: tx.payload, lkeys: g.lkeys });
-      if (answer?.status === 'ready' && Array.isArray(answer.operation)) { g.operation = answer.operation; g.resulting_bcx = answer.resulting_bcx ?? null; g.witness = answer.witness || null; g.state = 'ready'; return { state: 'confirmed' }; }
+      if (answer?.status === 'ready' && Array.isArray(answer.operation)) { g.operation = answer.operation; g.action_id = (await registerReview(co.player, [g.operation], { actionId: g.action_id || null, reviewKey: `market-combine:${g.lkeys.join(',')}` })).actionId; g.resulting_bcx = answer.resulting_bcx ?? null; g.witness = answer.witness || null; g.state = 'ready'; return { state: 'confirmed' }; }
       if (answer?.status === 'partial') { g.state = 'partial'; g.missing = (answer.missing || []).length; return { state: 'confirmed' }; }
       if (answer?.status === 'failed') { g.state = 'none'; g.message = answer.message || ''; return { state: 'refused' }; }  // the game refused the purchase
       g.message = answer?.message || '';
@@ -473,6 +476,7 @@ async function signCombine(g) {
   const newWitness = JSON.stringify(fresh.witness || null);
   g.operation = fresh.operation; g.resulting_bcx = fresh.resulting_bcx ?? null;
   if (!g.witness || oldWitness !== newWitness) {
+    g.action_id = (await registerReview(co.player, [g.operation], { actionId })).actionId;
     g.witness = fresh.witness || null; g.state = 'review-changed'; g.message = 'The live combine changed. Review it before signing.';
     co.busy = false; save(); return;
   }
@@ -628,6 +632,13 @@ async function sign() {
     render(); return;
   }
   const txList = fresh.transactions.map((tx) => ({ nonce: tx.nonce, payload: tx.payload, operations: tx.operations, lkeys: tx.lkeys, price: tx.price, currency: tx.currency, copy_prices_dec: Object.fromEntries(tx.lkeys.map((k) => { const row = (co.quote.items || []).find((it) => it.lkey === k); return [k, row?.price_usd != null && co.quote.dec_price ? row.price_usd / co.quote.dec_price : null]; })), state: 'pending', tx_id: null }));
+  const reviewedByKey = new Map((co.reviewKeys || []).map((key, index) => [key, co.reviewActionIds?.[index] || null]));
+  for (const [index, tx] of txList.entries()) {
+    const key = marketReviewKey(tx.currency, index);
+    tx.action_id = (await registerReview(co.player, tx.operations, { actionId: reviewedByKey.get(key) || null, reviewKey: key })).actionId;
+  }
+  co.reviewActionIds = txList.map(tx => tx.action_id);
+  co.reviewKeys = txList.map((tx, index) => marketReviewKey(tx.currency, index));
   // a maxed-card group whose listings are all in one transaction of this purchase is combined after it.
   const groups = maxGroupsOf(co.items).map((g) => ({ ...g, tx: txList.findIndex((tx) => g.lkeys.every((k) => tx.lkeys.includes(k))) })).filter((g) => g.tx >= 0)
     .map((g) => ({ ...g, state: 'waiting' }));
@@ -661,6 +672,7 @@ async function sign() {
         markSkipped(i); writeRun(co.player, co.run); break;
       }
       Object.assign(tx, { nonce: replacement.nonce, payload: replacement.payload, operations: replacement.operations });
+      tx.action_id = (await registerReview(co.player, tx.operations, { actionId })).actionId;
       if (!writeRun(co.player, co.run)) { markSkipped(i); break; }
     }
     const signingPlayer = co.player;
@@ -692,6 +704,29 @@ async function sign() {
   }
   co.busy = false; co.stage = 'outcome'; render();
   settle();  // a purchase confirmed while later wallet prompts were still open
+}
+
+async function registerMarketQuoteReview() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const quoteId = co.quote.quote_id;
+    const currency = co.currency;
+    const response = await fetch(`/api/confirm/market-terms?player=${encodeURIComponent(co.player)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quote_id: quoteId, currency }), signal: controller.signal,
+    });
+    if (!response.ok) return;
+    const terms = await response.json();
+    if (co.quote?.quote_id !== quoteId || co.currency !== currency) return;
+    const prior = new Map((co.reviewKeys || []).map((key, index) => [key, co.reviewActionIds?.[index] || null]));
+    const keys = (terms.transactions || []).map((_, index) => marketReviewKey(currency, index));
+    co.reviewActionIds = await Promise.all((terms.transactions || []).map(async (tx, index) =>
+      (await registerReview(co.player, tx.operations, { actionId: prior.get(keys[index]) || null,
+        reviewKey: keys[index] })).actionId));
+    co.reviewKeys = keys;
+  } catch (_) { /* the sign-time preview still registers before wallet handoff */ }
+  finally { clearTimeout(timeout); }
 }
 function markSkipped(from) {
   for (let j = from; j < co.run.txs.length; j += 1) if (co.run.txs[j].state === 'pending') co.run.txs[j].state = 'skipped';
@@ -846,7 +881,7 @@ async function onClick(event) {
   if (action === 'close' || action === 'done') { closeCheckout(); return; }
   if (action === 'wallet') { document.getElementById('regional-dec-button')?.click(); return; }  // the page's own wallet, over this dialog
   if (action === 'currency') { co.currency = button.dataset.coCurrency; co.note = null; render(); return; }
-  if (action === 'continue' && co.currency) { co.stage = 'confirm'; render(); return; }
+  if (action === 'continue' && co.currency) { await registerMarketQuoteReview(); co.stage = 'confirm'; render(); return; }
   if (action === 'back') { co.stage = 'review'; render(); return; }
   if (action === 'sign') { await sign(); return; }
   if (action === 'retry') { await loadQuote(co.items || []); return; }
@@ -863,6 +898,7 @@ async function onClick(event) {
 export async function openCheckout(deps) {
   co.deps = deps;
   co.player = String(deps.player || '').toLowerCase();
+  co.reviewActionIds = null; co.reviewKeys = null;
   co.items = (deps.items || []).slice();
   co.names = new Map(co.items.map((it) => [it.lkey, it]));
   co.test = false; co.note = null; co.busy = false; co.buyMax = Boolean(deps.buyMax);

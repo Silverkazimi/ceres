@@ -80,7 +80,7 @@ def test_pending_worksite_verification_keeps_shared_pill_stable(live_browser: tu
         operation = ["custom_json", {"id": "sm_land_operation", "json": json.dumps({"op": "update_worksite", "deed_uid": uid, "n": "8322832283228322"}),
                                       "required_auths": [], "required_posting_auths": ["sample01"]}]
         route.fulfill(status=200, content_type="application/json", body=json.dumps({
-            "account": "sample01", "chunks": [{"operations": [operation]}],
+            "account": "sample01", "kind": "worksite_completion", "chunks": [{"operations": [operation]}],
         }))
 
     def verify_route(route) -> None:

@@ -20,7 +20,9 @@ export function emptyBoardPlan(account, now = new Date().toISOString()) {
   const owner = boardPlanAccount(account);
   if (!owner) throw new Error('A valid account is required to create a board plan.');
   return { id: `plan-${Date.parse(now)}-${Math.random().toString(36).slice(2, 8)}`, name: 'Plan 1', account: owner,
-    revision: 0, created_at: now, updated_at: now, placements: [] };
+    schema_version: 1, revision: 0, created_at: now, updated_at: now, origin: 'human',
+    base_capture_generated_at: null, rules_fingerprint: null, base_fingerprints: {},
+    placements: [], explicit_removals: [], apply_policy: 'placements_only', parent_revision: null };
 }
 
 // Display-only copy of the chosen asset (name and art). Game state -- cooldown, location
@@ -33,101 +35,321 @@ export function boardPlanAssetCopy(asset) {
   return out;
 }
 
+// Copy only occupants already present in the loaded board. The caller supplies live rows
+// this function performs no detail fetch and does not stage a change.
+export function boardPlanPlacementsFromLive(rows) {
+  const placements = [];
+  for (const row of rows || []) {
+    if (!row?.deed_uid) continue;
+    const workerCount = Number(row.capacity?.worker_count);
+    if (Number.isInteger(workerCount) && workerCount > (row.workers || []).length)
+      throw new Error("Some live cards are still loading, so this setup can't be copied yet. Nothing was changed; try again in a moment.");
+    for (const worker of row.workers || []) {
+      const slot = Number(worker.slot);
+      const ref = worker.asset_ref || worker.uid || worker.card_uid;
+      if (!ref || !Number.isInteger(slot) || slot < 0)
+        throw new Error("Some live cards are still loading, so this setup can't be copied yet. Nothing was changed; try again in a moment.");
+      placements.push(boardPlanCleanPlacement({ deed_uid: row.deed_uid,
+        group_id: slot === 0 ? 'runi' : 'worker', slot_index: slot === 0 ? 0 : slot - 1,
+        asset_ref: ref, asset: worker }));
+    }
+    const bonus = row._live_bonus || row.bonus || {};
+    for (const group of ['power_core', 'totem', 'title']) {
+      const asset = bonus[group];
+      const ref = asset?.asset_ref || asset?.uid || asset?.card_uid;
+      if (asset && !ref) throw new Error("Some live cards are still loading, so this item can't be copied into the setup yet. Nothing was changed; try again in a moment.");
+      if (ref) placements.push(boardPlanCleanPlacement({ deed_uid: row.deed_uid, group_id: group,
+        slot_index: 0, asset_ref: ref, asset }));
+    }
+  }
+  return placements;
+}
+
 function boardPlanCleanPlacement(placement) {
   return { deed_uid: String(placement.deed_uid), group_id: placement.group_id, slot_index: placement.slot_index,
     asset_ref: String(placement.asset_ref), name: placement.name || placement.asset?.name || null,
     asset: boardPlanAssetCopy(placement.asset || { asset_ref: placement.asset_ref, name: placement.name }) };
 }
 
-// Storage is injected so tests and embedders use isolated temporary storage.
-export function createBoardPlanStore(storage, account, { onConflict = () => {} } = {}) {
+// Phase 2a keeps the v1 bytes until a verified v2 write has completed.
+export const BOARD_PLAN_V2_PREFIX = 'ceres:board-plans:v2:';
+export function boardPlanV2Key(account) {
   const owner = boardPlanAccount(account);
-  const key = boardPlanStoreKey(owner);
+  return owner ? `${BOARD_PLAN_V2_PREFIX}${owner}` : null;
+}
+function boardPlanClone(value) { return JSON.parse(JSON.stringify(value)); }
+function boardPlanId() { return globalThis.crypto?.randomUUID?.() || `plan-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
+function boardPlanValid(data, owner) {
+  return data && data.schema_version === 2 && data.account === owner && Number.isSafeInteger(data.revision)
+    && data.revision >= 1 && data.plans && !Array.isArray(data.plans) && typeof data.plans === 'object'
+    && data.tombstones && !Array.isArray(data.tombstones) && typeof data.tombstones === 'object'
+    && (data.selected_plan_id === null || Object.hasOwn(data.plans, data.selected_plan_id))
+    && Object.entries(data.plans).every(([id, plan]) => plan && plan.id === id && plan.account === owner
+      && typeof plan.name === 'string' && Array.isArray(plan.placements));
+}
+function boardPlanLegacy(data, owner) {
+  return data && data.version === 1 && data.account === owner && Array.isArray(data.plans);
+}
+function boardPlanName(name) {
+  const trimmed = String(name || '').trim();
+  if (!trimmed || trimmed.length > 80) throw new Error('Setup name must be 1–80 characters.');
+  return trimmed;
+}
+function boardPlanChanged(a, b) { return JSON.stringify(a) !== JSON.stringify(b); }
+function boardPlanConflictCopy(plan, now) {
+  return { ...boardPlanClone(plan), id: boardPlanId(), name: `${plan.name.slice(0, 64)} (conflict copy)`,
+    created_at: now, updated_at: now, parent_revision: plan.revision, revision: 1, run_state: undefined };
+}
+
+// Storage is injected for isolated tests. Mutations are staged in memory, then committed under
+// an account Web Lock. A failed write leaves the last durable revision intact and blocks switches.
+export function createBoardPlanStore(storage, account, { onConflict = () => {}, lock = null } = {}) {
+  const owner = boardPlanAccount(account);
+  const key = boardPlanV2Key(owner);
+  const backupKey = `${key}:backup`;
   if (!storage || !key) throw new Error('Board plan storage requires an account and storage adapter.');
-  let revision = 0;
-  let loaded = false;
-  let plans = [];
-  let selectedId = null;
+  let state = null;
+  let base = null;
+  let dirty = false;
+  let readOnly = false;
+  let readOnlyReason = null;
   let writeSerial = Promise.resolve();
-  const envelope = (rev) => JSON.stringify({ version: 1, account: owner, revision: rev, selected_id: selectedId, plans });
-  function load() {
-    loaded = true;
-    const raw = storage.getItem(key);
-    if (!raw) {
-      const plan = emptyBoardPlan(owner);
-      plans = [plan]; selectedId = plan.id;
-      revision = 1;
-      storage.setItem(key, envelope(revision));
-      return snapshot();
+  const webLock = lock || ((task) => {
+    if (typeof window === 'undefined') return task(); // isolated Node tests inject a lock when testing lock use
+    if (!globalThis.navigator?.locks?.request) throw new Error('Safe setup locking is unavailable.');
+    return navigator.locks.request(`ceres:board-plans:${owner}`, task);
+  });
+  const decode = (raw) => {
+    let data;
+    try { data = JSON.parse(raw); } catch (_) { throw new Error('Saved setup data is corrupt; the last good revision is retained.'); }
+    if (data?.schema_version > 2 || (data?.version > 1 && !data?.schema_version)) {
+      readOnly = true;
+      readOnlyReason = 'Saved setups use a newer version. They are read-only in this Ceres version.';
+      return { schema_version: data.schema_version, account: owner, revision: Number(data.revision) || 0,
+        selected_plan_id: data.selected_plan_id || null,
+        plans: data.account === owner && data.plans && !Array.isArray(data.plans) ? data.plans : {},
+        tombstones: data.tombstones || {} };
     }
-    const data = JSON.parse(raw);
-    if (data.version !== 1 || data.account !== owner || !Array.isArray(data.plans)) throw new Error('Saved board plan data is incompatible.');
-    revision = Number(data.revision) || 0;
-    plans = data.plans;
-    selectedId = data.selected_id || plans[0]?.id || null;
+    if (!boardPlanValid(data, owner)) throw new Error('Saved setup data is incompatible; the last good revision is retained.');
+    return data;
+  };
+  const writeVerified = (next) => {
+    const bytes = JSON.stringify(next);
+    const previous = storage.getItem(key);
+    storage.setItem(key, bytes);
+    if (storage.getItem(key) !== bytes) throw new Error('Setup save could not be verified.');
+    if (previous) storage.setItem(backupKey, previous);
+  };
+  function load() {
+    const raw = storage.getItem(key);
+    if (raw) {
+      try { state = decode(raw); }
+      catch (error) {
+        if (readOnly) throw error;
+        const backup = storage.getItem(backupKey);
+        if (!backup) throw error;
+        state = decode(backup); readOnly = true;
+        readOnlyReason = 'Saved setup data is corrupt. The previous good revision is open read-only.';
+        base = boardPlanClone(state);
+        return snapshot();
+      }
+      base = boardPlanClone(state); return snapshot();
+    }
+    const old = storage.getItem(boardPlanStoreKey(owner));
+    if (old) {
+      let legacy;
+      try { legacy = JSON.parse(old); } catch (_) { throw new Error('Earlier setup data is corrupt; it has been kept.'); }
+      if (!boardPlanLegacy(legacy, owner)) throw new Error('Earlier setup data is incompatible; it has been kept.');
+      const plans = Object.fromEntries(legacy.plans.map((plan) => [plan.id,
+        { schema_version: 1, origin: 'human', base_capture_generated_at: null,
+          rules_fingerprint: null, base_fingerprints: {}, explicit_removals: [],
+          apply_policy: 'placements_only', parent_revision: null, ...boardPlanClone(plan) }]));
+      state = { schema_version: 2, account: owner, revision: 1,
+        selected_plan_id: legacy.selected_id || legacy.plans[0]?.id || null, plans, tombstones: {} };
+    } else {
+      const plan = emptyBoardPlan(owner);
+      state = { schema_version: 2, account: owner, revision: 1,
+        selected_plan_id: plan.id, plans: { [plan.id]: plan }, tombstones: {} };
+    }
+    writeVerified(state); // old key intentionally remains as a recovery copy
+    base = boardPlanClone(state);
     return snapshot();
   }
-  function snapshot() { return { account: owner, revision, selectedId, plans: plans.map((p) => ({ ...p, placements: [...p.placements] })) }; }
-  function selected() { return plans.find((p) => p.id === selectedId) || null; }
-  // Revision compare-and-swap on the stored envelope; the in-memory edit is kept and the
-  // caller is told when another tab saved first, so nothing is silently overwritten.
+  function snapshot() {
+    if (!state) throw new Error('Board plan store is not loaded.');
+    return { account: owner, revision: state.revision, selectedId: state.selected_plan_id,
+      plans: Object.values(state.plans).map(boardPlanClone), tombstones: boardPlanClone(state.tombstones),
+      dirty, readOnly, readOnlyReason };
+  }
+  function refresh() {
+    if (!state || dirty || readOnly) return snapshot();
+    const raw = storage.getItem(key);
+    if (!raw) throw new Error('Saved setups are no longer available. Nothing was changed.');
+    const remote = decode(raw);
+    if (remote.revision !== state.revision) { state = remote; base = boardPlanClone(remote); }
+    return snapshot();
+  }
+  function selected() { return state?.plans[state.selected_plan_id] || null; }
+  function ensureWritable() {
+    if (!state) throw new Error('Board plan store is not loaded.');
+    if (readOnly) throw new Error('Saved setups are read-only in this Ceres version.');
+    if (dirty) throw new Error('A setup has unsaved changes. Switching is blocked until it is saved.');
+  }
+  function merge(remote, conflicts) {
+    const merged = boardPlanClone(remote);
+    const now = new Date().toISOString();
+    for (const [id, deletedAt] of Object.entries(state.tombstones)) {
+      if (!base.tombstones[id] || base.tombstones[id] !== deletedAt) {
+        if (remote.plans[id] && boardPlanChanged(remote.plans[id], base.plans[id])) {
+          const copy = boardPlanConflictCopy(remote.plans[id], now);
+          merged.plans[copy.id] = copy; conflicts.push({ id, copyId: copy.id });
+        }
+        delete merged.plans[id]; merged.tombstones[id] = deletedAt;
+      }
+    }
+    for (const [id, deletedAt] of Object.entries(base.tombstones)) {
+      if (state.tombstones[id]) continue;
+      if (remote.tombstones[id] === deletedAt) delete merged.tombstones[id];
+      else if (remote.tombstones[id] && state.plans[id]) {
+        const copy = boardPlanConflictCopy(state.plans[id], now);
+        merged.plans[copy.id] = copy; merged.selected_plan_id = copy.id;
+        conflicts.push({ id, copyId: copy.id });
+      }
+    }
+    for (const [id, local] of Object.entries(state.plans)) {
+      if (!boardPlanChanged(local, base.plans[id])) continue;
+      if (merged.tombstones[id] && !base.tombstones[id]) {
+        const copy = boardPlanConflictCopy(local, now); merged.plans[copy.id] = copy; conflicts.push({ id, copyId: copy.id });
+      } else if (remote.plans[id] && boardPlanChanged(remote.plans[id], base.plans[id])) {
+        // Keep the latest durable edit at its original ID and preserve this tab's edit as a copy.
+        const copy = boardPlanConflictCopy(local, now); merged.plans[copy.id] = copy;
+        if (state.selected_plan_id === id) merged.selected_plan_id = copy.id;
+        conflicts.push({ id, copyId: copy.id });
+      } else if (!merged.tombstones[id]) merged.plans[id] = boardPlanClone(local);
+    }
+    if (!conflicts.some((conflict) => conflict.id === state.selected_plan_id) && merged.plans[state.selected_plan_id])
+      merged.selected_plan_id = state.selected_plan_id;
+    if (!merged.plans[merged.selected_plan_id]) merged.selected_plan_id = Object.keys(merged.plans)[0] || null;
+    return merged;
+  }
   function persist() {
-    if (!loaded) throw new Error('Board plan store is not loaded.');
-    const operation = writeSerial.catch(() => {}).then(() => {
-      const current = storage.getItem(key);
-      const currentRevision = current ? Number(JSON.parse(current).revision) || 0 : 0;
-      if (currentRevision !== revision) { onConflict({ expected: revision, actual: currentRevision }); throw new Error('Board plan revision conflict.'); }
-      const nextRevision = revision + 1;
-      storage.setItem(key, envelope(nextRevision));
-      revision = nextRevision;
-    });
+    if (!state || readOnly) return Promise.reject(new Error('Saved setups are read-only.'));
+    const operation = writeSerial.catch(() => {}).then(() => webLock(() => {
+      const raw = storage.getItem(key);
+      const remote = raw ? decode(raw) : null;
+      if (readOnly) throw new Error(readOnlyReason || 'Saved setups are read-only.');
+      if (!remote) throw new Error('Saved setups disappeared; no change was written.');
+      const conflicts = [];
+      const next = remote.revision === base.revision ? boardPlanClone(state) : merge(remote, conflicts);
+      next.revision = remote.revision + 1;
+      const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      for (const [id, deletedAt] of Object.entries(next.tombstones)) if (Date.parse(deletedAt) < cutoff) delete next.tombstones[id];
+      writeVerified(next);
+      state = next; base = boardPlanClone(next); dirty = false;
+      conflicts.forEach((conflict) => { try { onConflict(conflict); } catch (_) { /* notice cannot undo a durable save */ } });
+      return snapshot();
+    }));
     writeSerial = operation;
     return operation;
   }
-  function touch(plan) { plan.revision += 1; plan.updated_at = new Date().toISOString(); }
+  function touch(plan) { plan.revision += 1; plan.updated_at = new Date().toISOString(); dirty = true; }
+  function beforeMutation() { ensureWritable(); refresh(); ensureWritable(); }
   function validPlacement(placement) {
     return placement && placement.asset_ref && placement.deed_uid && BOARD_PLAN_GROUPS.includes(placement.group_id)
       && Number.isInteger(placement.slot_index) && placement.slot_index >= 0;
   }
-  return { load, snapshot, selected, persist,
-    // One asset per slot and one slot per asset in a plan. Choosing for a slot that already
-    // holds a planned asset replaces it; the same asset on another slot is refused.
+  function validRoster(placements) {
+    const assets = new Set(); const slots = new Set();
+    for (const placement of placements) {
+      const asset = String(placement.asset_ref);
+      const slot = `${placement.deed_uid}|${placement.group_id}|${placement.slot_index}`;
+      if (!validPlacement(placement) || assets.has(asset) || slots.has(slot))
+        throw new Error('Live occupants contain a duplicate or invalid slot. No setup was created.');
+      assets.add(asset); slots.add(slot);
+    }
+  }
+  return { load, refresh, snapshot, selected, persist,
     async setPlacement(placement) {
-      if (!loaded) throw new Error('Board plan store is not loaded.');
+      beforeMutation();
       if (!validPlacement(placement)) throw new Error('Invalid placement.');
       const plan = selected();
       const sameSlot = (p) => String(p.deed_uid) === String(placement.deed_uid) && p.group_id === placement.group_id && p.slot_index === placement.slot_index;
       if (plan.placements.some((p) => String(p.asset_ref) === String(placement.asset_ref) && !sameSlot(p))) throw new Error('This asset is already planned in this setup.');
       plan.placements = plan.placements.filter((p) => !sameSlot(p));
-      plan.placements.push(boardPlanCleanPlacement(placement));
-      touch(plan);
+      plan.placements.push(boardPlanCleanPlacement(placement)); touch(plan);
       return persist();
     },
     async removePlacement({ deed_uid: deedUid, group_id: groupId, slot_index: slotIndex }) {
-      if (!loaded) throw new Error('Board plan store is not loaded.');
+      beforeMutation();
       const plan = selected();
       const before = plan.placements.length;
       plan.placements = plan.placements.filter((p) => !(String(p.deed_uid) === String(deedUid) && p.group_id === groupId && p.slot_index === slotIndex));
       if (plan.placements.length === before) return false;
-      touch(plan);
-      await persist();
-      return true;
+      touch(plan); await persist(); return true;
     },
-    clear() { const plan = selected(); plan.placements = []; touch(plan); return persist(); },
+    clear() { beforeMutation(); const plan = selected(); plan.placements = []; touch(plan); return persist(); },
+    create(name = 'New setup', placements = [], { base_capture_generated_at = null } = {}) {
+      beforeMutation();
+      validRoster(placements);
+      const now = new Date().toISOString();
+      const plan = { ...emptyBoardPlan(owner, now), id: boardPlanId(), name: boardPlanName(name),
+        base_capture_generated_at, placements: boardPlanClone(placements) };
+      state.plans[plan.id] = plan; state.selected_plan_id = plan.id; dirty = true;
+      return persist();
+    },
+    rename(id, name) { const prior = state?.selected_plan_id; beforeMutation(); const plan = state.plans[id === prior ? state.selected_plan_id : id]; if (!plan) throw new Error('Setup is unavailable.'); plan.name = boardPlanName(name); touch(plan); return persist(); },
+    duplicate(id) {
+      const prior = state?.selected_plan_id; beforeMutation(); const source = state.plans[id === prior ? state.selected_plan_id : id]; if (!source) throw new Error('Setup is unavailable.');
+      const now = new Date().toISOString(); const copy = { ...boardPlanClone(source), id: boardPlanId(), name: boardPlanName(`${source.name.slice(0, 75)} copy`),
+        revision: 0, created_at: now, updated_at: now, run_state: undefined };
+      state.plans[copy.id] = copy; state.selected_plan_id = copy.id; dirty = true; return persist();
+    },
+    delete(id) {
+      const prior = state?.selected_plan_id; beforeMutation(); const target = state.plans[id === prior ? state.selected_plan_id : id]; if (!target) throw new Error('Setup is unavailable.');
+      const deleted = boardPlanClone(target); delete state.plans[target.id]; state.tombstones[target.id] = new Date().toISOString();
+      state.selected_plan_id = Object.keys(state.plans)[0] || null;
+      let replacementId = null;
+      if (!state.selected_plan_id) {
+        const replacement = emptyBoardPlan(owner);
+        state.plans[replacement.id] = replacement; state.selected_plan_id = replacement.id;
+        replacementId = replacement.id;
+      }
+      dirty = true;
+      deleted.replacementId = replacementId;
+      return persist().then((result) => ({ ...result, deleted, replacementId }));
+    },
+    undoDelete(plan) {
+      beforeMutation(); if (!state.tombstones[plan?.id]) throw new Error('This deletion cannot be undone.');
+      const replacementId = plan?.replacementId;
+      const replacement = replacementId && state.plans[replacementId];
+      if (replacement && state.selected_plan_id === replacementId && replacement.name === 'Plan 1' && !replacement.placements.length && replacement.revision === 0) delete state.plans[replacementId];
+      delete state.tombstones[plan.id]; state.plans[plan.id] = boardPlanClone(plan); state.selected_plan_id = plan.id; dirty = true; return persist();
+    },
+    select(id) { beforeMutation(); if (!state.plans[id]) throw new Error('Setup is unavailable.'); if (id === state.selected_plan_id) return Promise.resolve(snapshot()); state.selected_plan_id = id; dirty = true; return persist(); },
+    restoreBackup() {
+      if (!readOnly || !readOnlyReason?.includes('previous good revision')) throw new Error('No recoverable backup is available.');
+      const backup = storage.getItem(backupKey);
+      if (!backup) throw new Error('No saved setup backup is available.');
+      const recovered = JSON.parse(backup);
+      if (!boardPlanValid(recovered, owner)) throw new Error('The saved setup backup is incompatible.');
+      storage.setItem(key, backup);
+      if (storage.getItem(key) !== backup) throw new Error('Setup restore could not be verified.');
+      state = recovered; base = boardPlanClone(recovered); readOnly = false; readOnlyReason = null;
+      return snapshot();
+    },
   };
 }
 
 // Read-only access for render paths: one JSON parse per stored revision, not per row.
 let boardPlanReadCache = { key: null, raw: null, plan: null };
 export function readSelectedBoardPlan(storage, account) {
-  const key = boardPlanStoreKey(account);
+  const key = boardPlanV2Key(account);
   if (!key || !storage) return null;
   try {
     const raw = storage.getItem(key);
     if (boardPlanReadCache.key === key && boardPlanReadCache.raw === raw) return boardPlanReadCache.plan;
     const data = JSON.parse(raw || 'null');
-    const plan = data?.version === 1 && data.account === boardPlanAccount(account) && Array.isArray(data.plans)
-      ? data.plans.find((p) => p.id === data.selected_id) || null : null;
+    const plan = boardPlanValid(data, boardPlanAccount(account)) ? data.plans[data.selected_plan_id] || null : null;
     boardPlanReadCache = { key, raw, plan };
     return plan;
   } catch (_) { return null; }

@@ -474,9 +474,11 @@ def test_worksite_signing_uses_posting_authority_through_the_shared_gate():
     assert "'Active'" not in tail[:closing + 8]
 
     staged = _function_source(worksite, "export async function signStagedWorksiteBuild")
-    assert "requestSignatureThroughGate(plan.account, chunk.operations, () => {}, 'Posting', envelope)" in staged
+    assert "requestSignatureThroughGate(plan.account, chunk.operations, () => {}, 'Posting', freshEnvelope," in staged
     checkout = _function_source(_static("checkout.js"), "export async function confirmCheckoutWithWorksites")
-    assert "prepareSigningBatch(worksitePlans[0].plan.account, worksitePlans.map(item => item.plan.chunk.operations), 'Posting'" in checkout
+    assert "await signStagedWorksiteBuild(fresh, null, 0, plan)" in checkout
+    assert "await signStagedWorksiteBuild(fresh, build.target, build.timeCrystals || 0, plan)" in checkout
+    assert "prepareSigningBatch(plan.account, [chunk.operations], 'Posting'" in staged
     assert "requestSignTx" not in checkout and "hive_keychain" not in checkout
 
 

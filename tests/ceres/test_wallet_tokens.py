@@ -258,7 +258,7 @@ const target = {{ closest: () => ({{ dataset: {{ lpSymbol: 'SPS' }} }}) }};
   await swapAction(ctx, 'swap', target);
   for (let i = 0; i < 400 && !(st.stage === 'funding' && !signing); i++) await new Promise(r => setTimeout(r, 2));  // the click returns at once; the check loop runs on
   const paths = order.map(o => o[0]).join(',');
-  if (paths !== 'preview,verify,sps-funding') throw new Error('requests in order: ' + paths);
+  if (paths !== 'preview,review,verify,sps-funding,review') throw new Error('requests in order: ' + paths);
   const preview = order[0][1];
   if (preview.sign !== true || preview.seen_output !== '8.124' || preview.region_uid !== '' || preview.resource_amount !== '1' || 'reviewed_payload' in preview) throw new Error('one-click build: ' + JSON.stringify(preview));
   if (__signed.length !== 2 || __signed[0].authority !== 'Posting' || __signed[1].authority !== 'Active') throw new Error('both wallet requests from one click: ' + JSON.stringify(__signed));
@@ -343,5 +343,5 @@ def test_the_active_sps_transfer_is_one_keychain_sign_and_send_request():
     # Keychain showed no prompt. The game asks Keychain to sign AND send; so does Ceres now.
     lp = (STATIC / "wallet-lp.js").read_text(encoding="utf-8")
     gate = (STATIC / "broadcast-gate.js").read_text(encoding="utf-8")
-    assert "}, 'Active', { direct: true });" in lp
+    assert "}, 'Active', { direct: true, actionId });" in lp
     assert "if (!walletCanSignTransaction(account) || metadata?.direct === true) {" in gate

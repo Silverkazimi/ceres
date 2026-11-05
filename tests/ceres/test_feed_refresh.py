@@ -135,7 +135,7 @@ def test_confirmed_feed_rerenders_open_harvest_box_from_fresh_projection(live_br
             "required_posting_auths": ["sample01"],
         }]
         route.fulfill(status=200, content_type="application/json", body=json.dumps({
-            "account": "sample01", "chunks": [{"operations": [operation]}],
+            "account": "sample01", "kind": "worksite_completion", "chunks": [{"operations": [operation]}],
         }))
 
     def verify_route(route) -> None:

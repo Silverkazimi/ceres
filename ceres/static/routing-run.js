@@ -238,7 +238,11 @@ export function createRoutingRun({ player, onRender, isCurrent, api = request,
     } catch (error) {
       report(stage, error, { bundle_id: bundle.id, wallet_asked: walletAsked, operations: claimed?.operations?.[0]?.length,
         bytes: claimed ? JSON.stringify(claimed.operations).length : undefined });
-      if (claimed && !bundleStatus(bundle).tx_id && walletAsked && !error?.broadcasted && !error?.declined) {
+      // OR-1092: only an uncertain outcome (the wallet may still send) shows the waiting line. A wallet
+      // that answered "nothing was sent" shows its reason, except the user's own cancel, which stays
+      // silent (). In every case the claim stays held until the server's proof (spec r6 §4).
+      if (error?.declined || error?.signingRejected) S.error = '';
+      else if (claimed && !bundleStatus(bundle).tx_id && walletAsked && error?.broadcasted !== false) {
         S.error = 'Waiting for your Keychain answer; nothing is sent again';
       } else S.error = error.message || String(error);
       if (claimed && !bundleStatus(bundle).tx_id && walletAsked) {

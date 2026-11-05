@@ -144,7 +144,8 @@ globalThis.fetch = async (url) => {
   const path = String(url);
   if (path.includes('/find')) { finds += 1; throw new Error('network down'); }
   if (path.includes('/verify')) throw Error('verify without an id');
-  previews += 1; return { ok: true, status: 200, json: async () => previewJson };
+  if (path.includes('/lp/preview')) previews += 1;  // api/confirm/review registers the attempt; it is not a second swap build
+  return { ok: true, status: 200, json: async () => previewJson };
 };
 globalThis.__gate = async () => { gates += 1; const e = new Error('no answer'); e.broadcasted = undefined; throw e; };
 await swapAction(ctx, 'swap', target);

@@ -7,7 +7,7 @@ import { initBadgeOverlay } from './badge-overlay.js';
 import { initializeButtonIcons } from './button-icons.js';
 import { initializePlotLockHeaderIcon } from './plot-lock.js';
 import { mountThemePicker } from './theme.js';
-import { toggleBoardPlanning } from './board-planning.js';
+import { boardPlanningSetupAction, boardPlanningSetups, toggleBoardPlanning } from './board-planning.js';
 
 // pure comparison used by syncControlsDividers() below -- a divider counts as sitting at
 // a wrapped line's edge when its two neighbours' vertical midpoints differ by more than 6px (i.e.
@@ -34,7 +34,7 @@ import { ensureHazardOverlay } from './hazard.js';
 import { OPERATION_POLLERS, OPERATION_POLL_SCHEDULE_MS, confirmOperationBroadcast, inFlightRecordForEntry, inFlightStoreKey, requestOperationPreview } from './operations.js';
 import { handlePickerFilter, handlePickerKeydown, handleSlotEditorClick } from './picker-actions.js';
 import { EXPANDED_ROWS, alignCloseAll, closeAllPlots, closeMobilePlotPicker, closeMobilePlotSheet, loadPlotDetail, mobilePlotSheetIsOpen, openAllVisiblePlots, openMobilePlotSheet, syncCloseAll, updateMountedRow } from './rows.js';
-import { CERES_STAGE } from './staging.js';
+import { CERES_STAGE, stageToast } from './staging.js';
 import { initPulseSync } from './pulse-sync.js';
 import { initPlanner } from './planner.js';
 import { S } from './state.js';
@@ -859,10 +859,24 @@ const BOARD_MENU_ACTIONS = {
   // IN-0267 Q1: planning is a state of this board, toggled here; it changes no live stage.
   planning: () => {
     const picker = S.CERES_PICKER;
-    try { toggleBoardPlanning(); } catch (error) { console.warn('Planning could not open:', error); return; }
+    try { toggleBoardPlanning(); } catch (error) { stageToast(`Planning could not open: ${error.message}`, true); return; }
     if (picker) { S.CERES_PICKER = null; updateMountedRow(picker.deedUid); }
   },
 };
+async function boardMenuSetupAction(action, id, targetId) {
+  try {
+    if (action === 'rename') id = { id: targetId, name: id };
+    const operation = action === 'live' ? 'start-live' : action;
+    const result = await boardPlanningSetupAction(operation, id);
+    if (['select', 'new', 'live', 'duplicate'].includes(action) && !document.body.dataset.boardMode) BOARD_MENU_ACTIONS.planning();
+    if (action === 'delete') {
+      stageToast(`Deleted ${result.deleted.name}.`, false, { label: 'Undo', run: () => {
+        boardPlanningSetupAction('undo-delete', result.deleted).then(() => stageToast('Setup restored and saved.'))
+          .catch((error) => stageToast(`Setup could not be restored: ${error.message}`, true));
+      } });
+    } else stageToast('Setup saved on this device.');
+  } catch (error) { stageToast(`Setup could not be saved: ${error?.message || error}`, true); }
+}
 const BOARD_OPEN_TARGETS = new Set(['harvest', 'changes', 'account', 'planning']);
 let boardOpenRequest = (() => {
   try { const key = new URLSearchParams(location.search).get('open'); return BOARD_OPEN_TARGETS.has(key) ? key : null; } catch (_) { return null; }
@@ -920,7 +934,12 @@ ready(() => {
 ready(initRegionalDec);
 ready(mountAccountMenu);
 
-ready(() => mountHeaderMenu({ page: 'board', actions: BOARD_MENU_ACTIONS }));
+ready(() => mountHeaderMenu({ page: 'board', actions: BOARD_MENU_ACTIONS,
+  setups: () => boardPlanningSetups({ includeLive: true }),
+  setupAction: boardMenuSetupAction }));
+window.addEventListener('ceres:board-plan-conflict', () => setTimeout(() =>
+  stageToast('Both setup edits were saved. Your version is a conflict copy.', true), 0));
+window.addEventListener('ceres:board-plan-notice', (event) => stageToast(event.detail, true));
 ready(mountStagedSync);
 ready(initBadgeOverlay);
 

@@ -3,7 +3,7 @@ import { COMMIT_ICON } from './button-icons.js';
 import { walletSignLabelHtml, walletReady, walletName, walletControlsHtml } from './wallet.js';
 import { retryBackgroundLayers, worksiteTileArtPath } from './art.js';
 import { requestBroadcastThroughGate, requestSignatureThroughGate } from './broadcast-gate.js';
-import { confirmAction, confirmationState } from './shared-confirmer.js';
+import { confirmAction, confirmationState, registerReview } from './shared-confirmer.js';
 import { BOARD, BOARD_GENERATION, CURRENT_PLAYER, catalogNotice, noticeMessage, playerQueryAppend, renderNotices } from './board.js';
 import { esc, fmtSpsPerPp, formatPlotLabel, num } from './format.js';
 import { refreshPlotHarvest } from './harvest-state.js';
@@ -550,7 +550,7 @@ export async function prepareStagedWorksiteBuild(row, target, timeCrystals = 0) 
   if (!preview?.payload) throw new Error(preview?.error || 'Could not build the worksite transaction.');
   const chunk = preview.payload.chunks[0];
   chunk.whatText = worksiteWhatText(row, preview.payload);
-  return { row, account: preview.payload.account, chunk };
+  return { row, account: preview.payload.account, chunk, actionId: preview.actionId || null };
 }
 
 function worksiteEconomicVector(operations) {
@@ -576,8 +576,8 @@ export async function signStagedWorksiteBuild(row, target, timeCrystals = 0, pre
     const freshEnvelope = (await prepareSigningBatch(plan.account, [chunk.operations], 'Posting', {
       runId: `worksite-${row.deed_uid}-${Date.now()}`, runKind: 'plan',
     }))?.[0] || null;
-    const actionId = prepared?.chunk?.operations
-      ? confirmationState(plan.account, prepared.chunk.operations)?.actionId || null : null;
+    const actionId = plan.actionId || prepared?.actionId || (prepared?.chunk?.operations
+      ? confirmationState(plan.account, prepared.chunk.operations)?.actionId || null : null);
     const broadcast = await requestSignatureThroughGate(plan.account, chunk.operations, () => {}, 'Posting', freshEnvelope,
       { actionId });
     broadcast.submitted.then(result => {
@@ -785,6 +785,8 @@ export async function requestWorksitePreview(row, target, timeCrystals, action =
   let next;
   try {
     next = { loading: false, error: null, payload: await fetchWorksitePreview(row.deed_uid, action ? { action } : { target, time_crystals: timeCrystals }), actionId };
+    if (next.payload?.chunks?.[0]?.operations) next.actionId = (await registerReview(next.payload.account,
+      next.payload.chunks[0].operations, { actionId, reviewKey: `worksite:${row.deed_uid}:${action || target}` })).actionId;
   } catch (error) {
     next = { loading: false, error: String(error), payload: null };
   }
@@ -820,7 +822,9 @@ export async function prepareWorksiteCompletion(row) {
   const chunk = payload?.chunks?.[0];
   if (!chunk?.operations?.length) throw new Error('Could not build the Feed the workers transaction.');
   chunk.whatText = worksiteWhatText(row, payload);
-  return { row, account: payload.account, chunk, grainCost: payload.grain_cost ?? null, payload };
+  const actionId = (await registerReview(payload.account, chunk.operations,
+    { reviewKey: `worksite:${row.deed_uid}:complete` })).actionId;
+  return { row, account: payload.account, chunk, grainCost: payload.grain_cost ?? null, payload, actionId };
 }
 
 function renderWorksiteCancelBody(row) {
@@ -991,7 +995,9 @@ export async function confirmWorksiteBroadcast(row, broadcastBtn) {
     if (worksiteEconomicVector(preview.payload.chunks[0].operations) !== worksiteEconomicVector(freshPayload.chunks[0].operations)) {
       const actionId = preview.actionId || confirmationState(preview.payload.account,
         preview.payload.chunks[0].operations)?.actionId || null;
-      S.WORKSITE_MODAL_PREVIEW = { loading: false, error: null, payload: freshPayload, actionId };
+      const revised = await registerReview(freshPayload.account, freshPayload.chunks[0].operations,
+        { actionId, reviewKey: `worksite:${deedUid}:${body.action || body.target}` });
+      S.WORKSITE_MODAL_PREVIEW = { loading: false, error: null, payload: freshPayload, actionId: revised.actionId };
       renderWorksiteModalBody(row);
       renderWorksiteVerdict(overlay, { tone: 'info', title: 'Review changed worksite terms', detail: 'The live worksite terms changed. Review them and sign again.' });
       return;

@@ -418,7 +418,7 @@ console.log(JSON.stringify({ html, out, undo: UNDO_TEXT }));
 def test_checkout_source_contracts():
     js = (STATIC / "card-checkout.js").read_text(encoding="utf-8")
     # Active, one sign-and-send prompt per transaction, through the shared gate
-    assert "requestBroadcastThroughGate(signingPlayer, tx.operations" in js and "'Active', { direct: true }" in js
+    assert "requestBroadcastThroughGate(signingPlayer, tx.operations" in js and "'Active', { direct: true, actionId }" in js
     sign = js[js.index("async function sign()"):js.index("function markSkipped")]
     # the intent is stored before the wallet is asked; an unknown or declined answer stops the rest of the checkout
     assert sign.index("writeRun(co.player, co.run))") < sign.index("requestBroadcastThroughGate")

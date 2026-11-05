@@ -142,7 +142,8 @@ def test_r5_seventy_one_and_eighty_six_seconds_on_the_real_route(server):
         found_at = None
         while server.clock.now - t0 < 700:
             server.world["rows"] = others + ([target] if server.clock.now - t0 >= appear else [])
-            answer = server.call("find", find_body(ops, server.clock))
+            answer = server.call("find", find_body(ops, server.clock,
+                                                   attempt=ATTEMPT if appear == 71 else ATTEMPT_B))
             if answer["status"] == "found":
                 found_at = server.clock.now - t0
                 break
@@ -172,9 +173,10 @@ def test_r5_control_an_attempt_id_without_a_begin_still_buys_no_reads(server):
     reads of its own."""
     ops = [op("NoBegin001")]
     server.world["rows"] = []
-    server.call("find", find_body(ops, server.clock))
+    first = server.call("find", find_body(ops, server.clock))
     calls = len(server.world["history_calls"])
-    answer = server.call("find", find_body(ops, server.clock, attempt=ATTEMPT_B))
+    answer = server.call("find", find_body(ops, server.clock, attempt=ATTEMPT_B,
+                                           action_id=first["action_id"]))
     assert len(server.world["history_calls"]) == calls, answer
     assert answer["status"] in {"wait", "unproven"} and answer.get("status") != "absent", answer
 

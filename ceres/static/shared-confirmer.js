@@ -137,6 +137,44 @@ function hashId(text) {
   return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
 }
 function keyFor(id) { return PREFIX + hashId(id); }
+const REVIEW_PREFIX = 'ceres:confirm:review:';
+function reviewTerms(operations) {
+  if (!Array.isArray(operations) || !operations.length || operations.length > 5) throw Error('Invalid reviewed operations');
+  return operations.map(([kind, body]) => {
+    if (kind !== 'custom_json' || !body || typeof body !== 'object') throw Error('Invalid reviewed operation');
+    const payload = typeof body.json === 'string' ? JSON.parse(body.json) : JSON.parse(JSON.stringify(body.json));
+    if (!payload || typeof payload !== 'object') throw Error('Invalid reviewed payload');
+    if (body.id === 'sm_sps' && payload.action === 'token_transfer') delete payload.params.n;
+    else delete payload.n;
+    return [kind, { ...body, json: JSON.stringify(payload) }];
+  });
+}
+export async function registerReview(account, operations, { actionId = null, repeat = false, reviewKey = null } = {}) {
+  let terms;
+  try { terms = reviewTerms(operations); } catch (_) { return { actionId: null, revision: null }; }
+  const storageKey = REVIEW_PREFIX + hashId(JSON.stringify([String(account).toLowerCase(), reviewKey || terms]));
+  if (!actionId && !repeat) {
+    try { actionId = JSON.parse(confirmStorage()?.getItem(storageKey) || fallbackStorage()?.getItem(storageKey) || 'null')?.actionId || null; } catch (_) {}
+  }
+  // A newly reviewed action after a conclusive prior outcome is an explicit repeat to the server.
+  if (actionId && !repeat && allRows().some(row => row.account === String(account).toLowerCase()
+      && row.actionId === actionId && FINAL_STATES.has(row.state))) {
+    actionId = null;
+    repeat = true;
+  }
+  try {
+    const response = await boundedJson(`/api/confirm/review?player=${encodeURIComponent(account)}`, {
+      operations: terms, ...(actionId ? { action_id: actionId } : {}), ...(repeat ? { repeat: true } : {}),
+      ...(reviewKey ? { review_key: hashId(String(reviewKey)) } : {}),
+    }, { bound: 5000 });
+    const answer = response.ok ? response.body : null;
+    if (!/^[a-f0-9]{32}$/.test(answer?.action_id || '') || !Number.isInteger(answer.revision)) throw Error('Review registration unavailable');
+    const value = { actionId: answer.action_id, revision: answer.revision };
+    try { confirmStorage()?.setItem(storageKey, JSON.stringify(value)); }
+    catch (_) { try { fallbackStorage()?.setItem(storageKey, JSON.stringify(value)); } catch (__) {} }
+    return value;
+  } catch (_) { return { actionId: null, revision: null }; }
+}
 function matchedAction(row) {
   if (!row?.actionId) return false;
   const key = `${row.account}:${row.actionId}`;
