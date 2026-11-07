@@ -180,7 +180,11 @@ def test_swap_client_never_stores_and_never_prints_server_text():
     transfer_refusal = "Object.assign(st, { stage: 'refused', refusal: String(result.message || '') });"
     assert js.count(transfer_refusal) == 1
     js = js.replace(transfer_refusal, "")
-    assert ".detail" not in js and ".message" not in js  # no server text reaches the screen
+    pool_refusal = "Object.assign(st, { stage: 'refused', refusal: String(result.message || result.error || '') });"
+    assert js.count(pool_refusal) == 1
+    js = js.replace(pool_refusal, "")
+    assert ".detail" not in js and ".message" not in js  # Only these two game refusals may show server text.
+    assert js.count("${esc(st.refusal || 'The game gave no reason.')}" ) == 2
     assert js.count("requestBroadcastThroughGate(") == 2  # one signature per Sign, plus the Active step 2 of an SPS sale ()
     assert "QUOTE_IDLE_MS = 700" in js
 

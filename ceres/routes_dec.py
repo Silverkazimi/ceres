@@ -23,6 +23,7 @@ from . import client_limits
 from .security import player_for_request
 from .transaction_identity import app_identity
 from .game_lookup import lookup_trx_info
+from . import receipt_model
 
 router = APIRouter()
 _REGION = re.compile(r"PR-[A-Z]{3}-[1-9][0-9]{0,3}")
@@ -159,29 +160,22 @@ def _harvest_receipt(inner, uid):
         return {**receipt, "state": "failed", "message": str(harvest.get("error") or (payload.get("error") if isinstance(payload, dict) else "") or "Harvest was not completed")}
     if harvest.get("success") is not True or not isinstance(payload, dict) or payload.get("success") is not True or not isinstance(payload.get("results"), list):
         return receipt
-    def amount(value):
-        try:
-            n = Decimal(str(value))
-            return n if n.is_finite() and n >= 0 else None
-        except InvalidOperation:
-            return None
     members = []
     for row in payload["results"]:
         if not isinstance(row, dict):
             return receipt
-        received, costs, taxes = {}, {}, {}
-        def add(target, symbol, value):
-            n = amount(value)
-            if isinstance(symbol, str) and n is not None:
-                target[symbol] = str(Decimal(target.get(symbol, "0")) + n)
-        add(received, row.get("resource_symbol"), row.get("received_amount"))
-        add(taxes, row.get("resource_symbol"), row.get("tax_amount"))
-        add(costs, "GRAIN", row.get("grain_eaten"))
-        add(costs, "GRAIN", row.get("grain_rewards_eaten"))
-        add(costs, "DEC", row.get("dec_spent"))
-        for item in row.get("inputs_consumed") or []:
-            if isinstance(item, dict):
-                add(costs, item.get("symbol"), item.get("qty"))
+        outcome = "failed" if row.get("result_message") != "Successful" else "success"
+        received, costs, taxes, gross = {}, {}, {}, {}
+        if outcome == "success":
+            try:
+                values = receipt_model.amounts([row])
+            except (ValueError, TypeError, AttributeError, KeyError):
+                outcome = "pending"
+            else:
+                received = {symbol: str(value) for symbol, value in values["received"].items()}
+                costs = {symbol: str(value) for symbol, value in values["costs"].items()}
+                taxes = {symbol: str(value) for symbol, value in values["tax"].items()}
+                gross = {symbol: str(value) for symbol, value in values["before_tax"].items()}
         finds = []
         roll = row.get("fragment_roll")
         if isinstance(roll, dict):
@@ -190,9 +184,10 @@ def _harvest_receipt(inner, uid):
             if roll.get("labors_luck_uid"):
                 finds.append({"kind": "labors_luck", "uid": roll["labors_luck_uid"]})
         members.append({"region_uid": uid, "deed_uids": [row["deed_uid"]] if row.get("deed_uid") else [],
-                        "outcome": "success" if row.get("result_message") == "Successful" else "failed",
-                        "error": row.get("result_message"), "received_by_token": received,
-                        "costs_by_token": costs, "taxes_by_token": taxes, "finds": finds,
+                        "outcome": outcome,
+                        "error": "The game reported this harvest, but its amounts could not be read." if outcome == "pending" else row.get("result_message"),
+                        "received_by_token": received,
+                        "costs_by_token": costs, "taxes_by_token": taxes, "gross_by_token": gross, "finds": finds,
                         "evidence": ["dec_game_result"]})
     if not members:
         return {**receipt, "state": "empty", "members": []}

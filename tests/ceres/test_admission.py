@@ -8,6 +8,7 @@ def run(body):
     run_in_module_context("""
 const ops = (n, prefix) => Array.from({length:n}, (_, i) => ['custom_json', {id:'sm_land_operation',json:JSON.stringify({n:prefix+i})}]);
 let calls = 0;
+const beginReply = () => ({ok:true,json:async()=>({begin_token:'c'.repeat(32),action_id:'a'.repeat(32),revision:1,server_now:Date.now()})});
 window.hive_keychain = {requestBroadcast(a,o,k,cb) {calls++; cb({success:true,result:{id:'tx-'+calls}});}};
 """ + body, entry=GATE, extra_context_js="context.navigator.locks = {request(n,o,cb) {return cb();}};")
 
@@ -17,6 +18,7 @@ def test_four_plus_four_waits_for_chain_only():
 (async () => {
 let reads=0;
 fetch=async(url, options)=>{
+  if (url.includes('/api/confirm/intent')) return beginReply();
   if (!url.includes('/api/op-inclusion?player=alice')) throw Error('must use chain-only probe');
   if (JSON.parse(options.body).tx_id !== 'tx-1' || calls !== 1) throw Error('next wallet opened too early');
   reads++;
@@ -32,7 +34,7 @@ if(calls!==2 || reads!==1) throw Error('wrong admission sequence');
 def test_four_plus_one_and_other_account_are_immediate():
     run("""
 (async () => {
-fetch=()=>{throw Error('unnecessary inclusion wait');};
+fetch=async url=>{if (url.includes('/api/confirm/intent')) return beginReply(); throw Error('unnecessary inclusion wait');};
 await BroadcastGate.broadcast('alice',ops(4,'a'));
 await BroadcastGate.broadcast('ALICE',ops(1,'b'));
 await BroadcastGate.broadcast('bob',ops(4,'c'));
@@ -47,7 +49,7 @@ def test_persisted_other_tab_budget_and_inconclusive_lookup_block_send():
 localStorage.setItem('ceres:pending-custom-ops:v1:alice',JSON.stringify([{id:'other-tab',count:4,txId:'old-tx',createdAt:new Date().toISOString()}]));
 setTimeout=(cb,delay)=>{if(delay===1000) Promise.resolve().then(cb);return 1;};  // one-second budget checks
 clearTimeout=()=>{};
-fetch=async()=>({ok:true,json:async()=>({included:null,block_num:null})});
+fetch=async url=>url.includes('/api/confirm/intent') ? beginReply() : {ok:true,json:async()=>({included:null,block_num:null})};
 const error=await BroadcastGate.broadcast('alice',ops(4,'new')).catch(e=>e);
 if(error.broadcasted!==false || calls!==0) throw Error('sent without budget');
 if(JSON.parse(localStorage.getItem('ceres:pending-custom-ops:v1:alice')).length!==1) throw Error('lost prior budget');
@@ -58,6 +60,7 @@ if(JSON.parse(localStorage.getItem('ceres:pending-custom-ops:v1:alice')).length!
 def test_node_rejection_is_concise_and_releases_rejected_budget():
     run("""
 (async () => {
+fetch=async url=>{if (url.includes('/api/confirm/intent')) return beginReply(); throw Error('unexpected network request');};
 window.hive_keychain.requestBroadcast=(a,o,k,cb)=>{calls++;cb({success:false,error:{code:-32003,message:'Assert Exception',data:{stack:[{format:'HIVE_CUSTOM_OP_BLOCK_LIMIT',data:{trx:{signatures:['PRIVATE-RAW-DETAIL']}}}]}}});};
 const error=await BroadcastGate.broadcast('alice',ops(4,'a')).catch(e=>e);
 if(!error.broadcastRejected || error.broadcasted!==false || !error.message.includes('signed transaction') || error.message.includes('PRIVATE-RAW-DETAIL')) throw Error('wrong rejection classification');

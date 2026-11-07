@@ -23,7 +23,12 @@ MEASURE = r"""(uid) => {
   const row = document.querySelector(`tr.plot-row[data-deed-uid="${CSS.escape(uid)}"]`);
   const line = Math.max(0, ...['header.board-header', '#table-head-sticky'].map((s) => document.querySelector(s)?.getBoundingClientRect().bottom || 0));
   const flow = [...document.body.children].filter((e) => !['fixed', 'sticky', 'absolute'].includes(getComputedStyle(e).position) && e.getBoundingClientRect().height > 0);
-  return { scrollY, line, vh: innerHeight, contentBottom: Math.max(0, ...flow.map((e) => e.getBoundingClientRect().bottom)) + scrollY, rowTop: row ? row.getBoundingClientRect().top : null, minH: document.body.style.minHeight,
+  let tilesTop = null;
+  for (const n of document.querySelectorAll(`tr.expand-row[data-deed-uid="${CSS.escape(uid)}"] .editor-band .slot-tile, tr.expand-row[data-deed-uid="${CSS.escape(uid)}"] .editor-band .power-satellite`)) {
+    const r = n.getBoundingClientRect();
+    if (r.height > 0 && r.width > 0 && (tilesTop === null || r.top < tilesTop)) tilesTop = r.top;
+  }
+  return { scrollY, line, tilesTop, vh: innerHeight, contentBottom: Math.max(0, ...flow.map((e) => e.getBoundingClientRect().bottom)) + scrollY, rowTop: row ? row.getBoundingClientRect().top : null, minH: document.body.style.minHeight,
     picker: !!document.querySelector('.inline-picker[data-picker="1"]'),
     maxScroll: document.documentElement.scrollHeight - innerHeight };
 }"""
@@ -136,7 +141,7 @@ def test_picker_brings_the_plot_under_the_header_and_close_scrolls_back(width, h
     for name in ("middle", "last"):
         c = got[name]
         assert c["opened"]["picker"] is True, (name, c)
-        assert abs(c["opened"]["rowTop"] - c["opened"]["line"]) <= 1, (name, c["opened"])   # the plot's top under the header
+        assert abs(c["opened"]["tilesTop"] - c["opened"]["line"]) <= 2, (name, c["opened"])  # the plot's card tiles dock under the header
         assert abs(c["opened"]["line"] - c["before"]["line"]) <= 1, (name, c)               # the header itself did not move
         assert c["closed"]["picker"] is False
         assert abs(c["closed"]["scrollY"] - c["before"]["scrollY"]) <= 1, (name, c)          # back where the user was
@@ -145,5 +150,5 @@ def test_picker_brings_the_plot_under_the_header_and_close_scrolls_back(width, h
     # the last plot really needed the reserve: the view now reaches past the page's content, so without the reserved
     # height the browser could not have scrolled its row up to the line
     last = got["last"]
-    assert last["before"]["rowTop"] - last["before"]["line"] > 50, last["before"]
+    assert last["before"]["tilesTop"] - last["before"]["line"] > 50, last["before"]
     assert last["opened"]["scrollY"] + last["opened"]["vh"] > last["opened"]["contentBottom"] + 50, last["opened"]

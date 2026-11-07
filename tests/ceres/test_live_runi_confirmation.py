@@ -208,6 +208,11 @@ def test_runi_not_applied_verdict_clears_in_flight_and_explains_re_stake(
         "Object.keys(JSON.parse(localStorage.getItem('ceres:in-flight:v1:player0005') || '{\"records\":{}}').records).length"
     ) == 0
     page.wait_for_function("document.querySelector('#checkout-btn')?.hidden === false", timeout=30_000)
+    # design 4: the confirmation notice overlaps Changes on desktop (maintainer: accepted); close it with its X first.
+    dismiss = page.locator("#ceres-confirmation-banner .worksite-banner-dismiss")
+    if dismiss.is_visible():
+        dismiss.click()
+        page.locator("#ceres-confirmation-banner").wait_for(state="hidden", timeout=30_000)
     page.locator("#checkout-btn").click()
     page.wait_for_function(
         "document.querySelector('#checkout-panel button[data-op-action=confirm]')?.disabled === false",

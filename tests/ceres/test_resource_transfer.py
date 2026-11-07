@@ -332,12 +332,15 @@ context.__signed = [];
               "quote": {"resource_symbol": "GRAIN", "input": "10", "intermediate_dec": "0.081", "output": "9.062", "minimum": "8.835", "slippage": "2.5",
                         "fee_percent": "10", "legs": []}}
     body_js = CARD_JS + f"""
-VERIFY_SCHEDULE_MS.length = 1;
+__setConfirmerClock(Object.fromEntries([['sleep', async () => undefined]]));  // the shared schedule, frozen for the test
 const review = {json.dumps(review)};
 const order = [];
+const reviews = [];
 let verdict = {{ status: 'failed', message: 'Slippage exceeded: received less than the minimum' }};
 globalThis.fetch = async (url, options) => {{
-  const path = url.split('?')[0]; const body = JSON.parse(options.body); order.push([path, body]);
+  const path = url.split('?')[0]; const body = JSON.parse(options.body);
+  if (path === '/api/confirm/review') {{ reviews.push(body); return {{ ok: true, status: 200, json: async () => ({{}}) }}; }}  // review registration is not a build or a verify
+  order.push([path, body]);
   const reply = path === '/api/wallet/transfer/preview' ? review : path === '/api/wallet/lp/verify' ? verdict : {{}};
   return {{ ok: true, status: 200, json: async () => reply }};
 }};
@@ -352,6 +355,7 @@ const target = {{ closest: () => ({{ dataset: {{ lpSymbol: 'GRAIN' }} }}) }};
   await swapAction(ctx, 'transfer-review', target);
   if (order.length !== 1 || order[0][0] !== '/api/wallet/transfer/preview' || order[0][1].sign !== false || order[0][1].to_player !== 'player0004' || order[0][1].in_amount !== '10') throw new Error('review read: ' + JSON.stringify(order));
   if (!st.xfer.review || __signed.length) throw new Error('Review signs nothing');
+  if (!reviews.length) throw new Error('review registered: ' + JSON.stringify(reviews));
   await swapAction(ctx, 'transfer-sign', target);
   for (let i = 0; i < 400 && st.stage !== 'refused'; i++) await new Promise(r => setTimeout(r, 2));
   const sign = order[1];

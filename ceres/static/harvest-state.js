@@ -9,6 +9,9 @@ import { netAfterCosts } from './harvest-net.js';
 import { ASSET_BASE } from './state.js';
 import { tipAttrs } from './tooltip.js';
 import { formatCountdown } from './countdown.js';
+import { resourceFieldMap } from './resources.js';
+
+const RESOURCE_LABELS = resourceFieldMap('label');
 
 export const CAP_HOURS = 168;
 const FRESH_AFTER_MS = 60000;
@@ -38,7 +41,7 @@ export function capacityLevel(pct) {
 export function tokenLabel(token) {
   const raw = String(token || '');
   const key = raw.toLowerCase();
-  const known = { dec: 'DEC', grain: 'Grain', wood: 'Wood', stone: 'Stone', iron: 'Iron', aura: 'Aura', sps: 'SPS', research: 'Research', voucher: 'Voucher' };
+  const known = RESOURCE_LABELS; // registry: dec DEC, grain Grain, wood Wood, stone Stone, iron Iron, aura Aura, sps SPS, research Research, voucher Voucher
   return known[key] || raw;
 }
 
@@ -471,10 +474,13 @@ function tickBuildBar(bar, now) {
 // old "Change worksite" button), resource icon + "You receive" + two-decimal net in the middle
 // sickle Harvest RIGHT; only as wide as its content, centred under the worksite. The bottom
 // edge is capacity (ok < 70%, warn 70-99%, danger at 100%); a red dot on the sickle when short.
-export function harvestBarHtml(row, { cog = false } = {}) {
+export function harvestBarHtml(row, { cog = false, planning = false } = {}) {
   const worksiteName = String(row.worksite_type || '').trim();
   const cogLabel = worksiteName ? `Change ${worksiteName}` : 'Choose worksite';
   const cogHtml = cog ? `<button type="button" data-control-density="header" data-control-mode="icon" class="ceres-btn ceres-btn--primary harvest-bar-btn harvest-bar-cog" data-slot-action="open-worksite-modal" data-deed-uid="${esc(row.deed_uid)}" aria-label="${esc(cogLabel)}"${tipAttrs({ title: cogLabel })}>${COG_SVG}</button>` : '';
+  // round 3: a plan has no accrued harvest -- the existing quiet bar with the board's "—", no live amount
+  // no build countdown, no Harvest button, and not registered for the live ticker or the per-plot game read.
+  if (planning) return `<div class="harvest-bar is-quiet" data-level="ok" data-reveal-group="controls">${cogHtml}<span class="harvest-bar-state">—</span></div>`;
   const fresh = plotHarvest(row.deed_uid);
   BAR_ROWS.set(row.deed_uid, { row, cog });
   // a worksite under construction (a 24 h change included) shows the build countdown, never the
@@ -504,8 +510,12 @@ export function harvestBarHtml(row, { cog = false } = {}) {
     // staging logic here, just the button. Staging power then lets Build queue the worksite
     // as a staged change (worksite.js worksiteStageOnly) instead of the dead-end H1 refusal.
     const needsPower = p?.state === 'no_project' && row.is_powered === false && !plotPoweredAfterStage(row);
+    // the count comes through the editor's accessor (no import; editor.js imports this file). Zero/unknown stay clickable here: the click already refuses with a toast.
+    const coresLeft = needsPower ? globalThis.ceresPowerCoresLeft?.(row.deed_uid) : null;
+    const powerCoreCountTip = tipAttrs(coresLeft > 0 ? { title: 'Stage a Power Core -- unlocks Build, nothing signs yet', key: `${coresLeft}`, body: 'Power Cores available to stake.' }
+      : { title: coresLeft === 0 ? '0 Power Cores left to stake' : 'Power Core availability could not be loaded', body: 'Unlocks Build, nothing signs yet.' });
     const powerBtnHtml = needsPower
-      ? `<button type="button" data-control-density="header" data-control-mode="icon" class="ceres-btn ceres-btn--primary harvest-bar-btn harvest-bar-power" data-slot-action="add-power-core" data-deed-uid="${esc(row.deed_uid)}" data-group-id="power_core" data-slot-index="0" aria-label="Stage a Power Core"${tipAttrs({ title: 'Stage a Power Core -- unlocks Build, nothing signs yet' })}><img src="${POWER_CORE_IMAGE}" alt="" aria-hidden="true"></button>`
+      ? `<button type="button" data-control-density="header" data-control-mode="icon" class="ceres-btn ceres-btn--primary harvest-bar-btn harvest-bar-power" data-slot-action="add-power-core" data-deed-uid="${esc(row.deed_uid)}" data-group-id="power_core" data-slot-index="0" aria-label="Stage a Power Core"${powerCoreCountTip}><img src="${POWER_CORE_IMAGE}" alt="" aria-hidden="true"></button>`
       : '';
     if (!cogHtml && !powerBtnHtml && !text) return '';
     // the

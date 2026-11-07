@@ -29,7 +29,7 @@ def _info(tx, payload, effects):
             "result": json.dumps({"success": True, "result": {"success": True, "data": effects}})}
 
 
-def _funding_row(index, tx, memo, qty, to="player0016", author=PLAYER, timestamp="2026-10-14T08:04:48"):
+def _funding_row(index, tx, memo, qty, to="player0017", author=PLAYER, timestamp="2026-10-14T08:04:48"):
     payload = {"action": "token_transfer", "params": {"to": to, "qty": qty, "token": "SPS", "memo": memo, "n": "1" * 16}}
     return [index, {"trx_id": tx, "op_in_trx": 0, "timestamp": timestamp,
                     "op": ["custom_json", {"id": "sm_sps", "json": json.dumps(payload), "required_auths": [author], "required_posting_auths": []}]}]
@@ -40,7 +40,7 @@ def _funding_row(index, tx, memo, qty, to="player0016", author=PLAYER, timestamp
 def _deposit(monkeypatch, settle_result):
     expected = operations.add(PLAYER, "", "SPS", 2, 16)["payload"]
     tx = "c" * 40
-    effects = {"pending_deposit_id": 777, "pending_external_amount": 2, "external_transfer_account": "player0016", "resource": "SPS"}
+    effects = {"pending_deposit_id": 777, "pending_external_amount": 2, "external_transfer_account": "player0017", "resource": "SPS"}
     monkeypatch.setattr(lp_routes, "lookup_trx_info", lambda getter, trx: _info(tx, expected, effects))
     seen = []
     def settle(player, step, older=False):
@@ -83,6 +83,8 @@ const wallet = { account: { DEC: '100', SPS: '600' }, swap: { symbols: ['SPS'], 
 const ctx = { player: 'alice', account: () => 'alice', drawer: () => null, wallet: () => wallet, render: () => {}, setSigning: () => {}, reload: async () => {} };
 const target = { closest: () => ({ dataset: { lpSymbol: 'SPS' } }) };
 const st = swapState('alice', 'SPS');
+// no manual settle/stop/verify control; a page resume starts the shared wait, which the zero-delay VM drains.
+const settleOnce = async (done) => { resumeSwapChecks(ctx); for (let i = 0; i < 200 && !done(); i++) await new Promise(r => realSetTimeout(r, 2)); };
 """
 
 
@@ -95,8 +97,8 @@ def test_card_reports_only_settlement_figures_never_the_quote():
     _run_wallet(r"""
 globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ status: 'settled', received: [] }) });
 Object.assign(st, { stage: 'settling', receipt: { kind: 'add', symbol: 'SPS', resource: 2, dec: 16, nonce: 'ab'.repeat(8), tx_id: 'a'.repeat(40), payload: {}, funding_tx: 'c'.repeat(40), funding_at: new Date().toISOString() } });
-await swapAction(ctx, 'settle', target);
-if (st.receipt.reported) throw Error('an empty settlement was reported as the quoted figures');
+await settleOnce(() => st.stage === 'done');
+if (st.stage !== 'done' || st.receipt.reported) throw Error('an empty settlement was reported as the quoted figures: ' + st.stage);
 """)
 
 
@@ -106,7 +108,7 @@ def _sale(monkeypatch, rows, settle_result=None):
     expected = operations.sell(PLAYER, "", "SPS", "600.392", 1, 2.5)["payload"]
     tx = "a" * 40
     effects = {"external_swap_required": True, "pending_swap_id": 115303, "pending_external_amount": 600.392,
-               "external_transfer_account": "player0016", "external_swap_token": "SPS"}
+               "external_transfer_account": "player0017", "external_swap_token": "SPS"}
     monkeypatch.setattr(lp_routes, "lookup_trx_info", lambda getter, trx: _info(tx, expected, effects))
     monkeypatch.setattr(bridge, "_history", lambda account, start: rows)
     seen = []
@@ -114,7 +116,8 @@ def _sale(monkeypatch, rows, settle_result=None):
         seen.append(step)
         return settle_result or {"state": "settling", "bridge_next_start": None}
     monkeypatch.setattr(bridge, "settle", settle)
-    return {"tx_id": tx, "nonce": expected["n"], "kind": "swap_sell", "expected_payload": expected, "funding_tx": None}, seen
+    # fix round 1 (F1/F7): the memo search runs only when the browser asks (a legacy receipt, once per page load).
+    return {"tx_id": tx, "nonce": expected["n"], "kind": "swap_sell", "expected_payload": expected, "funding_tx": None, "find_funding": True}, seen
 
 
 def test_lost_funding_answer_is_found_in_own_history_by_memo(monkeypatch, tmp_path):
@@ -141,8 +144,7 @@ def test_card_attaches_a_funding_transfer_found_by_the_server():
     _run_wallet(r"""
 globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ status: 'settling', funding_tx: 'f'.repeat(40) }) });
 Object.assign(st, { stage: 'settling', receipt: { kind: 'swap_sell', pay: 'SPS', receive: 'DEC', input: 600, nonce: 'ab'.repeat(8), tx_id: 'a'.repeat(40), payload: {}, fundingUnknown: true } });
-await swapAction(ctx, 'settle', target);
-await swapAction(ctx, 'settle-stop', target);
+await settleOnce(() => st.receipt?.funding_tx);
 if (st.receipt.funding_tx !== 'f'.repeat(40) || st.receipt.fundingUnknown) throw Error('found funding not attached: ' + JSON.stringify(st.receipt));
 const stored = JSON.parse(localStorage.getItem('ceres:wallet-lp-intent:v1:alice:SPS'));
 if (stored.receipt.funding_tx !== 'f'.repeat(40)) throw Error('durable intent lacks the found transfer');
@@ -177,13 +179,13 @@ if (prompts !== 1) throw Error('a second transfer was requested');
 
 def _swap_step():
     effects = {"external_swap_required": True, "pending_swap_id": 115303, "pending_external_amount": 2,
-               "external_transfer_account": "player0016", "external_swap_token": "SPS", "external_swap_player": PLAYER}
+               "external_transfer_account": "player0017", "external_swap_token": "SPS", "external_swap_player": PLAYER}
     return lp_routes.settlement_step("a" * 40, "swap_sell", "SPS", effects, True, None)
 
 
 def _bridge_row(index, tx, op_id, payload):
     return [index, {"trx_id": tx, "op_in_trx": 0, "timestamp": "2026-10-14T08:05:39",
-                    "op": ["custom_json", {"id": op_id, "json": json.dumps(payload), "required_auths": ["player0016"], "required_posting_auths": []}]}]
+                    "op": ["custom_json", {"id": op_id, "json": json.dumps(payload), "required_auths": ["player0017"], "required_posting_auths": []}]}]
 
 
 def _refund(qty):
@@ -199,7 +201,7 @@ def _game_says_incomplete(monkeypatch):
             pass
         def get_json(self, url):
             envelope = {"success": True, "result": {"success": True, "data": {"pending_swap_id": 115303, "external_swap_completed": False}}}
-            return type("R", (), {"data": {"trx_info": {"id": "d" * 40, "player": "player0016", "type": "land_operation", "data": json.dumps(_SWAP_OP),
+            return type("R", (), {"data": {"trx_info": {"id": "d" * 40, "player": "player0017", "type": "land_operation", "data": json.dumps(_SWAP_OP),
                                                         "success": True, "result": json.dumps(envelope)}}})()
     monkeypatch.setattr(bridge, "FixedGetTransport", Transport)
 
@@ -236,7 +238,7 @@ def test_card_says_nothing_was_lost_only_for_a_full_refund():
 for (const [full, expectLost] of [[false, false], [true, true]]) {
   globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ status: 'refunded', full, expected: '2', refunded: [{ symbol: 'SPS', amount: full ? '2' : '1.5' }] }) });
   Object.assign(st, { stage: 'settling', receipt: { kind: 'swap_sell', pay: 'SPS', receive: 'DEC', input: 2, nonce: 'ab'.repeat(8), tx_id: 'a'.repeat(40), payload: {}, funding_tx: 'c'.repeat(40) } });
-  await swapAction(ctx, 'settle', target);
+  await settleOnce(() => st.stage === 'edit');
   if (st.stage !== 'edit') throw Error('refund did not close');
   if (st.lpNote.includes('Nothing was lost') !== expectLost) throw Error('wrong note for full=' + full + ': ' + st.lpNote);
 }
@@ -267,21 +269,22 @@ def test_find_route_reports_coverage(monkeypatch, tmp_path):
 
 def test_short_window_never_releases_an_unanswered_swap():
     _run_wallet(r"""
-  const old = new Date(Date.now() - 10 * 60000).toISOString();
-let bodies = [];
-for (const covered of [false, true]) {
+const old = new Date(Date.now() - 10 * 60000).toISOString();
+for (const [covered, symbol, nonce] of [[false, 'WOOD', 'cd'], [true, 'STONE', 'ef']]) {
+  const bodies = [];
   globalThis.fetch = async (url, init) => {
-    if (String(url).includes('/find')) { bodies.push(JSON.parse(init.body)); if (bodies.length > 3 && !covered) await swapAction(ctx, 'stop', { closest: () => ({ dataset: { lpSymbol: 'WOOD' } }) }); return { ok: true, status: 200, json: async () => ({ status: 'not_found', covered }) }; }
+    if (String(url).includes('/find')) { bodies.push(JSON.parse(init.body)); return { ok: true, status: 200, json: async () => ({ status: 'not_found', covered }) }; }
     throw Error('unexpected ' + url);
   };
-  const w = swapState('alice', 'WOOD');
-  Object.assign(w, { stage: 'confirming', stopped: false, failed: null, receipt: { kind: 'swap_sell', pay: 'WOOD', receive: 'DEC', input: 1, nonce: 'cd'.repeat(8), tx_id: null, payload: {}, signed_at: old, asked_at: old } });
-  bodies = [];
-  await swapAction(ctx, 'verify', { closest: () => ({ dataset: { lpSymbol: 'WOOD' } }) });
-  if (bodies[0].since !== old) throw Error('find did not send since');
+  const w = swapState('alice', symbol);
+  Object.assign(w, { stage: 'confirming', receipt: { kind: 'swap_sell', pay: symbol, receive: 'DEC', input: 1, nonce: nonce.repeat(8), tx_id: null, payload: {}, signed_at: old, asked_at: old } });
+  resumeSwapChecks(ctx);   // the automatic check, no Resume/Stop
+  for (let i = 0; i < 200 && bodies.length < 4; i++) await new Promise(r => realSetTimeout(r, 2));
+  if (bodies[0]?.since !== old) throw Error('find did not send since');
   if (!covered && (w.stage !== 'confirming' || !w.historyUnreadable)) throw Error('short window released the swap: ' + w.stage);
   if (covered && w.stage !== 'confirming') throw Error('a covered history miss before Hive expiry released the request: ' + w.stage);
 }
+console.log('IR9545-OK'); process.exit(0);
 """)
 
 

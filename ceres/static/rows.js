@@ -15,6 +15,15 @@ import { CURRENT_ROWS, ensureRowMounted, scrollPlotUnderHeader, captureTableAnch
 import { PLOT_UNREACHABLE_ERROR, setPlotReconnecting, setPlotFinishing, configureEos, plotGeometryProfile, beginPlotOpening, getPlotPresentation, ensurePlotPresentation, beforePlotContentReplace, parkPlotPresentation, mountPlotPresentation, centreReservedPlot, closePlotPresentation, invalidatePlotPresentations, adoptPlotPresentations, reconcilePlotHandoff, spliceDecodedArt } from './eos.js';
 import { availableTableWidth } from './scale.js';
 import { plotLockIconHtml } from './plot-lock.js';
+import { BOARD_PLANNING_CHANGED_EVENT, BOARD_PLANNING_EVALUATED_EVENT, BOARD_PLANNING_EVENT, boardPlanningProjection,
+  boardPlanningActive, boardPlanningTotals, boardPlanningViewRow, setBoardPlanningRowState } from './board-planning.js';
+import { tipAttrs } from './tooltip.js';
+
+// the pulse class from the row the badges read -- in planning the projected row (the plan), never the
+// live stage; in Live the row itself.
+function rowPendingClass(row) {
+  return badgeStripStatus(row).kind === 'pending' ? ' row-pending' : '';
+}
 
 export function renderRow(row, rowIndex) {
   const session = getPlotPresentation(row.deed_uid);
@@ -28,7 +37,7 @@ export function renderRow(row, rowIndex) {
   // silently shift for every row after the first one ever expanded.
   // (maintainer: the pulsing clock is far right and can be missed): a row whose status is the pending clock also pulses
   // a subtle gold across the whole row, in step with the clock.
-  tr.className = 'plot-row' + (rowIndex % 2 === 1 ? ' row-alt' : '') + (badgeStripStatus(row).kind === 'pending' ? ' row-pending' : '');
+  tr.className = 'plot-row' + (rowIndex % 2 === 1 ? ' row-alt' : '') + rowPendingClass(boardPlanningViewRow(row));
   // data-deed-uid ( board-fix batch): lets updateMountedRow() find this exact
   // row's DOM later without a linear scan, and lets the virtualization window
   // recompute confirm a row is (or isn't) currently mounted.
@@ -129,6 +138,22 @@ configureEos({
   close: (uid) => { abortWorkerUpgradeOptions(uid); closePlotPresentation(uid); EXPANDED_ROWS.delete(uid); updateMountedRow(uid); },
 });
 
+// IN-0267: planning is a view projection. A mode switch re-renders the table once (collapsed cells and
+// open slot rows read the same saved plan); an evaluator answer re-renders only the rows it answered.
+// IN-0315: the totals strip follows the plan too -- on the mode switch, on every answer and on every saved edit.
+// the badge rail and slide-outs follow the same projection, so they resync on each of these too.
+window.addEventListener(BOARD_PLANNING_EVENT, () => { renderTable(false); renderTotalsStrip(); syncBadgeOverlay(); });
+window.addEventListener(BOARD_PLANNING_EVALUATED_EVENT, (event) => {
+  for (const deedUid of event?.detail?.deeds || []) updateMountedRow(deedUid);
+  renderTotalsStrip();
+  syncBadgeOverlay();
+});
+window.addEventListener(BOARD_PLANNING_CHANGED_EVENT, (event) => {
+  for (const deedUid of event?.detail?.deeds || []) updateMountedRow(deedUid);
+  renderTotalsStrip();
+  syncBadgeOverlay();
+});
+
 // root fix: the opened-plot geometry reads the SAME authoritative
 // width as the table (scale.js availableTableWidth() -- the live scroller, or
 // the viewport minus board padding when the table is hidden). The old
@@ -175,7 +200,22 @@ export const EXPANDED_HEIGHTS = new Map();
 // content in place without tearing down and recreating its <tr>, which is what
 // full re-render did before and is the same freeze-causing pattern at whale scale
 // applied to a single row).
+// the board's row state, registered once so the sort, the badges and the open plot's power warning
+// (board-planning.js boardPlanningProjection) ask the evaluator the same question as these cells.
+setBoardPlanningRowState((row) => ({
+  detailLoaded: EXPANDED_DATA_LOADED.has(row.deed_uid) || row.assets_loaded === true,
+  coverageComplete: !EXPAND_ERRORS.has(row.deed_uid),
+}));
+function planningRowProjection(row) {
+  return boardPlanningProjection(row);
+}
 export function plotRowCellsHtml(row, rowIndex = null) {
+  // IN-0267 Q2: in planning, a row the plan changes shows its PLANNED values in these same cells.
+  // IN-0315: every other row is the plan's clean sheet
+  // the same cells and helpers as Live, fed a row whose stats are 0/— -- so no live figure shows in planning.
+  const planned = planningRowProjection(row);
+  if (planned?.changed) return plannedRowCellsHtml(row, planned, rowIndex);
+  if (planned) row = planned.row;
   const terrainCell = terrainCellHtml(row.terrain);
   const decStake = decStakeCell(row);
   const foodCell = foodPerHourCell(row);
@@ -209,6 +249,51 @@ export function plotRowCellsHtml(row, rowIndex = null) {
     <td class="col-num col-w-iron"${ironCell.tip}>${ironCell.html}</td>
     <td class="col-num">${row.capacity.display}</td>
     <td class="col-num"${decStake.tip}>${decStake.html}</td>
+    <td class="lock-cell col-w-lock">${plotLockIconHtml(row)}</td>
+    <td class="count-cell col-w-count">${Number.isInteger(rowIndex) ? rowIndex + 1 : ''}</td>`;
+}
+
+// Planned values come only from a complete evaluator answer for this exact roster. Pending or unknown
+// cells say "Unknown" in the row's own status text (never 0, never the live figure under a planned label).
+const PLANNED_UNKNOWN_TIP = {
+  pending: 'Planned value is being worked out from the loaded board.',
+  unknown: 'Planned value is unknown: this plot’s details or the card collection are not fully loaded, so it is not worked out.',
+};
+function plannedRowCellsHtml(row, planned, rowIndex) {
+  const d = planned.row;
+  const known = planned.status === 'planned';
+  const statusAttrs = ` data-row-plan-status="${planned.status}"`;
+  const unknownTip = known ? '' : tipAttrs({ title: 'Planned value', body: PLANNED_UNKNOWN_TIP[planned.status] || PLANNED_UNKNOWN_TIP.unknown });
+  const valueCell = (cls, attrs, html) => known
+    ? `<td class="${cls}"${statusAttrs}${attrs}>${html}</td>`
+    : `<td class="${cls} row-plan-unknown"${statusAttrs}${unknownTip}>Unknown</td>`;
+  const terrainCell = terrainCellHtml(row.terrain);
+  const foodCell = known ? foodPerHourCell(d) : null;
+  const woodCell = known ? materialCostCell(d, 'WOOD') : null;
+  const stoneCell = known ? materialCostCell(d, 'STONE') : null;
+  const ironCell = known ? materialCostCell(d, 'IRON') : null;
+  const typeTip = plotTypeTipAttrs(row);
+  const territoryCell = territoryCellHtml(row.territory, row.deed_uid);
+  const plannedTip = (title) => tipAttrs({ title, body: 'Planned value for this plot’s planned cards, from the loaded board. Not signed; Live is unchanged.' });
+  return `
+    <td class="${territoryCell.cls}"${territoryCell.tip}>${esc(formatPlotLabel(row.plot))}</td>
+    <td class="rarity-cell">${plotRarityCellHtml(row)}</td>
+    <td class="type-cell"${typeTip}>${typeMarkHtml(row.plot_status, row.magic_type, row.worksite_type, Boolean(typeTip))}</td>
+    <td class="${terrainCell.cls}">${terrainCell.html}</td>
+    <td class="resource-cell">${worksiteCellHtml(row)}</td>
+    ${valueCell('col-num', known ? `${ppAttrs(d.harvest_pp)}${plannedTip('Planned Total PP')}` : '', known ? num(d.harvest_pp, 0) : '')}
+    ${valueCell('col-num', known ? `${ppAttrs(d.construction_pp)}${plannedTip('Planned Boostable PP')}` : '', known ? num(d.construction_pp, 0) : '')}
+    ${valueCell('col-num', known ? `${ppAttrs(d.base_pp_after_cap ?? d.base_pp)}${plannedTip('Planned Base PP')}` : '', known ? fmtBasePp(d) : '')}
+    <td class="totem-cell"${statusAttrs}>${fmtTotem(d)}</td>
+    <td class="title-cell"${statusAttrs}${titleTipAttrs(d)}>${fmtTitle(d)}</td>
+    ${valueCell('col-num', known ? plannedTip('Planned boost') : '', known && Number.isFinite(Number(d.multiplier)) ? Number(d.multiplier).toFixed(2) + 'x' : '—')}
+    ${valueCell('col-num', '', known ? fmtWorkPerHour(d) : '')}
+    ${valueCell('col-num', known ? foodCell.tip : '', known ? foodCell.html : '')}
+    ${valueCell('col-num col-w-wood', known ? woodCell.tip : '', known ? woodCell.html : '')}
+    ${valueCell('col-num col-w-stone', known ? stoneCell.tip : '', known ? stoneCell.html : '')}
+    ${valueCell('col-num col-w-iron', known ? ironCell.tip : '', known ? ironCell.html : '')}
+    ${valueCell('col-num', known ? plannedTip('Planned workers') : '', known ? esc(d.capacity?.display ?? '—') : '')}
+    <td class="col-num row-plan-unknown"${statusAttrs}${tipAttrs({ title: 'Planned DEC stake', body: 'The DEC a planned roster needs is not worked out in planning yet.' })}>Unknown</td>
     <td class="lock-cell col-w-lock">${plotLockIconHtml(row)}</td>
     <td class="count-cell col-w-count">${Number.isInteger(rowIndex) ? rowIndex + 1 : ''}</td>`;
 }
@@ -709,6 +794,7 @@ export function openMobilePlotSheet(deedUid, returnTarget = null) {
   sheet.dataset.deedUid = deedUid;
   sheet.hidden = false;
   document.body.classList.add('mobile-plot-sheet-open');
+  if (wasHidden) document.getElementById('mobile-plot-sheet-body')?.style?.removeProperty?.('padding-bottom'); // no picker room left from an earlier plot
   if (wasHidden) window.scrollTo(0, 0); // the sheet is part of the page; the board position is restored on close
   renderMobilePlotSheet(row);
   document.getElementById('mobile-plot-sheet-close')?.focus();
@@ -922,7 +1008,7 @@ export function refreshChangeBadges() {
     const key = keys.get(deedUid) || '0|0'; // phase 3: both badges
     if ((CHANGE_BADGE_COUNTS.get(deedUid) || '0|0') === key) continue;
     if (key !== '0|0') CHANGE_BADGE_COUNTS.set(deedUid, key); else CHANGE_BADGE_COUNTS.delete(deedUid);
-    const row = plotsByDeed.get(deedUid);
+    const row = boardPlanningViewRow(plotsByDeed.get(deedUid)); // the plan's badges in planning
     // amendment: the strip is no longer a table cell -- it is #badge-bar's own
     // per-row element (only present while this deed's <tr> is mounted, same universe
     // as before).
@@ -1321,7 +1407,7 @@ export async function loadPlotDetail(row, generation = BOARD_GENERATION) {
     DETAIL_REQUESTS.delete(deedUid);
     LOADING_PLOTS.delete(deedUid);
     markSlowOpen(deedUid, false); // fix: detail landed or failed -- the spinner switch goes off before the redraw
-    if (BOARD && document.getElementById('badge-filter')?.value) {
+    if (BOARD && document.getElementById('badge-filter')?.value && !boardPlanningActive()) {
       renderTable();
       // The filtered board rebuild does not redraw the separate mobile sheet.
       if (MOBILE_PLOT_UID === deedUid) updateMountedRow(deedUid, { readiness: true });
@@ -1340,10 +1426,16 @@ export async function loadPlotDetail(row, generation = BOARD_GENERATION) {
 // number, never a second hand-maintained copy that can drift (same reasoning as
 // notices.py's BADGE_ORDER). refreshBoardTotals() below is what keeps this fresh
 // after a confirmed broadcast without a full loadBoard().
+// The shared number format, reachable inside renderTotalsStrip() below where `num` is the plan-aware wrapper.
+const totalsFigure = (value) => num(value);
 export function renderTotalsStrip() {
-  const totals = BOARD?.totals;
+  // IN-0315: while planning the five figures come from the plan only (boardPlanTotals): 0 for a new plan
+  // "Unknown" while a planned plot is not worked out -- never the live BOARD.totals.
+  const totals = (BOARD?.plots && boardPlanningTotals(BOARD.plots, planningRowProjection)) || BOARD?.totals;
   const strip = document.getElementById('totals-strip');
   if (!totals || !strip) return;
+  // A plan total that is not worked out (null) reads "Unknown", never a live or blank figure; Live is unchanged.
+  const num = (value) => (totals.planning && value === null ? 'Unknown' : totalsFigure(value));
   // "Portfolio PP/DEC" removed from the header ( board-fix batch, the owner
   // does not want that figure there) -- it was the metric whose denominator
   // (totals.portfolio_dec_efficiency, derived from the untrustworthy

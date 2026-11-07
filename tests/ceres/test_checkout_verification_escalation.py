@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import json
+import time
 
 import pytest
 from playwright.sync_api import Browser, Page
@@ -27,6 +28,10 @@ def _page(live_browser: tuple[Browser, str], *, compressed_schedule: bool = Fals
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     if compressed_schedule:
         page.add_init_script("window.__ceresOperationPollSchedule = [10, 20, 30, 40, 50, 60];")
+    page.route("**/api/confirm/intent*", lambda route: route.fulfill(
+        status=200, content_type="application/json", body=json.dumps({
+            "begin_token": "c" * 32, "action_id": "a" * 32,
+            "revision": 1, "server_now": int(time.time() * 1000)})))
     hide_running_constructions(page)
     page.goto(f"{base_url}?ir1882-guard=1" if compressed_schedule else base_url)
     wait_for_board(page)
@@ -72,10 +77,10 @@ def _stage_runi_unstake(page: Page, index: int) -> None:
     expanded.locator(".slot-power[data-power-state='core-only']").wait_for(timeout=30_000)
 
 
-def test_checkout_verification_escalates_after_repeated_check_again_clicks(
+def test_checkout_verification_escalates_on_scheduled_checks(
     live_browser: tuple[Browser, str], tmp_path,
 ) -> None:
-    page = _page(live_browser)
+    page = _page(live_browser, compressed_schedule=True)
     index, deed_uid, detail = _runi_plot(page)
     runi_uid = next(worker["asset_ref"] for worker in detail.get("workers", []) if int(worker.get("slot", -1)) == 0)
     operation = [
@@ -102,9 +107,12 @@ def test_checkout_verification_escalates_after_repeated_check_again_clicks(
     # notice on attempt 5+ -- exactly what fides_land/verify.py's real
     # PENDING_ESCALATION_ATTEMPTS=5 does, but driven deterministically rather than
     # waiting on five real chain round-trips.
+    attempts_seen: list[int] = []
+
     def _verify(route):
         body = route.request.post_data_json or {}
         attempt = int(body.get("verification_attempt", 1))
+        attempts_seen.append(attempt)
         escalated = attempt >= 5
         code = "verification_pending_escalated" if escalated else "verification_pending"
         message = (
@@ -138,18 +146,11 @@ def test_checkout_verification_escalates_after_repeated_check_again_clicks(
 
     banner = page.locator("#ceres-confirmation-banner.phase-pending")
     banner.wait_for(state="visible", timeout=30_000)
-    retry_button = page.locator("#ceres-confirmation-banner [data-confirmation-action='retry-verification']")
-    retry_button.wait_for(timeout=5_000)
+    assert page.locator("#ceres-confirmation-banner [data-confirmation-action='retry-verification']").count() == 0
     page.screenshot(path=str(tmp_path / "pending_change_check_again.png"))
 
-    # Click "Check again" four more times (attempts 2, 3, 4, 5) -- the 5th response
-    # is the escalated notice.
-    for _ in range(4):
-        retry_button.click()
-        page.locator("#ceres-confirmation-banner.phase-pending, "
-                     "#ceres-confirmation-banner.phase-pending-escalated").first.wait_for(timeout=30_000)
-
     page.locator("#ceres-confirmation-banner.phase-pending-escalated").wait_for(timeout=30_000)
+    assert attempts_seen[:5] == [1, 2, 3, 4, 5]
     page.screenshot(path=str(tmp_path / "escalated_pending.png"))
 
     # The abandoned-chunk defect this whole surface guards against: nothing must
@@ -229,5 +230,5 @@ def test_escalation_schedule_is_stake_only_for_the_settle_floor(
         settle(page)
         assert attempts == [1, 2, 3, 4, 5]
         assert page.evaluate("window.__floorBroadcastCount") == 1
-        assert page.locator("#ceres-confirmation-banner [data-confirmation-action='retry-verification']").count() == 1
+        assert page.locator("#ceres-confirmation-banner [data-confirmation-action='retry-verification']").count() == 0
     page.close()

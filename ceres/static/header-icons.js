@@ -12,7 +12,9 @@
     cards: '<svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><path class="a" d="M3.2 6.4 9.6 4.6l3.9 14.2-6.4 1.8z"/><path class="f" d="M9.4 3.4h10.4v17.2H9.4z"/><path class="d" d="M12 7.6h5.2M12 10.8h5.2M12 14h3.4"/></svg>',
     myCards: '<svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><path class="a" d="M3.5 7.2 14.8 4.3l2.1 8.2"/><path class="d" d="M5.6 9.4 16.9 6.5l2.1 8.2"/><path class="f" d="M4.2 9.1h13.3v11.5H4.2z"/><path class="d" d="M7 12.2h7.7M7 15.1h7.7M7 18h5"/></svg>',
     market: '<svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><path class="d" d="M4 10.1v10.2h16V10.1M2.8 9.8l2-5h14.4l2 5"/><path class="f" d="M2.8 9.8c.4 2.5 4 2.5 4.4 0 .4 2.5 4 2.5 4.4 0 .4 2.5 4 2.5 4.4 0 .4 2.5 4 2.4 4.4 0"/><path class="a" d="M9.2 20.3v-5.6h5.6v5.6"/></svg>',
-    purchases: '<svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><path class="f" d="M5 2.8h14v18.4l-2.8-1.7-2.2 1.7-2-1.7-2 1.7-2.2-1.7L5 21.2z"/><path class="d" d="M8 7h8M8 10.5h8M8 14h5"/><path class="a" d="M15.8 14h2.1"/></svg>'
+    purchases: '<svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><path class="f" d="M5 2.8h14v18.4l-2.8-1.7-2.2 1.7-2-1.7-2 1.7-2.2-1.7L5 21.2z"/><path class="d" d="M8 7h8M8 10.5h8M8 14h5"/><path class="a" d="M15.8 14h2.1"/></svg>',
+    pencil: '<svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><path class="d" d="M4 20l4.5-1 11-11a2 2 0 0 0-3-3l-11 11L4 20zM14.5 7.5l3 3"/></svg>',
+    bin: '<svg class="hdr-ic" viewBox="0 0 24 24" aria-hidden="true"><path class="d" d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7M14 10v7"/></svg>'
   };
 
   function fill(root) {

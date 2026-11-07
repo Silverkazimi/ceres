@@ -2,6 +2,7 @@
 // lives in memory only; newly mounted rows start closed and the flag derives its next
 // action from the rows currently open.
 import { BOARD, BOARD_GENERATION } from './board.js';
+import { boardPlanningViewRow } from './board-planning.js';
 import { formatPlotLabel } from './format.js';
 import { badgeCodesFor, badgeHtml, badgeRosterLoaded, badgeStatusGlyph, badgeStripHtml, badgeStripStatus, cooldownChangeEntries, unsignedChangeCount } from './badges.js';
 
@@ -258,8 +259,9 @@ function plotAriaName(deedUid) {
   return plot ? `plot ${formatPlotLabel(plot)}` : 'this plot';
 }
 
+// in planning the rail and slide-outs read the projected row (the plan), never the live row.
 function rowForDeedUid(deedUid) {
-  return BOARD?.plots.find((plot) => plot.deed_uid === deedUid);
+  return boardPlanningViewRow(BOARD?.plots.find((plot) => plot.deed_uid === deedUid));
 }
 
 // The bar and slide-outs follow only the currently mounted rows. Reads are batched

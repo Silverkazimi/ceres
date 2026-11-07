@@ -28,10 +28,10 @@ OWNER = {
                    {"op": "swap_tokens", "region_uid": "", "resource_amount": 1, "shares_out": 8.124, "max_slippage": 2.5, "resource_symbol": "SPS"}),
 }
 # Step 2 of the SPS sale: ACTIVE custom_json id sm_sps (tx 9f708b6a9b079312900596d03c866e88e2782974).
-OWNER_TRANSFER = {"action": "token_transfer", "params": {"to": "player0016", "qty": 1, "token": "SPS", "memo": "lpsid:90001"}}
+OWNER_TRANSFER = {"action": "token_transfer", "params": {"to": "player0017", "qty": 1, "token": "SPS", "memo": "lpsid:90001"}}
 # What transactions/lookup returned for tx <tx id> (result.data).
 OWNER_SPS_SALE_RESULT = {"pending_swap_id": 90001, "pending_external_amount": 1, "external_swap_required": True,
-                         "external_swap_token": "SPS", "external_transfer_account": "player0016"}
+                         "external_swap_token": "SPS", "external_transfer_account": "player0017"}
 
 
 @pytest.mark.parametrize("name,build", [
@@ -229,13 +229,21 @@ context.__declineActive = true;
                "operations": [["custom_json", {"id": "sm_sps", "json": json.dumps({"action": "token_transfer", "params": {**OWNER_TRANSFER["params"], "app": app_identity(), "n": "fedcba9876543210"}}),
                                                 "required_auths": ["player0005"], "required_posting_auths": []}]]}
     body_js = CARD_JS + f"""
-VERIFY_SCHEDULE_MS.length = 1;
+__setConfirmerClock(Object.fromEntries([['sleep', async () => undefined]]));  // the shared schedule, frozen for the test
 const built = {posting};
+const funding = {json.dumps(funding)};
+let fundingReplies = 0;
 const order = [];
 globalThis.fetch = async (url, options) => {{
   const path = url.split('?')[0].split('/').pop(); const body = JSON.parse(options.body); order.push([path, body]);
   const reply = path === 'preview' ? {{ ...built, signing_enabled: true, quote: {{ kind: 'swap_sell', input: '1', output: '8.124', minimum: '7.920', pool_cost: '0.005', slippage: '2.5', fee_percent: '0.5', two_step: true }}, projected: {{ dec_after: '108.124', region_after: '4' }} }}
-    : path === 'verify' ? {json.dumps(info)} : {json.dumps(funding)};
+    : path === 'verify' ? {json.dumps(info)} : (() => {{
+      const next = JSON.parse(JSON.stringify(funding));
+      const payload = JSON.parse(next.operations[0][1].json);
+      payload.params.n = 'fedcba987654321' + String(++fundingReplies);
+      next.operations[0][1].json = JSON.stringify(payload);
+      return next;
+    }})();
   return {{ ok: true, status: 200, json: async () => reply }};
 }};
 const st = swapState('player0005', 'SPS');
@@ -250,7 +258,7 @@ const target = {{ closest: () => ({{ dataset: {{ lpSymbol: 'SPS' }} }}) }};
   await swapAction(ctx, 'swap', target);
   for (let i = 0; i < 400 && !(st.stage === 'funding' && !signing); i++) await new Promise(r => setTimeout(r, 2));  // the click returns at once; the check loop runs on
   const paths = order.map(o => o[0]).join(',');
-  if (paths !== 'preview,verify,sps-funding') throw new Error('requests in order: ' + paths);
+  if (paths !== 'preview,review,verify,sps-funding,review') throw new Error('requests in order: ' + paths);
   const preview = order[0][1];
   if (preview.sign !== true || preview.seen_output !== '8.124' || preview.region_uid !== '' || preview.resource_amount !== '1' || 'reviewed_payload' in preview) throw new Error('one-click build: ' + JSON.stringify(preview));
   if (__signed.length !== 2 || __signed[0].authority !== 'Posting' || __signed[1].authority !== 'Active') throw new Error('both wallet requests from one click: ' + JSON.stringify(__signed));
@@ -260,9 +268,10 @@ const target = {{ closest: () => ({{ dataset: {{ lpSymbol: 'SPS' }} }}) }};
   let retry = swapHtml('SPS', wallet, 'player0005', true);
   if ((retry.match(/data-dec="lp:fund"/g) || []).length !== 1 || !retry.includes('Send SPS to the pool') || /error|failed|rejected|cancel|two signatures|Step 2/i.test(retry)) throw new Error('retry card: ' + retry);
   await swapAction(ctx, 'fund', target);
-  if (order.filter(o => o[0] === 'sps-funding').length !== 1) throw new Error('the kept transfer is signed again, not rebuilt');
+  if (order.filter(o => o[0] === 'sps-funding').length !== 2) throw new Error('a declined transfer must be rebuilt for the second wallet invocation');
   // (stuck states): the sale is not "done" at the transfer -- it waits for the pool to settle, no quote shown.
   if (__signed.length !== 3 || __signed[2].authority !== 'Active' || st.stage !== 'settling' || st.receipt.funding_tx !== 'b'.repeat(40) || st.receipt.output !== null) throw new Error('retry settling: ' + st.stage);
+  if (__signed[1].json.params.n === __signed[2].json.params.n) throw new Error('the second funding prompt reused a nonce');
   if (!swapHtml('SPS', wallet, 'player0005', true).includes('Waiting for the pool to settle')) throw new Error('receipt');
   process.exit(0);  // the settlement loop keeps real timers alive; the checks are done
 }})().catch(error => {{ console.error(error); process.exit(1); }});
@@ -317,7 +326,7 @@ def test_the_games_nested_answer_confirms_and_builds_the_sps_transfer():
     data = {"resource": "SPS", "resource_amount": 1, "dec_amount": 8.115, "region_uid": "", "pending_swap_id": 90002,
             "pending_external_amount": 1, "pending_external_fee_amount": 0.005, "pending_external_swap_amount": 0.995,
             "external_swap_required": True, "external_swap_token": "SPS", "external_swap_player": "player0005",
-            "external_transfer_account": "player0016", "to_player": "player0005", "region_name": None}
+            "external_transfer_account": "player0017", "to_player": "player0005", "region_name": None}
     info = {"id": tx, "type": "land_operation", "player": "player0005", "data": json.dumps(payload), "success": True,
             "result": json.dumps({"success": True, "result": {"success": True, "error": "", "data": data}})}
     body = {"nonce": payload["n"], "kind": "swap_sell", "expected_payload": payload}
@@ -334,5 +343,5 @@ def test_the_active_sps_transfer_is_one_keychain_sign_and_send_request():
     # Keychain showed no prompt. The game asks Keychain to sign AND send; so does Ceres now.
     lp = (STATIC / "wallet-lp.js").read_text(encoding="utf-8")
     gate = (STATIC / "broadcast-gate.js").read_text(encoding="utf-8")
-    assert "}, 'Active', { direct: true });" in lp
+    assert "}, 'Active', { direct: true, actionId });" in lp
     assert "if (!walletCanSignTransaction(account) || metadata?.direct === true) {" in gate
