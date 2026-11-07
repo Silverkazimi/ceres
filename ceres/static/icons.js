@@ -2,6 +2,7 @@ import { abilityTipModel, bloodlineStatus, decodeAbilityEntry } from './badges.j
 import { esc, setNameLabel } from './format.js';
 import { ASSET_BASE } from './state.js';
 import { abilityTipAttrs, tipAttrs, tipIcon } from './tooltip.js';
+import { resourceFieldMap } from './resources.js';
 
 export const FILL_TRAY_ICON = '<svg class="hdr-ic fill-tray-icon" viewBox="0 0 24 24" aria-hidden="true"><path class="f" d="M4 4.5A1.5 1.5 0 0 1 5.5 3h13A1.5 1.5 0 0 1 20 4.5v9A1.5 1.5 0 0 1 18.5 15h-13A1.5 1.5 0 0 1 4 13.5z"/><path class="d" d="M6.5 7.5h11M6.5 11h7"/><path class="a h" d="M12 17v4m0 0-2.5-2.5M12 21l2.5-2.5"/></svg>';
 
@@ -108,17 +109,10 @@ export function terrainCellHtml(terrain) {
 // grain uses the owner's own compressed PNG (see manifest.json -- 46KB vs the
 // CDN original's 186KB for the same table-cell job, 4x lighter); research
 // and sps only exist as unsized PNGs upstream.
-const RESOURCE_ICON = {
-  dec: 'land/token-dec.png',
-  wood: 'resources/wood_200.webp',
-  stone: 'resources/stone_200.webp',
-  iron: 'resources/iron_200.webp',
-  aura: 'resources/aura_200.webp',
-  grain: 'resources/grain.png',
-  research: 'resources/research.png',
-  sps: 'resources/sps.png',
-  voucher: 'resources/voucher.svg',
-};
+// the paths live in the resource registry (resources.js, generated from ceres/resources.py)
+// dec land/token-dec.png, grain resources/grain.png, wood/stone/iron/aura resources/<x>_200.webp
+// research resources/research.png, sps resources/sps.png, voucher resources/voucher.svg.
+const RESOURCE_ICON = resourceFieldMap('icon');
 // every
 // whole-word resource name in already-escaped text gets its canonical icon appended. Input MUST be escaped
 // HTML (esc(...)); the icon markup is the only HTML this adds. "Vouchers" and plurals are matched by stem.

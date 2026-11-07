@@ -109,7 +109,7 @@ def test_stale_worksite_read_is_pending_not_mismatch(monkeypatch, tmp_path):
     # `pending_metadata` was computed and never read by anything.
     assert notice["code"] == "verification_pending_escalated"
     assert notice["severity"] != "danger"  # escalation is not a failure verdict
-    assert notice["action"] == {"id": "retry_verification", "label": "Check again"}
+    assert "action" not in notice or notice["action"] is None   # no manual Check again; the client reads on by itself
 
 
 def test_worksite_facts_none_is_could_not_verify(monkeypatch, tmp_path):

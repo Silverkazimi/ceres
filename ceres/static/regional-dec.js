@@ -8,6 +8,7 @@ import { DARK_ENERGY_SRC } from './tooltip.js';
 import { territorySlug } from './icons.js';
 import { walletControlsHtml, walletReady, walletSignLabelHtml } from './wallet.js';
 import { requestBroadcastThroughGate } from './broadcast-gate.js';
+import { CONFIRM_EXPIRY_RECHECK, confirmAction, confirmationState, subscribeConfirmation, waitThrough } from './shared-confirmer.js';
 import { WALLET_TABS, walletTabsHtml, walletResourceHtml } from './wallet-resources.js';
 import { claimHtml, claimAction, loadClaimPending } from './wallet-claim.js';
 import { isMobileBoardTier } from './table.js';
@@ -20,18 +21,33 @@ const D = { player: '', generation: 0, data: null, wallet: null, rewards: null, 
 // each other — only D.review/D.claim.review (an open confirmation) or D.busy still block every tab.
 export function tabSwitchAllowed(D, tab) {
   if (!WALLET_TABS.includes(tab) || D.review || D.claim.review || D.busy) return false;
-  if ((D.pending || D.claim.pending) && !['DEC', 'SPS'].includes(tab)) return false;
+  if (((D.pending && !decUnprovable(D.pending)) || D.claim.pending) && !['DEC', 'SPS'].includes(tab)) return false;  // an unprovable DEC entry blocks nothing
   return true;
 }
 const fmt = value => Number(value).toLocaleString(undefined, { maximumFractionDigits: 3 });
-// a signed DEC change the game does not
-// know ends as "not found" once the claims window (, 25 s) has passed since the signature -- never pending
-// forever. An entry without a signing time (an older version, or a transaction ID typed in) ends at the first answer.
-export const DEC_NOT_FOUND_AFTER_MS = 25000;
-export function decNotFoundFinal(pending, lastStatus, now = Date.now()) {
-  if (lastStatus !== 'not_found' || !pending) return false;
-  const signedAt = Number(pending.signed_at);
-  return !Number.isFinite(signedAt) || signedAt <= 0 || now - signedAt >= DEC_NOT_FOUND_AFTER_MS;
+// a signed DEC change ends confirmed, rejected (the game's error) or not sent -- decided by the shared
+// confirmer from the game and the chain. The former 25-second "not found" end (a lagging game read as "never broadcast")
+// is gone; an older saved "not_found" entry is confirmed again on open.
+// A change signed without a returned id that the ten-minute finder () did not see is read once more at its Hive
+// expiry (CONFIRM_EXPIRY_RECHECK): found -> confirmed by the game read, absent -> not sent. Only when even that read
+// cannot reach back (or the flag is off, or an entry saved before carries neither id nor operations) is the
+// change unprovable: its receipt keeps an honest line, has no button and blocks nothing -- the next change replaces it.
+// There is no Dismiss (IN-0706: no manual control).
+export const DEC_UNPROVEN_AFTER_MS = 10 * 60 * 1000;
+export function decUnprovable(pending, now = Date.now()) {
+  if (!pending || pending.tx_id || !['pending', 'not_found'].includes(pending.status)) return false;
+  if (!pending.ops) return true;
+  const shared = confirmationState(pending.account || D.player, pending.ops);
+  if (shared?.txId) return false;
+  if (shared?.unprovable) return shared.state === 'pending';   // the server's expiry read could not reach the signing moment
+  const asked = Number(pending.signed_at || pending.asked_at) || 0;
+  return !CONFIRM_EXPIRY_RECHECK && asked > 0 && now - asked >= DEC_UNPROVEN_AFTER_MS;
+}
+const blockingPending = () => !!D.pending && !decUnprovable(D.pending);
+function confirmationNote(pending) {
+  const shared = pending.ops ? confirmationState(pending.account || D.player, pending.ops) : null;
+  const what = `${pending.action === 'stake' ? 'Stake' : 'Unstake'} of ${fmt(pending.amount)} DEC`;
+  return `${what}: ${shared?.message || 'Ceres cannot prove whether this change was sent.'} Nothing will be sent again; the Staked figures below are read from the game.`;
 }
 const stakeOrder = row => Number.isFinite(Number(row.staked)) ? Number(row.staked) : -Infinity;
 const account = () => String(CURRENT_PLAYER || BOARD?.player || '').toLowerCase();
@@ -347,30 +363,31 @@ function render(force = false) {
     return `<${tag} class="dec-region${collapsedRegion ? ' dec-region-collapsible' : ''}" data-region="${esc(row.region_uid)}"${collapsedRegion && expandedEmptyRegions.has(row.region_uid) ? ' open' : ''}>
     ${heading}
     ${row.error ? `<p class="dec-error">${esc(row.error)}</p>` : `<dl class="dec-figures"><div><dt>Staked</dt><dd class="dec-staked ${stakeTone(row.staked, row.required)}">${stakeFigure(row.staked)}</dd></div><div><dt>Required</dt><dd class="dec-staked">${stakeFigure(row.required)}</dd></div><div class="${row.shortfall ? 'dec-shortfall' : 'dec-surplus'}"><dt>${row.shortfall ? 'Shortfall' : 'Surplus'}</dt><dd class="dec-staked">${stakeFigure(row.shortfall || row.surplus)}</dd></div></dl>
-    <div class="dec-region-actions">${button('stake', 'Stake', true, D.busy || !!D.pending)}${button('unstake', 'Unstake', false, D.busy || !!D.pending || !row.staked)}</div>`}</${tag}>`;
+    <div class="dec-region-actions">${button('stake', 'Stake', true, D.busy || blockingPending())}${button('unstake', 'Unstake', false, D.busy || blockingPending() || !row.staked)}</div>`}</${tag}>`;
   }).join('');
   const review = D.review;
   let content = '';
-  if (D.pending) {
+  // An unprovable entry (decUnprovable) is a note above the normal regions, never a receipt that hides them.
+  const unprovableNote = D.pending && !blockingPending()
+    ? `<p class="dec-status dec-unprovable" role="status">${esc(confirmationNote(D.pending))}</p>` : '';
+  if (blockingPending()) {
     const pending = D.pending;
     const confirmed = pending.status === 'confirmed';
     const failed = pending.status === 'failed';
-    const notFound = pending.status === 'not_found';
-    const terminal = confirmed || failed;
-    content = notFound ? `<section class="dec-review dec-receipt is-failed" aria-live="polite">
-      <header><h3>Transaction not found</h3>${regionHeading(pending.region_uid)}</header>
-      <div class="dec-receipt-amount"><img src="${esc(tokenIcon('DEC'))}" alt="DEC"><div><span>${pending.action === 'stake' ? 'Stake' : 'Unstake'}</span><strong>${fmt(pending.amount)} <small>DEC</small></strong></div></div>
-      <p>The game has no record of this transaction, so your regional DEC did not change. It was most likely never broadcast. Dismiss to continue; if your wallet history shows it, Check again reads the game once more — nothing is signed again.</p>
-      <div class="dec-receipt-actions">${pending.tx_id ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(pending.tx_id)}" target="_blank" rel="noopener noreferrer">View transaction ↗</a>` : ''}${button('dismiss', 'Dismiss', true, D.busy)}${pending.tx_id ? button('verify', 'Check again', false, D.busy) : ''}</div>
-    </section>` : `<section class="dec-review dec-receipt${confirmed ? ' is-confirmed' : failed ? ' is-failed' : ' is-waiting'}" aria-live="polite">
-      <header><h3>${confirmed ? 'DEC change confirmed' : failed ? 'DEC change rejected' : 'Confirming DEC change'}</h3>${regionHeading(pending.region_uid)}</header>
+    const notSent = pending.status === 'not_sent';
+    const terminal = confirmed || failed || notSent;
+    const shared = pending.ops ? confirmationState(D.player, pending.ops) : null;
+    const line = confirmed ? 'Your regional DEC stake has been updated.' : failed ? esc(pending.message || 'The game rejected this change.')
+      : notSent ? esc(pending.message || 'Hive has no record of this change. Nothing changed.')
+      : !pending.tx_id ? esc(shared?.message || 'Signed — Ceres is finding the transaction on Hive. Nothing will be sent again.')
+      : 'Waiting for the game to confirm your transaction. Ceres keeps checking; nothing will be sent again.';
+    content = `<section class="dec-review dec-receipt${confirmed ? ' is-confirmed' : failed || notSent ? ' is-failed' : ' is-waiting'}" aria-live="polite">
+      <header><h3>${confirmed ? 'DEC change confirmed' : failed ? 'DEC change rejected' : notSent ? 'DEC change not sent' : 'Confirming DEC change'}</h3>${regionHeading(pending.region_uid)}</header>
       <div class="dec-receipt-amount"><img src="${esc(tokenIcon('DEC'))}" alt="DEC"><div><span>${pending.action === 'stake' ? (confirmed ? 'Staked' : 'Stake') : (confirmed ? 'Unstaked' : 'Unstake')}</span><strong>${fmt(pending.amount)} <small>DEC</small></strong></div></div>
-      <p>${confirmed ? 'Your regional DEC stake has been updated.' : failed ? esc(pending.message || 'The game rejected this change.') : D.checking ? 'Waiting for the game to confirm your transaction…' : 'Confirmation is still pending. Checking again will not sign another transaction.'}</p>
+      <p${terminal ? '' : ' role="status"'}>${terminal ? '' : '<span class="spinner" aria-hidden="true"></span>'}${line}</p>
       ${confirmed ? harvestReceiptHtml(pending.harvest) : ''}
-      ${!pending.tx_id ? `<p>The wallet has not returned a transaction ID. Check your wallet history before continuing.</p><label class="dec-amount">Transaction ID<input id="dec-transaction" type="text" autocomplete="off" spellcheck="false"></label>` : ''}
       <div class="dec-receipt-actions">${pending.tx_id ? `<a href="https://hivehub.dev/tx/${encodeURIComponent(pending.tx_id)}" target="_blank" rel="noopener noreferrer">View transaction ↗</a>` : ''}
-      ${terminal ? button('done', 'Done', true, D.busy) : pending.tx_id ? `${button('verify', 'Check again', true, D.busy)}${!D.checking ? button('change-tx', 'Change transaction ID', false, D.busy) : ''}` : `${button('recover', 'Check transaction', true, D.busy)}${button('discard', 'Discard this change', false, D.busy)}`}</div>
-      ${!pending.tx_id ? '<p class="wallet-meta">Discard only if your wallet shows no broadcast for this change; one that did go through changes your stake either way.</p>' : ''}
+      ${terminal ? button('done', 'Done', true, D.busy) : ''}</div>
     </section>`;
   } else if (review) {
     const row = data.regions.find(r => r.region_uid === review.region_uid);
@@ -384,13 +401,13 @@ function render(force = false) {
       ${preview ? `<dl class="dec-figures"><div><dt>Staked after</dt><dd class="dec-staked ${stakeTone(preview.after, preview.region.required)}">${stakeFigure(preview.after)}</dd></div><div><dt>Required</dt><dd class="dec-staked">${stakeFigure(preview.region.required)}</dd></div></dl>${preview.shortfall_after ? `<p class="dec-error" role="alert"><span class="dec-staked">${stakeFigure(preview.shortfall_after)}</span> below requirement after this change. Worker production may decrease.</p>` : ''}<details><summary>Show Hive operation</summary><pre>${esc(JSON.stringify(preview.operations, null, 2))}</pre></details>` : ''}
       <div class="dec-region-actions">${preview && review.previewAmount === review.amount ? preview.shortfall_after && !review.shortfallConfirmed ? button('confirm-shortfall', 'Continue despite worker shortfall', false, D.busy || review.previewing, ' data-control-case="destructive"')  /* a risky confirmation uses the shared destructive style */ : `<span class="wallet-sign-pair">${walletControlsHtml(D.player)}${button('sign', walletSignLabelHtml(), true, D.busy || review.previewing || !preview.signing_enabled || !walletReady(D.player))}</span>` : ''}</div>
       ${preview && !preview.signing_enabled ? '<p>Signing is disabled on this server.</p>' : ''}</section>`;
-  } else content = `<p class="dec-liquid">Available DEC <strong class="dec-staked">${data ? fmt(data.balance) : '—'}<img src="${esc(tokenIcon('DEC'))}" alt="DEC" class="dec-energy-icon"></strong></p>${stakedDecHtml(D.wallet)}${rows || (!D.busy ? '<p>No regions with land or staked DEC.</p>' : '')}`;
+  } else content = `${unprovableNote}<p class="dec-liquid">Available DEC <strong class="dec-staked">${data ? fmt(data.balance) : '—'}<img src="${esc(tokenIcon('DEC'))}" alt="DEC" class="dec-energy-icon"></strong></p>${stakedDecHtml(D.wallet)}${rows || (!D.busy ? '<p>No regions with land or staked DEC.</p>' : '')}`;
   // the DEC tab keeps this drawer's staking content; every other tab renders the wallet-resources view.
   // the swap card closes every swappable tab; on SPS it follows the claim button.
   if (D.tab !== 'DEC') content = withClaimInRewards(walletResourceHtml(D.tab, D.wallet, D.walletBusy), D.tab === 'SPS' ? claimHtml(D) : '') + (D.walletBusy ? '' : swapHtml(D.tab, D.wallet, D.player) + positionHtml(D.tab, D.wallet, D.player));  // the pool position closes the tab
   const walletIssues = D.tab !== 'DEC' && D.wallet?.issues?.length ? `<p class="dec-error" role="alert">${esc(D.wallet.issues.join(' '))}</p>` : '';
   // a transaction id being typed survives the re-render (wallet/rewards reads finish while the user pastes).
-  const typed = Object.fromEntries(['dec-transaction', 'claim-transaction'].map(id => [id, drawer.querySelector('#' + id)?.value ?? null]));
+  const typed = Object.fromEntries(['claim-transaction'].map(id => [id, drawer.querySelector('#' + id)?.value ?? null]));
   // a swap amount being typed keeps its focus and caret across a re-render (its value lives in page memory).
   const focusAttr = ['data-lp-receive', 'data-lp-amount', 'data-lp-pool-amount', 'data-lp-pool-pct', 'data-lp-pool-dec', 'data-lp-transfer-to', 'data-lp-transfer-amount'].find(attr => document.activeElement?.hasAttribute?.(attr));
   const swapFocus = focusAttr && drawer.contains(document.activeElement)
@@ -398,14 +415,14 @@ function render(force = false) {
         caret: [document.activeElement.selectionStart, document.activeElement.selectionEnd] } : null;
   // (a): while only a pending DEC receipt/claim blocks tab switching (not busy/signing/review)
   // the DEC/SPS tabs stay enabled so the user can move between them; every other tab still locks.
-  const tabsBusy = D.busy || D.signing || !!D.pending || !!D.review || !!D.claim.review || !!D.claim.pending || !!swapLocked(D.player);
-  const tabsAllowed = (D.pending || D.claim.pending) && !D.review && !D.claim.review && !D.busy && !D.signing ? ['DEC', 'SPS'] : undefined;
+  const tabsBusy = D.busy || D.signing || blockingPending() || !!D.review || !!D.claim.review || !!D.claim.pending || !!swapLocked(D.player);
+  const tabsAllowed = (blockingPending() || D.claim.pending) && !D.review && !D.claim.review && !D.busy && !D.signing ? ['DEC', 'SPS'] : undefined;
   // (maintainer): on desktop the edge tray is the only resource picker -- the
   // drawer's own header (title + Close) and icon tab row are dropped there, replaced
   // by a slim caption line naming the open resource; mobile (the full-height
   // #regional-dec-button path) keeps both exactly as before.
   const desktop = isDesktopPanel();
-  const forcedPending = D.tab === 'DEC' ? D.pending?.status === 'pending' : D.tab === 'SPS' ? (D.signing && !!D.claim.pending) : false; // only while actually signing
+  const forcedPending = D.tab === 'DEC' ? D.pending?.status === 'pending' && blockingPending() : D.tab === 'SPS' ? (D.signing && !!D.claim.pending) : false; // only while actually signing
   const headerHtml = desktop ? '' : `<header class="dec-drawer-header"><h2 id="dec-title"><img src="${esc(tokenIcon(D.tab))}" alt="">${D.tab === 'DEC' ? 'Regional DEC' : 'Wallet'}</h2>${button('close', 'Close', false, D.signing)}</header>`;
   const tabsHtml = desktop ? '' : walletTabsHtml(D.tab, tabsBusy, tabsAllowed);
   const captionHtml = desktop ? `<div class="wallet-caption" id="dec-title"><img src="${esc(tokenIcon(D.tab))}" alt=""><span>${esc(D.tab === 'DEC' || D.tab === 'SPS' ? D.tab : tokenLabel(D.tab))}</span>${forcedPending ? '<span class="wallet-caption-pending">Pending signature</span>' : ''}</div>` : '';
@@ -549,38 +566,41 @@ async function close() {
   // a surface the wallet sat over (the Cards checkout) re-reads its balances once the wallet is closed.
   window.dispatchEvent(new CustomEvent('ceres:wallet-closed', { detail: { player: D.player } }));
 }
+// one read for the shared confirmer (/api/dec verify by tx id); the wait, its bounds and every resume are the
+// confirmer's. Runs whether or not the drawer is open; the drawer only renders what it is given.
 async function check() {
-  const generation = D.generation;
+  if (!D.pending || D.checking) return;
   const player = D.player;
   const intent = { ...D.pending };
-  const current = () => generation === D.generation && drawer.open && player === D.player && account() === player && D.pending?.nonce === intent.nonce && D.pending?.tx_id === intent.tx_id;
-  const deadline = Date.now() + 25000;
-  D.checking = true; D.message = ''; render();
-  let last = null;
+  if (!['pending', 'not_found'].includes(intent.status) && !(intent.status === 'confirmed' && !intent.harvest)) return;
+  const mine = () => player === D.player && D.pending?.nonce === intent.nonce;
+  const draw = () => { if (drawer?.open && mine()) render(); };
+  if (intent.status === 'not_found') savePending({ ...intent, status: 'pending' });
+  D.checking = true; D.message = ''; draw();
+  let stopWatch = null;
+  const read = async (txId) => {
+    if (txId && mine() && D.pending.tx_id !== txId) savePending({ ...D.pending, tx_id: txId, signed_at: D.pending.signed_at || Date.now() });
+    const result = await api('/verify', { ...intent, status: 'pending', tx_id: txId }, { player });
+    if (result.status === 'confirmed') return { state: 'confirmed', result };
+    if (result.status === 'failed') return { state: 'refused', result };
+    return { state: 'pending' };
+  };
   try {
-    for (const delay of [0, 1000, 2000, 4000]) {
-      if (delay) await new Promise(resolve => setTimeout(resolve, delay));
-      if (!current()) return;
-      if (Date.now() >= deadline) break;
-      try {
-        const result = await api('/verify', intent, { player, signal: AbortSignal.timeout(Math.min(12000, Math.max(1, deadline - Date.now()))) });
-        if (!current()) return;
-        last = result.status;
-        if (result.status === 'confirmed' || result.status === 'failed') {
-          savePending({ ...intent, status: result.status, message: result.message || '', harvest: result.harvest || null });
-          if (result.status === 'confirmed') balancesChanged({ player, assets: ['DEC', 'GRAIN', 'WOOD', 'STONE', 'IRON'], regions: [intent.region_uid], id: `regional-dec:${intent.tx_id}` });
-          return;
-        }
-      } catch (error) {
-        if (!current()) return;
-        if (error.status && error.status < 500 && ![408, 429].includes(error.status)) throw error;
-      }
-    }
-  } finally {
-    if (generation === D.generation) D.checking = false;
-  }
-  // the game answered "not found" and the window since the signature has passed -- end it clearly.
-  if (current() && decNotFoundFinal(intent, last)) savePending({ ...intent, status: 'not_found' });
+    const onUpdate = () => draw();
+    // The confirmer's own row changes (the expiry read, an unprovable end) redraw the receipt too.
+    stopWatch = intent.ops ? subscribeConfirmation(player, intent.ops, () => draw()) : null;
+    const answer = intent.ops
+      ? await confirmAction({ account: player, operations: intent.ops, txId: intent.tx_id || null, check: read, onUpdate })
+      : intent.tx_id
+        ? await waitThrough({ key: `dec:${player}:${intent.nonce}`, account: player, txId: intent.tx_id,
+          since: new Date(Number(intent.signed_at) || Date.now()).toISOString(), check: () => read(intent.tx_id), onUpdate }).done
+        : null;  // an entry saved before without id or operations: nothing can be read (unprovable, blocks nothing)
+    if (!answer || !mine()) return;
+    if (answer.state === 'confirmed' || answer.state === 'refused') {
+      savePending({ ...D.pending, status: answer.state === 'confirmed' ? 'confirmed' : 'failed', message: answer.result?.message || '', harvest: answer.result?.harvest || null });
+      if (answer.state === 'confirmed') balancesChanged({ player, assets: ['DEC', 'GRAIN', 'WOOD', 'STONE', 'IRON'], regions: [intent.region_uid], id: `regional-dec:${D.pending.tx_id}` });
+    } else if (answer.state === 'never-sent') savePending({ ...D.pending, status: 'not_sent', message: answer.error || '' });
+  } finally { stopWatch?.(); if (mine() || player === D.player) D.checking = false; draw(); }
 }
 async function act(action, target) {
   if (action === 'close') { close(); return; }
@@ -598,12 +618,7 @@ async function act(action, target) {
     D.tab = tab; setWalletSelection(tab); render(); return;
   }
   if (action === 'refresh') { await load(); return; }
-  if (action === 'change-tx') { const pending = { ...D.pending }; delete pending.tx_id; savePending(pending); render(); return; }
   if (action === 'done') { savePending(null); D.review = null; await load(); return; }
-  // every pending DEC entry has an exit -- a not-found transaction is dismissed; one without a transaction ID
-  // can be discarded.
-  if (action === 'dismiss' && D.pending?.status === 'not_found') { savePending(null); D.review = null; await load(); return; }
-  if (action === 'discard' && D.pending && !D.pending.tx_id) { savePending(null); D.review = null; render(); return; }
   if (action === 'back') { cancelStakePreview(); D.review = null; render(); return; }
   if (action === 'stake' || action === 'unstake') {
     cancelStakePreview();
@@ -634,17 +649,9 @@ async function act(action, target) {
     }
     D.review.amount = amount;
   }
-  const recoveryTx = drawer.querySelector('#dec-transaction')?.value.trim();
   const generation = D.generation;
   D.busy = true; D.signing = action === 'sign'; render();
   try {
-    if (action === 'verify' || action === 'recover') {
-      if (action === 'recover') {
-        if (!/^[a-f0-9]{40}$/i.test(recoveryTx)) throw new Error('Enter the 40-character transaction ID from your wallet history.');
-        savePending({ ...D.pending, tx_id: recoveryTx });
-      }
-      await check();
-    }
     if (action === 'sign') {
       const previous = D.review.preview;
       const fresh = await requestFreshStakePreview(D.review, D.review.amount);
@@ -656,18 +663,18 @@ async function act(action, target) {
         D.review.shortfallConfirmed = false;
         throw new Error('DEC figures changed. Review the updated amounts before signing.');
       }
-      const intent = { region_uid: D.review.region_uid, action: D.review.action, amount: D.review.amount, nonce: fresh.nonce, status: 'pending' };
+      const intent = { region_uid: D.review.region_uid, action: D.review.action, amount: D.review.amount, nonce: fresh.nonce, status: 'pending', ops: fresh.operations, asked_at: Date.now() };
       // S10 / A-04: read-and-reserve the account's pending DEC change in one locked step, so a second open tab never reaches the wallet
       // while the first one's outcome is unresolved.
       const reserved = await withDecLock(() => {
         let stored = null;
         try { stored = JSON.parse(localStorage.getItem(key()) || 'null'); } catch (_) { /* unreadable */ }
-        if (stored) return false;
+        if (stored && !decUnprovable(stored)) return false;   // an unprovable entry blocks nothing: the new change replaces it
         savePending(intent); return true;
       });
       if (!reserved) {
         try { D.pending = JSON.parse(localStorage.getItem(key()) || 'null'); } catch (_) { /* ignored */ }
-        throw new Error('A DEC change from another tab is still unfinished. Check it before signing again.');
+        throw new Error('A DEC change from another tab is still being confirmed. Ceres finishes it by itself; sign the next one after that.');
       }
       D.signing = true;
       try {
@@ -677,11 +684,13 @@ async function act(action, target) {
         });
         savePending({ ...D.pending, tx_id: result.txId, signed_at: D.pending?.signed_at || Date.now() });
         D.signing = false;
-        await check();
       } catch (error) {
-        if (error.broadcasted === false || (error.retryable && !error.ambiguousBroadcast)) savePending(null);
-        throw error;
+        if (error.broadcasted === false || (error.retryable && !error.ambiguousBroadcast)) { savePending(null); throw error; }
+        // Sent, id unknown or answer ambiguous: the shared confirmer finds and confirms it ().
+        savePending({ ...D.pending, signed_at: D.pending?.signed_at || Date.now() });
+        D.signing = false;
       }
+      check();  // not awaited: the drawer stays usable while the shared confirmer reads
     }
   } catch (error) { if (generation === D.generation) D.error = error.message; }
   finally { if (generation === D.generation) { D.busy = false; D.signing = false; render(); } }
@@ -719,7 +728,7 @@ export async function openWalletDrawer(symbol) {
     drawer.querySelector('.dec-drawer-panel').animate([{ transform: 'translateX(100%)' }, { transform: 'translateX(0)' }], { duration: 240, easing: 'cubic-bezier(.4, 0, .2, 1)' });
   }
   await load();
-  if (drawer.open && D.pending?.tx_id && (D.pending.status === 'pending' || (D.pending.status === 'confirmed' && !D.pending.harvest))) await act('verify', trigger);
+  if (D.pending) check();  // an open entry is confirmed by itself, never by a manual press
   if (drawer.open && D.claim.pending?.status === 'pending') await act('claim:verify', trigger);
 }
 

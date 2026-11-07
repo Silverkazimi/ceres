@@ -131,7 +131,8 @@ const saved=JSON.parse(localStorage.getItem('ceres:stage-plan:v1:alice')).chains
 if(saved.state!=='combine_signed'||saved.combine.tx_id!=='known-after-switch')throw Error('Expected lost tx id');
 CURRENT_PLAYER='alice';PLANS.chains={[p.id]:saved};let calls=0;fetch=async()=>{calls++;throw Error('unexpected')};
 await verifyPlanCombine(p.id);
-if(calls!==1||!chainCardHtml(p.id,saved).includes('data-upgrade-action="check-combine"'))throw Error('Expected unrecoverable pending plan');
+// no Check again -- the plan keeps an automatic wait (a receipt), and no manual control is shown.
+if(calls!==1||chainCardHtml(p.id,saved).includes('check-combine')||!OPERATION_POLLERS.has('plan-combine:'+p.id))throw Error('Expected an automatic wait for the pending plan');
 })().catch(e=>{console.error(e);process.exitCode=1});
 """,entry=STATIC/'checkout.js')
 

@@ -259,7 +259,9 @@ def test_r3_l2_03_only_the_owner_can_discard_an_unresolved_swap():
     source = SOURCE
     # there is no discard action; a successful covering miss releases only after Hive expiry plus grace.
     assert "name === 'discard'" not in source and "NEVER_SENT_AFTER_MS = 3900 * 1000" in source
-    assert "seen === 'not_found' && Date.now() - Date.parse(st.receipt.asked_at || st.receipt.signed_at || '') >= NEVER_SENT_AFTER_MS" in source
+    # fix round 1 (F7): this age rule is kept only for a legacy intent without operations; a current one is
+    # decided by the server's own-history proof through the shared confirmer.
+    assert "if (seen === 'not_found' && !st.receipt.ops) return { state: 'pending', message: LEGACY_UNRESOLVED };" in source
     assert "INTENT_MAX_AGE_MS" not in source          # no time-based release
     assert "if (intentIsOpen(open)) { restoreIntent(ctx.player, symbol, st); return 'taken'; }" in source   # a swap click first looks at the shared record
 
@@ -312,10 +314,12 @@ if (st.stage === 'edit') throw Error('the sale was dropped instead of restored')
 """)
 
 
-def test_r4_a03_a06_the_owner_can_name_a_swap_id_or_say_the_funding_was_not_sent():
+def test_r4_a03_a06_no_swap_id_entry_and_no_manual_not_sent_statement():
+    """ / IN-0706 replaces A-06's "I checked my wallet: the SPS transfer was not sent" control (continuation 3):
+    a lost SPS transfer is found by the settle read or, past Hive expiry, offered again -- never by an maintainer statement."""
     source = SOURCE
     assert "name === 'enter-id'" not in source and "prompt(" not in source   # the transaction is found automatically
-    assert "name === 'funding-not-sent'" in source and "the SPS transfer was not sent" in source
+    assert "name === 'funding-not-sent'" not in source and "the SPS transfer was not sent" not in source
 
 
 def test_r5_a01_a_stale_verifier_never_funds_a_sale_another_tab_settled():
@@ -344,4 +348,4 @@ def test_r5_a02_a03_a04_wrong_id_can_be_changed_drawer_redraws_and_regional_dec_
     assert "Change the transaction id" not in lp and "post('find'" in lp
     assert "export function onIntentChange" in lp and "intentListener?.(match[1], match[2])" in lp
     dec = (STATIC / "regional-dec.js").read_text(encoding="utf-8")
-    assert "withDecLock" in dec and "A DEC change from another tab is still unfinished" in dec and "onIntentChange(" in dec
+    assert "withDecLock" in dec and "A DEC change from another tab is still being confirmed" in dec and "onIntentChange(" in dec

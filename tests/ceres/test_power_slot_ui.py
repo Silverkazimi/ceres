@@ -342,6 +342,7 @@ for (const item of states) {
 const coreOnly = renderPowerSlot(row, [{ ...core, slots: [core.slots[0]] }, { ...runi, slots: [null] }]);
 if (!coreOnly.includes('<div class="slot-power-satellite"></div>') || coreOnly.includes('aria-label="Add Runi"')
     || !coreOnly.includes('data-group-id="power_core"')) process.exit(11);
+BOARD = { plots: [], unassigned_bonus: { power_core: { capturable: true, count: 3, items: [] } } };
 const runiOnly = renderPowerSlot(row, [{ ...core, slots: [null] }, runi]);
 if (!runiOnly.includes('data-slot-action="add-power-core"') || !runiOnly.includes('aria-label="Add Power Core"')) process.exit(12);
 const neither = renderPowerSlot(row, [{ ...core, slots: [null] }, { ...runi, slots: [null] }]);
@@ -351,6 +352,56 @@ if (!both.includes('class="power-satellite is-filled"') || !both.includes('data-
     || !both.includes('data-group-id="power_core"') || !both.includes('aria-label="Remove Power Core"')) process.exit(14);
 """
     run_in_module_context(script)
+
+
+_SATELLITE_COUNT_BODY = r"""
+CERES_STAGE.length = 0;
+const row = { deed_uid: 'plot-1' };
+const core = { id: 'power_core', label: 'Power Core', slots: [null] };
+const runi = { id: 'runi', label: 'Runi', slots: [null] };
+const emptyCore = [core, runi];
+const withBoard = (family) => { BOARD = { plots: [], unassigned_bonus: { power_core: family } }; };
+const sat = (groups) => renderPowerSlot(row, groups).split('slot-power-satellite')[1];
+// Count 3 -> clickable, count in the tooltip key, 'available' in the body.
+withBoard({ capturable: true, count: 3, items: [] });
+for (const groups of [emptyCore, [core, { ...runi, slots: [{ name: 'Runi', asset_ref: 'r1', land_abilities: [], sole_holder_for: [], badges: [] }] }]]) {
+  const html = sat(groups);
+  if (!html.includes('data-slot-action="add-power-core"') || html.includes('aria-disabled')) process.exit(20);
+  if (!html.includes('data-tip="Add a Power Core"') || !html.includes('data-tip-key="3"') || !html.includes('available to stake')) process.exit(21);
+}
+// A staged core on another plot lowers the count by one.
+CERES_STAGE.push({ deed_uid: 'plot-2', group_id: 'power_core', slot_index: 0, action: 'stake', asset_ref: 'c1' });
+if (!sat(emptyCore).includes('data-tip-key="2"')) process.exit(22);
+CERES_STAGE.length = 0;
+// Zero -> not clickable, says so, no add action, no digit key.
+withBoard({ capturable: true, count: 0, items: [] });
+let html = sat(emptyCore);
+if (html.includes('data-slot-action') || !html.includes('aria-disabled="true"') || !html.includes('data-tip="0 Power Cores left to stake"') || html.includes('data-tip-key')) process.exit(23);
+// Unknown (no full capture) -> not clickable, says it could not be loaded, never a count.
+withBoard({ capturable: false, count: null, reason: 'no capture' });
+html = sat(emptyCore);
+if (html.includes('data-slot-action') || !html.includes('aria-disabled="true"') || !html.includes('data-tip="Power Core availability could not be loaded"') || html.includes('data-tip-key')) process.exit(24);
+// No board family at all (older fixtures) is the same clear unknown state.
+BOARD = { plots: [] };
+html = sat(emptyCore);
+if (html.includes('data-slot-action') || !html.includes('could not be loaded')) process.exit(25);
+"""
+
+
+def test_power_satellite_tooltip_states_the_available_core_count_or_disables() -> None:
+    """ (IN-0859): the Power Core socket tooltip carries the real count; zero and
+    unknown are not clickable and say why."""
+    run_in_module_context(_SATELLITE_COUNT_BODY)
+
+
+def test_power_core_build_button_tooltip_and_accessor_are_wired() -> None:
+    editor = (CSS.parent / "editor.js").read_text()
+    harvest = (CSS.parent / "harvest-state.js").read_text()
+    assert "globalThis.ceresPowerCoresLeft = powerCoresLeft;" in editor
+    assert "globalThis.ceresPowerCoresLeft?.(row.deed_uid)" in harvest
+    assert "from './editor.js'" not in harvest, "harvest-state must not import editor.js (cycle)"
+    assert "key: `${coresLeft}`" in harvest and "0 Power Cores left to stake" in harvest
+    assert 'button.power-satellite[aria-disabled="true"]' in CSS.read_text()
 
 
 def test_live_slot_editor_renders_power_after_workers_before_totem_and_title(live_browser) -> None:
@@ -607,6 +658,8 @@ def test_live_power_slot_screenshots_and_core_affordance(live_browser) -> None:
     screen_dir = Path(__file__).parents[2] / "work" / "ceres-power-slot-ui"
     with urllib.request.urlopen(f"{base_url}/api/board", timeout=10) as response:
         board = json.loads(response.read().decode("utf-8"))
+    # the satellite is clickable only when the board states a Power Core count.
+    board["unassigned_bonus"] = dict(board.get("unassigned_bonus") or {}, power_core={"capturable": True, "count": 3, "items": []})
     target = next(row for row in board["plots"] if row.get("capacity", {}).get("runi_staked"))
     deed_uid = target["deed_uid"]
     detail = _loaded_detail(base_url, deed_uid)

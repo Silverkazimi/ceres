@@ -1,4 +1,5 @@
 import { readyPlanCombines, preparePlanCombineRun, signPlanCombine } from './combine-chain-sign.js';
+import { registerReview } from './shared-confirmer.js';
 import { chainReturn, chainPlacementReady, chainStageBackSource } from './combine-chain.js';
 import { chainPlans } from './stage-plans.js';
 import { plannedReturnChip } from './editor.js';
@@ -70,6 +71,10 @@ export async function confirmCheckoutWithWorksites({ deedUid = null } = {}) {
   CERES_WORKSITE_SIGNING = true;
   try {
     const combineRun = deedUid ? { choice: 'without', reviews: [] } : await preparePlanCombineRun();
+    for (const review of combineRun.reviews) if (review.build?.operation) {
+      review.actionId = (await registerReview(review.build.preview?.account || BOARD?.player,
+        [review.build.operation], { actionId: review.actionId || null, reviewKey: `plan-combine:${review.id}` })).actionId;
+    }
     if (combineRun.choice === 'cancel') return { ok: false, reason: 'Signing cancelled.' };
     const previewKey = deedUid || CERES_PORTFOLIO_KEY;
     const plotRow = deedUid ? BOARD?.plots?.find((plot) => plot.deed_uid === deedUid) : null;
@@ -153,10 +158,9 @@ export async function confirmCheckoutWithWorksites({ deedUid = null } = {}) {
         }
       }
     }
-    const envelopes = worksitePlans.length ? await prepareSigningBatch(worksitePlans[0].plan.account, worksitePlans.map(item => item.plan.chunk.operations), 'Posting', { runId: checkoutRunId(), runKind: 'plan' }) : null;
     for (const [index, { currentDeedUid, build, feed, fresh, plan }] of worksitePlans.entries()) {
       if (feed) {
-        const result = await signStagedWorksiteBuild(fresh, null, 0, plan, envelopes?.[index]);
+        const result = await signStagedWorksiteBuild(fresh, null, 0, plan);
         if (result.ok) {
           markFeedSent(currentDeedUid, result.txId);
           stageToast(`Feed the workers (${feed.toLabel}) was sent for signing.`);
@@ -169,7 +173,7 @@ export async function confirmCheckoutWithWorksites({ deedUid = null } = {}) {
       }
       build.pendingAccount = plan.account;
       build.pendingOperations = plan.chunk.operations;
-      const result = await signStagedWorksiteBuild(fresh, build.target, build.timeCrystals || 0, plan, envelopes?.[index]);
+      const result = await signStagedWorksiteBuild(fresh, build.target, build.timeCrystals || 0, plan);
       if (result.ok) {
         await unstageWorksiteBuild(currentDeedUid);
         stageToast(`${build.targetLabel || 'The worksite'} build was sent for signing.`);
@@ -358,9 +362,9 @@ function plotLockPlanHtml(group) {
   const detail = entry.action === 'lock' ? 'Unlock delay: 3 days' : '';
   const tip = tipAttrs({ title: label, body: [detail, entry.blockedReason || '', entry.txId || '', entry.txId ? '' : 'Click to undo.'].filter(Boolean).join(' ') });
   const stageClass = entry.blockedReason ? 'is-stage-blocked' : 'is-stage-ready'; // same staged outline as the other change tiles
-  // a signed change the game has no record of is dismissed from its tile; one with no answer is checked again.
-  const signedAction = entry.notFound ? 'lock-dismiss' : entry.checkPaused ? 'lock-recheck' : '';
-  const signedTip = signedAction ? tipAttrs({ title: signedPlotLockText(entry), body: entry.notFound ? 'Click to dismiss.' : 'Click to check again.' }) : tip;
+  // a signed change that was never sent is dismissed from its tile; nothing else has a control.
+  const signedAction = entry.notFound ? 'lock-dismiss' : '';
+  const signedTip = signedAction ? tipAttrs({ title: signedPlotLockText(entry), body: 'Click to dismiss.' }) : tip;
   return `<span class="slot-tile ch-lock-plan ${stageClass}" ${entry.txId ? (signedAction ? `data-checkout-action="${signedAction}" role="button" tabindex="0" data-deed-uid="${esc(group.deedUid)}"` : 'data-lock-in-flight="true"') : `data-checkout-action="lock-undo" role="button" tabindex="0" data-deed-uid="${esc(group.deedUid)}"`}${entry.txId ? signedTip : tip}><span class="ch-lock-art">${plotLockSvg(entry.action === 'lock')}</span><span class="slot-caption"><strong class="slot-name">${esc(label)}</strong>${entry.action === 'lock' ? '<span>Unlock delay: 3 days</span>' : ''}</span></span>`;
 }
 
@@ -554,7 +558,7 @@ function plotStripHtml(group, plotsById) {
   const divider = workerTiles && itemTiles ? '<span class="slot-grid-divider" aria-hidden="true"></span>' : '';
   const cellDivider = workerCells && (itemCells || group.plotLock) ? '<span class="editor-base-pp-divider" aria-hidden="true"></span>' : '';
   const lock = group.plotLock;
-  const lockState = lock?.txId ? (lock.notFound ? 'Not found' : lock.accepted ? 'Accepted · waiting' : lock.checkPaused ? 'No answer' : 'Signed · checking')
+  const lockState = lock?.txId ? (lock.notFound ? 'Not sent' : lock.accepted ? 'Accepted · waiting' : 'Signed · confirming')
     : lock?.blockedReason ? 'Blocked' : `${lock?.action === 'lock' ? 'Lock' : 'Unlock'} ready`;
   // "Unlock / ready" on two rows, aligned with "Unstake / ready" (same markup as the unstake cell).
   const lockLabelHtml = lock && !lock.txId && !lock.blockedReason ? esc(lockState).replace(' ready', '<br>ready') : esc(lockState);
@@ -606,10 +610,10 @@ function plotListHtml(group, plotsById) {
     const label = lock.action === 'lock' ? 'Lock deed' : 'Unlock deed';
     const state = lock.txId ? signedPlotLockText(lock) : lock.blockedReason || (lock.action === 'lock' ? 'Ready to sign · unlock delay: 3 days' : 'Ready to sign');
     const tone = lock.notFound ? 'bad' : lock.txId ? 'dim' : lock.blockedReason ? 'bad' : 'ok';
-    // a signed change the game has no record of gets Dismiss; one with no answer gets Check again.
-    const signedButton = lock.notFound ? 'lock-dismiss' : lock.checkPaused ? 'lock-recheck' : '';
+    // a signed change that was never sent gets Dismiss; nothing else has a control.
+    const signedButton = lock.notFound ? 'lock-dismiss' : '';
     const undo = lock.txId
-      ? (signedButton ? `<button type="button" class="ceres-btn ceres-btn--secondary ch-mrow-undo" data-control-density="compact" data-checkout-action="${signedButton}" data-deed-uid="${esc(group.deedUid)}">${lock.notFound ? 'Dismiss' : 'Check again'}</button>` : '')
+      ? (signedButton ? `<button type="button" class="ceres-btn ceres-btn--secondary ch-mrow-undo" data-control-density="compact" data-checkout-action="${signedButton}" data-deed-uid="${esc(group.deedUid)}">Dismiss</button>` : '')
       : `<button type="button" class="ceres-btn ceres-btn--secondary ch-mrow-undo" data-control-density="compact" data-checkout-action="lock-undo" data-deed-uid="${esc(group.deedUid)}">Undo</button>`;
     rows.push(`<li class="ch-mrow is-${tone}"><span class="ch-mrow-thumb is-icon" aria-hidden="true">${plotLockSvg(lock.action === 'lock')}</span>`
       + `<span class="ch-mrow-text"><strong>${esc(label)}</strong><span class="ch-status is-${tone}">${esc(state)}</span></span>${undo}</li>`);

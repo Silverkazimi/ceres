@@ -25,7 +25,7 @@ def test_routing_window_tells_the_player_the_transaction_waits_in_the_wallet_app
     window = (STATIC / "routing-window.js").read_text()
     assert "state !== 'claimed'" in window and "walletLabelKind(player) !== 'hiveauth'" in window
     assert "Switch to the Hive Keychain app and confirm the transaction." in window
-    assert "${walletWaitHtml(state, player, error, busy)}${terminal}" in window
+    assert "${walletWaitHtml(state, player, isConfirming && !busy)}${terminal}" in window   # no find button argument
     assert ".r3-wallet-wait" in (STATIC / "ceres.css").read_text()
 
 
@@ -50,7 +50,7 @@ def test_transaction_wallet_drawers_still_clamp_after_account_menu_simplificatio
     assert "walletControlsHtml(player, 'harvest-routing')" in (STATIC / "harvest-routing.js").read_text()
 
 
-def test_receipt_shows_one_ledger_and_centred_tiles_and_routing_can_find_a_lost_signature():
+def test_receipt_shows_one_ledger_and_centred_tiles_and_routing_finds_a_lost_signature_by_itself():
     """ """
     results = (STATIC / "harvest-results.js").read_text()
     assert "members.length === 1 && isRegion && ledger" in results
@@ -58,10 +58,14 @@ def test_receipt_shows_one_ledger_and_centred_tiles_and_routing_can_find_a_lost_
     assert ".harvest-receipt-ledger .hm-batch-badge .hm-batch-number { grid-row: 1; grid-column: 2; align-self: center" in css
     assert '[data-resource="research"] { grid-column: auto; }' in css and ".r3-destination > strong { font-size: 1rem" in css
     window = (STATIC / "routing-window.js").read_text()
-    assert "(current.querySelector('.r3-wallet-wait')?.innerHTML ?? '')" in window and 'data-r3="find"' in window
-    assert "['attached', 'checking', 'outcome_unknown'].includes(state) ? `<span>Metered routing checks" in window
-    assert "find: findSigned" in (STATIC / "routing-run.js").read_text()
-    from ceres import routing_runs_v2 as runs
-    op = ["custom_json", {"id": "sm_x", "json": '{"n":"a"}', "required_auths": [], "required_posting_auths": ["p"]}]
-    row = [1, {"trx_id": "b" * 40, "op": ["custom_json", {"id": "sm_x", "json": '{"n": "a"}', "required_auths": [], "required_posting_auths": ["p"]}]}]
-    assert runs._history_transaction([row], [op]) == "b" * 40 and runs._history_transaction([], [op]) is None
+    # (replaces 's maintainer-pressed "I approved it: find my transaction"): a lost routing signature is found by
+    # the shared confirmer's own-history finder by itself (); the window only says so, with no button and no
+    # metered-check counter.
+    assert "(current.querySelector('.r3-wallet-wait')?.innerHTML ?? '')" in window and 'data-r3="find"' not in window
+    assert "Metered routing checks" not in window and "Ceres is finding the transaction" in window
+    run = (STATIC / "routing-run.js").read_text()
+    assert "findSigned" not in run and "confirmAction({ account: player, operations, txId," in run
+    from ceres import routes_confirm
+    op = ["custom_json", {"id": "sm_land_operation", "json": '{"op":"swap_sell","n":"0123456789abcdef"}', "required_auths": [], "required_posting_auths": ["p"]}]
+    row = [1, {"trx_id": "b" * 40, "op": ["custom_json", {"id": "sm_land_operation", "json": '{"n": "0123456789abcdef", "op": "swap_sell"}', "required_auths": [], "required_posting_auths": ["p"]}]}]
+    assert routes_confirm.find_exact_action([row], "p", [op]) == "b" * 40 and routes_confirm.find_exact_action([], "p", [op]) is None

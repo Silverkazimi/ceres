@@ -1,4 +1,6 @@
-export const HARVEST_COST_ORDER = ['GRAIN', 'WOOD', 'STONE', 'IRON', 'AURA', 'SPS', 'RESEARCH'];
+import { resourceOrder } from './resources.js';
+
+export const HARVEST_COST_ORDER = resourceOrder('harvest'); // registry: GRAIN WOOD STONE IRON AURA SPS RESEARCH
 
 export function netAfterCosts(projection) {
   const symbol = String(projection?.token || '').toUpperCase();
