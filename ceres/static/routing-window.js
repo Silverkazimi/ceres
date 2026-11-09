@@ -128,36 +128,34 @@ export function withWalletChooser(player, signButton) {
 
 // a web page cannot switch apps for the player (HiveAuth has a deep link only for connecting, none for a signing request), so once
 // the request is with the wallet the window says plainly that it now waits in the wallet app.
-function walletWaitHtml(state, player, error = '', busy = false) {
+function walletWaitHtml(state, player, confirming = false) {
   if (state !== 'claimed' || !player || walletLabelKind(player) !== 'hiveauth') return '';
-  // the wallet request ran out of time here. The wallet may still have signed, so the player can have Ceres find the transaction.
-  if (/still checking/i.test(error)) {
-    return `<div class="r3-wallet-wait" role="alert"><strong>Did you approve it in the Keychain app?</strong><span>Ceres lost the answer while you were away. If you approved, Ceres can find your transaction in your wallet history and carry on. If you did not approve, stop here and start again.</span><button type="button" class="ceres-btn ceres-btn--primary" data-control-density="comfortable" data-r3="find"${busy ? ' disabled' : ''}>I approved it: find my transaction</button></div>`;
+  // (was 's "I approved it: find my transaction" button): a lost wallet answer is found by the shared
+  // confirmer by itself (, own latest operations), so the window only says so.
+  if (confirming) {
+    return '<div class="r3-wallet-wait" role="status"><strong>Signed? Ceres is finding the transaction.</strong><span>The wallet answer did not arrive. Ceres looks for this exact transaction in your own latest Hive operations and carries on by itself; nothing is signed again.</span></div>';
   }
   return '<div class="r3-wallet-wait" role="alert"><strong>Switch to the Hive Keychain app and confirm the transaction.</strong><span>It is waiting in Hive Keychain or the HiveAuth app on your phone. Approve it there, then come back to this window.</span></div>';
 }
 
-export function routingWindowHtml(record, { player, busy = false, error = '', changedAmountReview = [], excludedRouteIds = new Set(), viewBundleId = null } = {}) {
+export function routingWindowHtml(record, { player, busy = false, error = '', changedAmountReview = [], excludedRouteIds = new Set(), viewBundleId = null,
+  confirming = null, confirmMessage = '' } = {}) {
   const { current, display, members, routes } = routingBundleView(record, viewBundleId);
   const counts = routingApprovalCounts(record.manifest);
   const bundles = record.manifest?.bundles || [];
   const confirmed = bundles.filter(bundle => record.bundles?.[bundle.id]?.state === 'confirmed').length;
   const refused = bundles.filter(bundle => record.bundles?.[bundle.id]?.state === 'refused').length;
   const stored = current ? record.bundles?.[current.id]?.state : null;
-  // While the scheduled checks are still running an unanswered lookup is "checking", not an unknown outcome.
-  const state = busy && stored === 'outcome_unknown' ? 'checking' : stored;
+  // the shared confirmer keeps reading until the chain or the game answers, so an unanswered lookup is
+  // always "checking", never a final "unknown outcome".
+  const isConfirming = !!(current && confirming === current.id);
+  const state = stored === 'outcome_unknown' ? 'checking' : stored;
   const heading = current ? `Approval ${current.approval} of ${counts.maximum}` : 'Routing finished';
   const message = error || (changedAmountReview.length ? 'Review the confirmed sale proceeds and final LP deposit before wallet approval'
-    : state === 'outcome_unknown' ? 'Reservation retained · dependents blocked'
-    : state === 'checking' || state === 'attached' ? 'Hive included · checking game receipt'
-    : state === 'claimed' ? busy ? 'Approve with Posting wallet' : 'Wallet outcome uncertain · check receipt history'
+    : isConfirming && confirmMessage ? confirmMessage
+    : state === 'checking' || state === 'attached' ? 'Checking Hive and the game · Ceres keeps checking by itself'
+    : state === 'claimed' ? busy ? 'Approve with Posting wallet' : 'Finding the signed transaction · nothing is signed again'
     : current ? `${confirmed ? `${confirmed} of ${bundles.length} confirmed · ` : ''}Ready to sign` : `${confirmed} confirmed${refused ? ` · ${refused} refused by game` : ''}`);
-  const budget = record.call_budget || {};
-  const ceiling = budget.ceiling || record.manifest?.call_budget?.run_ceiling || 120;
-  const manualCeiling = record.manifest?.call_budget?.action_ceilings?.manual_retry || 6;
-  const manualRemaining = Math.max(0, manualCeiling - (budget.actions?.manual_retry || 0));
-  const canCheck = !!(record.bundles?.[current?.id]?.tx_id && ['attached', 'checking', 'outcome_unknown'].includes(stored)
-    && !budget.stopped && (budget.total || 0) < ceiling && manualRemaining > 0);
   const canSign = (state === 'planned' || (state === 'claimed' && changedAmountReview.length)) && record.state === 'ready';
   const editable = state === 'planned' && !busy;
   // every route of the shown approval is
@@ -173,14 +171,12 @@ export function routingWindowHtml(record, { player, busy = false, error = '', ch
     const operation = display?.operations.find(op => op.id === item.operation_id);
     return `<span>${art('DEC')}${fmt2(item.confirmed_sale_dec)} DEC received · deposit ${art(operation?.source_symbol)}${fmt2(item.resource_amount)} ${esc(tokenLabel(operation?.source_symbol || ''))} and ${art('DEC')}${fmt2(item.dec_amount)} DEC</span>`;
   }).join('')}</div>` : '';
-  const terminal = state === 'outcome_unknown'
-    ? `<div class="r3-terminal" role="status"><strong>Outcome unknown</strong><span>Reservation retained · dependents blocked</span><span>${manualRemaining} manual checks remain</span></div>`
-    : complete ? `<div class="r3-terminal is-complete" role="status"><strong><span class="r3-complete-tick" aria-hidden="true">✓</span>Routing complete · all ${routes.length} route${routes.length === 1 ? '' : 's'} confirmed</strong><span>Nothing left to sign. You can close this window.</span></div>`
+  const terminal = complete ? `<div class="r3-terminal is-complete" role="status"><strong><span class="r3-complete-tick" aria-hidden="true">✓</span>Routing complete · all ${routes.length} route${routes.length === 1 ? '' : 's'} confirmed</strong><span>Nothing left to sign. You can close this window.</span></div>`
     : !current ? `<div class="r3-terminal" role="status"><strong>Routing finished · ${confirmed} of ${bundles.length} confirmed${refused ? ` · ${refused} refused` : ''}</strong>${refused ? `<span>${refused} refused by the game</span>` : ''}</div>` : '';
   // (maintainer: the status row hid behind the route list and "should be placed elsewhere and require no scrolling"): the
   // status now lives in the top summary row, which has the free space. Same content, same live-region semantics.
-  const status = current ? `<span class="r3-summary-status" role="status" aria-live="polite">${['checking', 'attached'].includes(state) ? '' : `<span>${stateLabel(state)}</span>`}${['attached', 'checking', 'outcome_unknown'].includes(state) ? `<span>Metered routing checks ${budget.total || 0}/${ceiling}</span>` : ''}<span class="r3-status-message">${esc(message)}</span><span class="r3-status-spinner${busy ? ' is-busy' : ''}"><span class="spinner spinner-sm" aria-hidden="true"></span></span></span>` : '';
-  return `<section class="r3-window${complete ? ' is-complete' : ''}" data-r3-bundle="${esc(display?.id || '')}" aria-label="Harvest routing run"><div class="r3-summary">${current ? `<strong>${counts.fixed} fixed${counts.conditional ? ` + up to ${counts.conditional} later` : ''}</strong><span>${routes.length} route${routes.length === 1 ? '' : 's'} · ${bundles.length} planned bundle${bundles.length === 1 ? '' : 's'}</span>` : `<strong>${routes.length} route${routes.length === 1 ? '' : 's'}</strong><span>${bundles.length} approval${bundles.length === 1 ? '' : 's'}</span>`}${routeScrollCueHtml()}${Number(record.protected_wallet_dec || 0) > 0 ? `<span>Protected wallet DEC ${fmt2(record.protected_wallet_dec)}</span>` : ''}${status}<span class="r3-wallet">${esc(walletName(player))} · ${esc(player)} · Posting</span></div>${walletWaitHtml(state, player, error, busy)}${terminal}<div class="r3-flow-layout">${routeListColumnHtml(routes.map(route => chip(route, shownRouteIds.has(route.member.route_id), record, excludedRouteIds, busy)).join(''))}<div class="r3-flow-stage${displayState === 'confirmed' ? ' is-confirmed' : ''}" tabindex="-1"><div class="r3-stage-head"><h3>${display ? `Approval ${display.approval} of ${counts.maximum}` : 'Approval'}${display ? ` <span class="r3-state r3-state--${tone(displayState)}">${chipStateLabel(displayState)}</span>` : ''}</h3><span>${display?.operations.some(operation => operation.kind === 'liquidity') ? 'LP deposits' : 'Sales'} · ${members.length} route${members.length === 1 ? '' : 's'}</span></div><div class="r3-operation-flows">${display?.operations.map(operation => operationFlow(operation, record, editable, excludedRouteIds)).join('') || ''}</div>${needMemberGrid ? `<div class="r3-members" aria-label="Current bundle shares">${sharedMembers.map(item => memberCell(item, editable, excludedRouteIds, record)).join('')}</div>` : ''}${review}<div class="r3-stage-status"></div></div></div><template class="r3-actions">${canCheck ? `<button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-r3="check"${busy ? ' disabled' : ''}>Check again</button>` : ''}${current ? `<button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-r3="stop"${busy ? ' disabled' : ''}>Stop remaining routes</button>` : ''}${canSign ? withWalletChooser(player, `<button type="button" class="ceres-btn ceres-btn--primary" data-control-density="comfortable" data-r3="sign"${busy ? ' disabled' : ''}>${members.every(item => excludedRouteIds.has(item.member.route_id)) ? 'Skip this bundle' : 'Sign'}</button>`) : ''}</template></section>`;
+  const status = current ? `<span class="r3-summary-status" role="status" aria-live="polite">${['checking', 'attached'].includes(state) ? '' : `<span>${stateLabel(state)}</span>`}<span class="r3-status-message">${esc(message)}</span><span class="r3-status-spinner${busy || isConfirming || ['attached', 'checking'].includes(state) ? ' is-busy' : ''}"><span class="spinner spinner-sm" aria-hidden="true"></span></span></span>` : '';
+  return `<section class="r3-window${complete ? ' is-complete' : ''}" data-r3-bundle="${esc(display?.id || '')}" aria-label="Harvest routing run"><div class="r3-summary">${current ? `<strong>${counts.fixed} fixed${counts.conditional ? ` + up to ${counts.conditional} later` : ''}</strong><span>${routes.length} route${routes.length === 1 ? '' : 's'} · ${bundles.length} planned bundle${bundles.length === 1 ? '' : 's'}</span>` : `<strong>${routes.length} route${routes.length === 1 ? '' : 's'}</strong><span>${bundles.length} approval${bundles.length === 1 ? '' : 's'}</span>`}${routeScrollCueHtml()}${Number(record.protected_wallet_dec || 0) > 0 ? `<span>Protected wallet DEC ${fmt2(record.protected_wallet_dec)}</span>` : ''}${status}<span class="r3-wallet">${esc(walletName(player))} · ${esc(player)} · Posting</span></div>${walletWaitHtml(state, player, isConfirming && !busy)}${terminal}<div class="r3-flow-layout">${routeListColumnHtml(routes.map(route => chip(route, shownRouteIds.has(route.member.route_id), record, excludedRouteIds, busy)).join(''))}<div class="r3-flow-stage${displayState === 'confirmed' ? ' is-confirmed' : ''}" tabindex="-1"><div class="r3-stage-head"><h3>${display ? `Approval ${display.approval} of ${counts.maximum}` : 'Approval'}${display ? ` <span class="r3-state r3-state--${tone(displayState)}">${chipStateLabel(displayState)}</span>` : ''}</h3><span>${display?.operations.some(operation => operation.kind === 'liquidity') ? 'LP deposits' : 'Sales'} · ${members.length} route${members.length === 1 ? '' : 's'}</span></div><div class="r3-operation-flows">${display?.operations.map(operation => operationFlow(operation, record, editable, excludedRouteIds)).join('') || ''}</div>${needMemberGrid ? `<div class="r3-members" aria-label="Current bundle shares">${sharedMembers.map(item => memberCell(item, editable, excludedRouteIds, record)).join('')}</div>` : ''}${review}<div class="r3-stage-status"></div></div></div><template class="r3-actions">${current ? `<button type="button" class="ceres-btn ceres-btn--secondary" data-control-density="comfortable" data-r3="stop"${busy ? ' disabled' : ''}>Stop remaining routes</button>` : ''}${canSign ? withWalletChooser(player, `<button type="button" class="ceres-btn ceres-btn--primary" data-control-density="comfortable" data-r3="sign"${busy ? ' disabled' : ''}>${members.every(item => excludedRouteIds.has(item.member.route_id)) ? 'Skip this bundle' : 'Sign'}</button>`) : ''}</template></section>`;
 }
 
 export function patchRoutingWindow(current, html) {

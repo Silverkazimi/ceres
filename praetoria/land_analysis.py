@@ -997,7 +997,7 @@ def analyze_bundle(
             card = raw  # the parsed payload is not kept or mutated; a second copy per card was a whale's biggest cost
             classification = classify_card(card, as_of, player, assigned.get(str(card["uid"])), str(card.get("stake_ref_uid")) in assets_by_deed)
             # built at final size. Popping keys from a full copy left every dict at its
-            # original ~70-key table -- 125,097 of them held ~270 MB on player0017.
+            # original ~70-key table -- 125,097 of them held ~270 MB on player0018.
             if DROPPED_COLLECTION_FIELDS.isdisjoint(card):
                 # a stream-parsed row is already at its final key set; one plain copy
                 # keeps the report's facts independent of the ETag memo's rows.

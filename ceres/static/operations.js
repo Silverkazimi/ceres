@@ -5,6 +5,7 @@ import { walletSignLabelHtml, walletReady } from './wallet.js';
 import { BOARD, CURRENT_PLAYER, adoptLatestCapture, NOTICE_CATALOG, catalogNotice, noticeMessage, playerQueryAppend, renderNotices } from './board.js';
 import { recoverPendingBroadcastRequests, requestBroadcastThroughGate, requestSignatureThroughGate, prepareSigningBatch } from './broadcast-gate.js';
 import { waitForQueuedSubmission, resumeSignedQueue } from './transaction-queue.js';
+import { CONFIRM_FAST_MS, confirmationState, registerReview, waitThrough } from './shared-confirmer.js';
 import { normalizeEstimate } from './candidates.js';
 import { checkoutSignableEntries, renderCheckoutSurface } from './checkout.js';
 import { esc, formatPlotLabel, humanizeInstant } from './format.js';
@@ -29,7 +30,8 @@ try {
   }
 } catch (_) { /* storage unavailable: nothing to remove */ }
 export const OPERATION_RECEIPTS = new Map();
-export const OPERATION_POLL_SCHEDULE_MS = window.__ceresOperationPollSchedule || [3000, 8000, 15000, 30000, 60000, 120000];
+// the schedule is the shared confirmer's (shared-confirmer.js); exported here for the debug surface only.
+export const OPERATION_POLL_SCHEDULE_MS = CONFIRM_FAST_MS;
 export const OPERATION_POLLERS = new Map();
 // All Ceres transaction receipts use Hivehub ().
 export const HIVE_TX_EXPLORER = (txId) => `https://hivehub.dev/tx/${encodeURIComponent(txId)}`;
@@ -526,7 +528,7 @@ function verificationNoticeForResult(result, fallbackState = 'chain_absent') {
           : state === 'chain_verified' ? 'verification_chain_check'
             : result?.chain?.evidence?.reason_kind === 'lookup_failed' ? 'verification_lookup_failed'
               : 'verification_not_found';
-  const action = RETRYABLE_VERIFICATION_CODES.has(code) ? { id: 'retry_verification', label: 'Check again' } : undefined;
+  const action = undefined;  // no manual re-check action on any verification notice
   const reason = result?.evidence?.reason || result?.game?.evidence?.reason || result?.game?.evidence?.error || result?.chain?.evidence?.reason || result?.domain?.evidence?.reason;
   return { code, kind: NOTICE_CATALOG[code]?.kind, severity: NOTICE_CATALOG[code]?.severity, blocking: NOTICE_CATALOG[code]?.blocking, reason: state === 'game-refused' ? reason || 'The game supplied no refusal reason.' : reason, evidence: result?.evidence || result?.game?.evidence || result?.chain?.evidence || result?.domain?.evidence || {}, action };
 }
@@ -562,11 +564,12 @@ function previewStillShown(portfolio, row) {
   return !!document.querySelector(`[data-deed-uid="${CSS.escape(String(row?.deed_uid || ''))}"]`);
 }
 
-export async function requestOperationPreview(target) {
+export async function requestOperationPreview(target, actionIds = null) {
   const portfolio = target?.scope === 'portfolio';
   const key = previewKey(target);
   const row = portfolio ? null : target;
   const priorPayload = CERES_PREVIEWS.get(key)?.payload || null;
+  const priorActionIds = actionIds || CERES_PREVIEWS.get(key)?.actionIds || null;
   const state = { loading: true, error: null, payload: null };
   CERES_PREVIEWS.set(key, state);
   if (portfolio) renderCheckoutSurface();
@@ -665,6 +668,9 @@ export async function requestOperationPreview(target) {
     }
     state.loading = false;
     state.payload = payload;
+    state.actionIds = await Promise.all((payload.chunks || []).map(async (chunk, index) =>
+      (await registerReview(payload.account, chunk.operations, { actionId: priorActionIds?.[index] || null,
+        reviewKey: `operations:${key}:${index}` })).actionId));
     state.refreshedNotice = refreshed && !!priorPayload && previewSignature(priorPayload) !== previewSignature(payload);
   } catch (error) {
     state.loading = false;
@@ -781,7 +787,7 @@ function clearConfirmedChunkEntries(review, chunk) {
     updateMountedRow(deedUid);
   });
   if (toRemove.some((entry) => entry.chain_id)) window.dispatchEvent(new CustomEvent('ceres:chain-unstake-confirmed', { detail: { ids: [...new Set(toRemove.map((entry) => entry.chain_id).filter(Boolean))] } }));
-  if (toRemove.length) setConfirmationBanner(toRemove);
+  if (toRemove.length) setConfirmationBanner(toRemove, txId);
   renderCheckoutSurface();
   return toRemove;
 }
@@ -967,7 +973,7 @@ function renderConfirmationBanner() {
     ? `<button type="button" class="ceres-pill-action ceres-btn ceres-btn--secondary" data-control-density="compact" data-confirmation-action="${actionName}">${esc(banner.action.label)}</button>` : '';
   // "Open receipt" used to keep this row filled; an invisible twin of the action button now reserves its height so
   // the pill does not jump when "Check again" appears or goes ( stable pill).
-  const placeholder = '<button type="button" class="ceres-pill-action ceres-btn ceres-btn--secondary" data-control-density="compact" tabindex="-1" aria-hidden="true" style="visibility:hidden">Check again</button>';
+  const placeholder = '<button type="button" class="ceres-pill-action ceres-btn ceres-btn--secondary" data-control-density="compact" tabindex="-1" aria-hidden="true" style="visibility:hidden">Re-read</button>';  // same width class as the only remaining action (Re-read the board)
   const action = `${emptyAction}<span class="ceres-pill-action-slot is-main">${actionButton || placeholder}</span>`;
   const batchIncomplete = CERES_BATCH && !batchDone;
   const batchStopped = batchIncomplete && CERES_BATCH.lines.some((line) => ['is-failed', 'is-aborted'].includes(line.state));
@@ -987,15 +993,18 @@ function renderConfirmationBanner() {
   el.innerHTML = `<div class="ceres-pill-title-row"><strong class="ceres-pill-title worksite-banner-title"><span class="ceres-pill-phase-mark">${mark}</span><span>${esc(shortTitle)}</span></strong><button type="button" class="ceres-pill-dismiss worksite-banner-dismiss ceres-btn ceres-btn--secondary" data-control-density="compact" data-confirmation-action="dismiss" aria-label="Dismiss">✕</button></div><div class="ceres-pill-content"><div class="ceres-pill-detail worksite-banner-detail" title="${esc(detail || 'Transaction status updated.')}">${esc(shortDetail)}</div><div class="ceres-pill-facts">${facts}</div>${transaction}<div class="ceres-pill-action-row">${action}</div></div>${progress}`;
 }
 
-function setConfirmationBanner(entries) {
+function setConfirmationBanner(entries, chunkTxId = null) {
   const runiRemoved = entries.some((entry) => entry.group_id === 'runi' && entry.action === 'unstake');
   CERES_CONFIRMATION_BANNER = {
     title: runiRemoved ? 'Runi unstaked' : 'Transaction confirmed',
     detail: confirmationMessage(entries),
     tone: runiRemoved ? 'caution' : 'success',
     state: 'is-confirmed',
+    // S5: the Runi copy carries its phase and transaction, so the verify report that follows
+    // (same transaction, same phase) does not overwrite it.
+    ...(runiRemoved ? { phase: 'confirmed', waiting: false } : {}),
     aria: 'polite',
-    txId: entries.find((entry) => entry?.txId)?.txId || null,
+    txId: entries.find((entry) => entry?.txId)?.txId || chunkTxId || null,
     ...entryFacts(entries),
   };
   renderConfirmationBanner();
@@ -1388,39 +1397,24 @@ export async function verifyBroadcast(chunk, stateEl, txId, review) {
     // MUTATION: restoring the old throw for an unrecognised (non-pending
     // could-not-verify) state makes test_unrecognised_verdict_does_not_abort_the_batch
     // go red -- the remaining chunk stops broadcasting.
-    const notices = result.notices?.length ? result.notices : [verificationNoticeForResult(result)];
-    const escalated = notices.some((notice) => notice?.code === 'verification_pending_escalated');
-    let pollingPaused = escalated && !isStakeChangeBatch(chunk);
-    if (!pollingPaused) {
-      if (typeof scheduleOperationPoll === 'function' && typeof publishOperationReceipt === 'function') {
-        pollingPaused = scheduleCheckoutVerificationPoll(chunk, stateEl, txId, review) === false;
-      }
-    } else {
-      stopOperationPoll((stateEl && CHECKOUT_VERIFY_TARGETS.get(stateEl))?.entryId || chunk?.entryId);
-    }
-    let pendingNotice = result.notices?.length ? result.notices[0] : verificationNoticeForResult(result);
-    if (pollingPaused) pendingNotice = {
-      ...pendingNotice,
-      message: 'Not confirmed yet. Automatic checks have paused. Check again to read the result without sending another transaction.',
-      action: { id: 'retry_verification', label: 'Check again' },
-    };
+    // never paused (the former escalation pause and its "Check again" are gone); the shared confirmer reads on.
+    if (typeof scheduleOperationPoll === 'function' && typeof publishOperationReceipt === 'function') scheduleCheckoutVerificationPoll(chunk, stateEl, txId, review);
+    const pendingNotice = withoutManualAction(result.notices?.length ? result.notices[0] : verificationNoticeForResult(result));
     if (stateEl) setVerificationNotices(stateEl, [pendingNotice], opResults);
-    report(pendingNotice, { opResults, waiting: !pollingPaused, retry: pendingNotice?.action ? () => verifyBroadcast(chunk, stateEl, txId, review) : null });
+    report(pendingNotice, { opResults, waiting: true });
     return result;
   } catch (error) {
     if (error?.noticeShown) throw error;
     // a check that
     // could not run (network error, Ceres restarting, a failed read) used to stop every further check, so a transaction the
     // game had accepted stayed orange for good. It now hands over to the same automatic schedule as "not confirmed yet"
-    // the first check that reads the game turns the pill green or red. Only once that schedule is used up does it wait
-    // for "Check again".
+    // the first check that reads the game turns the pill green or red. : the schedule is never used up.
     const retrying = typeof scheduleOperationPoll === 'function' && typeof publishOperationReceipt === 'function' && Boolean(txId)
       && scheduleCheckoutVerificationPoll(chunk, stateEl, txId, review) !== false;
     report({
       code: 'verification_domain_check_failed', kind: 'verification', severity: 'caution', blocking: 'repeat', reason: String(error), evidence: { reason: String(error) },
-      ...(retrying ? { message: 'Could not check the game state yet. Ceres checks again automatically.' } : {}),
-      action: { id: 'retry_verification', label: 'Check again' },
-    }, { waiting: retrying, retry: () => verifyBroadcast(chunk, stateEl, txId, review) });
+      message: 'Could not check the game state yet. Ceres checks again automatically; nothing is sent again.',
+    }, { waiting: retrying });
     const failure = error instanceof Error ? error : new Error(String(error));
     failure.noticeShown = true;
     throw failure;
@@ -1439,58 +1433,86 @@ function operationEntryId() {
   return `ceres-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+// every repeat read of a Changes/combine/plan-combine receipt runs on the shared confirmer's schedule (its
+// bounds, its resume on load/visible/pageshow). Callers keep calling this after each pending answer; a running wait
+// just takes the newest verify. It never pauses, so it never returns false any more.
 export function scheduleOperationPoll(receipt, verify) {
   if (!receipt?.entryId || !receipt.txId || !verify) return;
-  const current = OPERATION_POLLERS.get(receipt.entryId) || {
-    index: 0, timer: null, startedAt: receipt.pollStartedAt || Date.now(), nextPollAt: null,
-  };
-  if (current.timer != null) return true;
-  if (current.index >= OPERATION_POLL_SCHEDULE_MS.length) {
-    publishOperationReceipt({ ...receipt, pollingPaused: true, nextPollAt: null });
-    return false;
-  }
-  const nextAt = current.startedAt + OPERATION_POLL_SCHEDULE_MS[current.index];
-  current.index += 1;
-  current.nextPollAt = nextAt;
-  OPERATION_POLLERS.set(receipt.entryId, current);
-  publishOperationReceipt({ ...receipt, nextPollAt: nextAt });
-  current.timer = setTimeout(async () => {
-    current.timer = null;
-    const updated = publishOperationReceipt({ ...receipt, nextPollAt: null });
-    await verify(updated).catch(() => {});
-  }, Math.max(0, nextAt - Date.now()));
+  const existing = OPERATION_POLLERS.get(receipt.entryId);
+  if (existing) { existing.verify = verify; return true; }
+  const poll = { verify, first: true, handle: null };
+  OPERATION_POLLERS.set(receipt.entryId, poll);
+  // The schedule runs from the wallet's answer (or, without one, the request), never from the moment an id was found
+  // the maintainer's reference swap does the same (IN-0708 speed rule).
+  const anchor = Number.isFinite(receipt.answeredAt) ? receipt.answeredAt : Number.isFinite(receipt.pollStartedAt) ? receipt.pollStartedAt : null;
+  const account = CURRENT_PLAYER || BOARD?.player;
+  const signedOperations = receipt.operations;
+  const signingAttempt = Array.isArray(signedOperations) ? confirmationState(account, signedOperations) : null;
+  poll.handle = waitThrough({ key: `operation:${receipt.entryId}`, account: CURRENT_PLAYER || BOARD?.player, txId: receipt.txId,
+    startedAt: anchor, intent: signingAttempt?.attemptId || null,
+    beginToken: () => {
+      const current = Array.isArray(signedOperations) ? confirmationState(account, signedOperations) : null;
+      return current?.attemptId === signingAttempt?.attemptId ? current?.beginToken || null : null;
+    },
+    since: new Date(receipt.pollStartedAt || Date.now()).toISOString(), check: async () => {
+      if (poll.first) { poll.first = false; return { state: 'pending' }; }   // the caller has just read
+      if (OPERATION_POLLERS.get(receipt.entryId) !== poll) return { state: 'confirmed', stopped: true };
+      const updated = publishOperationReceipt({ ...OPERATION_RECEIPTS.get(receipt.entryId), nextPollAt: null });
+      await poll.verify(updated).catch(() => {});
+      return OPERATION_POLLERS.get(receipt.entryId) === poll ? { state: 'pending' } : { state: 'confirmed', stopped: true };
+    } });
+  poll.handle.done.then((answer) => {
+    if (answer.state !== 'never-sent' || OPERATION_POLLERS.get(receipt.entryId) !== poll) return;
+    OPERATION_POLLERS.delete(receipt.entryId);
+    publishOperationReceipt({ ...OPERATION_RECEIPTS.get(receipt.entryId), phase: 'failed', failureDetail: answer.error || 'Hive has no record of this transaction. It was not sent.', nextPollAt: null });
+  });
   return true;
+}
+
+// A server notice keeps its words; its manual "Check again" action (removed server side too) is never shown.
+function withoutManualAction(notice) {
+  if (!notice?.action || notice.action.id !== 'retry_verification') return notice;
+  const { action, ...rest } = notice;
+  return rest;
 }
 
 export function stopOperationPoll(entryId) {
   const poll = OPERATION_POLLERS.get(entryId);
-  if (poll?.timer != null) clearTimeout(poll.timer);
   OPERATION_POLLERS.delete(entryId);
+  poll?.handle?.stop();
 }
 
+// Kept for its callers (a verify run starting): the shared wait is not stopped, only the shown next-read time is cleared.
 export function clearOperationPollTimer(entryId) {
-  const poll = OPERATION_POLLERS.get(entryId);
-  if (!poll) return;
-  if (poll.timer != null) clearTimeout(poll.timer);
-  poll.timer = null;
-  poll.nextPollAt = null;
   const receipt = OPERATION_RECEIPTS.get(entryId);
   if (receipt) publishOperationReceipt({ ...receipt, nextPollAt: null });
 }
 
-export async function beginSharedOperation({ account, operations, family, context, onResponse }) {
+
+export async function beginSharedOperation({ account, operations, family, context, onResponse, actionId = null }) {
+  actionId = (await registerReview(account, operations, { actionId })).actionId;
   let receipt = publishOperationReceipt({
     entryId: operationEntryId(), family, context, operations, phase: 'working', txId: null, attempt: 0, pollStartedAt: Date.now(),
   });
   try {
     const broadcast = await requestBroadcastThroughGate(account, operations, (response) => {
       const txId = response?.result?.id || response?.result?.tx_id || response?.tx_id;
-      if (response?.success && txId) receipt = publishOperationReceipt({ ...receipt, phase: 'in_flight', txId });
+      if (response?.success && txId) receipt = publishOperationReceipt({ ...receipt, phase: 'in_flight', txId, answeredAt: receipt.answeredAt || Date.now() });
       onResponse?.(response);
-    });
-    return publishOperationReceipt({ ...receipt, phase: 'in_flight', txId: broadcast.txId, inclusionBlock: broadcast.blockNum });
+    }, 'Posting', { actionId });
+    // answeredAt: the confirm schedule runs from the wallet's answer, as the maintainer's reference swap does (IN-0708).
+    return publishOperationReceipt({ ...receipt, phase: 'in_flight', txId: broadcast.txId, inclusionBlock: broadcast.blockNum, answeredAt: receipt.answeredAt || Date.now() });
   } catch (error) {
-    publishOperationReceipt({ ...receipt, phase: error.broadcasted === false ? 'failed' : 'in_flight', txId: error.txId || receipt.txId, failureDetail: String(error) });
+    const handed = publishOperationReceipt({ ...receipt, phase: error.broadcasted === false ? 'failed' : 'in_flight', txId: error.txId || receipt.txId, failureDetail: String(error), answeredAt: receipt.answeredAt || Date.now() });
+    // fix round 1 (HIGH-1): an ambiguous answer is handed to the shared confirmer; its proof settles the receipt
+    // (a found id -> in flight with that id; proven never sent -> failed, so the screen offers Sign again).
+    if (error.pendingBroadcast) {
+      error.operationReceipt = handed;
+      error.pendingBroadcast.then(
+        (late) => publishOperationReceipt({ ...(OPERATION_RECEIPTS.get(handed.entryId) || handed), phase: 'in_flight', txId: late.txId }),
+        (proof) => { if (proof?.neverSent) publishOperationReceipt({ ...(OPERATION_RECEIPTS.get(handed.entryId) || handed), phase: 'failed', failureDetail: proof.message }); },
+      ).catch(() => {});
+    }
     throw error;
   }
 }
@@ -1524,9 +1546,13 @@ async function freshReviewForSigning(target, review) {
     || (latest && review.captureStamp && Date.parse(latest) > Date.parse(review.captureStamp));
   const before = previewSignature(review.payload);
   if (stale) await adoptLatestCapture();
-  await requestOperationPreview(target);
+  await requestOperationPreview(target, review.actionIds || null);
   const next = CERES_PREVIEWS.get(previewKey(target));
   if (!next?.payload) return null;
+  // This is the same review's rebuild. Pass the action lineage explicitly; an unrelated
+  // new preview does not inherit it merely because its digest or target happens to match.
+  next.actionIds = review.actionIds || review.payload.chunks.map(chunk =>
+    confirmationState(review.payload.account, chunk.operations)?.actionId || null);
   if (previewSignature(next.payload) !== before) {
     next.refreshedNotice = true;
     if (target?.scope === 'portfolio') renderCheckoutSurface();
@@ -1597,7 +1623,7 @@ export async function confirmOperationBroadcast(target, { runId = null, runKind 
             if (callbackTxId) markBroadcastedChunk(review, chunk, callbackTxId);
             if (portfolio && index === chunks.length - 1 && S.CERES_CHECKOUT_OPEN) { S.CERES_CHECKOUT_OPEN = false; renderCheckoutSurface(); }
           }
-        }, 'Posting', envelopes?.[index]);
+        }, 'Posting', envelopes?.[index], { actionId: review.actionIds?.[index] || null });
         chunk.inclusionBlock = broadcast.blockNum;
         if (broadcast.queued) markBroadcastedChunk(review, chunk, broadcast.txId, true);
         review.signingStates[index] = 'signed';
@@ -1625,6 +1651,16 @@ export async function confirmOperationBroadcast(target, { runId = null, runKind 
                 })
                 .catch((pendingError) => {
                   clearPendingReview(review);
+                  if (pendingError?.neverSent) {
+                    // HIGH-1: the shared confirmer proved this chunk was never sent: say so and offer Sign again.
+                    if (review.signingStates) review.signingStates[index] = 'attention';   // the signing run may have ended
+                    const notSent = { code: 'verification_not_sent', kind: 'verification', severity: 'caution', blocking: 'sign',
+                      reason: pendingError.message, evidence: { reason: pendingError.message } };
+                    setVerificationNotice(stateEls[index], notSent);
+                    setConfirmationBannerState('Not sent', pendingError.message, 'caution',
+                      { state: 'is-failed', aria: 'polite', ...entryFacts(entriesForChunk(review, chunk)), action: null, retry: null });
+                    if (portfolio) renderCheckoutSurface();
+                  }
                   if (pendingError?.retryable && broadcastButton) {
                     broadcastButton.hidden = false;
                     broadcastButton.disabled = false;
@@ -1637,22 +1673,19 @@ export async function confirmOperationBroadcast(target, { runId = null, runKind 
           } : error.txId ? () => verifyBroadcast(chunk, stateEls[index], error.txId, review) : null;
           const inclusionNotice = {
             code: 'verification_inclusion_unobserved', kind: 'verification', severity: 'caution', blocking: 'repeat',
-            message: error?.keychainTimedOut
-              ? 'Check again, never a second broadcast — Keychain has not returned a result, so this request remains pending verification.'
-              : 'Check again, never a second broadcast — the transaction was broadcast, but its inclusion could not be observed.',
+            message: 'Signed — Ceres is confirming this transaction on Hive and with the game. Nothing will be sent again.',
             aria: 'assertive',
           };
           setVerificationNotice(stateEls[index], inclusionNotice);
           const entries = entriesForChunk(review, chunk);
           const facts = entryFacts(entries);
           setConfirmationBannerState(
-            error?.keychainTimedOut ? 'Pending verification' : 'Broadcasted, inclusion not observed',
+            'Confirming',
             inclusionNotice.message,
             'caution',
             {
-              state: 'is-unresolved', aria: 'assertive', txId: error.txId || entries.find((entry) => entry?.txId)?.txId || null, ...facts,
-              action: checkPending ? { id: 'retry_verification', label: 'Check again' } : null,
-              retry: checkPending,
+              state: 'is-unresolved', aria: 'polite', waiting: true, txId: error.txId || entries.find((entry) => entry?.txId)?.txId || null, ...facts,
+              action: null,
             },
           );
           if (broadcastButton) {
@@ -1686,7 +1719,6 @@ export async function confirmOperationBroadcast(target, { runId = null, runKind 
           const failureNotice = {
             code: 'verification_domain_check_failed', kind: 'verification', severity: 'danger', blocking: 'sign',
             reason: String(error), evidence: { reason: String(error) },
-            action: { id: 'retry_verification', label: 'Check again' },
           };
           setVerificationNotice(stateEls[index], failureNotice);
           const entries = entriesForChunk(review, chunk);
@@ -1713,7 +1745,15 @@ export async function confirmOperationBroadcast(target, { runId = null, runKind 
   } finally {
     await Promise.allSettled(submitted.map(async item => {
       try {
-        await item.submission;
+        try { await item.submission; }
+        catch (submissionError) {
+          // a submission whose outcome is unknown but whose id is known is confirmed from the chain/game.
+          if (submissionError?.broadcasted !== false && item.txId) {
+            review.broadcastPending = true;
+            return await verifyBroadcast(item.chunk, item.stateEl, item.txId, review);
+          }
+          throw submissionError;
+        }
         markBroadcastedChunk(review, item.chunk, item.txId);
         const result = await verifyBroadcast(item.chunk, item.stateEl, item.txId, review);
         const index = chunks.indexOf(item.chunk);

@@ -35,7 +35,7 @@ def test_derive_request_budget_scales_with_deed_count():
     small = capture.derive_request_budget(130)
     assert small >= 130
 
-    # player0017-scale (6303 deeds) -- the fixed DEFAULT_REQUEST_BUDGET (200) would fail
+    # player0018-scale (6303 deeds) -- the fixed DEFAULT_REQUEST_BUDGET (200) would fail
     # this outright; the derived budget must comfortably exceed the deed count.
     whale = capture.derive_request_budget(6303)
     assert whale > 6303
@@ -57,7 +57,7 @@ def test_estimate_capture_seconds_uses_the_concurrent_dispatch_ceiling():
     seconds = capture.estimate_capture_seconds(6303)
     budget = capture.derive_request_budget(6303)
     assert seconds == pytest.approx(budget * CONCURRENT_DISPATCH_INTERVAL_SECONDS)
-    # ~11-12 minutes is the new estimate for player0017-scale at the concurrent ceiling
+    # ~11-12 minutes is the new estimate for player0018-scale at the concurrent ceiling
     # down from the ~31.5 min fully-serial figure measured before concurrency shipped.
     assert 9 * 60 < seconds < 14 * 60
 
@@ -133,10 +133,10 @@ def test_estimate_capture_reports_deeds_and_cost(monkeypatch):
             return 6303
 
     monkeypatch.setattr(capture, "LandCapture", FakePreflight)
-    result = capture.estimate_capture("player0017")
-    assert result["player"] == "player0017"
+    result = capture.estimate_capture("player0018")
+    assert result["player"] == "player0018"
     assert result["deeds"] == 6303
     assert result["requests_estimated"] > 6303
-    # Concurrent-ceiling estimate (2026-08-21) -- ~11-12 min for player0017-scale, down
+    # Concurrent-ceiling estimate (2026-08-21) -- ~11-12 min for player0018-scale, down
     # from the old fully-serial ~31.5 min figure.
     assert 9 < result["estimated_minutes"] < 14

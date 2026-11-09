@@ -66,23 +66,17 @@ def test_non_grain_rewards_eaten_remains_a_grain_cost():
     assert result["net"]["GRAIN"] == -72.039
 
 
-def test_verification_has_a_finite_deadline_and_terminal_unreconcilable_guard():
+def test_unreconcilable_amounts_stay_pending_through_the_shared_confirmer():
+    """ replaces the 150 s deadline: unreadable game amounts keep an honest pending line while the shared
+    confirmer reads on; nothing ends in a manual "Check now" state."""
     source = MODAL.read_text()
-    # checks run on a fixed schedule for two minutes, each check may take 30 s, and the whole wait
-    # is still bounded: the deadline falls after the last scheduled check.
-    assert "const VERIFY_SCHEDULE_S = [0, 5, 12, 25, 45, 75, 120];" in source
-    assert "const VERIFY_MAX_WAIT_MS = 150000;" in source
-    assert "const VERIFY_REQUEST_MS = 30000;" in source
-    schedule = source.split("const VERIFY_SCHEDULE_S = [", 1)[1].split("]", 1)[0]
-    max_wait = int(source.split("const VERIFY_MAX_WAIT_MS = ", 1)[1].split(";", 1)[0])
-    assert max(int(step) for step in schedule.split(",")) * 1000 < max_wait
-    assert "const deadlineTimer = setTimeout(() => finish('pending'), VERIFY_MAX_WAIT_MS);" in source
-    assert "if (harvestAmountsUnreconcilable(result?.members)) { finish('pending'); return; }" in source
-    assert "run.phase = 'verification_incomplete';" in source
-    assert "run.pollNow = () =>" in source
+    assert "VERIFY_SCHEDULE_S" not in source and "VERIFY_MAX_WAIT_MS" not in source and "deadlineTimer" not in source
+    assert "harvestAmountsUnreconcilable(result?.members) ? VERIFY_AMOUNTS_TEXT" in source
+    assert "verification_incomplete" not in source and "pollNow" not in source
+    assert "confirmAction({ account, operations, txId, check, onUpdate })" in source
 
 
-def test_render_throw_falls_back_to_closable_receipt_with_link_and_check_now():
+def test_render_throw_falls_back_to_closable_receipt_with_link_and_no_manual_check():
     run_in_module_context(r"""
 (async () => {
   const M = ir8369M;
@@ -95,10 +89,10 @@ def test_render_throw_falls_back_to_closable_receipt_with_link_and_check_now():
     run:{phase:'success', busy:false, txId:'a'.repeat(40), members:[], verifyIds:new Set(['attempt']), pollNow:() => {}}});
   ir8369RenderInner = () => { throw Error('receipt renderer failed'); };
   ir8369Render();
-  if (M.run.phase !== 'verification_incomplete' || M.run.busy) throw Error('fallback did not become terminal');
-  if (!panel.innerHTML.includes('Harvest sent — verification incomplete') ||
+  if (M.run.busy || !M.run.renderFailed) throw Error('fallback did not become closable');
+  if (!panel.innerHTML.includes('Harvest sent') ||
       !panel.innerHTML.includes('https://hivehub.dev/tx/' + 'a'.repeat(40)) ||
-      !panel.innerHTML.includes('data-hm="check-now"') ||
+      panel.innerHTML.includes('check-now') || /Check (now|again)/.test(panel.innerHTML) ||
       !panel.innerHTML.includes('data-hm="close"')) throw Error(panel.innerHTML);
   await closeHarvestModal();
   if (M.open || !overlay.hidden) throw Error('Close did not dismiss fallback');

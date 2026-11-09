@@ -19,6 +19,9 @@ affordance to actually check again.
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
+import json
+import time
 
 import pytest
 from playwright.sync_api import Browser, Page
@@ -31,6 +34,16 @@ from .conftest import hide_running_constructions
 ROOT = Path(__file__).parents[2]
 
 
+def _mock_confirm_begin(page: Page) -> None:
+    def respond(route) -> None:
+        body = route.request.post_data_json or {}
+        action_id = hashlib.md5(json.dumps(body.get("operations", []), sort_keys=True).encode()).hexdigest()
+        route.fulfill(status=200, content_type="application/json", body=json.dumps({
+            "begin_token": "c" * 32, "action_id": action_id,
+            "revision": 1, "server_now": int(time.time() * 1000)}))
+    page.route("**/api/confirm/intent*", respond)
+
+
 # Defect 2 + 3 (Python side): verification_notice()'s escalation wiring and copy
 
 def test_pending_below_escalation_threshold_stays_the_ordinary_notice() -> None:
@@ -39,9 +52,9 @@ def test_pending_below_escalation_threshold_stays_the_ordinary_notice() -> None:
     }}}
     notice = verification_notice("domain-pending", domain=domain)
     assert notice["code"] == "verification_pending"
-    assert notice["action"] == {"id": "retry_verification", "label": "Check again"}
-    # Defect 3 -- the copy must never claim an automatic retry is happening; nothing
-    # on the checkout path performs one, only the button above does.
+    assert "action" not in notice  # the shared confirmer schedules its own next check
+    # The shared confirmer owns scheduled reads; the notice must not promise a
+    # separate manual retry or misstate a failed read as already retried.
     assert "checking again" not in notice["message"].lower()
     assert "retrying" not in notice["message"].lower()
 
@@ -53,7 +66,7 @@ def test_pending_past_escalation_threshold_becomes_the_distinct_escalated_notice
     notice = verification_notice("domain-pending", domain=domain)
     assert notice["code"] == "verification_pending_escalated"
     assert notice["severity"] != "danger"  # escalation is not a failure verdict
-    assert notice["action"] == {"id": "retry_verification", "label": "Check again"}
+    assert "action" not in notice
 
 
 def test_escalation_consumer_mutation_is_red() -> None:
@@ -79,7 +92,7 @@ def test_escalation_consumer_mutation_is_red() -> None:
 def test_could_not_verify_copy_does_not_promise_a_retry() -> None:
     notice = verification_notice("domain-could-not-verify", domain={"evidence": {"unverifiable": ["x"]}})
     assert "retrying" not in notice["message"].lower()
-    assert notice["action"] == {"id": "retry_verification", "label": "Check again"}
+    assert "action" not in notice
 
 
 def test_not_applied_is_a_terminal_failure_with_re_stake_copy() -> None:
@@ -221,6 +234,7 @@ def test_unrecognised_verdict_does_not_abort_the_batch(live_browser: tuple[Brows
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(_keychain_stub())
+    _mock_confirm_begin(page)
     verify_requests: list = []
     page.on("request", lambda request: verify_requests.append(request) if "/api/op-verify" in request.url else None)
     hide_running_constructions(page)
@@ -278,6 +292,7 @@ def test_domain_mismatch_clears_only_the_matching_entry(live_browser: tuple[Brow
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     page.add_init_script(_keychain_stub())
+    _mock_confirm_begin(page)
     hide_running_constructions(page)
     page.goto(f"{base_url}?ir1882-guard=1")
     wait_for_board(page)
@@ -329,6 +344,11 @@ def test_domain_mismatch_clears_only_the_matching_entry(live_browser: tuple[Brow
     # Signing the last transaction closes Changes; reopen it. Each staged move is a strip
     # tile: an in-flight one is marked and cannot be undone, a cleared one can.
     if not panel.is_visible():
+        # design 4: the confirmation notice overlaps Changes on desktop (maintainer: accepted); close it with its X first.
+        dismiss = page.locator("#ceres-confirmation-banner .worksite-banner-dismiss")
+        if dismiss.is_visible():
+            dismiss.click()
+            page.locator("#ceres-confirmation-banner").wait_for(state="hidden", timeout=30_000)
         page.locator("#checkout-btn").click()
     cleared_move = panel.locator(f".ch-slot[data-deed-uid='{deed_b}'][data-group-id='worker']")
     cleared_move.wait_for(timeout=30_000)

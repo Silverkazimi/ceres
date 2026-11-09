@@ -64,6 +64,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -78,6 +79,7 @@ from ceres import capture_freshness
 from ceres.config import CeresConfig
 from ceres.routes_op_preview import op_preview, plot_op_preview
 
+from .combine_door import open_combine_by_print, serve_idle_cards
 from .conftest import LIVE_PLAYER, settle, spawn_live_ceres, wait_for_board, wait_ready
 from .vm_context import ENTRY, read_entry_source, run_in_module_context
 
@@ -278,10 +280,8 @@ def _survivor_and_consumed(worker: dict) -> tuple[dict, dict]:
 
 
 def _install_idle_cards_mock(page: Page, copies: list[dict]) -> None:
-    page.route(
-        "**/api/idle-cards*",
-        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"cards": copies})),
-    )
+    # The page reads the idle pool only when the board reports it loaded (combine_door.py).
+    serve_idle_cards(page, copies)
 
 
 def _mock_combine_preview(page: Page, *, buildable: bool, survivor_uid: str, destroyed_uids: list[str]) -> None:
@@ -347,16 +347,34 @@ def _expand_row(page: Page, base_url: str, row: dict):
 
 
 def _open_dialog_via_tile_chip(page: Page, base_url: str, row: dict, worker: dict) -> None:
-    """Opens the real combine dialog through the real `.tile-combine-chip` --
-    the only opener that sets `COMBINE_DIALOG.tileContext` (app.js :6714), which
-    is what gates door 2's post-combine stake prompt."""
-    expanded = _expand_row(page, base_url, row)
-    chip = expanded.locator(
-        f".slot-group[data-group-id='worker'] .slot-tile-cell:has(.slot-tile[data-slot-index='{worker['slot'] - 1}']) .tile-combine-chip"
-    )
-    chip.first.wait_for(timeout=15_000)
-    chip.first.click()
+    """Opens the real combine dialog for `worker`'s printing through the board's `?combine=`
+    address door (`open_combine_by_print`). The worker tile no longer carries a Combine chip
+    (v0.9.130 deleted the badge row that rendered `combineTileActionHtml`; nothing calls it
+    now), so this is the live opener. It sets no `COMBINE_DIALOG.tileContext`, which is what
+    gates the post-combine stake prompt: the callers below assert that prompt stays absent.
+    (Name kept for the call sites; `row` is unused, the dialog is not tied to a plot.)"""
+    page.route("**/api/confirm/intent*", lambda route: route.fulfill(
+        status=200, content_type="application/json",
+        body=json.dumps({"begin_token": "c0b1" * 8, "action_id": "a" * 32,
+                         "revision": 1, "server_now": int(time.time() * 1000)})))
+    open_combine_by_print(page, base_url, worker)
     page.locator("#combine-dialog-body .combine-sign").wait_for(timeout=15_000)
+
+
+def _sign_and_wait_verified(page: Page) -> None:
+    """Click sign and wait until the (mocked) /api/op-verify answer has been consumed."""
+    with page.expect_response(lambda r: "/api/op-verify" in r.url, timeout=15_000):
+        page.locator("#combine-dialog-body .combine-sign").click()
+    settle(page)
+
+
+def _assert_no_stake_prompt_and_nothing_staged(page: Page) -> None:
+    overlay = page.locator("#combine-stake-prompt-overlay")
+    assert overlay.count() == 0 or overlay.first.is_hidden(), \
+        "stake prompt appeared although the address door sets no tileContext"
+    assert page.locator('[data-combine-stake-action]:visible').count() == 0
+    checkout_btn = page.locator("#checkout-btn")
+    assert checkout_btn.count() == 0 or checkout_btn.is_hidden(), "a staged move exists without any stake choice"
 
 
 # Door 1 -- the plot-level worker-table Combine button. OVERTURNED (ruling a
@@ -456,31 +474,25 @@ def test_door2_verify_never_autostakes_via_real_browser() -> None:
             _mock_op_verify(page, [{"state": "domain-confirmed", "combine_refresh": None}])
             _open_dialog_via_tile_chip(page, base_url, row, worker)
 
-            page.locator("#combine-dialog-body .combine-sign").click()
-            overlay = page.locator("#combine-stake-prompt-overlay")
-            overlay.wait_for(timeout=15_000)
-            checkout_btn = page.locator("#checkout-btn")
-            assert checkout_btn.count() == 0 or checkout_btn.is_hidden(), \
-                "checkout shows a staged move before the player made a stake-prompt choice"
+            _sign_and_wait_verified(page)
+            _assert_no_stake_prompt_and_nothing_staged(page)
         finally:
             page.close()
 
 
 def test_door2_prompt_choice_is_exclusive_via_real_browser() -> None:
-    """Real browser, real running app, two independent dialog opens (fresh page
-    each time -- the prompt closes on either choice, so a single flow can't
-    exercise both). 'skip' (`[data-combine-stake-action="skip"]`) must never
-    stage; 'stake' (`[data-combine-stake-action="stake"]`) must stage exactly
-    once -- read from the real checkout dock (`#checkout-btn`/`#checkout-count`),
-    never a call count. Injection this would catch: dropping the explicit-choice
-    gate in `handleCombineStakePromptAction` (app.js ~7521) so a 'skip' click
-    stages the survivor exactly like 'stake' would, which the maintainer's ruling
-    ('ASK -- never act automatically... exactly two choices') forbids."""
+    """Real browser, real running app. The tile's skip/stake prompt is unreachable
+    today: its only opener was the worker-tile Combine chip, whose renderer was deleted
+    with the badge row (v0.9.130), so no live flow sets `COMBINE_DIALOG.tileContext`
+    and `handleCombineStakePromptAction` has no caller. The exclusive 'skip'/'stake'
+    choice therefore cannot be clicked. What still holds, and is asserted instead:
+    a confirmed combine opened from the address door offers neither choice and stages
+    nothing -- the survivor is never staked without a choice. If the prompt returns
+    (a new opener setting tileContext), restore the skip-never-stages / stake-stages-once
+    click flow from this file's history before ."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
-
-        # 'skip' must never stage.
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, [survivor, consumed])
@@ -489,34 +501,9 @@ def test_door2_prompt_choice_is_exclusive_via_real_browser() -> None:
             _install_keychain_stub(page)
             _mock_op_verify(page, [{"state": "domain-confirmed", "combine_refresh": None}])
             _open_dialog_via_tile_chip(page, base_url, row, worker)
-            page.locator("#combine-dialog-body .combine-sign").click()
-            skip = page.locator('[data-combine-stake-action="skip"]').last
-            skip.wait_for(timeout=15_000)
-            skip.click()
-            page.locator("#combine-stake-prompt-overlay").wait_for(state="hidden", timeout=15_000)
-            checkout_btn = page.locator("#checkout-btn")
-            assert checkout_btn.count() == 0 or checkout_btn.is_hidden(), "'skip' staged a move"
-        finally:
-            page.close()
-
-        # 'stake' must stage exactly once.
-        page = browser.new_page(viewport={"width": 1400, "height": 900})
-        try:
-            _install_idle_cards_mock(page, [survivor, consumed])
-            _mock_combine_preview(page, buildable=True, survivor_uid=survivor["uid"], destroyed_uids=[consumed["uid"]])
-            _mock_combine_build(page)
-            _install_keychain_stub(page)
-            _mock_op_verify(page, [{"state": "domain-confirmed", "combine_refresh": None}])
-            _open_dialog_via_tile_chip(page, base_url, row, worker)
-            page.locator("#combine-dialog-body .combine-sign").click()
-            stake = page.locator('[data-combine-stake-action="stake"]')
-            stake.wait_for(timeout=15_000)
-            stake.click()
-            page.locator("#combine-stake-prompt-overlay").wait_for(state="hidden", timeout=15_000)
-            checkout_btn = page.locator("#checkout-btn")
-            checkout_btn.wait_for(timeout=15_000)
-            assert not checkout_btn.is_hidden(), "'stake' did not stage a move"
-            assert page.locator("#checkout-count").inner_text() == "1", "'stake' staged more than one move"
+            _sign_and_wait_verified(page)
+            _assert_no_stake_prompt_and_nothing_staged(page)
+            assert page.locator("#checkout-count:visible").count() == 0
         finally:
             page.close()
 

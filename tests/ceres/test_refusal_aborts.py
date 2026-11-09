@@ -8,6 +8,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import settle, spawn_live_ceres, wait_for_board
+from .s7_diagnostics import print_diagnostics_on_failure
 from .stage_harness import hide_running_constructions
 
 
@@ -133,6 +134,7 @@ def _counting_keychain() -> str:
     """
 
 
+@print_diagnostics_on_failure
 def test_game_refusal_aborts_later_checkout_chunks(live_browser: tuple[Browser, str]) -> None:
     """A first-chunk game refusal is terminal for this checkout sequence.
 
@@ -188,6 +190,7 @@ def test_game_refusal_aborts_later_checkout_chunks(live_browser: tuple[Browser, 
     page.close()
 
 
+@print_diagnostics_on_failure
 def test_polled_game_refusal_is_handled_without_an_unhandled_rejection(
     live_browser: tuple[Browser, str],
 ) -> None:

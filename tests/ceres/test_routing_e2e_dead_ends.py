@@ -3,7 +3,7 @@
 1. A wallet that refuses before signing (Keychain Cancel, 2-minute signing timeout) left the bundle
    attached to a transaction id that was never signed, so the run could only end "unknown" and every
    later routing run was refused ("Resolve the existing routing run before creating another").
-2. After two scheduled chain probes, "Check again" did nothing.
+2. After two scheduled chain probes, "Check again" did nothing. (: probes now continue until Hive answers; no button.)
 3. Unticking every sale of a bundle left no way past that bundle.
 4. A stopped run that never reached a wallet blocked routing the same harvest again.
 5. A share waiting for the wallet read "Unknown"; a lookup still being checked read "Outcome unknown".
@@ -64,28 +64,72 @@ def test_release_is_refused_once_a_transaction_is_attached(tmp_path):
         assert runs.read(folder, PLAYER, record["run_id"])["bundles"][bundle_id]["state"] == "attached"
 
 
-def test_manual_check_can_probe_after_the_scheduled_probes(tmp_path):
+def test_chain_probes_continue_until_hive_answers_with_no_allowance_or_manual_bypass(tmp_path, monkeypatch):
+    """ replaces this rule (two scheduled probes, then an maintainer-pressed "Check again" with `manual`): the shared
+    confirmer keeps reading and the server never refuses a probe for good; it only paces them (READ_MIN_INTERVAL_S)."""
+    clock = [1_800_000_000.0]
+    monkeypatch.setattr(runs.time, "time", lambda: clock[0])   # frozen clock seam; each read is 2 s later
     with runs.locked(tmp_path, PLAYER) as folder:
         record = runs.create(folder, PLAYER, _preview(), {"sale_dec"})
         bundle_id = record["manifest"]["bundles"][0]["id"]
         claim = runs.claim(folder, record, bundle_id, {"sale_dec"}, True)
         runs.attach(folder, record, bundle_id, "a" * 40)
         missing = lambda _tx: (None, "not_found")  # noqa: E731
-        runs.reconcile(folder, record, bundle_id, "chain", chain_get=missing)
-        runs.reconcile(folder, record, bundle_id, "chain", chain_get=missing)
-        with pytest.raises(routing.RoutingError, match="allowance"):
+        for _ in range(4):
             runs.reconcile(folder, record, bundle_id, "chain", chain_get=missing)
-        runs.reconcile(folder, record, bundle_id, "chain", manual=True,
-                       chain_get=lambda _tx: ({"operations": claim["operations"]}, None))
+            clock[0] += 2
+        assert record["bundles"][bundle_id]["state"] == "outcome_unknown"   # still pending, never a give-up
+        runs.reconcile(folder, record, bundle_id, "chain", chain_get=lambda _tx: ({"operations": claim["operations"]}, None))
         saved = runs.read(folder, PLAYER, record["run_id"])
         assert saved["bundles"][bundle_id]["chain"] == "included"
-        assert saved["call_budget"]["actions"] == {"chain_probe": 2, "manual_retry": 1}
+        assert saved["call_budget"]["actions"] == {"chain_probe": 5}
+        assert saved["state"] == "ready"
 
 
-def test_expired_and_definitively_absent_transaction_stops_instead_of_bricking(tmp_path):
+def test_a_read_sooner_than_the_pacing_interval_is_read_later_not_refused(tmp_path, monkeypatch):
+    clock = [1_800_000_000.0]
+    monkeypatch.setattr(runs.time, "time", lambda: clock[0])
+    with runs.locked(tmp_path, PLAYER) as folder:
+        record = runs.create(folder, PLAYER, _preview(), {"sale_dec"})
+        bundle_id = record["manifest"]["bundles"][0]["id"]
+        runs.claim(folder, record, bundle_id, {"sale_dec"}, True)
+        runs.attach(folder, record, bundle_id, "a" * 40)
+        missing = lambda _tx: (None, "not_found")  # noqa: E731
+        runs.reconcile(folder, record, bundle_id, "chain", chain_get=missing)
+        with pytest.raises(runs.RoutingRateLimited) as paced:
+            runs.reconcile(folder, record, bundle_id, "chain", chain_get=missing)
+        assert 0 < paced.value.retry_after <= runs.READ_MIN_INTERVAL_S
+        clock[0] += runs.READ_MIN_INTERVAL_S
+        runs.reconcile(folder, record, bundle_id, "chain", chain_get=missing)   # the next read goes through
+        assert record["call_budget"]["actions"] == {"chain_probe": 2}
+
+
+def test_a_claimed_bundle_without_id_is_marked_unsent_only_past_hive_expiry(tmp_path, monkeypatch):
+    """The server's own expiry read () proved a no-id bundle absent: the server stops it and releases its shares,
+    but never before Hive's lifetime has passed (a late inclusion must stay possible)."""
+    clock = [1_800_000_000.0]
+    monkeypatch.setattr(runs.time, "time", lambda: clock[0])
+    with runs.locked(tmp_path, PLAYER) as folder:
+        record = runs.create(folder, PLAYER, _preview(), {"sale_dec"})
+        bundle_id = record["manifest"]["bundles"][0]["id"]
+        runs.claim(folder, record, bundle_id, {"sale_dec"}, True)
+        # fix round 1 (MEDIUM-3): only the server's own expiry proof, bound to these claimed operations, counts.
+        proof = {"status": "absent", "digest": runs.absence_digest(PLAYER, record["bundles"][bundle_id]["claim"]["operations"])}
+        with pytest.raises(routing.RoutingError, match="not expired"):
+            runs.mark_unsent(folder, record, bundle_id, absence_proof=proof)
+        clock[0] += runs.TX_EXPIRY_SECONDS + 1
+        runs.mark_unsent(folder, record, bundle_id, absence_proof=proof)
+        assert record["bundles"][bundle_id]["state"] == "stopped"
+        assert {item["state"] for item in record["reservations"].values()} == {"released"}
+        assert (PLAYER, record["run_id"]) not in runs._RUNS   # stopped with nothing in doubt -> deleted
+
+
+def test_expired_and_definitively_absent_transaction_stops_instead_of_bricking(tmp_path, monkeypatch):
     """An attached transaction the node says it does not know, once past Hive's one-hour expiry,
     can never be included: the bundle stops, reservations are released and the account can route again.
     A lookup failure or a recent miss stays unknown."""
+    clock = [1_800_000_000.0]
+    monkeypatch.setattr(runs.time, "time", lambda: clock[0])   # reads are paced; the frozen clock steps 2 s per read
     with runs.locked(tmp_path, PLAYER) as folder:
         record = runs.create(folder, PLAYER, _preview("p1"), {"sale_dec"})
         bundle_id = record["manifest"]["bundles"][0]["id"]
@@ -94,9 +138,11 @@ def test_expired_and_definitively_absent_transaction_stops_instead_of_bricking(t
         runs.reconcile(folder, record, bundle_id, "chain", chain_get=lambda _tx: (None, "not_found"))
         assert record["bundles"][bundle_id]["state"] == "outcome_unknown"
         record["bundles"][bundle_id]["attached_at"] -= runs.TX_EXPIRY_SECONDS + 1
+        clock[0] += 2
         runs.reconcile(folder, record, bundle_id, "chain", chain_get=lambda _tx: (None, "lookup_failed"))
+        clock[0] += 2
         assert record["bundles"][bundle_id]["state"] == "outcome_unknown"
-        runs.reconcile(folder, record, bundle_id, "chain", manual=True, chain_get=lambda _tx: (None, "not_found"))
+        runs.reconcile(folder, record, bundle_id, "chain", chain_get=lambda _tx: (None, "not_found"))
         saved = record   # a run that is stopped with nothing in doubt is deleted in the same step
         assert (PLAYER, record["run_id"]) not in runs._RUNS
         assert saved["bundles"][bundle_id]["state"] == "stopped"
@@ -140,7 +186,7 @@ def test_stopped_never_sent_run_frees_its_harvest_but_a_sent_one_does_not(tmp_pa
     assert len(routing_safety.overlapping(tmp_path, PLAYER, ["attempt-1"])) == 1
 
 
-def test_wallet_refusal_releases_the_claim_and_allows_signing_again():
+def test_wallet_refusal_keeps_claim_reserved_until_server_proof():
     run_in_module_context(r"""
 walletReady = () => true;
 walletCanSignTransaction = () => true;
@@ -155,12 +201,13 @@ const api = async (_player, path, body) => {
   if (path === 'claim') { record.bundles['bundle-1'] = { state: 'claimed' }; return {
     authority: 'Posting', member_nonces: ['member-1'], operations: [['custom_json', { id: 'sm_land_operation', json: '{"n":"member-1"}' }]] }; }
   if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-09-28T00:00:00' };
+  if (path === 'envelope') return { verified_envelope_expiry: 1 };
   if (path === 'release') { record.bundles['bundle-1'] = { state: 'planned' }; return record; }
   if (path === 'attach') throw Error('an unsigned transaction was attached');
   throw Error('unexpected endpoint ' + path);
 };
 let signatures = 0;
-const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txId: 'b'.repeat(40) }],
+const run = createRoutingRun({ player: 'alice', api, prepare: async (_player, groups) => [{ txId: 'b'.repeat(40), transaction: { operations: groups[0] } }],
   sign: async () => {
     signatures += 1;
     const error = Error('The wallet did not approve this signature. Nothing was sent.');
@@ -169,12 +216,12 @@ const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txI
 (async () => {
   await run.create({ preview_id: 'preview', preview_digest: 'digest' });
   await run.action('sign');
-  if (record.bundles['bundle-1'].state !== 'planned') throw Error('refused bundle stayed claimed');
-  if (!calls.includes('release')) throw Error('release not requested');
-  if (JSON.parse(localStorage.getItem('ceres:routing-v2-members:alice') || '[]').length) throw Error('member stayed reserved');
+  if (record.bundles['bundle-1'].state !== 'claimed') throw Error('browser released a held claim');
+  if (calls.includes('release')) throw Error('browser requested release without server proof');
+  if (JSON.parse(localStorage.getItem('ceres:routing-v2-members:alice') || '[]').length !== 1) throw Error('member reservation was lost');
   if (run.html().includes('did not approve')) throw Error('an error text was shown');
   await run.action('sign');
-  if (signatures !== 2) throw Error('the refused bundle could not be signed again');
+  if (signatures !== 1) throw Error('held claim was signed again without proof');
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "routing-run.js")
 
@@ -194,12 +241,13 @@ const api = async (_player, path, body) => {
   if (path === 'claim') { record.bundles['bundle-1'] = { state: 'claimed' }; return {
     authority: 'Posting', member_nonces: ['member-1'], operations: [['custom_json', { id: 'sm_land_operation', json: '{"n":"member-1"}' }]] }; }
   if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-09-28T00:00:00' };
+  if (path === 'envelope') return { verified_envelope_expiry: 1 };
   if (path === 'release') { record.bundles['bundle-1'] = { state: 'planned' }; return record; }
   if (path === 'attach') throw Error('an unsigned transaction was attached');
   throw Error('unexpected endpoint ' + path);
 };
 let signatures = 0;
-const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txId: 'b'.repeat(40) }],
+const run = createRoutingRun({ player: 'alice', api, prepare: async (_player, groups) => [{ txId: 'b'.repeat(40), transaction: { operations: groups[0] } }],
   sign: async () => {
     signatures += 1;
     const error = Error('This transaction exceeds Hive five custom-operation limit. Nothing was sent.');
@@ -208,9 +256,9 @@ const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txI
 (async () => {
   await run.create({ preview_id: 'preview', preview_digest: 'digest' });
   await run.action('sign');
-  if (record.bundles['bundle-1'].state !== 'planned') throw Error('refused bundle stayed claimed');
-  if (!calls.includes('release')) throw Error('release not requested');
-  if (JSON.parse(localStorage.getItem('ceres:routing-v2-members:alice') || '[]').length) throw Error('member stayed reserved');
+  if (record.bundles['bundle-1'].state !== 'claimed') throw Error('browser released a held claim');
+  if (calls.includes('release')) throw Error('browser requested release without server proof');
+  if (JSON.parse(localStorage.getItem('ceres:routing-v2-members:alice') || '[]').length !== 1) throw Error('member reservation was lost');
   if (!run.html().includes('custom-operation limit')) throw Error('the failure reason was hidden');
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "routing-run.js")
@@ -302,6 +350,7 @@ const api = async (_player, path, body) => {
   if (path === 'claim') { record.bundles['bundle-1'] = { state: 'claimed' }; return {
     authority: 'Posting', member_nonces: ['member-1'], operations: [['custom_json', { id: 'sm_land_operation', json: '{"n":"member-1"}' }]] }; }
   if (path === 'head') return { head_block_number: 1, head_block_id: '0'.repeat(40), time: '2026-09-28T00:00:00' };
+  if (path === 'envelope') return { verified_envelope_expiry: 1 };
   if (path === 'release') { record.bundles['bundle-1'] = { state: 'planned' }; return record; }
   if (path === 'client-report') return {};
   throw Error('unexpected endpoint ' + path);
@@ -311,7 +360,7 @@ const api = async (_player, path, body) => {
 
 def test_browser_guard_follows_the_plan_sized_budget_r02():
     run_in_module_context(_RUN_HARNESS % {"total": 130, "ceiling": 500} + r"""
-const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txId: 'b'.repeat(40) }],
+const run = createRoutingRun({ player: 'alice', api, prepare: async (_player, groups) => [{ txId: 'b'.repeat(40), transaction: { operations: groups[0] } }],
   sign: async () => { const error = Error('wallet-said-no-xyz'); error.broadcasted = false; throw error; } });
 (async () => {
   await run.create({ preview_id: 'preview', preview_digest: 'digest' });
@@ -323,17 +372,17 @@ const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txI
 """, entry=STATIC / "routing-run.js")
 
 
-def test_full_browser_storage_still_releases_an_unsigned_claim_r08():
+def test_full_browser_storage_keeps_claim_until_server_proof_r08():
     run_in_module_context(_RUN_HARNESS % {"total": 0, "ceiling": 120} + r"""
 const realSet = localStorage.setItem.bind(localStorage);
-const run = createRoutingRun({ player: 'alice', api, prepare: async () => [{ txId: 'b'.repeat(40) }],
+const run = createRoutingRun({ player: 'alice', api, prepare: async (_player, groups) => [{ txId: 'b'.repeat(40), transaction: { operations: groups[0] } }],
   sign: async () => { throw Error('never reached'); } });
 (async () => {
   await run.create({ preview_id: 'preview', preview_digest: 'digest' });
   localStorage.setItem = (key, value) => { if (String(key).startsWith('ceres:routing-v2-members')) throw Error('QuotaExceededError'); return realSet(key, value); };
   await run.action('sign');
-  if (!calls.includes('release')) throw Error('the claimed bundle was left claimed');
-  if (record.bundles['bundle-1'].state !== 'planned') throw Error('bundle not back to planned');
+  if (calls.includes('release')) throw Error('browser storage failure released a claim');
+  if (record.bundles['bundle-1'].state !== 'claimed') throw Error('claim was not retained for server proof');
 })().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 """, entry=STATIC / "routing-run.js")
 

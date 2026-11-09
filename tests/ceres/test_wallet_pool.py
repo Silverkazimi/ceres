@@ -183,7 +183,7 @@ context.__signed = [];
     added = lp.add("player0005", "PR-CEF-65", "GRAIN", 100, 50, nonce="0123456789abcdef")
     removed = lp.remove("player0005", "PR-CEF-65", "GRAIN", "0.5", nonce="fedcba9876543210")
     body_js = CARD_JS + f"""
-VERIFY_SCHEDULE_MS.length = 1;
+__setConfirmerClock(Object.fromEntries([['sleep', async () => undefined]]));  // the shared schedule, frozen for the test
 const order = [];
 const builds = {{ add: {{ ...{json.dumps(added)}, deposit: {{ resource_amount: '100.000', dec_amount: '50.000' }} }},
                  remove: {{ ...{json.dumps(removed)}, withdraw: {{ resource_amount: '90.000', dec_amount: '45.000' }} }} }};
@@ -205,6 +205,8 @@ const st = swapState('player0005', 'GRAIN');
   let card = positionHtml('GRAIN', wallet, 'player0005');
   if (!card.includes('Add 100.000 Grain + 50.000 DEC')) throw new Error('add button: ' + card);
   await swapAction(ctx, 'pool-sign', target);
+  // the click ends at the receipt; the shared confirmer (clock frozen) reads on by itself, so wait for it.
+  for (let i = 0; i < 200 && st.stage === 'confirming'; i += 1) await new Promise(resolve => setTimeout(resolve, 0));
   const preview = order.find(o => o[0] === 'preview')[1];
   if (preview.kind !== 'add' || preview.seen_dec !== '50' || preview.resource_amount !== '100' || preview.region_uid !== 'PR-CEF-65') throw new Error('add build: ' + JSON.stringify(preview));
   if (__signed.length !== 1 || __signed[0].authority !== 'Posting' || __signed[0].json.op !== 'add_liquidity') throw new Error('signed: ' + JSON.stringify(__signed));
@@ -220,13 +222,16 @@ const st = swapState('player0005', 'GRAIN');
   card = positionHtml('GRAIN', wallet, 'player0005');
   if (!card.includes('Withdraw 50% → 90.000 Grain + 45.000 DEC') || !card.includes('data-lp-early-fee')) throw new Error('withdraw card: ' + card);
   await swapAction(ctx, 'pool-sign', target);
+  for (let i = 0; i < 200 && st.stage === 'confirming'; i += 1) await new Promise(resolve => setTimeout(resolve, 0));
   const removal = order.filter(o => o[0] === 'preview')[1][1];
   if (removal.shares_out !== '0.500' || removal.seen.resource_amount !== '90.000' || removal.seen.dec_amount !== '45.000') throw new Error('remove build: ' + JSON.stringify(removal));
   if (__signed[1].json.op !== 'remove_liquidity' || st.stage !== 'done' || st.receipt.resource !== 89.9) throw new Error('remove: ' + st.stage);
   if (!positionHtml('GRAIN', wallet, 'player0005').includes('Liquidity withdrawn')) throw new Error('withdraw receipt');
+  console.log('IR8582_POOL_ADD_REMOVE_OK');
 }})().catch(error => {{ console.error(error); process.exit(1); }});
 """
-    run_in_module_context(body_js, entry=STATIC / "wallet-lp.js", source=source, extra_context_js=extra)
+    result = run_in_module_context(body_js, entry=STATIC / "wallet-lp.js", source=source, extra_context_js=extra)
+    assert "IR8582_POOL_ADD_REMOVE_OK" in result.stdout   # a pending promise exits 0 too
 
 
 def test_typing_the_dec_works_out_the_resource_it_pairs_with():

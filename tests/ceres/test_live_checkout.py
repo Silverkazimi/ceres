@@ -13,6 +13,7 @@ import pytest
 from playwright.sync_api import Browser, Page
 
 from .conftest import settle, spawn_live_ceres, wait_for_board
+from .s7_diagnostics import print_diagnostics_on_failure
 from .stage_harness import hide_running_constructions
 
 
@@ -227,6 +228,9 @@ def test_compact_review_keeps_signing_facts_visible(live_browser: tuple[Browser,
     panel = page.locator("#checkout-panel")
     review = panel.locator(".op-preview-review")
     review.wait_for(timeout=30_000)
+    # the section also exists as the "Building the current preview" shell, which now lasts through the review
+    # registration round trip; wait for the rows themselves before counting them.
+    review.locator("ol.op-c-ops > li").first.wait_for(state="attached", timeout=30_000)
 
     # The compact review lists one row per operation, each tagged with its transaction
     # ("Tx 1" / "Tx 2") and its signing authority; the rows sit in a folded details.
@@ -280,11 +284,13 @@ def test_compact_review_keeps_refusal_reason_visible(live_browser: tuple[Browser
     panel = page.locator("#checkout-panel")
     review = panel.locator(".op-preview-review")
     review.wait_for(timeout=30_000)
+    panel.locator(".op-preview-review", has_text="Cannot sign yet").wait_for(timeout=30_000)  # not the loading shell
     assert "Cannot sign yet" in review.inner_text()
     assert "card is still in its 72-hour unstake cooldown" in review.inner_text()
     page.close()
 
 
+@print_diagnostics_on_failure
 def test_chunk_broadcast_waits_for_previous_verification(live_browser: tuple[Browser, str]) -> None:
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
@@ -309,6 +315,7 @@ def test_chunk_broadcast_waits_for_previous_verification(live_browser: tuple[Bro
     page.close()
 
 
+@print_diagnostics_on_failure
 def test_rejected_first_chunk_aborts_remaining_broadcasts(live_browser: tuple[Browser, str]) -> None:
     browser, base_url = live_browser
     page = browser.new_page(viewport={"width": 1400, "height": 900})
@@ -406,6 +413,7 @@ def test_confirmed_broadcast_clears_the_stage(live_browser: tuple[Browser, str])
     page.close()
 
 
+@print_diagnostics_on_failure
 def test_pending_verification_rechecks_without_human_action(live_browser: tuple[Browser, str]) -> None:
     """M8: a pending verdict schedules another verify request automatically.
 
@@ -500,6 +508,11 @@ def test_in_flight_marker_blocks_a_second_signature(live_browser: tuple[Browser,
     page.wait_for_function("window.__ceresBroadcastCount === 1", timeout=30_000)
     settle(page)
     if not panel.is_visible():
+        # design 4: the confirmation notice overlaps Changes on desktop (maintainer: accepted); close it with its X first.
+        dismiss = page.locator("#ceres-confirmation-banner .worksite-banner-dismiss")
+        if dismiss.is_visible():
+            dismiss.click()
+            page.locator("#ceres-confirmation-banner").wait_for(state="hidden", timeout=30_000)
         page.locator("#checkout-btn").click()
     marker = panel.locator(".ch-slot.is-in-flight")
     marker.wait_for(timeout=30_000)
@@ -585,7 +598,8 @@ def test_refresh_errors_render_a_confirmed_terminal_state(live_browser: tuple[Br
     # One row: the catalogue message (verification_refresh_failed) already says it is confirmed
     # and the player must be able to read all of it on the pill.
     assert banner.locator(".worksite-banner-title").inner_text().strip().startswith("The change is confirmed.")
-    assert "The change is confirmed. This plot's figures could not be re-read." in banner.inner_text()
+    # The pill shortens the message to 72 characters (operations.js shortReceiptLine(detail, 72)).
+    assert "The change is confirmed. This plot's figures co" in banner.inner_text()
     assert page.locator("#checkout-btn").is_hidden()
     assert banner.locator("button[data-confirmation-action='refresh']").inner_text().strip() == "Re-read"
     page.wait_for_function(
@@ -595,6 +609,7 @@ def test_refresh_errors_render_a_confirmed_terminal_state(live_browser: tuple[Br
     page.close()
 
 
+@print_diagnostics_on_failure
 def test_failed_broadcast_leaves_the_stage_intact(live_browser: tuple[Browser, str]) -> None:
     """Item 25's other safety half: a Keychain rejection/cancellation must NEVER
     clear the stage. Real batches of 40 staged moves are routine -- clearing on click instead

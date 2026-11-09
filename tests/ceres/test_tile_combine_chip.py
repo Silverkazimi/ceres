@@ -1,21 +1,21 @@
-"""Live Chromium coverage for the door-2 tile combine chip's approved-mockup shape
-(2026-08-29 maintainer correction to the v0.7.65 in-flow block button, and again to the
-"Combine (N)" flat-label fix that superseded it; 2026-08-30 the `⧉` glyph was
-dropped entirely -- it rendered as tofu in the maintainer's font stack): a compact
-`.tile-combine-chip` positioned above the tile, `Combine N`, never the occupant's
-own name.
+"""Live Chromium coverage for the worker tile's Combine chip -- now an ABSENCE guard.
 
-`test_tile_combine_chip_click_opens_the_combine_dialog` guards the click itself. Root
-cause: `.slot-grid` sets `pointer-events: none` on itself and re-enables it only
-on `.slot-tile` -- the chip is a `.slot-tile-cell` SIBLING of the tile, not the
-tile, so without its own explicit `auto` it inherited `none` and every click fell
-through to whatever sat beneath it. Injection: force `pointer-events: none` back
-onto the chip via inline style and confirm the dialog no longer opens.
+History: the compact `.tile-combine-chip` above the tile (2026-08-29/30 maintainer
+corrections, `Combine N`, no glyph) was rendered by `combineTileActionHtml`
+(static/combine.js) from editor.js. v0.9.130 (, "delete the worker badge row
+completely") removed the row, and with it the only caller: the function is still
+defined and imported but nothing calls it, so no `.tile-combine-chip` renders anywhere.
+The board opens Combine from the address, `/?combine=<card_detail_id>-<edition>-<foil>`
+(`open_combine_by_print`, combine_door.py), and from the worker picker's candidate rows.
 
-Uses `spawn_live_ceres` (isolated server) and mocks `GET /api/idle-cards` so the
-chip is deterministically reachable against a REAL occupied tile on the real
-board snapshot, rather than hunting for one of the rare plots where a live idle
-duplicate already exists.
+The two tests therefore keep their scenario (a REAL occupied tile on the real board
+snapshot whose printing is made combinable by mocking `GET /api/idle-cards`) and assert
+what renders today: no chip on the tile, and the Combine dialog reachable through the
+address door for that same printing. If the chip is ever brought back, restore the shape
+and click guards (chip outside `.slot-tile`, `Combine N` label, `pointer-events: auto`
+on the chip) from this file's history before .
+
+Uses `spawn_live_ceres` (isolated server).
 """
 
 from __future__ import annotations
@@ -27,7 +27,8 @@ from pathlib import Path
 
 from playwright.sync_api import Page
 
-from .conftest import settle, spawn_live_ceres, wait_ready
+from .combine_door import open_combine_by_print, serve_idle_cards
+from .conftest import settle, spawn_live_ceres
 
 SCREEN_DIR = Path(__file__).parents[2] / "work" / "combine-reachability"
 
@@ -70,17 +71,13 @@ def _install_idle_cards_mock(page: Page, worker: dict) -> None:
         }
         for i in range(2)
     ]
-    page.route(
-        "**/api/idle-cards*",
-        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"cards": copies})),
-    )
+    # The page reads the idle pool only when the board reports it loaded (combine_door.py).
+    serve_idle_cards(page, copies)
 
 
-def test_tile_combine_chip_is_compact_above_the_tile_not_an_inflow_block() -> None:
-    """The chip: `.tile-combine-chip` class, positioned OUTSIDE `.slot-tile` (a
-    `.slot-tile-cell` sibling, per ceres.css's own overflow:hidden reasoning), label
-    text exactly `Combine 2` (2 idle copies, no parentheses, no glyph), and does not repeat
-    the occupant's own name."""
+def test_tile_combine_chip_is_absent_from_a_combinable_occupant() -> None:
+    """With two idle copies of the occupant's printing (combinable), the expanded plot's
+    worker tile still renders no `.tile-combine-chip`, neither beside the tile nor inside it."""
     SCREEN_DIR.mkdir(parents=True, exist_ok=True)
     with spawn_live_ceres() as (browser, base_url):
         board = _get(base_url, "/api/board")
@@ -98,36 +95,22 @@ def test_tile_combine_chip_is_compact_above_the_tile_not_an_inflow_block() -> No
             page_row.click()
             expanded = page.locator(f"tr.expand-row[data-deed-uid='{row['deed_uid']}']")
             expanded.locator(".slot-editor").wait_for(timeout=15_000)
+            tile = expanded.locator(f".slot-group[data-group-id='worker'] .slot-tile[data-slot-index='{worker['slot'] - 1}']")
+            tile.first.wait_for(timeout=15_000)
+            settle(page)
 
-            chip = expanded.locator(
-                f".slot-group[data-group-id='worker'] .slot-tile-cell:has(.slot-tile[data-slot-index='{worker['slot'] - 1}']) .tile-combine-chip"
-            )
-            chip.first.wait_for(timeout=15_000)
-            label = chip.first.inner_text()
-            assert label == "Combine 2", label
-            assert worker.get("name", "") not in label
+            assert expanded.locator(".tile-combine-chip").count() == 0, "a tile Combine chip rendered (the badge row was deleted in v0.9.130)"
+            assert page.locator('[data-slot-action="combine-tile"]').count() == 0
 
-            # It must NOT be nested inside the tile it belongs to (the old
-            # `.worker-combine-action` in-flow shape) -- it is a `.slot-tile-cell`
-            # sibling of the tile, same wrapper `.slot-plan-flag` uses.
-            is_inside_tile = chip.first.evaluate(
-                "el => !!el.closest('.slot-tile') "
-            )
-            assert not is_inside_tile, "chip must not be nested inside .slot-tile (the rejected in-flow shape)"
-
-            page.screenshot(path=str(SCREEN_DIR / "tile-chip-mockup-shape.png"))
+            page.screenshot(path=str(SCREEN_DIR / "tile-chip-absent.png"))
         finally:
             page.close()
 
 
 def test_tile_combine_chip_click_opens_the_combine_dialog() -> None:
-    """Guards the CLICK, not the markup (2026-08-30 maintainer report: the chip rendered
-    but clicking it did nothing). Spies on the real outcome -- `#combine-dialog-overlay`
-    losing its `hidden` attribute -- rather than the delegated handler's source.
-    Injection: force `pointer-events: none` back onto the live chip (the exact
-    defect this guard forbids -- `.slot-grid` disables pointer events on itself and
-    only `.slot-tile` opts back in, so the chip, a `.slot-tile-cell` sibling of the
-    tile, needs its own `auto`) and confirm the dialog stays closed."""
+    """The reachability this chip guarded now rides the address door: for the same combinable
+    printing, `/?combine=<print>` opens `#combine-dialog-overlay` (not hidden) and the
+    board carries no chip to click."""
     SCREEN_DIR.mkdir(parents=True, exist_ok=True)
     with spawn_live_ceres() as (browser, base_url):
         board = _get(base_url, "/api/board")
@@ -136,38 +119,11 @@ def test_tile_combine_chip_click_opens_the_combine_dialog() -> None:
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         try:
             _install_idle_cards_mock(page, worker)
-            page.goto(base_url)
-            _wait_for_board(page)
-            wait_ready(page)
-            settle(page)
-
-            page_row = page.locator(f"tr.plot-row[data-deed-uid='{row['deed_uid']}']")
-            page_row.wait_for(timeout=15_000)
-            page_row.click()
-            expanded = page.locator(f"tr.expand-row[data-deed-uid='{row['deed_uid']}']")
-            expanded.locator(".slot-editor").wait_for(timeout=15_000)
-
-            chip = expanded.locator(
-                f".slot-group[data-group-id='worker'] .slot-tile-cell:has(.slot-tile[data-slot-index='{worker['slot'] - 1}']) .tile-combine-chip"
-            )
-            chip.first.wait_for(timeout=15_000)
-
             overlay_hidden = "document.getElementById('combine-dialog-overlay')?.hidden ?? true"
-            assert page.evaluate(overlay_hidden) is True
-
-            chip.first.click()
+            open_combine_by_print(page, base_url, worker)
             settle(page)
-            assert page.evaluate(overlay_hidden) is False, "click did not open the combine dialog"
-            page.evaluate("document.getElementById('combine-dialog-overlay').hidden = true; window.closeCombineDialog?.();")
-
-            # Injection: reproduce the reported defect by forcing the inherited
-            # pointer-events:none back onto the chip and confirm the click no
-            # longer reaches the delegated handler.
-            chip.first.evaluate("el => el.style.setProperty('pointer-events', 'none', 'important')")
-            box = chip.first.evaluate("el => { const r = el.getBoundingClientRect(); return {x: r.x + r.width / 2, y: r.y + r.height / 2}; }")
-            page.mouse.click(box["x"], box["y"])
-            settle(page)
-            assert page.evaluate(overlay_hidden) is True, "guard is void -- dialog opened even with pointer-events:none forced onto the chip"
+            assert page.evaluate(overlay_hidden) is False, "the address door did not open the combine dialog"
+            assert page.locator(".tile-combine-chip").count() == 0
 
             page.screenshot(path=str(SCREEN_DIR / "tile-chip-click-opens-dialog.png"))
         finally:

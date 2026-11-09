@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import json
 import re
+from pathlib import Path
 from collections import Counter
 
 import pytest
@@ -293,6 +294,10 @@ def _open_worksite_modal(page, base_url: str):
     return modal
 
 
+@pytest.mark.skipif(
+    not (Path(__file__).resolve().parents[2] / "ceres" / "static" / "assets" / "land" / "worksites").is_dir(),
+    reason="worksite art is gitignored and absent from the public repo (ceres/static/assets/land/worksites missing)",
+)
 def test_worksite_tile_art_has_rendered_pixel_coverage(editor_page):
     """Worksite art fills the tile's rendered content area, not only its source box.
 
