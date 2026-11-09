@@ -96,8 +96,8 @@ def test_step1a_cleanup_removes_only_files_this_version_no_longer_uses(tmp_path,
     cache = tmp_path / "cache"
     cache.mkdir()
     removed = ["land_assets_1f883c7850126c843ec3ca11.json", "land_owned_counts_player0005.json",
-               "land_project_history_I-290-abc.json", "collection_player0005.json", "collection_player0017.etag",
-               "collection_player0017.etag.json"]
+               "land_project_history_I-290-abc.json", "collection_player0005.json", "collection_player0018.etag",
+               "collection_player0018.etag.json"]
     kept = ["card_details.json", "item_details.json", "land_deeds_player0005.json",
             "land_available_STK-LND-TOT_player0005_0.json", "collection_unbinding_v2_player0005.etag",
             "collection_unbinding_v2_player0005.etag.json", "some_other_tool.json"]

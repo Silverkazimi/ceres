@@ -139,6 +139,10 @@ def _mock_op_verify(page: Page, responses: list[dict], *, delay_ms: int = 0) -> 
 def _open_dialog(page: Page, base_url: str, row: dict, worker: dict) -> None:
     """Opens the real dialog for `worker`'s printing through the board's `?combine=` door
     (`row` names the plot the printing was found on; the dialog itself is not tied to it)."""
+    page.route("**/api/confirm/intent*", lambda route: route.fulfill(
+        status=200, content_type="application/json",
+        body=json.dumps({"begin_token": "c0b1" * 8, "action_id": "a" * 32,
+                         "revision": 1, "server_now": int(time.time() * 1000)})))
     open_combine_by_print(page, base_url, worker)
     page.locator("#combine-dialog-body .combine-sign").wait_for(timeout=15_000)
 
@@ -266,11 +270,8 @@ def test_one_broadcast_per_confirm() -> None:
 # Guard 4: the pending surface never claims confirmation (R-26), and offers a
 # retry reading its OWN label ("Check again"), not the notice's message text.
 
-def test_pending_surface_offers_retry_labelled_check_again() -> None:
-    """Injection this would catch: `combineRetryButtonHtml()` reading the
-    pending notice's own message instead of its action's label -- expected red:
-    the button text would read the long "Not confirmed yet..." sentence
-    instead of "Check again"."""
+def test_pending_surface_schedules_checks_without_manual_retry() -> None:
+    """Revision 6 §4: pending keeps checking without a manual re-sign or verify button."""
     with spawn_live_ceres() as (browser, base_url):
         row, worker = _first_combinable_worker(base_url)
         survivor, consumed = _survivor_and_consumed(worker)
@@ -284,14 +285,14 @@ def test_pending_surface_offers_retry_labelled_check_again() -> None:
             _open_dialog(page, base_url, row, worker)
 
             page.locator("#combine-dialog-body .combine-sign").click()
-            retry = page.locator('[data-combine-action="verify"]')
-            retry.wait_for(timeout=15_000)
-            assert retry.inner_text() == "Check again"
-
+            page.locator("#combine-dialog-body .combine-verdict.is-pending").wait_for(timeout=15_000)
+            assert page.locator('[data-combine-action="verify"]').count() == 0
+            assert "Checking again" in page.locator("#combine-dialog-body").inner_text()
             before = len(requests)
-            retry.click()
+            page.wait_for_event("request", predicate=lambda request: "/api/op-verify" in request.url,
+                                timeout=15_000)
             settle(page)
-            assert len(requests) > before, "clicking retry must fire another /api/op-verify request"
+            assert len(requests) > before, "scheduled check must fire another /api/op-verify request"
         finally:
             page.close()
 

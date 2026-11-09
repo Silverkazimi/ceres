@@ -418,7 +418,7 @@ export function restoreStagedMove(entry) {
   }
 }
 
-export function stageToast(message, error = false) {
+export function stageToast(message, error = false, action = null) {
   let toast = document.getElementById('ceres-stage-toast');
   if (!toast) {
     toast = document.createElement('div');
@@ -428,10 +428,20 @@ export function stageToast(message, error = false) {
     document.body.appendChild(toast);
   }
   toast.textContent = message;
+  toast.classList.toggle('has-action', Boolean(action));
+  if (action?.label && typeof action.run === 'function') {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'stage-toast-undo ceres-btn ceres-btn--secondary';
+    button.setAttribute('data-control-density', 'compact');
+    button.textContent = action.label;
+    button.addEventListener('click', () => { toast.hidden = true; action.run(); }, { once: true });
+    toast.append(button);
+  }
   toast.classList.toggle('is-error', error);
   toast.hidden = false;
   clearTimeout(CERES_TOAST_TIMER);
-  CERES_TOAST_TIMER = setTimeout(() => { toast.hidden = true; }, 4500);
+  CERES_TOAST_TIMER = setTimeout(() => { toast.hidden = true; }, action ? 10000 : 4500);
 }
 
 export function stagedPowerCoreRefs() {

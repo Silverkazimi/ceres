@@ -30,6 +30,10 @@ window.hive_keychain = {
   },
 };
 fetch = async (url, init) => {
+  // wallet silence hands the request to the own-history finder; that is not an inclusion wait.
+  if (String(url).startsWith('/api/confirm/find?player=alice')) return { ok: true, status: 200, json: async () => ({ status: 'not_found' }) };
+  // fix round 3 (N1): the begin is recorded before the wallet opens; it is not an inclusion wait.
+  if (String(url).startsWith('/api/confirm/intent?player=alice')) return { ok: true, status: 200, json: async () => ({ ok: true, begin_token: 'a'.repeat(32), action_id: 'b'.repeat(32), revision: 1 }) };
   inclusionCount += 1;
   if (!String(url).startsWith('/api/op-inclusion?player=alice')) throw new Error(`wrong inclusion URL: ${url}`);
   if (JSON.parse(init.body).tx_id !== 'late-tx') throw new Error('wrong inclusion transaction');
@@ -41,11 +45,11 @@ const first = BroadcastGate.broadcast('Alice', operations).then(
   () => { throw new Error('the timeout must enter pending verification'); },
   (error) => error,
 );
-await Promise.resolve();
+for (let i = 0; i < 100 && requestCount === 0; i++) await Promise.resolve();   // round 3: the wallet opens after the recorded begin
 if (requestCount !== 1 || typeof callback !== 'function') throw new Error('Keychain was not called exactly once');
 timers.find((timer) => timer.delay === KEYCHAIN_RESPONSE_TIMEOUT_MS).callback();
 const timeout = await first;
-if (!timeout.keychainTimedOut || !timeout.ambiguousBroadcast || timeout.broadcasted !== true || timeout.retryable !== false) {
+if (!timeout.keychainTimedOut || !timeout.confirmPending || !timeout.ambiguousBroadcast || timeout.broadcasted !== true || timeout.retryable !== false) {
   throw new Error('timeout was not classified as an ambiguous pending broadcast');
 }
 
@@ -87,7 +91,7 @@ const rows = Array.from({ length: 5 }, (_, index) => {
 localStorage.setItem('ceres:broadcast-claims:v1:alice', JSON.stringify(rows.map(row => row.id)));
 localStorage.setItem('ceres:pending-custom-ops:v1:alice', JSON.stringify(rows));
 let probes = 0;
-fetch = async () => { probes += 1; return { ok: true, json: async () => ({ included: false, block_num: null }) }; };
+fetch = async (url) => { if (String(url).includes('/api/confirm/intent')) return { ok: true, status: 200, json: async () => ({ begin_token: 'a'.repeat(32), action_id: 'b'.repeat(32), revision: 1 }) }; probes += 1; return { ok: true, json: async () => ({ included: false, block_num: null }) }; };
 const recovered = await recoverPendingBroadcastRequests('alice', 1);
 if (recovered.blocked || recovered.released !== 5 || recovered.remaining !== 0 || probes !== 5) throw Error('five-row recovery did not clear the proven-absent requests');
 let walletCalls = 0;
@@ -126,7 +130,7 @@ const rows = Array.from({ length: 5 }, (_, index) => {
 });
 localStorage.setItem('ceres:broadcast-claims:v1:alice', JSON.stringify(rows.map(row => row.id)));
 localStorage.setItem('ceres:pending-custom-ops:v1:alice', JSON.stringify(rows));
-fetch = async () => ({ ok: true, json: async () => ({ included: null, block_num: null }) });
+fetch = async (url) => String(url).includes('/api/confirm/intent') ? { ok: true, status: 200, json: async () => ({ begin_token: 'a'.repeat(32), action_id: 'b'.repeat(32), revision: 1 }) } : ({ ok: true, json: async () => ({ included: null, block_num: null }) });
 let walletCalls = 0;
 window.hive_keychain = { requestBroadcast(_account, _operations, _key, callback) {
   walletCalls += 1;
@@ -273,21 +277,18 @@ if (blockedControl.includes('Check pending requests') || blockedControl.includes
     )
 
 
-def test_timeout_uses_existing_check_again_state_without_reenabling_sign() -> None:
-    gate = GATE.read_text(encoding="utf-8")
-    operations = OPERATIONS.read_text(encoding="utf-8")
+def test_wallet_silence_hands_off_to_the_shared_confirmer_without_a_manual_state() -> None:
+    """ replaces the  "Check again" timeout state: the gate owns no timer and offers no manual check.
 
+    Behaviour (the late id, the single wallet request, duplicate refusal) is replayed in
+    test_timeout_keeps_one_request_and_recovers_late_callback above; this pins the hand-off."""
+    gate = GATE.read_text(encoding="utf-8")
     assert gate.count("requestWalletBroadcast(account, operations,") == 1
-    assert "error.keychainTimedOut = true;" in gate
-    assert "error.ambiguousBroadcast = true;" in gate
-    assert "error.broadcasted = true;" in gate
-    assert "error.retryable = false;" in gate
+    assert "afterWalletSilence(" in gate and "KEYCHAIN_RESPONSE_TIMEOUT_MS)" not in gate
+    assert "error.confirmPending = true;" in gate and "findSignedTransaction(account, operations)" in gate
     assert "claimBroadcastRequest(account, operations)" in gate
-    assert "error.pendingBroadcast" in operations
-    assert "review.broadcastPending = true;" in operations
-    assert "review.broadcasting || review.freshnessCheck || review.broadcastPending" in operations
-    assert "action: { id: 'retry_verification', label: 'Check again' }" in operations
-    assert "if (error?.retryable && broadcastButton)" in operations
+    assert "Check again" not in gate
+
 
 def test_retry_reaches_the_wallet_after_a_request_the_chain_never_saw() -> None:
     """: his Changes signing died here.
@@ -331,7 +332,7 @@ def test_unjudgeable_old_request_stops_blocking_but_keeps_its_claim() -> None:
         r"""
 (async () => {
 const account = 'alice';
-globalThis.fetch = async () => ({ ok: true, json: async () => ({ included: null, block_num: null }) });
+globalThis.fetch = async (url) => String(url).includes('/api/confirm/intent') ? { ok: true, status: 200, json: async () => ({ begin_token: 'a'.repeat(32), action_id: 'b'.repeat(32), revision: 1 }) } : ({ ok: true, json: async () => ({ included: null, block_num: null }) });
 const stale = { id: 'stuck', claimIds: ['stuck'], count: 4, txId: null, instanceId: 'i-old',
   budgetActive: true, createdAt: new Date(Date.now() - 3600000).toISOString() };
 saveCustomOps(account, [stale]);

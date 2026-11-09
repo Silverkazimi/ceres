@@ -163,7 +163,10 @@ def test_runi_confirmation_controls_tile_notice_and_keychain_surface(
             "document.querySelector('#checkout-btn')?.hidden === false && document.querySelector('.slot-tile.is-pending-removal')",
             timeout=30_000,
         )
-        assert page.locator("#ceres-confirmation-banner").count() == 0
+        # Since a pending signed change shows the "Awaiting confirmation" banner by design.
+        pending_banner = page.locator("#ceres-confirmation-banner")
+        pending_banner.wait_for(timeout=30_000)
+        assert "Awaiting confirmation" in pending_banner.inner_text()
     else:
         page.wait_for_function(
             "index => !document.querySelectorAll('tr.expand-row')[index]?.querySelector(\".slot-power .slot-power-large .slot-tile[data-group-id='runi'][data-occupied='1']\")",
@@ -208,6 +211,11 @@ def test_runi_not_applied_verdict_clears_in_flight_and_explains_re_stake(
         "Object.keys(JSON.parse(localStorage.getItem('ceres:in-flight:v1:player0005') || '{\"records\":{}}').records).length"
     ) == 0
     page.wait_for_function("document.querySelector('#checkout-btn')?.hidden === false", timeout=30_000)
+    # design 4: the confirmation notice overlaps Changes on desktop (maintainer: accepted); close it with its X first.
+    dismiss = page.locator("#ceres-confirmation-banner .worksite-banner-dismiss")
+    if dismiss.is_visible():
+        dismiss.click()
+        page.locator("#ceres-confirmation-banner").wait_for(state="hidden", timeout=30_000)
     page.locator("#checkout-btn").click()
     page.wait_for_function(
         "document.querySelector('#checkout-panel button[data-op-action=confirm]')?.disabled === false",

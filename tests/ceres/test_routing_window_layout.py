@@ -19,12 +19,12 @@ const html = routingWindowHtml(record, { player: 'alice' });
 if (html.includes('r3-status-bar')) throw Error('the standalone status bar is back');
 const summary = html.match(/<div class="r3-summary">.*?<\/div>/s);
 if (!summary || !summary[0].includes('r3-summary-status') || !summary[0].includes('Ready to sign')) throw Error('status is not in the summary row');
-// the metered-checks counter appears once the approval is on chain and being checked; it sits in the same summary row.
+// once the approval is on chain the summary row says Ceres keeps checking by itself (the metered counter is gone).
 const checking = { ...record, bundles: { b1: { state: 'checking', tx_id: '0'.repeat(39) + '1' } } };
 const checkingHtml = routingWindowHtml(checking, { player: 'alice' });
 if (checkingHtml.includes('r3-status-bar')) throw Error('the standalone status bar is back');
 const checkingSummary = checkingHtml.match(/<div class="r3-summary">.*?<\/div>/s);
-if (!checkingSummary || !checkingSummary[0].includes('r3-summary-status') || !checkingSummary[0].includes('Metered routing checks 2/120')) throw Error('checking status is not in the summary row');
+if (!checkingSummary || !checkingSummary[0].includes('r3-summary-status') || !checkingSummary[0].includes('Ceres keeps checking by itself') || checkingSummary[0].includes('Metered routing checks')) throw Error('checking status is not in the summary row');
 """, entry=STATIC / "routing-window.js")
 
 

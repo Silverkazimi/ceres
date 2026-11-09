@@ -107,10 +107,33 @@ export async function signPlanCombine(review) {
     if (pending && error.txId) await completeChainAttempt(player, id, pending.nonce, error.txId);
     if (CURRENT_PLAYER !== player) return false;
     if (dispatched && error.broadcasted === false && !error.ambiguousBroadcast && !error.inclusionUnobserved) saveChain(id, { ...plan, cleared_combine_nonce: pending.nonce });
-    else if (dispatched) saveChain(id, { ...chainPlans()[id], combine: { ...chainPlans()[id].combine, tx_id: error.txId || chainPlans()[id].combine?.tx_id }, problem: { code: 'combine_uncertain' } });
+    else if (dispatched) {
+      saveChain(id, { ...chainPlans()[id], combine: { ...chainPlans()[id].combine, tx_id: error.txId || chainPlans()[id].combine?.tx_id }, problem: { code: 'combine_uncertain' } });
+      // fix round 1 (HIGH-1): the shared confirmer's proof reaches the plan: a found id is attached and verified
+      // like a wallet answer; a proven "never sent" clears the combine so the plan can be signed again.
+      if (error.pendingBroadcast) followPlanHandOff(player, id, pending, error);
+    }
     else saveChain(id, { ...chainPlans()[id], problem: { code: 'combine_refused', detail: error.message || CHANGED_PLAN } });
     return false;
   } finally { PLAN_SIGNING.delete(id); renderCheckoutSurface(); }
+}
+
+function followPlanHandOff(player, id, pending, error) {
+  error.pendingBroadcast.then(async (late) => {
+    if (CURRENT_PLAYER !== player || chainPlans()[id]?.combine?.nonce !== pending.nonce) return;
+    await completeChainAttempt(player, id, pending.nonce, late.txId);
+    saveChain(id, { ...chainPlans()[id], problem: null });
+    const receipt = { ...(error.operationReceipt || {}), txId: late.txId };
+    receipt.pollVerify = next => verifyPlanCombine(id, next);
+    await verifyPlanCombine(id, receipt);
+    renderCheckoutSurface();
+  }, (proof) => {
+    if (!proof?.neverSent || CURRENT_PLAYER !== player || chainPlans()[id]?.combine?.nonce !== pending.nonce) return;
+    // Same end as a game refusal (state ready, combine cleared): the plan offers "Review and combine" again.
+    saveChain(id, { ...chainPlans()[id], state: 'ready', combine: null, cleared_combine_nonce: pending.nonce,
+      problem: { code: 'combine_refused', detail: proof.message } });
+    renderCheckoutSurface();
+  }).catch(() => {});
 }
 
 export function rebindPlanPlacement(id) {
@@ -154,12 +177,18 @@ export async function verifyPlanCombine(id, receipt = null) {
     } else if (verdict.state === 'game-refused') {
       saveChain(id, { ...plan, state: 'ready', combine: null, cleared_combine_nonce: plan.combine.nonce, problem: { code: 'combine_refused', detail: 'The game refused the combine. Review the plan before trying again.' } });
       if (receipt) { stopOperationPoll(receipt.entryId); publishOperationReceipt({ ...receipt, phase: 'failed', result: verdict }); }
-    } else if (receipt) {
-      const next = publishOperationReceipt({ ...receipt, phase: 'in_flight', attempt: (receipt.attempt || 0) + 1, lastState: verdict.state });
+    } else {
+      // also after a reload (no receipt yet) the shared confirmer keeps reading; there is no Check again.
+      const base = receipt || publishOperationReceipt({ entryId: `plan-combine:${id}`, family: 'combine', context: 'Combine', operations: [plan.combine.operation],
+        txId: plan.combine.tx_id, phase: 'in_flight', attempt: 0, pollStartedAt: Date.now() });
+      const next = publishOperationReceipt({ ...base, phase: 'in_flight', attempt: (base.attempt || 0) + 1, lastState: verdict.state });
       scheduleOperationPoll(next, value => verifyPlanCombine(id, value));
     }
   } catch (_) {
-    // Unknown is not a refusal. The persisted transaction stays locked; Check again is by ID.
+    // Unknown is not a refusal. The persisted transaction stays locked; : the shared confirmer reads it again by ID.
+    const base = receipt || (plan.combine?.tx_id ? publishOperationReceipt({ entryId: `plan-combine:${id}`, family: 'combine', context: 'Combine',
+      operations: [plan.combine.operation], txId: plan.combine.tx_id, phase: 'in_flight', attempt: 0, pollStartedAt: Date.now() }) : null);
+    if (base?.txId) scheduleOperationPoll(base, value => verifyPlanCombine(id, value));
   } finally { PLAN_VERIFYING.delete(id); renderCheckoutSurface(); }
 }
 

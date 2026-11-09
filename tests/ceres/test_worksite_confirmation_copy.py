@@ -8,6 +8,7 @@ verification response, then assert the copy a player can actually read.
 from __future__ import annotations
 
 import json
+import time
 import urllib.request
 
 import pytest
@@ -38,7 +39,7 @@ def _worksite_api_route(
                 "account": "player0005",
                 "target": (request.post_data_json or {}).get("target"),
                 "key_tier": "Posting",
-                "chunks": [{"operations": [["custom_json", {"id": "sm_land_operation", "json": "{}", "required_auths": [], "required_posting_auths": ["player0005"]}]]}],
+                "chunks": [{"operations": [["custom_json", {"id": "sm_land_operation", "json": json.dumps({"op": "update_worksite", "deed_uid": deed_uid["value"], "n": "c0ffee00c0ffee00"}), "required_auths": [], "required_posting_auths": ["player0005"]}]]}],
                 "notices": [],
                 "time_crystals": False,
             }),
@@ -81,9 +82,10 @@ def _confirmed_worksite(live_browser: tuple[Browser, str]) -> tuple[Page, object
     )
     page.add_init_script(
         """window.hive_keychain = {requestBroadcast: (account, operations, key, callback) => {
-          callback({success: true, result: {id: 'FAKE-WORKSITE-TX'}});
+          callback({success: true, result: {id: '258efe66ca90054d1f8e05464bf8ac616eeb967c'}});
         }};"""
     )
+    page.route("**/api/confirm/intent*", lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps({"begin_token": "c0ffee00c0ffee00", "server_now": int(time.time() * 1000)})))
     page.goto(base_url)
     wait_for_board(page)
 

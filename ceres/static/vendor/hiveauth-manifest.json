@@ -1,6 +1,6 @@
 {
   "entry": "tools/hiveauth/worker.js",
-  "sha256": "c36aac71f77a11ada579a45a72250534a8dfd620ea9a9b09acc0d672f08e6ef6",
+  "sha256": "53d8af28dedb2cda475b344381b87c7146d78aa00cae2331629844f42f771567",
   "packages": {
     "node_modules/@esbuild/aix-ppc64": {
       "version": "0.28.2",

@@ -447,8 +447,10 @@ def test_worksite_ops_come_only_from_the_server_preview():
     prepare = _function_source(worksite, "export async function prepareStagedWorksiteBuild")
     assert "await requestWorksitePreview(row, target, timeCrystals)" in prepare
     assert "const chunk = preview.payload.chunks[0]" in prepare
-    confirm = _function_source(worksite, "export function confirmWorksiteBroadcast")
+    confirm = _function_source(worksite, "export async function confirmWorksiteBroadcast")
     assert "const chunk = preview.payload.chunks[0]" in confirm
+    assert "await fetchWorksitePreview(deedUid, body)" in confirm
+    assert "worksiteEconomicVector(preview.payload.chunks[0].operations)" in confirm
     assert "operations =" not in worksite and "operations.push(" not in worksite, "worksite.js never builds an operations list"
 
 
@@ -457,10 +459,13 @@ def test_worksite_signing_uses_posting_authority_through_the_shared_gate():
  op family's Posting authority (fides_land/render.py, `sm_land_operation`), never Active and
  never a direct wallet call."""
     worksite = _static("worksite.js")
-    assert "import { requestBroadcastThroughGate, requestSignatureThroughGate } from './broadcast-gate.js';" in worksite
+    gate_import = re.search(r"import \{([^}]*)\} from './broadcast-gate\.js';", worksite)
+    assert gate_import, "worksite.js imports from the shared broadcast gate"
+    imported = {name.strip() for name in gate_import.group(1).split(",")}
+    assert {"requestBroadcastThroughGate", "requestSignatureThroughGate"} <= imported  # prepareSigningBatch may ride along
     assert "'Active'" not in worksite and '"Active"' not in worksite
 
-    confirm = _function_source(worksite, "export function confirmWorksiteBroadcast")
+    confirm = _function_source(worksite, "export async function confirmWorksiteBroadcast")
     call = re.search(r"requestBroadcastThroughGate\(preview\.payload\.account, chunk\.operations, \(response\) => \{", confirm)
     assert call, "the worksite window signs the server preview through the gate"
     # No authority argument: the gate's default applies, and that default is Posting.
@@ -472,9 +477,11 @@ def test_worksite_signing_uses_posting_authority_through_the_shared_gate():
     assert "'Active'" not in tail[:closing + 8]
 
     staged = _function_source(worksite, "export async function signStagedWorksiteBuild")
-    assert "requestSignatureThroughGate(plan.account, chunk.operations, () => {}, 'Posting', envelope)" in staged
+    assert "requestSignatureThroughGate(plan.account, chunk.operations, () => {}, 'Posting', freshEnvelope," in staged
     checkout = _function_source(_static("checkout.js"), "export async function confirmCheckoutWithWorksites")
-    assert "prepareSigningBatch(worksitePlans[0].plan.account, worksitePlans.map(item => item.plan.chunk.operations), 'Posting'" in checkout
+    assert "await signStagedWorksiteBuild(fresh, null, 0, plan)" in checkout
+    assert "await signStagedWorksiteBuild(fresh, build.target, build.timeCrystals || 0, plan)" in checkout
+    assert "prepareSigningBatch(plan.account, [chunk.operations], 'Posting'" in staged
     assert "requestSignTx" not in checkout and "hive_keychain" not in checkout
 
 

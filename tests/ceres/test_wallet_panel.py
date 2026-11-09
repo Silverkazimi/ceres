@@ -93,7 +93,7 @@ def test_desktop_caption_names_the_resource_and_flags_a_forced_pending_tab():
     js = REGIONAL_DEC_JS.read_text(encoding="utf-8")
     render_match = re.search(r"function render\(force = false\) \{.*?\n\}\n", js, re.S)
     body = render_match.group(0)
-    assert "const forcedPending = D.tab === 'DEC' ? D.pending?.status === 'pending' : D.tab === 'SPS' ? (D.signing && !!D.claim.pending) : false;" in body
+    assert "const forcedPending = D.tab === 'DEC' ? D.pending?.status === 'pending' && blockingPending() : D.tab === 'SPS' ? (D.signing && !!D.claim.pending) : false;" in body
     assert 'class="wallet-caption" id="dec-title"' in body
     assert "${esc(D.tab === 'DEC' || D.tab === 'SPS' ? D.tab : tokenLabel(D.tab))}" in body  # DEC/SPS stay upper-case
     assert "wallet-caption-pending" in body
@@ -127,7 +127,7 @@ if (panel.innerHTML.includes('Pending signature')) {
 """
     fixed_source = read_entry_source(REGIONAL_DEC_JS)
     # changed only the SPS branch (caption only while signing); the DEC predicate under test is unchanged.
-    fixed_predicate = "const forcedPending = D.tab === 'DEC' ? D.pending?.status === 'pending' : D.tab === 'SPS' ? (D.signing && !!D.claim.pending) : false;"
+    fixed_predicate = "const forcedPending = D.tab === 'DEC' ? D.pending?.status === 'pending' && blockingPending() : D.tab === 'SPS' ? (D.signing && !!D.claim.pending) : false;"
     old_predicate = "const forcedPending = D.tab === 'DEC' ? !!D.pending : D.tab === 'SPS' ? (D.signing && !!D.claim.pending) : false;"
     assert fixed_predicate in fixed_source, "counterfactual injection requires the fixed DEC predicate"
     counterfactual = run_in_module_context(
@@ -334,7 +334,7 @@ def _install_wallet_test_controls(page, *, clipped: bool = False):
           document.querySelectorAll('.wallet-controls, [data-wallet-test-panel]').forEach((el) => el.remove());
           // Same markup as walletControlsHtml() (wallet.js): the module finds the drawer and its
           // content by their data-wallet-drawer* attributes.
-          const control = id => `<span class="wallet-sign-pair" data-wallet-test="${id}"><section class="wallet-controls" data-wallet-account="player0005" data-wallet-controls-id="fixture-${id}">
+          const control = id => `<span class="wallet-sign-pair" data-wallet-test="${id}"><section class="wallet-controls" data-wallet-account="sample01" data-wallet-controls-id="fixture-${id}">
             <button type="button" class="hm-btn ceres-btn ceres-btn--secondary wallet-toggle" data-wallet-toggle aria-expanded="false" aria-controls="fixture-panel-${id}">Wallet</button>
             <div class="wallet-drawer" data-wallet-drawer data-wallet-drawer-anchor data-wallet-drawer-arrow id="fixture-panel-${id}" inert><div class="wallet-drawer-body" data-wallet-drawer-content><div class="wallet-providers">
               <button type="button" class="hm-btn ceres-btn ceres-btn--choice" data-wallet-select="keychain" aria-pressed="false">Hive Keychain</button>
@@ -410,7 +410,7 @@ def test_wallet_switcher_live_surfaces_and_hiveauth_escape():
         page.locator('[data-wallet-test="a"] [data-wallet-select="keychain"]').click()
         after = page.evaluate(
             """() => ({
-              provider: localStorage.getItem('ceres.wallet-provider:player0005'),
+              provider: localStorage.getItem('ceres.wallet-provider:sample01'),
               requestVisible: Boolean(document.querySelector('[data-wallet-test="a"] .wallet-request')),
               expanded: [...document.querySelectorAll('[data-wallet-test]')].map((el) =>
                 el.querySelector('[data-wallet-toggle]')?.getAttribute('aria-expanded')),
@@ -536,7 +536,7 @@ def test_real_harvest_wallet_drawer_survives_hiveauth_rerender_live():
 def test_desktop_wallet_drawer_stays_open_after_stake_click():
     """: a button inside the desktop drawer must not trigger picker close."""
     dec_payload = {
-        "player": "player0005",
+        "player": "sample01",
         "regions": [{
             "region_uid": "PR-PNW-1",
             "staked": 100,
@@ -549,7 +549,7 @@ def test_desktop_wallet_drawer_stays_open_after_stake_click():
         "signing_enabled": False,
     }
     wallet_payload = {
-        "player": "player0005",
+        "player": "sample01",
         "account": None,
         "positions": [],
         "regions": [],
@@ -567,7 +567,7 @@ def test_desktop_wallet_drawer_stays_open_after_stake_click():
             status=200, content_type="application/json", body=json.dumps(wallet_payload)
         ))
         page.route("**/api/wallet/rewards?*", lambda route: route.fulfill(
-            status=200, content_type="application/json", body=json.dumps({"player": "player0005"})
+            status=200, content_type="application/json", body=json.dumps({"player": "sample01"})
         ))
         page.goto(f"{base_url}/?player=sample01", wait_until="domcontentloaded")
         page.locator("#wallet-edge-tab").click()

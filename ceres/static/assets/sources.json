@@ -1,5 +1,89 @@
 [
  {
+  "path": "abilities/ability_alteration.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/abilities/ability_alteration.png",
+  "sha256": "4a6b00ca25e96eebfaa662a7685fdd8f91aac7ee56c36a3b35e59164998faed4",
+  "byte_size": 7427
+ },
+ {
+  "path": "abilities/ability_bountiful-aura.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/abilities/ability_bountiful-aura.png",
+  "sha256": "4f35b4975bc6e436d970532c706f6cc719a8c292e085a199a554570054fe15db",
+  "byte_size": 16425
+ },
+ {
+  "path": "abilities/ability_bountiful-grain.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/abilities/ability_bountiful-grain.png",
+  "sha256": "716c967ac4e5d090876d6bcd7faa544c69ba8f79f33b42609cb5b616c73b89ac",
+  "byte_size": 14915
+ },
+ {
+  "path": "abilities/ability_bountiful-iron.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/abilities/ability_bountiful-iron.png",
+  "sha256": "d53deaae75e5dd118e9d243aaa69efd2f375ce74022376370c7ae9ad63606587",
+  "byte_size": 20112
+ },
+ {
+  "path": "abilities/ability_bountiful-stone.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/abilities/ability_bountiful-stone.png",
+  "sha256": "c4605d798f22f9beb44b132d41649a47bd26ed71dded6982fe4759454d1e1fc2",
+  "byte_size": 14771
+ },
+ {
+  "path": "abilities/ability_bountiful-wood.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/abilities/ability_bountiful-wood.png",
+  "sha256": "5cb0dab717eaf83d48dd93097dcc94e6cff59b6640dc9c941d2e22044898cefb",
+  "byte_size": 12518
+ },
+ {
+  "path": "abilities/ability_dark-discount.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/abilities/ability_dark-discount.png",
+  "sha256": "eb2c9d970690616382f72f1d3613c3bd0691a5acf7b3901ec9bf63df56d20ee1",
+  "byte_size": 18763
+ },
+ {
+  "path": "abilities/ability_energized.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/abilities/ability_energized.png",
+  "sha256": "080d61f94f27bd1264a08410cf73afc8246a0c48fd37068a04df39c187d405b4",
+  "byte_size": 20718
+ },
+ {
+  "path": "abilities/ability_fortune-seeker.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/abilities/ability_fortune-seeker.png",
+  "sha256": "fa60dc64e610dd4ec0687ae2c56ca8cc2d3788d6c899ed63fa42b5190bda7774",
+  "byte_size": 7572
+ },
+ {
+  "path": "abilities/ability_glint-recovery.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/abilities/ability_glint-recovery.png",
+  "sha256": "82d442152b874e05eb30deefb3ff1a69fa22fb56d6abaaec58f962656f22efe4",
+  "byte_size": 6928
+ },
+ {
+  "path": "abilities/ability_labors-luck.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/abilities/ability_labors-luck.png",
+  "sha256": "59766376f4fea42666fca9c2017bf47f8931ef9b9308279ae37ab9cb8ca2afb5",
+  "byte_size": 14786
+ },
+ {
+  "path": "abilities/ability_light-rationing.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/abilities/ability_light-rationing.png",
+  "sha256": "eacb159e4313240a53ca6ebab9102530f7844d30f1521b10cff127f2db28fa0a",
+  "byte_size": 5064
+ },
+ {
+  "path": "abilities/ability_rationing.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/abilities/ability_rationing.png",
+  "sha256": "941bd5e392cf80276acedff51ba9ed947a25ae8e5a2f9c86cfb46736a00a00ce",
+  "byte_size": 13563
+ },
+ {
+  "path": "abilities/ability_toil-and-kin.png",
+  "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/abilities/ability_toil-and-kin.png",
+  "sha256": "01f71685593bed1e148f253b6915de5fed2513ac62fa5b7296ab4f9c32db6e23",
+  "byte_size": 18249
+ },
+ {
   "path": "land/deeds-surveyed/caldera_magical_dragon_common.jpg",
   "source_url": "https://d36mxiodymuqjm.cloudfront.net/website/land/deedsSurveyed/caldera_magical_dragon_common.jpg",
   "sha256": "e394ae007d5174eaf26858ec044f97c16a5b4f0b2797a4b33d611278bcf57d3e",

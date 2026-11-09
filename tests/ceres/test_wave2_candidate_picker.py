@@ -372,3 +372,61 @@ def test_power_core_tiles_never_open_a_candidate_picker(live_browser: tuple[Brow
     settle(page)
     assert page.locator(".picker-region, .candidate-row").count() == 0, "Power Core must stage one-click, never open a picker"
     page.close()
+
+
+def _open_empty_core_plot(browser: Browser, base_url: str, family: dict | None):
+    """ (IN-0859): an empty-core plot with the board's Power Core family as given (None = key absent)."""
+    row = copy.deepcopy(_real_detail_row(base_url))
+    row["bonus"] = dict(row.get("bonus") or {}, power_core=None)
+    row["staking_facts"] = dict(row.get("staking_facts") or {}, is_power_core_staked=False, is_energized=False)
+    deed_uid = row["deed_uid"]
+    page = browser.new_page(viewport={"width": 1400, "height": 900})
+    _route_detail(page, base_url, row)
+    board = _real_board(base_url)
+    unassigned = dict(board.get("unassigned_bonus") or {})
+    unassigned.pop("power_core", None)
+    if family is not None:
+        unassigned["power_core"] = family
+    board["unassigned_bonus"] = unassigned
+    page.route("**/api/board*", lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(board)))
+    _goto_and_open_plot(page, base_url, deed_uid)
+    return page
+
+
+def test_power_satellite_hover_shows_core_count_and_click_stages_without_picker(live_browser: tuple[Browser, str]) -> None:
+    browser, base_url = live_browser
+    page = _open_empty_core_plot(browser, base_url, {"capturable": True, "count": 3, "items": []})
+    satellite = page.locator(".slot-editor .power-satellite[data-slot-action='add-power-core']").first
+    satellite.wait_for(timeout=30_000)
+    assert satellite.get_attribute("data-tip") == "Add a Power Core"
+    assert satellite.get_attribute("data-tip-key") == "3"
+    assert "available to stake" in (satellite.get_attribute("data-tip-body") or "")
+    picker_requests: list[str] = []
+    page.on("request", lambda r: picker_requests.append(r.url) if "/candidates" in r.url else None)
+    page.route(
+        "**/api/plots/*/candidates*",
+        lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(
+            {"candidates": [{"asset_ref": "core-a", "name": "Power Core", "net_gain": 0}], "total": 1, "source": "test-fixture", "excluded_counts": {}, "notices": []},
+        )),
+    )
+    satellite.click()
+    page.locator(".slot-editor .slot-tile.is-staged[data-group-id='power_core'][data-occupied='1']").first.wait_for(timeout=30_000)
+    assert page.locator(".picker-region, .candidate-row").count() == 0, "Power Core must stage directly, never open a picker"
+    page.close()
+
+
+def test_power_satellite_is_not_clickable_at_zero_or_unknown(live_browser: tuple[Browser, str]) -> None:
+    browser, base_url = live_browser
+    cases = [
+        ({"capturable": True, "count": 0, "items": []}, "0 Power Cores left to stake"),
+        ({"capturable": False, "count": None, "items": []}, "Power Core availability could not be loaded"),
+        (None, "Power Core availability could not be loaded"),
+    ]
+    for family, text in cases:
+        page = _open_empty_core_plot(browser, base_url, family)
+        satellite = page.locator(".slot-editor .power-satellite[data-group-id='power_core']").first
+        satellite.wait_for(timeout=30_000)
+        assert satellite.get_attribute("aria-disabled") == "true"
+        assert satellite.get_attribute("data-tip") == text
+        assert page.locator(".slot-editor [data-group-id='power_core'][data-slot-action='add-power-core']").count() == 0
+        page.close()

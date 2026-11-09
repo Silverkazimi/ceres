@@ -4,6 +4,7 @@ import { prefetchIdleCardsCache } from './combine.js';
 import { EXPANDED_HEIGHTS, EXPANDED_ROWS, renderRow, renderTotalsStrip, attachMountedPlot, handoffPlotContent, plotCardHtml } from './rows.js';
 // render() resets S.IDLE_CARDS_CACHE ( reland: dropping this import broke ).
 import { PLOT_TABLE_COLUMN_COUNT, S } from './state.js';
+import { pickerTilesTop, tilesScrollGoal } from './picker-tiles-scroll.js';
 
 // Measured (never hardcoded) sticky-header offset for the main table's `th`
 // (board-polish batch 19, item 16 -- see ceres.css's `.table-scroll`
@@ -456,9 +457,14 @@ export function plotRowScrollGoal(deedUid) {
   const top = row ? row.getBoundingClientRect().top : index !== undefined && table ? table.getBoundingClientRect().top + rowOffset(index) : null; // V
   return top === null ? null : Math.max(0, window.scrollY + top - plotHeaderLine()); // V
 }
-export function scrollPlotUnderHeader(deedUid, { animate = false, owner = null, onDone = null } = {}) {
+// where the open picker docks the plot -- its slot tiles (highest painted point) on the same line, like Echo.
+export function plotTilesScrollGoal(deedUid) {
+  const host = document.querySelector(`tr.expand-row[data-deed-uid="${CSS.escape(deedUid)}"]`);
+  return tilesScrollGoal(window.scrollY, pickerTilesTop(host), plotHeaderLine()); // V
+}
+export function scrollPlotUnderHeader(deedUid, { animate = false, owner = null, onDone = null, tiles = false } = {}) {
   const done = () => { onDone?.(); };
-  const goal = () => plotRowScrollGoal(deedUid);
+  const goal = () => (tiles ? plotTilesScrollGoal(deedUid) ?? plotRowScrollGoal(deedUid) : plotRowScrollGoal(deedUid));
   const first = goal();
   if (first === null) { done(); return; }
   const reduced = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;

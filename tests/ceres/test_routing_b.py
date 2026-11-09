@@ -87,21 +87,22 @@ for (const member of merged) {{
 }}
 if ((html.match(/class="r3-summary-status"/g) || []).length !== 1)
   throw Error('status segment count (: the status lives in the summary row)');
-if (!html.includes('Metered routing checks 38/120') || />Region /.test(html) || !html.includes('ch-plot-badge'))
+if (!html.includes('Ceres keeps checking by itself') || html.includes('Metered routing checks') || />Region /.test(html) || !html.includes('ch-plot-badge'))  // no metered counter
   throw Error('status or plaque text');
 if (!/Wood<\/span><span class="r3-route-arrow">→<\/span><span class="r3-to">(<img[^>]*>)?DEC/.test(html) || !/Grain<\/span><span class="r3-route-arrow">→<\/span><span class="r3-to">(<img[^>]*>)?DEC/.test(html) || html.includes('…')) // resource names, not codes; : DEC carries its icon
   throw Error('full step names missing');
 // every route of the shown approval is marked.
 if ((html.match(/r3-route-chip is-selected/g) || []).length !== new Set(operations.flatMap(operation => operation.members.map(member => member.route_id))).size)
   throw Error('not every route of the shown approval is highlighted');
-if (!html.includes('r3-status-spinner') || !html.includes('Metered routing checks 38/120'))
+if (!html.includes('r3-status-spinner') || html.includes('Metered routing checks'))  // the spinner stays, the counter is gone
   throw Error('run status has no reserved spinner slot');
 record.bundles[record.manifest.bundles[0].id].state = 'outcome_unknown';
 const unknown = routingWindowHtml(record, {{ player: 'fixtureowner' }});
-if ((unknown.match(/class="r3-terminal"/g) || []).length !== 1
+// an unanswered lookup is never a final "Outcome unknown" panel; it reads as checking, in the one status strip.
+if ((unknown.match(/class="r3-terminal"/g) || []).length !== 0
     || (unknown.match(/class="r3-summary-status"/g) || []).length !== 1
-    || !unknown.includes('Reservation retained · dependents blocked'))
-  throw Error('unknown state is outside terminal and status strips');
+    || !unknown.includes('Ceres keeps checking by itself') || unknown.includes('manual checks remain'))
+  throw Error('an unanswered lookup must read as checking, with no terminal panel');
 """, entry=STATIC / "routing-window.js")
     css = (STATIC / "ceres.css").read_text()
     assert ".r3-route-name { flex:none; white-space:nowrap; }" in css
@@ -138,7 +139,7 @@ if ((html.match(/class="r3-summary-status"/g) || []).length !== 1) throw Error('
 const memberGrid = html.match(/<div class="r3-members"[^>]*>(.*?)<\/div><div class="r3-stage-status">/s)?.[1];
 if (!memberGrid || !memberGrid.includes('route-one') || !memberGrid.includes('route-two')
     || memberGrid.includes('route-later')) throw Error('wrong bundle member grid');
-if (/>Region /.test(html) || !html.includes('ch-plot-badge') || !html.includes('Metered routing checks 38/120'))
+if (/>Region /.test(html) || !html.includes('ch-plot-badge') || html.includes('Metered routing checks'))  
   throw Error('plaque or budget text');
 if (!html.includes('Approval 1 of 4')) throw Error('approval denominator did not use manifest routing count');
 // the footer holds Stop and Sign; "Review current bundle" is gone.
