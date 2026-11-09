@@ -607,7 +607,7 @@ def _pending_id(effects: dict, key: str):
     return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else None
 
 
-SPS_BRIDGE_ACCOUNT = "player0016"  # the game's SPS/DEC pool account (a tx <tx id>: params.to)
+SPS_BRIDGE_ACCOUNT = "player0017"  # the game's SPS/DEC pool account (a tx <tx id>: params.to)
 
 
 def sps_funding_operation(player: str, info, tx: str, body: dict) -> dict:
@@ -721,9 +721,12 @@ async def settle_swap(request: Request, player: str | None = None):
             # (audit #4): the wallet's answer to the SPS transfer was lost. Look for that transfer in the player's OWN recent
             # history by its memo (/: only the maintainer's own transfer, by its reference). Not found proves nothing
             # the swap stays settling and nothing is offered for signing again.
+            # fix round 1 (F1/F7): only when the browser asks (`find_funding`: a receipt from before without
+            # its funding operations, once per page load). A current receipt's lost transfer is found by the shared
+            # confirmer's bounded finder; this route never re-reads own history on every settlement read.
             pending = _pending_id(effects, "pending_deposit_id" if deposit else "pending_swap_id")
             amount_text = effects.get("pending_external_amount") or (effects.get("resource_amount") if deposit else None)
-            if pending is not None and amount_text is not None:
+            if pending is not None and amount_text is not None and body.get("find_funding") is True:
                 from .harvest_routing_bridge import _history
                 rows = await asyncio.to_thread(_history, player, -1)
                 found_funding = find_funding_in_history(rows, player, str(effects.get("external_transfer_account") or ""),

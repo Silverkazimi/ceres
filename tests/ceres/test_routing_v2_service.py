@@ -60,9 +60,12 @@ def test_claim_attach_and_exact_member_verdict_are_durable(tmp_path):
         assert saved["call_budget"]["actions"] == {"chain_probe": 1, "game_verdict": 1}
 
 
-def test_unknown_probe_exhaustion_preserves_claim_and_counts(tmp_path):
-    """Two failed physical probes are counted; the third is refused before dispatch."""
+def test_failed_probes_are_counted_and_never_exhaust_the_checks(tmp_path, monkeypatch):
+    """ replaces "the third probe is refused before dispatch": failed probes are counted, the claim and its
+    reservations are kept, and the next paced probe is always dispatched (no allowance)."""
     player = "fixtureowner"
+    clock = [1_800_000_000.0]
+    monkeypatch.setattr(runs.time, "time", lambda: clock[0])   # frozen clock seam; reads are paced 1 s apart
     with runs.locked(tmp_path, player) as folder:
         record = runs.create(folder, player, _preview(player), {"sale_dec"})
         bundle_id = record["manifest"]["bundles"][0]["id"]
@@ -75,35 +78,39 @@ def test_unknown_probe_exhaustion_preserves_claim_and_counts(tmp_path):
             called.append(tx_id)
             return None, "lookup_failed"
 
-        runs.reconcile(folder, record, bundle_id, "chain", chain_get=unavailable)
-        runs.reconcile(folder, record, bundle_id, "chain", chain_get=unavailable)
-        with pytest.raises(routing.RoutingError, match="allowance"):
+        for _ in range(3):
             runs.reconcile(folder, record, bundle_id, "chain", chain_get=unavailable)
+            clock[0] += 2
         saved = runs.read(folder, player, record["run_id"])
-        assert len(called) == saved["call_budget"]["total"] == 2
+        assert len(called) == saved["call_budget"]["total"] == 3
         assert saved["bundles"][bundle_id]["state"] == "outcome_unknown"
         assert {item["state"] for item in saved["reservations"].values()} == {"held"}
         assert saved["bundles"][bundle_id]["claim"]["member_nonces"]
 
 
-def test_all_action_allocations_sum_to_120_and_stop_before_next_dispatch(tmp_path):
-    """The full physical-call schedule never admits a 121st attempt."""
+def test_allocations_sum_to_120_and_only_pre_sign_reads_are_capped(tmp_path):
+    """The plan's allocations still sum to 120; only pre-sign reads stop at their ceiling, confirmation reads never."""
     player = "fixtureowner"
     with runs.locked(tmp_path, player) as folder:
         record = runs.create(folder, player, _preview(player), {"sale_dec"})
         bundle_id = record["manifest"]["bundles"][0]["id"]
         runs.claim(folder, record, bundle_id, {"sale_dec"}, True)
+        # (replaces "never admits a 121st attempt"): reads BEFORE a signature keep their plan ceiling; the
+        # confirmation reads (chain probe, game verdict) are counted but never stop the checks or the run.
         for action, ceiling in routing_plan.ACTION_CEILINGS.items():
             for _ in range(ceiling):
                 runs._charge(folder, record, action, action, player)
         assert record["call_budget"]["total"] == 120
-        with pytest.raises(routing.RoutingError, match="Run call budget"):
+        with pytest.raises(routing.RoutingError, match="before signing"):
+            runs._charge(folder, record, "hive_head", "condenser_api.get_dynamic_global_properties", player)
+        for _ in range(10):
             runs._charge(folder, record, "game_verdict", "/transactions/lookup", player)
+            runs._charge(folder, record, "chain_probe", "condenser_api.get_transaction", player)
         saved = runs.read(folder, player, record["run_id"])
-        assert saved["call_budget"]["total"] == 120
-        assert saved["call_budget"]["stopped"] is True
+        assert saved["call_budget"]["total"] == 140
+        assert saved["call_budget"]["stopped"] is False and saved["state"] == "ready"
         assert saved["bundles"][bundle_id]["claim"]["member_nonces"]
-        assert saved["bundles"][bundle_id]["state"] == "outcome_unknown"
+        assert saved["bundles"][bundle_id]["state"] == "claimed"   # untouched: no budget turns it into "unknown"
 
 
 def test_reload_stop_keeps_claimed_bundle_for_lookup_only(tmp_path):

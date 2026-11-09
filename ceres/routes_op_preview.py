@@ -10,6 +10,7 @@ import threading
 from contextlib import nullcontext
 from datetime import datetime, timezone
 from .transaction_diagnostics import record_verification
+from .hive_rpc import BY_ID_ADMIT, known_transaction_status
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -49,6 +50,9 @@ NULL_ID_PROBE_SETTLE_SECONDS = 3900  # S10 round 2 / L2-04: no judgement before 
 # be included until ITS expiration, and the longest expiration Hive accepts is one hour; so a request with a transaction id is only called absent
 # once it is older than that hour plus a margin (the same figure routing v2 uses). Until then the answer stays unknown.
 TX_ABSENCE_GRACE_SECONDS = 3900
+TX_LIFETIME_SECONDS = 3600
+# transaction_status_api tracks about 64,000 blocks (~53 h) by default; a known-id proof is only asked well inside that.
+KNOWN_ID_PROOF_DEPTH_S = 24 * 3600
 MAX_VERIFY_OPERATIONS = 64  # a transaction carries a handful of operations; the verifier's duplicate check is quadratic
 # a narrow, short-timeout client for the one live read the "complete" (Feed Worker)
 # preview needs -- mirrors ceres/routes_harvest.py's `_client`, kept separate on purpose (that
@@ -362,25 +366,48 @@ def op_inclusion(body: dict[str, Any], request: Request, player: str | None = No
         return JSONResponse(content=_request_identity_inclusion(account, body))
     if not isinstance(tx_id, str) or not tx_id:
         raise HTTPException(status_code=400, detail="tx_id is required")
+    from .routes_confirm import charge_account_read
+    if not charge_account_read(request, account, "V"):
+        return JSONResponse(content={"included": None, "block_num": None})
     transaction, reason_kind = get_transaction(tx_id)
     block_num = transaction.get("block_num") if transaction else None
     included = True if block_num is not None else False if reason_kind == "not_found" else None
-    if included is False and not _old_enough_to_be_absent(body.get("created_at")):
-        included = None  # too young: the first "not found" never frees the duplicate-sign guard
+    # Fix round 4 (astra-review-r4 : the first node could not answer at all (unreachable, history plugin off)
+    # the same failover as a "not found": the next nodes are asked for inclusion and, past the lifetime, for the proof.
+    if not included:
+        # A bare "not found" from one node is never "never sent" ( fix round 3, astra-review-r3 N3, aletheia
+        # verdict-r3 L4). Ages are the SERVER's own (fix round 2): the moment this attempt's wallet request was known
+        # closed, or this server's first sight of the id (an id exists only after signing), whichever is earlier
+        # neither is ever before the signing, so anchor + Hive's longest lifetime is no earlier than the real
+        # expiration. The proof is Hive's own: one node, in failover order, reports the id unknown AND that expiration
+        # bound `expired_irreversible` (transaction_status_api). That plugin only tracks recent blocks, so the proof
+        # also needs this attempt's confirmed PRE-SIGN begin (the earliest moment it could have been included) within
+        # KNOWN_ID_PROOF_DEPTH_S; otherwise the answer stays unknown (pending), never "absent".
+        from .routes_confirm import ledger_attempt, tx_first_seen
+        facts = ledger_attempt(request, account, body.get("intent"), body.get("begin_token")) if body.get("intent") is not None else None
+        first_seen = tx_first_seen(request, account, tx_id)
+        closed_at = (facts or {}).get("closed_at")
+        anchor = min(closed_at, first_seen) if closed_at is not None else first_seen
+        begin_at = (facts or {}).get("begin_at")
+        now = time.time()
+        included = None
+        admission = BY_ID_ADMIT.set(lambda: charge_account_read(request, account, "V"))
+        try:
+            if now - anchor >= TX_ABSENCE_GRACE_SECONDS and begin_at is not None and now - begin_at <= KNOWN_ID_PROOF_DEPTH_S:
+                bound = datetime.fromtimestamp(anchor + TX_LIFETIME_SECONDS, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+                status, chain_block = known_transaction_status(tx_id, bound)
+            elif reason_kind != "not_found":
+                status, chain_block = known_transaction_status(tx_id, None)     # inclusion only: never a proof of absence
+                status = "unknown" if status == "expired" else status
+            else:
+                status, chain_block = "unknown", None
+        finally:
+            BY_ID_ADMIT.reset(admission)
+        if status == "expired" and not (facts or {}).get("action_match"):
+            included = False
+        elif status == "included":
+            included, block_num = True, chain_block
     return JSONResponse(content={"included": included, "block_num": block_num})
-
-
-def _old_enough_to_be_absent(created_at: Any) -> bool:
-    """True only when the request is provably past its lifetime; an unknown or unreadable age is never old enough. Zero outbound calls."""
-    if not isinstance(created_at, str):
-        return False
-    try:
-        created = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-    except ValueError:
-        return False
-    if created.tzinfo is None:
-        created = created.replace(tzinfo=timezone.utc)
-    return (datetime.now(timezone.utc) - created).total_seconds() >= TX_ABSENCE_GRACE_SECONDS
 
 
 def _request_identity_inclusion(account: str, body: dict[str, Any]) -> dict[str, Any]:

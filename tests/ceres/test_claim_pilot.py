@@ -24,16 +24,18 @@ if (!failed.includes('wallet-claim-flow is-failed')) throw Error('failed state m
 
 def test_confirmed_claim_emits_balance_change_without_done_and_retries_same_id():
     body = """
-globalThis.setTimeout = fn => { fn(); return 1; };
+__setConfirmerClock(Object.fromEntries([['sleep', async () => undefined]]));  // the shared schedule, frozen (was a setTimeout stub of the deleted 4-try loop)
 const D={player:'player0005',generation:0,error:'',signing:false,busy:false,
   claim:{busy:false,review:null,pending:{nonce:'a'.repeat(16),tx_id:'b'.repeat(40),total:'5.000',status:'pending'},checking:false}};
 let reloads=0, balanceEvents=0;
 window.dispatchEvent = event => { if (event.type === 'ceres:balances-changed' && event.detail.assets.includes('SPS')) balanceEvents++; return true; };
 (async()=>{
  await claimAction(D,'verify',()=>{},()=>D.player,async()=>{reloads++});
+ for (let i=0;i<500 && D.claim.pending?.status!=='confirmed';i++) await new Promise(r=>setTimeout(r,0));  // the confirmer runs on; the claim is not awaited
  if (D.claim.pending?.status!=='confirmed') throw Error('game confirmation not kept');
  if (reloads!==0 || balanceEvents!==1) throw Error('confirmed claim did not use the shared balance signal');
  if (calls!==2) throw Error('did not retry the same transaction');
+ console.log('IR9545_CLAIM_PILOT_OK');
 })().then(()=>process.exit(0),e=>{console.error(e);process.exit(1)});
 """
     extra = """
@@ -41,4 +43,5 @@ context.calls=0;
 context.fetch=()=>{context.calls++;return Promise.resolve({ok:true,json:async()=>context.calls===1?{status:'not_found'}:{status:'confirmed',total:'5.000',claimed:[]}})};
 context.window.fetch=context.fetch;
 """
-    run_in_module_context(body, entry=STATIC / "wallet-claim.js", extra_context_js=extra)
+    result = run_in_module_context(body, entry=STATIC / "wallet-claim.js", extra_context_js=extra)
+    assert "IR9545_CLAIM_PILOT_OK" in result.stdout

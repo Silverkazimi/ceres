@@ -11,6 +11,8 @@ let pending = null;
 const lateBroadcasts = new Map();
 let expiryTimer = null;
 let requestView = null;
+// the controls instance that started the request hosts the request box (QR); null = unknown, first instance in the page wins.
+let requestHostId = null;
 let notice = '';
 let controlsId = 0;
 const controlStates = new Map();
@@ -218,10 +220,18 @@ export function walletName(account = walletAccount()) { return walletKind(accoun
 // wallet app, and the player has to go there. The text is shown large and orange (`.is-action`).
 const SWITCH_TX = 'Switch to the Hive Keychain app and confirm the transaction.';
 const SWITCH_AUTH = 'Switch to the Hive Keychain app and confirm the authentication.';
-const actionClass = (text) => (text === SWITCH_TX || text === SWITCH_AUTH ? ' is-action' : '');
+// the relay answered the sign request with sign_wait, so it reached HiveAuth; the approval in the app is still open.
+const RELAY_CONFIRMED = 'The HiveAuth relay confirmed the request. Switch to the Hive Keychain app and confirm the transaction.';
+const RELAY_CONFIRMED_NOTE = 'Relay confirmed: the request reached HiveAuth.';
+const TOO_LARGE = 'This request is too large for HiveAuth. It was not sent. Sign it with Hive Keychain or in smaller parts.';
+const actionClass = (text) => (text === SWITCH_TX || text === SWITCH_AUTH || text === RELAY_CONFIRMED ? ' is-action' : '');
 export function walletSigningStatus(account = walletAccount()) {
   if (requestView?.account === account && requestView.signing) return requestView.status;
   return walletKind(account) === 'hiveauth' ? SWITCH_TX : 'Waiting for wallet approval';
+}
+// true while this account's HiveAuth transaction request has been confirmed by the relay and waits for the app.
+export function walletRelayConfirmed(account = walletAccount()) {
+  return Boolean(pending?.action === 'broadcast' && pending.account === account && pending.relayConfirmed);
 }
 export function clearStaleWalletRequest(account) {
   if (requestView?.account !== account || requestView.signing || !requestView.failed) return false;
@@ -234,6 +244,7 @@ export function walletReady(account = walletAccount()) {
 function notify() {
   if (pending?.action === 'connect' && pending.account !== walletAccount()) { finishPending({ type: 'cancelled' }); return; }
   const controls = [...document.querySelectorAll('.wallet-controls')];
+  if (requestHostId && !controls.some((el) => el.dataset.walletControlsId === requestHostId)) requestHostId = null;
   const active = document.activeElement;
   const index = controls.indexOf(active?.closest('.wallet-controls'));
   const action = ['data-wallet-toggle', 'data-wallet-select', 'data-wallet-disconnect', 'data-wallet-close'].find((name) => active?.hasAttribute(name));
@@ -242,6 +253,8 @@ function notify() {
   controls.forEach((el) => {
     el.outerHTML = walletControlsHtml(el.dataset.walletAccount, el.dataset.walletControlsId);
   });
+  // with no known host, only the first request box of the page stays.
+  [...document.querySelectorAll('.wallet-controls [data-wallet-request]')].slice(1).forEach((el) => el.remove());
   document.querySelectorAll('.wallet-controls').forEach(layoutDrawer);
   window.dispatchEvent(new CustomEvent('ceres:wallet-changed'));
   document.querySelectorAll('.wallet-controls').forEach((el) => {
@@ -282,10 +295,11 @@ function expireSession() {
   else if (!pending && lateBroadcasts.size === 0) disposeSession();
   notify();
 }
-function closeDialog() { requestView = null; }
+function closeDialog() { requestView = null; requestHostId = null; }
 function showDialog(title, account, signing = false, controlId = null) {
   notice = '';
   requestView = { title, account, signing, status: signing ? SWITCH_TX : 'Connecting…' };
+  if (controlId || !signing) requestHostId = controlId;
   if (controlId) controlState(controlId).expanded = true;
 }
 function closeWalletDialog() {
@@ -314,13 +328,16 @@ function finishPending(message) {
   if (!request) return;
   pending = null;
   clearTimeout(request.timer);
-  if (request.action === 'broadcast' && message.type === 'uncertain' && message.reason === 'watchdog') {
+  // Keep the callback for every ambiguous relay answer, including expiry. A late
+  // signed id is still useful after the finder has started or the page resumed.
+  if (request.action === 'broadcast' && message.type === 'uncertain') {
     lateBroadcasts.set(request.id, request);
     session?.worker.postMessage({ id: request.id, action: 'release' });
   }
   if (request.action === 'connect') {
     if (message.type === 'connected' && session && message.account === request.account && request.account === walletAccount() && Number.isFinite(message.expire) && message.expire > Date.now()) {
       session.expire = message.expire;
+      session.credentials = message.credentials;   // kept in memory so a fresh worker can be restored even without localStorage (no request is ever resent, )
       storeSession(request.account, message.credentials);
       document.querySelectorAll('.wallet-controls').forEach((el) => {
         if (el.dataset.walletAccount === request.account) controlState(el.dataset.walletControlsId).expanded = false;
@@ -361,6 +378,7 @@ function finishPending(message) {
     } else if (message.type === 'not-sent') {
       request.callback({ success: false, notSent: true, error: message.reason === 'busy'
         ? 'The wallet is still handling the earlier request. This request was not sent.'
+        : message.reason === 'too-large' ? TOO_LARGE
         : 'HiveAuth session expired before signing.' });
     } else {
       const stillChecking = message.reason === 'watchdog' || message.reason === 'expired';
@@ -368,7 +386,12 @@ function finishPending(message) {
       // Only the wallet's own "not connected through HAS" answer proves the session is gone.
       const invalidSession = message.reason === 'invalid-session';
       if (invalidSession) disposeSession();
+      // round 3 (maintainer, IN-0888 "End it once the request expires"): `walletExpired` = HiveAuth reported its OWN
+      // request expired unsigned; `walletNoAnswer` = nothing came back at all (Ceres' watchdog fired). Neither is a wallet
+      // answer that ended a signature: the shared confirmer decides what they mean.
       request.callback({ success: false, ambiguousBroadcast: true, stillChecking,
+        relayConfirmed: request.relayConfirmed === true,
+        ...(message.reason === 'expired' ? { walletExpired: true } : {}), ...(message.reason === 'watchdog' ? { walletNoAnswer: true } : {}),
         error: stillChecking ? `Ceres is still checking whether the wallet sent this (${message.reason}${Number.isFinite(message.waited) ? `, ${message.waited} s${message.reached ? '' : ', request never confirmed'}` : ''})`
           : invalidSession ? 'The Keychain app no longer has this HiveAuth session. Connect HiveAuth again.'
           : 'HiveAuth did not return a verified transaction id. The request may have been broadcast.' });
@@ -386,7 +409,8 @@ function startRequest(action, account, operations, callback, authority = 'Postin
   if (pending) throw new Error('Finish the current wallet request first.');
   const id = crypto.randomUUID();
   const timer = setTimeout(() => finishPending({ type: action === 'connect' ? 'connect-failed' : action === 'challenge' ? 'challenge-failed' : 'uncertain', reason: action === 'connect' ? 'expired' : 'watchdog' }), 110000);
-  pending = { id, action, account, callback, timer, authority, message: action === 'connect' || action === 'challenge' ? operations : undefined, reauth: Boolean(credentials), retryWithQr };
+  pending = { id, action, account, callback, timer, authority, message: action === 'connect' || action === 'challenge' ? operations : undefined, reauth: Boolean(credentials), retryWithQr,
+    operations: action === 'broadcast' ? operations : undefined, relayConfirmed: false };
   try { session.worker.postMessage({ id, action, account, operations: action === 'connect' || action === 'challenge' ? undefined : operations, message: action === 'connect' || action === 'challenge' ? operations : undefined, authority, ...(action === 'connect' && credentials ? { credentials } : {}) }); }
   catch (error) {
     clearTimeout(timer);
@@ -396,6 +420,11 @@ function startRequest(action, account, operations, callback, authority = 'Postin
   }
   notify();
 }
+// fix round 2 (astra-r2 P1-5, shape 18): the resend on a fresh worker is REMOVED. A missing sign_wait
+// does not prove the relay never received the first request (the socket can die after delivering it), HiveAuth has no
+// way to cancel a delivered request, and a second request for the same operations could be approved too. A request the
+// relay never confirms ends in the watchdog's uncertain answer, and the shared confirmer finds it on Hive or keeps it
+// honestly unresolved; nothing is ever sent twice.
 function createHiveAuthWorker(account, expire = 0) {
     const workerUrl = new URL('./vendor/hiveauth-worker.js', import.meta.url);
     workerUrl.search = new URL(import.meta.url).search;
@@ -414,9 +443,24 @@ function createHiveAuthWorker(account, expire = 0) {
       if (!pending || data.id !== pending.id) {
         const late = lateBroadcasts.get(data.id);
         if (!late) return;
+        if (data.type === 'sign-wait') {
+          late.relayConfirmed = true;
+          return;
+        }
         if (data.type === 'signed') {
           lateBroadcasts.delete(data.id);
           late.callback({ success: true, lateSigned: true, data: { key: late.authority || 'Posting' }, result: { id: data.txId } });
+        } else if (data.type === 'uncertain' && data.reason === 'expired') {
+          // round 4 (astra-review-r4 : HiveAuth's OWN expiry after Ceres' watchdog still reaches the attempt
+          // that asked (IN-0888); nothing is resent.
+          lateBroadcasts.delete(data.id);
+          late.callback({ success: false, late: true, ambiguousBroadcast: true, stillChecking: true, walletExpired: true,
+            relayConfirmed: late.relayConfirmed === true,
+            error: 'Ceres is still checking whether the wallet sent this (expired)' });
+        } else if (data.type === 'declined') {
+          // A late refusal ends the request: the confirmer may then prove it was not sent (the server times the closure).
+          lateBroadcasts.delete(data.id);
+          late.callback({ success: false, late: true, declined: true, error: SIGNING_REJECTED });
         } else if (data.type !== 'sign-wait') lateBroadcasts.delete(data.id);
         if (!pending && lateBroadcasts.size === 0 && session?.expire && session.expire <= Date.now()) disposeSession();
         return;
@@ -425,7 +469,13 @@ function createHiveAuthWorker(account, expire = 0) {
       if (data.type === 'auth-wait') {
         requestView = { title: 'HiveAuth', account, signing: pending.action === 'broadcast', status: pending.action === 'broadcast' ? SWITCH_TX : SWITCH_AUTH, link: data.link, svg: data.svg };
         notify();
-      } else if (data.type !== 'sign-wait') finishPending(data);
+      } else if (data.type === 'sign-wait') {
+        if (pending.action !== 'broadcast') return;
+        // the relay holds the request now; say so. (Nothing is ever resent: removed the resend.)
+        pending.relayConfirmed = true;
+        if (requestView?.account === pending.account && requestView.signing) requestView.status = RELAY_CONFIRMED;
+        notify();
+      } else finishPending(data);
     };
     worker.onerror = () => {
       if (session?.worker !== worker) return;
@@ -445,6 +495,7 @@ function restoreHiveAuth(account) {
   if (!credentials || !hiveAuthAvailable()) return;
   try {
     const worker = createHiveAuthWorker(account, credentials.expire);
+    session.credentials = credentials;
     worker.postMessage({ id: crypto.randomUUID(), action: 'restore', account, credentials });
     scheduleExpiry(credentials.expire);
   } catch (_) { disposeSession(); }
@@ -493,10 +544,12 @@ export function walletWaitHtml(account = walletAccount(), authority = 'Posting',
   const kind = walletKind(account);
   const key = authority === 'Active' ? ' (Active key)' : '';
   const text = kind === 'hiveauth' ? `Check the Keychain app on your phone now and approve the request${key}.` : `Approve the request in the Keychain extension now${key}.`;
+  // once the relay confirmed the request, a green line says it reached HiveAuth (the wait box itself stays amber: the approval is open).
+  const relay = kind === 'hiveauth' && walletRelayConfirmed(account) ? ` <small class="wallet-relay-confirmed">${esc(RELAY_CONFIRMED_NOTE)}</small>` : '';
   const since = Number(options.since);
-  if (!Number.isFinite(since) || since <= 0) return `<p class="wallet-wait is-${kind}" role="status"><span class="spinner" aria-hidden="true"></span>${walletLogo(kind)}<span>${esc(text)}</span></p>`;
+  if (!Number.isFinite(since) || since <= 0) return `<p class="wallet-wait is-${kind}" role="status"><span class="spinner" aria-hidden="true"></span>${walletLogo(kind)}<span>${esc(text)}${relay}</span></p>`;
   const ttl = WALLET_REQUEST_MS[kind] || WALLET_REQUEST_MS.keychain;
-  return `<div class="wallet-wait is-${kind} has-clock" role="status"><span class="spinner" aria-hidden="true"></span>${walletLogo(kind)}<span class="wallet-wait-text"><span>${esc(text)} </span><small>${esc(WALLET_EXPIRY_TEXT)}</small></span><b class="wallet-wait-clock" data-wallet-clock data-since="${since}" data-ttl="${ttl}" aria-live="off">${esc(walletClockText(since, ttl))}</b></div>`;
+  return `<div class="wallet-wait is-${kind} has-clock" role="status"><span class="spinner" aria-hidden="true"></span>${walletLogo(kind)}<span class="wallet-wait-text"><span>${esc(text)} </span>${relay}<small>${esc(WALLET_EXPIRY_TEXT)}</small></span><b class="wallet-wait-clock" data-wallet-clock data-since="${since}" data-ttl="${ttl}" aria-live="off">${esc(walletClockText(since, ttl))}</b></div>`;
 }
 // Updates every running wallet clock under `root` in place (no re-render, so focus and buttons stay put).
 export function walletClockTick(root = typeof document !== 'undefined' ? document : null, now = Date.now()) {
@@ -513,7 +566,8 @@ export function walletControlsHtml(account = walletAccount(), controlId = null, 
   const kind = walletKind(account), ready = walletReady(account);
   const stateId = controlId || String(++controlsId);
   const state = controlState(stateId);
-  const connectRequest = requestView?.account === account && !requestView.signing;
+  const hostsRequest = !requestHostId || requestHostId === stateId;   // one request box (QR) per request
+  const connectRequest = requestView?.account === account && !requestView.signing && hostsRequest;
   // an open connect request shows every drawer of this account while it lasts, but must not leave
   // drawers the maintainer never opened stuck open after it ends ().
   const expanded = state.expanded || connectRequest;
@@ -523,12 +577,12 @@ export function walletControlsHtml(account = walletAccount(), controlId = null, 
   const compactRequest = options.compactRequest === true;
   const selected = (name) => kind === name && (remembered || ready);
   const check = '<span class="ceres-btn__check" aria-hidden="true"></span>';
-  const close = requestView?.account === account && compactRequest ? `<button type="button" class="harvest-x ceres-btn ceres-btn--secondary wallet-request-close" data-control-density="comfortable" data-control-mode="icon" data-control-case="destructive" data-wallet-close aria-label="${pending?.action === 'connect' ? 'Cancel HiveAuth request' : 'Close HiveAuth request'}">${X_ICON}</button>` : '';
+  const close = requestView?.account === account && hostsRequest && compactRequest ? `<button type="button" class="harvest-x ceres-btn ceres-btn--secondary wallet-request-close" data-control-density="comfortable" data-control-mode="icon" data-control-case="destructive" data-wallet-close aria-label="${pending?.action === 'connect' ? 'Cancel HiveAuth request' : 'Close HiveAuth request'}">${X_ICON}</button>` : '';
   const connection = kind === 'hiveauth' && session?.account === account && session.expire > Date.now() ? `<button type="button" class="${secondary} wallet-disconnect" data-control-density="touch" data-control-mode="icon" data-control-case="destructive" data-wallet-disconnect data-tip="Disconnect HiveAuth" aria-label="Disconnect HiveAuth"${busy ? ' disabled' : ''}><span class="wallet-disconnect-mark" aria-hidden="true">${walletLogo('hiveauth')}</span></button>` : '';
   const pairAgain = pending?.account === account && pending.action === 'challenge' && pending.retryWithQr ? `<button type="button" class="${secondary}" data-control-density="touch" data-wallet-pair-again>Pair again with a QR code</button>` : '';
   // while a HiveAuth connect request is shown, the box is about that request only; the Hive Keychain choice is not part of it (the close button cancels).
   const providers = connectRequest && !compactRequest ? '' : `<div class="wallet-providers">${connectRequest ? '' : `<button type="button" class="${choice}" data-control-density="touch" data-wallet-select="keychain" aria-pressed="${selected('keychain')}"${busy ? ' disabled' : ''}>${check}${walletLogo('keychain')}<span>Hive Keychain</span></button>`}${connectRequest ? '' : `<button type="button" class="${choice}" data-control-density="touch" data-wallet-select="hiveauth" aria-pressed="${selected('hiveauth')}"${busy ? ' disabled' : ''}>${check}${walletLogo('hiveauth')}<span>${kind === 'hiveauth' && ready ? 'HiveAuth' : 'Connect HiveAuth'}</span></button>`}${connection}${close}</div>`;
-  const request = requestView?.account === account ? compactRequest
+  const request = requestView?.account === account && hostsRequest ? compactRequest
     ? `<div class="wallet-request${requestView.link ? ' is-pairing' : ''}${requestView.failed ? ' is-failed' : ''}" data-wallet-request>${requestView.signing ? '' : `<div class="wallet-status${actionClass(requestView.status)}" role="status" aria-live="polite">${pending ? '<span class="spinner" aria-hidden="true"></span>' : ''}${esc(requestView.status)}</div>`}${requestView.link ? `<div class="wallet-pairing" data-wallet-pairing><div class="wallet-qr" role="img" aria-label="HiveAuth connection QR code">${requestView.svg}</div><a class="${secondary}" data-control-density="touch" data-wallet-open-keychain rel="noreferrer" href="${esc(requestView.link)}" aria-label="Open the Hive Keychain app on this device to approve HiveAuth">${walletLogo('keychain')}<span>Open Keychain app to approve</span></a></div>` : ''}${pairAgain}${requestView.retry ? `<button type="button" class="${secondary}" data-control-density="touch" data-wallet-retry>Retry HiveAuth</button>` : ''}</div>`
     : `<div class="wallet-request${requestView.link ? ' is-pairing' : ''}" data-wallet-request><div class="wallet-request-head">${requestView.signing ? '' : `<div class="wallet-status${actionClass(requestView.status)}" role="status" aria-live="polite">${pending ? '<span class="spinner" aria-hidden="true"></span>' : ''}${esc(requestView.status)}</div>`}<button type="button" class="harvest-x ceres-btn ceres-btn--secondary wallet-request-close" data-control-density="comfortable" data-control-mode="icon" data-control-case="destructive" data-wallet-close aria-label="${pending?.action === 'connect' ? 'Cancel HiveAuth request' : 'Close HiveAuth request'}">${X_ICON}</button></div>${requestView.link ? `<div class="wallet-pairing" data-wallet-pairing><div class="wallet-qr" role="img" aria-label="HiveAuth connection QR code">${requestView.svg}</div><a class="${secondary}" data-control-density="touch" data-wallet-open-keychain rel="noreferrer" href="${esc(requestView.link)}" aria-label="Open the Hive Keychain app on this device to approve HiveAuth">${walletLogo('keychain')}<span>Open Keychain app to approve</span></a></div>` : ''}${pairAgain}${requestView.retry ? `<button type="button" class="${secondary}" data-control-density="touch" data-wallet-retry>Retry HiveAuth</button>` : ''}</div>` : '';
   // ( on closing): the direction must survive the close

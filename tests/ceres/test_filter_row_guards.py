@@ -104,7 +104,7 @@ BOARD_FILTER_FUNCS_SOURCE = _FUNCS_START + BOARD_FILTER_FUNCS_SOURCE
 
 
 def _run_node(script: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["node", "-e", script], capture_output=True, text=True)
+    return subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True, text=True)
 
 
 _FAKE_DOM = r"""
@@ -269,10 +269,53 @@ def test_staged_truth_renders_independently_and_reuses_editor_projection() -> No
 
 
 def test_detail_replacement_refilters_an_active_badge_view() -> None:
-    assert "updated._badge_roster_loaded = true;" in ROWS_SOURCE
-    assert "if (BOARD && document.getElementById('badge-filter')?.value) {" in ROWS_SOURCE
-    # commit 8d787322 ("fix(ceres): refresh mobile idle plots with
-    # active badge filters", v0.9.528) inserted a mobile-sheet redraw between the two
-    # calls this guard originally checked as adjacent lines.
-    assert "renderTable();\n      // The filtered board rebuild does not redraw the separate mobile sheet.\n      if (MOBILE_PLOT_UID === deedUid) updateMountedRow(deedUid, { readiness: true });\n      queueMicrotask(syncCloseAll);" in ROWS_SOURCE
-    assert "else if (BOARD) updateMountedRow(deedUid, { readiness: true });" in ROWS_SOURCE
+    # Exercise the real detail loader's completion branch. A newly loaded badge
+    # must re-filter Live, while Planning keeps the mounted row and avoids a
+    # table rebuild (which would remount another open plot).
+    detail_loader = ROWS_SOURCE.split("export async function loadPlotDetail(", 1)[1].split(
+        "\n}\n", 1
+    )[0] + "\n}"
+    assert "return " in detail_loader and ".promise;" in detail_loader
+    assert "\nexport " not in detail_loader, "loadPlotDetail extraction included later exports"
+    script = "(async () => {\nasync function loadPlotDetail(" + detail_loader + r"""
+const calls = [];
+const document = { body: { dataset: {} }, getElementById: (id) => id === 'badge-filter' ? { value: 'new-badge' } : null };
+const CURRENT_PLAYER = 'sample01', BOARD_GENERATION = 1, MOBILE_PLOT_UID = null;
+let BOARD, CURRENT_ROWS;
+const EXPANDED_ROWS = new Set(), EXPANDED_DATA_LOADED = new Set(), LOADING_PLOTS = new Set();
+const EXPAND_ERRORS = new Map(), DETAIL_REQUESTS = new Map(), S = { CERES_CHECKOUT_OPEN: false };
+let requestSerial = 0;
+const getPlotPresentation = () => ({}), markSlowOpen = () => {};
+const reconcileCapPrediction = () => {}, applyStageToRow = () => {};
+const playerQueryAppend = (url) => url;
+const fetchWithNetworkRetry = async () => ({ ok: true, status: 200,
+  json: async () => ({ deed_uid: 'plot-1', assets_loaded: true, badges: ['new-badge'] }) });
+const boardPlanningActive = () => document.body.dataset.boardMode === 'planning';
+const updateMountedRow = (uid) => calls.push(`row:${uid}`);
+const syncCloseAll = () => {};
+const renderCheckoutSurface = () => {};
+const renderTable = () => {
+  calls.push('table');
+  CURRENT_ROWS = BOARD.plots.filter(row => row.badges?.includes('new-badge'));
+};
+  for (const mode of ['live', 'planning']) {
+    calls.length = 0;
+    document.body.dataset.boardMode = mode;
+    const old = { deed_uid: 'plot-1', assets_loaded: true, badges: [] };
+    BOARD = { player: CURRENT_PLAYER, plots: [old] };
+    CURRENT_ROWS = [old];
+    EXPANDED_ROWS.add('plot-1');
+    EXPANDED_DATA_LOADED.delete('plot-1');
+    await loadPlotDetail(old);
+    if (!BOARD.plots[0]._badge_roster_loaded) throw new Error(`${mode}: badge truth was not loaded`);
+    if (mode === 'live') {
+      if (calls.filter(call => call === 'table').length !== 1 || CURRENT_ROWS[0] !== BOARD.plots[0])
+        throw new Error(`Live did not re-filter the active badge view: ${calls}`);
+    } else if (calls.includes('table') || calls.filter(call => call === 'row:plot-1').length !== 1) {
+      throw new Error(`Planning should update only its mounted row: ${calls}`);
+    }
+  }
+})().catch(error => { console.error(error); process.exitCode = 1; });
+"""
+    result = _run_node(script)
+    assert result.returncode == 0, result.stderr

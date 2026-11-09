@@ -93,7 +93,7 @@ def test_desktop_caption_names_the_resource_and_flags_a_forced_pending_tab():
     js = REGIONAL_DEC_JS.read_text(encoding="utf-8")
     render_match = re.search(r"function render\(force = false\) \{.*?\n\}\n", js, re.S)
     body = render_match.group(0)
-    assert "const forcedPending = D.tab === 'DEC' ? D.pending?.status === 'pending' : D.tab === 'SPS' ? (D.signing && !!D.claim.pending) : false;" in body
+    assert "const forcedPending = D.tab === 'DEC' ? D.pending?.status === 'pending' && blockingPending() : D.tab === 'SPS' ? (D.signing && !!D.claim.pending) : false;" in body
     assert 'class="wallet-caption" id="dec-title"' in body
     assert "${esc(D.tab === 'DEC' || D.tab === 'SPS' ? D.tab : tokenLabel(D.tab))}" in body  # DEC/SPS stay upper-case
     assert "wallet-caption-pending" in body
@@ -127,7 +127,7 @@ if (panel.innerHTML.includes('Pending signature')) {
 """
     fixed_source = read_entry_source(REGIONAL_DEC_JS)
     # changed only the SPS branch (caption only while signing); the DEC predicate under test is unchanged.
-    fixed_predicate = "const forcedPending = D.tab === 'DEC' ? D.pending?.status === 'pending' : D.tab === 'SPS' ? (D.signing && !!D.claim.pending) : false;"
+    fixed_predicate = "const forcedPending = D.tab === 'DEC' ? D.pending?.status === 'pending' && blockingPending() : D.tab === 'SPS' ? (D.signing && !!D.claim.pending) : false;"
     old_predicate = "const forcedPending = D.tab === 'DEC' ? !!D.pending : D.tab === 'SPS' ? (D.signing && !!D.claim.pending) : false;"
     assert fixed_predicate in fixed_source, "counterfactual injection requires the fixed DEC predicate"
     counterfactual = run_in_module_context(
